@@ -361,6 +361,48 @@ const describeStatusNameForMismatchMessage = (
   statusName: string | null,
 ): string => (statusName === null ? 'no Status' : `"${statusName}"`);
 
+const statusChangedSinceQueuedResponse = (
+  expectedStatusName: string | null,
+  liveStatusName: string | null,
+): ConsoleOperationResponse =>
+  badRequest(
+    `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
+      expectedStatusName,
+    )} but the issue's Status is now ${describeStatusNameForMismatchMessage(
+      liveStatusName,
+    )}. Please re-check the issue and act again.`,
+  );
+
+const rejectWhenStatusChangedBeforePullRequestWrite = async (
+  issueRepository: IssueRepository,
+  prUrl: string,
+  expectedStatusAtActionTime: ExpectedStatusAtActionTime,
+): Promise<ConsoleOperationResponse | null> => {
+  if (!expectedStatusAtActionTime.present) {
+    return null;
+  }
+  const liveIssue = await issueRepository.getIssueByUrl(prUrl, {
+    bypassCache: true,
+  });
+  if (liveIssue === null) {
+    return badGateway(`issue "${prUrl}" could not be loaded`);
+  }
+  const liveStatusName = liveIssue.status;
+  if (
+    liveStatusName?.toLowerCase() ===
+    AWAITING_WORKSPACE_STATUS_NAME.toLowerCase()
+  ) {
+    return null;
+  }
+  if (liveStatusName !== expectedStatusAtActionTime.statusName) {
+    return statusChangedSinceQueuedResponse(
+      expectedStatusAtActionTime.statusName,
+      liveStatusName,
+    );
+  }
+  return null;
+};
+
 const updateStatusByName = async (
   issueRepository: IssueRepository,
   project: Project,
@@ -385,12 +427,9 @@ const updateStatusByName = async (
       return null;
     }
     if (liveStatusName !== expectedStatusAtActionTime.statusName) {
-      return badRequest(
-        `Status changed since this action was queued: expected ${describeStatusNameForMismatchMessage(
-          expectedStatusAtActionTime.statusName,
-        )} but the issue's Status is now ${describeStatusNameForMismatchMessage(
-          liveStatusName,
-        )}. Please re-check the issue and act again.`,
+      return statusChangedSinceQueuedResponse(
+        expectedStatusAtActionTime.statusName,
+        liveStatusName,
       );
     }
   }
@@ -527,6 +566,15 @@ export const handleReview = async (
       return badRequest(
         'Cannot merge: pull request not found or already closed',
       );
+    }
+    const statusChangedFailure =
+      await rejectWhenStatusChangedBeforePullRequestWrite(
+        issueRepository,
+        prUrl,
+        expectedStatusAtActionTime,
+      );
+    if (statusChangedFailure !== null) {
+      return statusChangedFailure;
     }
     const routeConflictToAwaitingWorkspace =
       async (): Promise<ConsoleOperationResponse> => {
