@@ -1,3 +1,10 @@
+## [2.195.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.10...v2.195.11) (2026-11-15)
+
+
+### Bug Fixes
+
+* **console:** fall back to owner token and log read failures ([#3728](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3728)) ([9f37ce3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9f37ce38f97ec8704c2241e524e70d1b41da8441))
+
 ## [2.195.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.9...v2.195.10) (2026-11-14)
 
 
