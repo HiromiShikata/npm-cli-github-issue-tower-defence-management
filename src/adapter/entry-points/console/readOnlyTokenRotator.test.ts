@@ -307,6 +307,14 @@ const buildProjectsV2AppTokenShapeCases = (
   );
 
 describe('createReadOnlyTokenRotatingIssueRepository', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.mocked(console.error).mockRestore();
+  });
+
   describe('single repository', () => {
     it('returns the result from the only repository', async () => {
       const repo = mock<IssueRepository>();
@@ -742,6 +750,36 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
 
   describe('every app read token rate-limited — owner token fallback', () => {
     const issueUrl = 'https://github.com/o/r/issues/1';
+
+    it('logs each rate-limited App read token with the target read before the owner token read', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
+      writeRepo.getIssueBodyByUrl.mockResolvedValue('issue body via own token');
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+
+      await expect(rotating.getIssueBodyByUrl(issueUrl)).resolves.toBe(
+        'issue body via own token',
+      );
+      expect(jest.mocked(console.error).mock.calls).toStrictEqual([
+        [
+          `console read rate-limited on a GitHub App read token: target=${issueUrl} error=rate limited token-1`,
+        ],
+        [
+          `console read rate-limited on a GitHub App read token: target=${issueUrl} error=rate limited token-2`,
+        ],
+      ]);
+    });
 
     it('reads with the write repository holding the owner token when every read repository is rate-limited and that read succeeds', async () => {
       const repo1 = mock<IssueRepository>();

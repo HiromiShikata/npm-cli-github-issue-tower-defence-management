@@ -47,7 +47,7 @@ describe('consoleReadApi', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `console read failed: target=${itemUrl} status=429 error=${RATE_LIMIT_ERROR_MESSAGE}`,
+        `console read failed: target=${itemUrl} responseStatus=429 error=${RATE_LIMIT_ERROR_MESSAGE}`,
       );
     });
 
@@ -61,8 +61,70 @@ describe('consoleReadApi', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `console read failed: target=${itemUrl} status=502 error=Network timeout`,
+        `console read failed: target=${itemUrl} responseStatus=502 error=Network timeout`,
       );
+    });
+  });
+
+  describe('read failure logging on stale-cache fallbacks', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+    const rateLimitMessage =
+      'Failed to read for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded';
+
+    it('logs the target, the 429 response status and the message before serving the stale issue title', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const issueRepository = mock<IssueRepository>();
+      const staleState = {
+        state: 'OPEN',
+        merged: false,
+        isPullRequest: false,
+        title: 'Stale title',
+        stateReason: '',
+      };
+      issueRepository.getIssueOrPullRequestState
+        .mockResolvedValueOnce(staleState)
+        .mockRejectedValue(new GitHubRateLimitError(rateLimitMessage));
+      let now = 0;
+      const cache = new IssueTitleStateCache(() => now);
+      await handleIssueTitle(issueRepository, cache, issueUrl);
+      now = ISSUE_TITLE_CACHE_TTL_MS + 1;
+
+      const response = await handleIssueTitle(issueRepository, cache, issueUrl);
+
+      expect(response.body).toEqual(staleState);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${issueUrl} responseStatus=429 error=${rateLimitMessage}`,
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('logs the target, the 429 response status and the message before serving the stale pull request status', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const issueRepository = mock<IssueRepository>();
+      const staleStatus = { found: false, status: null };
+      issueRepository.getOpenPullRequestCiStatus
+        .mockResolvedValueOnce(null)
+        .mockRejectedValue(new GitHubRateLimitError(rateLimitMessage));
+      let now = 0;
+      const cache = new PullRequestStatusCache(() => now);
+      await handlePullRequestStatus(issueRepository, cache, issueUrl);
+      now = PULL_REQUEST_STATUS_CACHE_TTL_MS + 1;
+
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        issueUrl,
+      );
+
+      expect(response.body).toEqual(staleStatus);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${issueUrl} responseStatus=429 error=${rateLimitMessage}`,
+      );
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -960,6 +1022,20 @@ describe('consoleReadApi', () => {
         statusCode: 502,
         body: { error: 'GraphQL request failed: HTTP 403' },
       });
+    });
+
+    it('logs the project URL, the 502 response status and the error message when the README cannot be read', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      fetchProjectReadmeSpy.mockRejectedValue(
+        new Error('GraphQL request failed: HTTP 403'),
+      );
+      await handleProjectReadmeConfig(makeResolver(), () => 'token', 'acme');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${projectUrl} responseStatus=502 error=GraphQL request failed: HTTP 403`,
+      );
+      consoleErrorSpy.mockRestore();
     });
 
     it('returns 502 when the README config section is not valid YAML', async () => {

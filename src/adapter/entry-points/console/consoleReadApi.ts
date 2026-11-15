@@ -144,7 +144,7 @@ const logReadFailure = (
 ): void => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(
-    `console read failed: target=${target} status=${status} error=${redactSecrets(message)}`,
+    `console read failed: target=${target} responseStatus=${status} error=${redactSecrets(message)}`,
   );
 };
 
