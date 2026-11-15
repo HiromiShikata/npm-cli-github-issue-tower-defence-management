@@ -71,7 +71,7 @@
   },
   "homepage": "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management#readme",
   "devDependencies": {
-    "@biomejs/biome": "^2.6.6",
+    "@biomejs/biome": "^2.5.5",
     "@eslint/js": "^10.0.1",
     "@jest/globals": "^30.5.2",
     "@playwright/test": "1.64.0",
