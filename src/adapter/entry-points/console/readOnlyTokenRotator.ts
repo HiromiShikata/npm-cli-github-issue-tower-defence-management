@@ -8,7 +8,7 @@ import type {
   PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubConfirmedNotFoundError } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
-import { redactSecrets } from '../../../domain/services/secretRedaction';
+import { describeGithubReadFailure } from './readFailureLog';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import type { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
 import {
@@ -68,7 +68,7 @@ const attemptReadAcrossReadRepositories = async <T>(
       if (error instanceof GitHubRateLimitError) {
         lastRateLimitError = error;
         console.error(
-          `console read rate-limited on a GitHub App read token: target=${target} error=${redactSecrets(error.message)}`,
+          `console read rate-limited on a GitHub App read token: target=${target} ${describeGithubReadFailure(error)}`,
         );
         continue;
       }

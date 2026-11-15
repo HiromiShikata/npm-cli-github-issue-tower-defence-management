@@ -4,7 +4,7 @@ import {
   PullRequestCiStatusAvailability,
   PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { redactSecrets } from '../../../domain/services/secretRedaction';
+import { describeGithubReadFailure } from './readFailureLog';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import {
   fetchProjectReadme,
@@ -139,17 +139,28 @@ const ok = (body: unknown): ConsoleReadApiResponse => ({
 
 const logReadFailure = (
   target: string,
-  status: number,
+  responseLabel: string,
   error: unknown,
 ): void => {
-  const message = error instanceof Error ? error.message : String(error);
   console.error(
-    `console read failed: target=${target} responseStatus=${status} error=${redactSecrets(message)}`,
+    `console read failed: target=${target} ${responseLabel} ${describeGithubReadFailure(error)}`,
   );
 };
 
+const readmeConfigError = (
+  pjcode: string | null,
+  message: string,
+): ConsoleReadApiResponse => {
+  logReadFailure(
+    `project README config pjcode=${pjcode ?? 'null'}`,
+    'responseStatus=502',
+    new Error(message),
+  );
+  return { statusCode: 502, body: { error: message } };
+};
+
 const rateLimited = (target: string, error: Error): ConsoleReadApiResponse => {
-  logReadFailure(target, 429, error);
+  logReadFailure(target, 'responseStatus=429', error);
   return {
     statusCode: 429,
     body: { error: error.message },
@@ -160,7 +171,7 @@ const upstreamError = (
   target: string,
   error: unknown,
 ): ConsoleReadApiResponse => {
-  logReadFailure(target, 502, error);
+  logReadFailure(target, 'responseStatus=502', error);
   return {
     statusCode: 502,
     body: { error: error instanceof Error ? error.message : String(error) },
@@ -355,7 +366,7 @@ export const handleIssueTitle = async (
     if (isGitHubRateLimitError(error)) {
       const stale = cache.getStale(url);
       if (stale !== null) {
-        logReadFailure(url, 429, error);
+        logReadFailure(url, 'responseStatus=200 servedFrom=staleCache', error);
         return ok(stale);
       }
       return rateLimited(url, error);
@@ -398,7 +409,7 @@ export const handlePullRequestStatus = async (
     if (isGitHubRateLimitError(error)) {
       const stale = cache.getStale(url);
       if (stale !== null) {
-        logReadFailure(url, 429, error);
+        logReadFailure(url, 'responseStatus=200 servedFrom=staleCache', error);
         return ok(stale);
       }
       return rateLimited(url, error);
@@ -413,16 +424,10 @@ export const handleProjectReadmeConfig = async (
   pjcode: string | null,
 ): Promise<{ statusCode: number; body: unknown }> => {
   if (resolveProject === null) {
-    return {
-      statusCode: 502,
-      body: { error: 'project resolver is not configured' },
-    };
+    return readmeConfigError(pjcode, 'project resolver is not configured');
   }
   if (resolveGithubToken === null) {
-    return {
-      statusCode: 502,
-      body: { error: 'github token is not configured' },
-    };
+    return readmeConfigError(pjcode, 'github token is not configured');
   }
   if (pjcode === null || pjcode.length === 0) {
     return { statusCode: 400, body: { error: 'pjcode is required' } };
@@ -436,10 +441,10 @@ export const handleProjectReadmeConfig = async (
   }
   const projectOwner = extractProjectOwner(binding.project.url);
   if (projectOwner === null) {
-    return {
-      statusCode: 502,
-      body: { error: 'cannot determine project owner from project URL' },
-    };
+    return readmeConfigError(
+      pjcode,
+      'cannot determine project owner from project URL',
+    );
   }
   const githubToken = resolveGithubToken(projectOwner);
   try {

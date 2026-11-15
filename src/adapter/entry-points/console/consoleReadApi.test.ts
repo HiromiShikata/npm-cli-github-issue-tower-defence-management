@@ -47,7 +47,7 @@ describe('consoleReadApi', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `console read failed: target=${itemUrl} responseStatus=429 error=${RATE_LIMIT_ERROR_MESSAGE}`,
+        `console read failed: target=${itemUrl} responseStatus=429 githubStatus=403 error=${RATE_LIMIT_ERROR_MESSAGE}`,
       );
     });
 
@@ -61,7 +61,7 @@ describe('consoleReadApi', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `console read failed: target=${itemUrl} responseStatus=502 error=Network timeout`,
+        `console read failed: target=${itemUrl} responseStatus=502 githubStatus=unknown error=Network timeout`,
       );
     });
   });
@@ -71,7 +71,7 @@ describe('consoleReadApi', () => {
     const rateLimitMessage =
       'Failed to read for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded';
 
-    it('logs the target, the 429 response status and the message before serving the stale issue title', async () => {
+    it('logs the target, the stale-cache served status and the message before serving the stale issue title', async () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -95,12 +95,12 @@ describe('consoleReadApi', () => {
 
       expect(response.body).toEqual(staleState);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `console read failed: target=${issueUrl} responseStatus=429 error=${rateLimitMessage}`,
+        `console read failed: target=${issueUrl} responseStatus=200 servedFrom=staleCache githubStatus=403 error=${rateLimitMessage}`,
       );
       consoleErrorSpy.mockRestore();
     });
 
-    it('logs the target, the 429 response status and the message before serving the stale pull request status', async () => {
+    it('logs the target, the stale-cache served status and the message before serving the stale pull request status', async () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -122,7 +122,7 @@ describe('consoleReadApi', () => {
 
       expect(response.body).toEqual(staleStatus);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `console read failed: target=${issueUrl} responseStatus=429 error=${rateLimitMessage}`,
+        `console read failed: target=${issueUrl} responseStatus=200 servedFrom=staleCache githubStatus=403 error=${rateLimitMessage}`,
       );
       consoleErrorSpy.mockRestore();
     });
@@ -1024,6 +1024,49 @@ describe('consoleReadApi', () => {
       });
     });
 
+    it.each([
+      {
+        case: 'the project resolver is not configured',
+        resolveProject: null,
+        resolveGithubToken: (): string => 'token',
+        message: 'project resolver is not configured',
+      },
+      {
+        case: 'the github token is not configured',
+        resolveProject: makeResolver(),
+        resolveGithubToken: null,
+        message: 'github token is not configured',
+      },
+      {
+        case: 'the project owner cannot be determined from the project URL',
+        resolveProject: ((): ConsoleProjectResolver => {
+          const project = mock<Project>();
+          project.id = 'PVT_2';
+          project.url = 'not a url';
+          return async (pjcode) =>
+            pjcode === 'acme' ? { pjcode, project } : null;
+        })(),
+        resolveGithubToken: (): string => 'token',
+        message: 'cannot determine project owner from project URL',
+      },
+    ])(
+      'logs the target, the 502 response status and the message when $case',
+      async ({ resolveProject, resolveGithubToken, message }) => {
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        await handleProjectReadmeConfig(
+          resolveProject,
+          resolveGithubToken,
+          'acme',
+        );
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          `console read failed: target=project README config pjcode=acme responseStatus=502 githubStatus=unknown error=${message}`,
+        );
+        consoleErrorSpy.mockRestore();
+      },
+    );
+
     it('logs the project URL, the 502 response status and the error message when the README cannot be read', async () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
@@ -1033,7 +1076,7 @@ describe('consoleReadApi', () => {
       );
       await handleProjectReadmeConfig(makeResolver(), () => 'token', 'acme');
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        `console read failed: target=${projectUrl} responseStatus=502 error=GraphQL request failed: HTTP 403`,
+        `console read failed: target=${projectUrl} responseStatus=502 githubStatus=403 error=GraphQL request failed: HTTP 403`,
       );
       consoleErrorSpy.mockRestore();
     });

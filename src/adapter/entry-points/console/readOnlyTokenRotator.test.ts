@@ -773,10 +773,10 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
       expect(jest.mocked(console.error).mock.calls).toStrictEqual([
         [
-          `console read rate-limited on a GitHub App read token: target=${issueUrl} error=rate limited token-1`,
+          `console read rate-limited on a GitHub App read token: target=${issueUrl} githubStatus=unknown error=rate limited token-1`,
         ],
         [
-          `console read rate-limited on a GitHub App read token: target=${issueUrl} error=rate limited token-2`,
+          `console read rate-limited on a GitHub App read token: target=${issueUrl} githubStatus=unknown error=rate limited token-2`,
         ],
       ]);
     });
