@@ -4,6 +4,7 @@ import {
   PullRequestCiStatusAvailability,
   PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { redactSecrets } from '../../../domain/services/secretRedaction';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import {
   fetchProjectReadme,
@@ -136,15 +137,35 @@ const ok = (body: unknown): ConsoleReadApiResponse => ({
   body,
 });
 
-const rateLimited = (error: Error): ConsoleReadApiResponse => ({
-  statusCode: 429,
-  body: { error: error.message },
-});
+const logReadFailure = (
+  target: string,
+  status: number,
+  error: unknown,
+): void => {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(
+    `console read failed: target=${target} status=${status} error=${redactSecrets(message)}`,
+  );
+};
 
-const upstreamError = (error: unknown): ConsoleReadApiResponse => ({
-  statusCode: 502,
-  body: { error: error instanceof Error ? error.message : String(error) },
-});
+const rateLimited = (target: string, error: Error): ConsoleReadApiResponse => {
+  logReadFailure(target, 429, error);
+  return {
+    statusCode: 429,
+    body: { error: error.message },
+  };
+};
+
+const upstreamError = (
+  target: string,
+  error: unknown,
+): ConsoleReadApiResponse => {
+  logReadFailure(target, 502, error);
+  return {
+    statusCode: 502,
+    body: { error: error instanceof Error ? error.message : String(error) },
+  };
+};
 
 export type RelatedPullRequestWithSummary = {
   url: string;
@@ -200,9 +221,9 @@ export const handleItemBody = async (
     return ok({ body });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -218,9 +239,9 @@ export const handleComments = async (
     return ok({ comments: serializeComments(comments) });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -239,9 +260,9 @@ export const handlePrFiles = async (
     return ok({ files: detail.files });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -257,9 +278,9 @@ export const handlePrCommits = async (
     return ok({ commits: serializeCommits(commits) });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -307,9 +328,9 @@ export const handleRelatedPrs = async (
     return ok({ relatedPullRequests: withSummaries });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -334,11 +355,12 @@ export const handleIssueTitle = async (
     if (isGitHubRateLimitError(error)) {
       const stale = cache.getStale(url);
       if (stale !== null) {
+        logReadFailure(url, 429, error);
         return ok(stale);
       }
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -376,11 +398,12 @@ export const handlePullRequestStatus = async (
     if (isGitHubRateLimitError(error)) {
       const stale = cache.getStale(url);
       if (stale !== null) {
+        logReadFailure(url, 429, error);
         return ok(stale);
       }
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -435,6 +458,6 @@ export const handleProjectReadmeConfig = async (
       },
     };
   } catch (error) {
-    return upstreamError(error);
+    return upstreamError(binding.project.url, error);
   }
 };

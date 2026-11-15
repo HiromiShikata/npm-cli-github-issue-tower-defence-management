@@ -57,14 +57,14 @@ const attemptReadAcrossReadRepositories = async <T>(
   fn: (repo: IssueRepository) => Promise<T>,
   unauthorizedHandling: UnauthorizedHandling,
 ): Promise<RotatedReadAttempt<T>> => {
-  let lastError: Error | undefined;
+  let lastRateLimitError: GitHubRateLimitError | undefined;
   for (const readRepository of readRepositories) {
     let result: T;
     try {
       result = await fn(readRepository);
     } catch (error) {
       if (error instanceof GitHubRateLimitError) {
-        lastError = error;
+        lastRateLimitError = error;
         continue;
       }
       if (unauthorizedHandling !== 'rethrow' && isUnauthorizedError(error)) {
@@ -82,9 +82,10 @@ const attemptReadAcrossReadRepositories = async <T>(
     }
     return { kind: 'resolved', value: result };
   }
-  throw (
-    lastError ?? new Error('readOnlyTokenRotator: no repositories provided')
-  );
+  if (lastRateLimitError === undefined) {
+    throw new Error('readOnlyTokenRotator: no repositories provided');
+  }
+  return { kind: 'fallBackToWriteRepository' };
 };
 
 const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(

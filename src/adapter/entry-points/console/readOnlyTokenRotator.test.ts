@@ -445,10 +445,29 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       expect(readRepo.getAuthenticatedUserLogin).not.toHaveBeenCalled();
     });
 
-    it('re-throws any error from the single repository without rotating', async () => {
+    it('reads with the write repository when the only read repository is rate-limited', async () => {
       const repo = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
-      const error = new GitHubRateLimitError('rate limited');
+      repo.getIssueOrPullRequestBody.mockRejectedValue(
+        new GitHubRateLimitError('rate limited'),
+      );
+      writeRepo.getIssueOrPullRequestBody.mockResolvedValue(
+        'body via own token',
+      );
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
+      await expect(
+        rotating.getIssueOrPullRequestBody('https://github.com/o/r/issues/1'),
+      ).resolves.toBe('body via own token');
+    });
+
+    it('re-throws a non-rate-limit error from the single repository without asking the write repository', async () => {
+      const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      const error = new Error('Connection refused');
       repo.getIssueOrPullRequestBody.mockRejectedValue(error);
 
       const rotating = createReadOnlyTokenRotatingIssueRepository(
@@ -458,6 +477,7 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       await expect(
         rotating.getIssueOrPullRequestBody('https://github.com/o/r/issues/1'),
       ).rejects.toBe(error);
+      expect(writeRepo.getIssueOrPullRequestBody).not.toHaveBeenCalled();
     });
   });
 
@@ -488,14 +508,19 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
-    it('re-throws the last GitHubRateLimitError when all repositories are exhausted', async () => {
+    it('reads with the write repository when all repositories are rate-limited', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
-      const error1 = new GitHubRateLimitError('rate limited token-1');
-      const error2 = new GitHubRateLimitError('rate limited token-2');
-      repo1.getIssueOrPullRequestBody.mockRejectedValue(error1);
-      repo2.getIssueOrPullRequestBody.mockRejectedValue(error2);
+      repo1.getIssueOrPullRequestBody.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueOrPullRequestBody.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
+      writeRepo.getIssueOrPullRequestBody.mockResolvedValue(
+        'body via own token',
+      );
 
       const rotating = createReadOnlyTokenRotatingIssueRepository(
         [repo1, repo2],
@@ -503,7 +528,10 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
       await expect(
         rotating.getIssueOrPullRequestBody('https://github.com/o/r/issues/1'),
-      ).rejects.toBe(error2);
+      ).resolves.toBe('body via own token');
+      expect(writeRepo.getIssueOrPullRequestBody).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+      );
     });
 
     it('does not rotate when the error is not a GitHubRateLimitError', async () => {
@@ -946,15 +974,16 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       expect(repo2.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
     });
 
-    it('re-throws the last GitHubRateLimitError without asking the write repository when every read repository is rate-limited', async () => {
+    it('reads with the write repository holding the owner token when every read repository is rate-limited', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
-      const error2 = new GitHubRateLimitError('rate limited token-2');
       repo1.getIssueSummariesByLabelAndState.mockRejectedValue(
         new GitHubRateLimitError('rate limited token-1'),
       );
-      repo2.getIssueSummariesByLabelAndState.mockRejectedValue(error2);
+      repo2.getIssueSummariesByLabelAndState.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
       writeRepo.getIssueSummariesByLabelAndState.mockResolvedValue(
         issueSummariesFromSecondRepository,
       );
@@ -966,8 +995,10 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
 
       await expect(
         rotating.getIssueSummariesByLabelAndState(listParams),
-      ).rejects.toBe(error2);
-      expect(writeRepo.getIssueSummariesByLabelAndState).not.toHaveBeenCalled();
+      ).resolves.toBe(issueSummariesFromSecondRepository);
+      expect(writeRepo.getIssueSummariesByLabelAndState).toHaveBeenCalledWith(
+        listParams,
+      );
     });
 
     it('does not rotate when the first read repository fails with an error that is not a GitHubRateLimitError', async () => {
@@ -1487,15 +1518,16 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
-    it('re-throws the last GitHubRateLimitError without asking the write repository when every read repository is rate-limited', async () => {
+    it('reads with the write repository holding the owner token when every read repository is rate-limited', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
-      const error2 = new GitHubRateLimitError('rate limited token-2');
       repo1.getIssueBodyByUrl.mockRejectedValue(
         new GitHubRateLimitError('rate limited token-1'),
       );
-      repo2.getIssueBodyByUrl.mockRejectedValue(error2);
+      repo2.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
       writeRepo.getIssueBodyByUrl.mockResolvedValue('issue body via own token');
 
       const rotating = createReadOnlyTokenRotatingIssueRepository(
@@ -1503,8 +1535,12 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
         writeRepo,
       );
 
-      await expect(rotating.getIssueBodyByUrl(issueUrl)).rejects.toBe(error2);
-      expect(writeRepo.getIssueBodyByUrl).not.toHaveBeenCalled();
+      await expect(rotating.getIssueBodyByUrl(issueUrl)).resolves.toBe(
+        'issue body via own token',
+      );
+      expect(writeRepo.getIssueBodyByUrl.mock.calls).toStrictEqual([
+        [issueUrl],
+      ]);
     });
 
     it('re-throws an error that is neither a rate limit nor HTTP 403 or HTTP 404 without asking the write repository', async () => {
