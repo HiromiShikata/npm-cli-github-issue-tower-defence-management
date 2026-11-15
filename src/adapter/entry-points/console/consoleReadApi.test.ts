@@ -23,6 +23,111 @@ describe('consoleReadApi', () => {
   const RATE_LIMIT_ERROR_MESSAGE =
     'Failed to fetch body for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
 
+  describe('read failure logging', () => {
+    const itemUrl = 'https://github.com/o/r/issues/1';
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('logs the target, the 429 status and the GitHub error message when a read is rate-limited', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+        new GitHubRateLimitError(RATE_LIMIT_ERROR_MESSAGE),
+      );
+
+      await handleItemBody(issueRepository, itemUrl);
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${itemUrl} responseStatus=429 githubStatus=403 error=${RATE_LIMIT_ERROR_MESSAGE}`,
+      );
+    });
+
+    it('logs the target, the 502 status and the error message when a read fails with a non-rate-limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+        new Error('Network timeout'),
+      );
+
+      await handleItemBody(issueRepository, itemUrl);
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${itemUrl} responseStatus=502 githubStatus=unknown error=Network timeout`,
+      );
+    });
+  });
+
+  describe('read failure logging on stale-cache fallbacks', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+    const rateLimitMessage =
+      'Failed to read for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded';
+
+    it('logs the target, the stale-cache served status and the message before serving the stale issue title', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const issueRepository = mock<IssueRepository>();
+      const staleState = {
+        state: 'OPEN',
+        merged: false,
+        isPullRequest: false,
+        title: 'Stale title',
+        stateReason: '',
+      };
+      issueRepository.getIssueOrPullRequestState
+        .mockResolvedValueOnce(staleState)
+        .mockRejectedValue(new GitHubRateLimitError(rateLimitMessage));
+      let now = 0;
+      const cache = new IssueTitleStateCache(() => now);
+      await handleIssueTitle(issueRepository, cache, issueUrl);
+      now = ISSUE_TITLE_CACHE_TTL_MS + 1;
+
+      const response = await handleIssueTitle(issueRepository, cache, issueUrl);
+
+      expect(response.body).toEqual(staleState);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${issueUrl} responseStatus=200 servedFrom=staleCache githubStatus=403 error=${rateLimitMessage}`,
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('logs the target, the stale-cache served status and the message before serving the stale pull request status', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const issueRepository = mock<IssueRepository>();
+      const staleStatus = { found: false, status: null };
+      issueRepository.getOpenPullRequestCiStatus
+        .mockResolvedValueOnce(null)
+        .mockRejectedValue(new GitHubRateLimitError(rateLimitMessage));
+      let now = 0;
+      const cache = new PullRequestStatusCache(() => now);
+      await handlePullRequestStatus(issueRepository, cache, issueUrl);
+      now = PULL_REQUEST_STATUS_CACHE_TTL_MS + 1;
+
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        issueUrl,
+      );
+
+      expect(response.body).toEqual(staleStatus);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${issueUrl} responseStatus=200 servedFrom=staleCache githubStatus=403 error=${rateLimitMessage}`,
+      );
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
   describe('handleItemBody', () => {
     it('returns 400 when url is missing', async () => {
       const issueRepository = mock<IssueRepository>();
@@ -917,6 +1022,63 @@ describe('consoleReadApi', () => {
         statusCode: 502,
         body: { error: 'GraphQL request failed: HTTP 403' },
       });
+    });
+
+    it.each([
+      {
+        case: 'the project resolver is not configured',
+        resolveProject: null,
+        resolveGithubToken: (): string => 'token',
+        message: 'project resolver is not configured',
+      },
+      {
+        case: 'the github token is not configured',
+        resolveProject: makeResolver(),
+        resolveGithubToken: null,
+        message: 'github token is not configured',
+      },
+      {
+        case: 'the project owner cannot be determined from the project URL',
+        resolveProject: ((): ConsoleProjectResolver => {
+          const project = mock<Project>();
+          project.id = 'PVT_2';
+          project.url = 'not a url';
+          return async (pjcode) =>
+            pjcode === 'acme' ? { pjcode, project } : null;
+        })(),
+        resolveGithubToken: (): string => 'token',
+        message: 'cannot determine project owner from project URL',
+      },
+    ])(
+      'logs the target, the 502 response status and the message when $case',
+      async ({ resolveProject, resolveGithubToken, message }) => {
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        await handleProjectReadmeConfig(
+          resolveProject,
+          resolveGithubToken,
+          'acme',
+        );
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          `console read failed: target=project README config pjcode=acme responseStatus=502 githubStatus=unknown error=${message}`,
+        );
+        consoleErrorSpy.mockRestore();
+      },
+    );
+
+    it('logs the project URL, the 502 response status and the error message when the README cannot be read', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      fetchProjectReadmeSpy.mockRejectedValue(
+        new Error('GraphQL request failed: HTTP 403'),
+      );
+      await handleProjectReadmeConfig(makeResolver(), () => 'token', 'acme');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${projectUrl} responseStatus=502 githubStatus=403 error=GraphQL request failed: HTTP 403`,
+      );
+      consoleErrorSpy.mockRestore();
     });
 
     it('returns 502 when the README config section is not valid YAML', async () => {

@@ -4,6 +4,7 @@ import {
   PullRequestCiStatusAvailability,
   PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { describeGithubReadFailure } from './readFailureLog';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import {
   fetchProjectReadme,
@@ -136,15 +137,46 @@ const ok = (body: unknown): ConsoleReadApiResponse => ({
   body,
 });
 
-const rateLimited = (error: Error): ConsoleReadApiResponse => ({
-  statusCode: 429,
-  body: { error: error.message },
-});
+const logReadFailure = (
+  target: string,
+  responseLabel: string,
+  error: unknown,
+): void => {
+  console.error(
+    `console read failed: target=${target} ${responseLabel} ${describeGithubReadFailure(error)}`,
+  );
+};
 
-const upstreamError = (error: unknown): ConsoleReadApiResponse => ({
-  statusCode: 502,
-  body: { error: error instanceof Error ? error.message : String(error) },
-});
+const readmeConfigError = (
+  pjcode: string | null,
+  message: string,
+): ConsoleReadApiResponse => {
+  logReadFailure(
+    `project README config pjcode=${pjcode ?? 'null'}`,
+    'responseStatus=502',
+    new Error(message),
+  );
+  return { statusCode: 502, body: { error: message } };
+};
+
+const rateLimited = (target: string, error: Error): ConsoleReadApiResponse => {
+  logReadFailure(target, 'responseStatus=429', error);
+  return {
+    statusCode: 429,
+    body: { error: error.message },
+  };
+};
+
+const upstreamError = (
+  target: string,
+  error: unknown,
+): ConsoleReadApiResponse => {
+  logReadFailure(target, 'responseStatus=502', error);
+  return {
+    statusCode: 502,
+    body: { error: error instanceof Error ? error.message : String(error) },
+  };
+};
 
 export type RelatedPullRequestWithSummary = {
   url: string;
@@ -200,9 +232,9 @@ export const handleItemBody = async (
     return ok({ body });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -218,9 +250,9 @@ export const handleComments = async (
     return ok({ comments: serializeComments(comments) });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -239,9 +271,9 @@ export const handlePrFiles = async (
     return ok({ files: detail.files });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -257,9 +289,9 @@ export const handlePrCommits = async (
     return ok({ commits: serializeCommits(commits) });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -307,9 +339,9 @@ export const handleRelatedPrs = async (
     return ok({ relatedPullRequests: withSummaries });
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -334,11 +366,12 @@ export const handleIssueTitle = async (
     if (isGitHubRateLimitError(error)) {
       const stale = cache.getStale(url);
       if (stale !== null) {
+        logReadFailure(url, 'responseStatus=200 servedFrom=staleCache', error);
         return ok(stale);
       }
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -376,11 +409,12 @@ export const handlePullRequestStatus = async (
     if (isGitHubRateLimitError(error)) {
       const stale = cache.getStale(url);
       if (stale !== null) {
+        logReadFailure(url, 'responseStatus=200 servedFrom=staleCache', error);
         return ok(stale);
       }
-      return rateLimited(error);
+      return rateLimited(url, error);
     }
-    return upstreamError(error);
+    return upstreamError(url, error);
   }
 };
 
@@ -390,16 +424,10 @@ export const handleProjectReadmeConfig = async (
   pjcode: string | null,
 ): Promise<{ statusCode: number; body: unknown }> => {
   if (resolveProject === null) {
-    return {
-      statusCode: 502,
-      body: { error: 'project resolver is not configured' },
-    };
+    return readmeConfigError(pjcode, 'project resolver is not configured');
   }
   if (resolveGithubToken === null) {
-    return {
-      statusCode: 502,
-      body: { error: 'github token is not configured' },
-    };
+    return readmeConfigError(pjcode, 'github token is not configured');
   }
   if (pjcode === null || pjcode.length === 0) {
     return { statusCode: 400, body: { error: 'pjcode is required' } };
@@ -413,10 +441,10 @@ export const handleProjectReadmeConfig = async (
   }
   const projectOwner = extractProjectOwner(binding.project.url);
   if (projectOwner === null) {
-    return {
-      statusCode: 502,
-      body: { error: 'cannot determine project owner from project URL' },
-    };
+    return readmeConfigError(
+      pjcode,
+      'cannot determine project owner from project URL',
+    );
   }
   const githubToken = resolveGithubToken(projectOwner);
   try {
@@ -435,6 +463,6 @@ export const handleProjectReadmeConfig = async (
       },
     };
   } catch (error) {
-    return upstreamError(error);
+    return upstreamError(binding.project.url, error);
   }
 };

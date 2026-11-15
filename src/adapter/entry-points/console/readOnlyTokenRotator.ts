@@ -8,6 +8,7 @@ import type {
   PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubConfirmedNotFoundError } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
+import { describeGithubReadFailure } from './readFailureLog';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import type { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
 import {
@@ -53,18 +54,22 @@ type RotatedReadAttempt<T> =
   | { kind: 'unauthorized' };
 
 const attemptReadAcrossReadRepositories = async <T>(
+  target: string,
   readRepositories: IssueRepository[],
   fn: (repo: IssueRepository) => Promise<T>,
   unauthorizedHandling: UnauthorizedHandling,
 ): Promise<RotatedReadAttempt<T>> => {
-  let lastError: Error | undefined;
+  let lastRateLimitError: GitHubRateLimitError | undefined;
   for (const readRepository of readRepositories) {
     let result: T;
     try {
       result = await fn(readRepository);
     } catch (error) {
       if (error instanceof GitHubRateLimitError) {
-        lastError = error;
+        lastRateLimitError = error;
+        console.error(
+          `console read rate-limited on a GitHub App read token: target=${target} ${describeGithubReadFailure(error)}`,
+        );
         continue;
       }
       if (unauthorizedHandling !== 'rethrow' && isUnauthorizedError(error)) {
@@ -82,17 +87,20 @@ const attemptReadAcrossReadRepositories = async <T>(
     }
     return { kind: 'resolved', value: result };
   }
-  throw (
-    lastError ?? new Error('readOnlyTokenRotator: no repositories provided')
-  );
+  if (lastRateLimitError === undefined) {
+    throw new Error('readOnlyTokenRotator: no repositories provided');
+  }
+  return { kind: 'fallBackToWriteRepository' };
 };
 
 const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(
+  target: string,
   readRepositories: IssueRepository[],
   writeRepository: IssueRepository,
   fn: (repo: IssueRepository) => Promise<T>,
 ): Promise<T> => {
   const attempt = await attemptReadAcrossReadRepositories(
+    target,
     readRepositories,
     fn,
     'rethrow',
@@ -102,6 +110,7 @@ const withReadOnlyTokenRotationFallingBackToWriteRepository = async <T>(
 
 const withReprovisionableReadOnlyTokenRotationFallingBackToWriteRepository =
   async <T>(
+    target: string,
     reprovisionableReadRepositories: ReprovisionableReadRepositories,
     writeRepository: IssueRepository,
     fn: (repo: IssueRepository) => Promise<T>,
@@ -112,6 +121,7 @@ const withReprovisionableReadOnlyTokenRotationFallingBackToWriteRepository =
       return fn(writeRepository);
     }
     const firstAttempt = await attemptReadAcrossReadRepositories(
+      target,
       currentSnapshot.readRepositories,
       fn,
       'reportUnauthorized',
@@ -130,6 +140,7 @@ const withReprovisionableReadOnlyTokenRotationFallingBackToWriteRepository =
       return fn(writeRepository);
     }
     const retriedAttempt = await attemptReadAcrossReadRepositories(
+      target,
       remintedSnapshot.readRepositories,
       fn,
       'fallBackToWriteRepository',
@@ -143,14 +154,19 @@ export const createReadOnlyTokenRotatingIssueRepository = (
   readRepositories: IssueRepository[] | ReprovisionableReadRepositories,
   writeRepository: IssueRepository,
 ): IssueRepository => {
-  const rotate = <T>(fn: (repo: IssueRepository) => Promise<T>): Promise<T> =>
+  const rotate = <T>(
+    target: string,
+    fn: (repo: IssueRepository) => Promise<T>,
+  ): Promise<T> =>
     Array.isArray(readRepositories)
       ? withReadOnlyTokenRotationFallingBackToWriteRepository(
+          target,
           readRepositories,
           writeRepository,
           fn,
         )
       : withReprovisionableReadOnlyTokenRotationFallingBackToWriteRepository(
+          target,
           readRepositories,
           writeRepository,
           fn,
@@ -165,15 +181,20 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       writeRepository.removeIssueFromProjectCache(projectId, issue),
     getIssueByUrl: (url: string, options?: { bypassCache?: boolean }) =>
       writeRepository.getIssueByUrl(url, options),
-    getIssueBodyByUrl: (url: string) => rotate((r) => r.getIssueBodyByUrl(url)),
+    getIssueBodyByUrl: (url: string) =>
+      rotate(url, (r) => r.getIssueBodyByUrl(url)),
     searchIssue: (query: Parameters<IssueRepository['searchIssue']>[0]) =>
-      rotate((r) => r.searchIssue(query)),
-    searchIssues: (query: string) => rotate((r) => r.searchIssues(query)),
+      rotate(JSON.stringify(query), (r) => r.searchIssue(query)),
+    searchIssues: (query: string) =>
+      rotate(query, (r) => r.searchIssues(query)),
     getIssueSummariesByLabelAndState: (
       params: Parameters<
         IssueRepository['getIssueSummariesByLabelAndState']
       >[0],
-    ) => rotate((r) => r.getIssueSummariesByLabelAndState(params)),
+    ) =>
+      rotate(JSON.stringify(params), (r) =>
+        r.getIssueSummariesByLabelAndState(params),
+      ),
     get: (issueUrl: string, project: Project) =>
       writeRepository.get(issueUrl, project),
     getAllOpened: (project: Project) => writeRepository.getAllOpened(project),
@@ -185,34 +206,34 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       issueUrl: string,
       options?: { bypassCache?: boolean },
     ) =>
-      rotate((r) =>
+      rotate(issueUrl, (r) =>
         options !== undefined
           ? r.findRelatedOpenPRs(issueUrl, options)
           : r.findRelatedOpenPRs(issueUrl),
       ),
     findRelatedOpenPrUrls: (issueUrls: string[]) =>
-      rotate((r) => r.findRelatedOpenPrUrls(issueUrls)),
+      rotate(issueUrls.join(' '), (r) => r.findRelatedOpenPrUrls(issueUrls)),
     getOpenPullRequest: (prUrl: string) =>
-      rotate((r) => r.getOpenPullRequest(prUrl)),
+      rotate(prUrl, (r) => r.getOpenPullRequest(prUrl)),
     getOpenPullRequestCiStatus: (prUrl: string) =>
-      rotate((r) => r.getOpenPullRequestCiStatus(prUrl)),
+      rotate(prUrl, (r) => r.getOpenPullRequestCiStatus(prUrl)),
     getOpenPullRequests: (prUrls: string[]) =>
-      rotate((r) => r.getOpenPullRequests(prUrls)),
+      rotate(prUrls.join(' '), (r) => r.getOpenPullRequests(prUrls)),
     getPullRequestChangedFilePaths: (prUrl: string) =>
-      rotate((r) => r.getPullRequestChangedFilePaths(prUrl)),
+      rotate(prUrl, (r) => r.getPullRequestChangedFilePaths(prUrl)),
     getIssueOrPullRequestBody: (url: string) =>
-      rotate((r) => r.getIssueOrPullRequestBody(url)),
+      rotate(url, (r) => r.getIssueOrPullRequestBody(url)),
     getIssueOrPullRequestComments: (
       ...args: Parameters<IssueRepository['getIssueOrPullRequestComments']>
-    ) => rotate((r) => r.getIssueOrPullRequestComments(...args)),
+    ) => rotate(args[0], (r) => r.getIssueOrPullRequestComments(...args)),
     getPullRequestDetail: (prUrl: string) =>
-      rotate((r) => r.getPullRequestDetail(prUrl)),
+      rotate(prUrl, (r) => r.getPullRequestDetail(prUrl)),
     getPullRequestCommits: (prUrl: string) =>
-      rotate((r) => r.getPullRequestCommits(prUrl)),
+      rotate(prUrl, (r) => r.getPullRequestCommits(prUrl)),
     getIssueOrPullRequestState: (url: string) =>
-      rotate((r) => r.getIssueOrPullRequestState(url)),
+      rotate(url, (r) => r.getIssueOrPullRequestState(url)),
     getPullRequestSummary: (prUrl: string) =>
-      rotate((r) => r.getPullRequestSummary(prUrl)),
+      rotate(prUrl, (r) => r.getPullRequestSummary(prUrl)),
 
     createNewIssue: (
       org: string,
@@ -325,9 +346,9 @@ export const createReadOnlyTokenRotatingIssueRepository = (
     reopenIssueByUrl: (issueUrl: string) =>
       writeRepository.reopenIssueByUrl(issueUrl),
     getLatestReopenedEventAt: (issue: Issue) =>
-      rotate((r) => r.getLatestReopenedEventAt(issue)),
+      rotate(issue.url, (r) => r.getLatestReopenedEventAt(issue)),
     getIssueBodyEditHistory: (issueUrl: string) =>
-      rotate((r) => r.getIssueBodyEditHistory(issueUrl)),
+      rotate(issueUrl, (r) => r.getIssueBodyEditHistory(issueUrl)),
     deletePullRequestBranch: (prUrl: string, branchName: string) =>
       writeRepository.deletePullRequestBranch(prUrl, branchName),
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>
