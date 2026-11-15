@@ -23,6 +23,49 @@ describe('consoleReadApi', () => {
   const RATE_LIMIT_ERROR_MESSAGE =
     'Failed to fetch body for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
 
+  describe('read failure logging', () => {
+    const itemUrl = 'https://github.com/o/r/issues/1';
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('logs the target, the 429 status and the GitHub error message when a read is rate-limited', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+        new GitHubRateLimitError(RATE_LIMIT_ERROR_MESSAGE),
+      );
+
+      await handleItemBody(issueRepository, itemUrl);
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${itemUrl} status=429 error=${RATE_LIMIT_ERROR_MESSAGE}`,
+      );
+    });
+
+    it('logs the target, the 502 status and the error message when a read fails with a non-rate-limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+        new Error('Network timeout'),
+      );
+
+      await handleItemBody(issueRepository, itemUrl);
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `console read failed: target=${itemUrl} status=502 error=Network timeout`,
+      );
+    });
+  });
+
   describe('handleItemBody', () => {
     it('returns 400 when url is missing', async () => {
       const issueRepository = mock<IssueRepository>();

@@ -17,6 +17,7 @@ import {
   buildReadIssueRepositoryResolver,
   createReadOnlyTokenRotatingIssueRepository,
 } from './readOnlyTokenRotator';
+import type { ReprovisionableReadRepositories } from './readOnlyTokenRotator';
 
 const buildKyHttpError = (status: number): HTTPError => {
   const response = new Response(null, { status });
@@ -708,6 +709,121 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
       expect(repo1.removeIssueFromProjectCache).not.toHaveBeenCalled();
       expect(repo2.removeIssueFromProjectCache).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('every app read token rate-limited — owner token fallback', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+
+    it('reads with the write repository holding the owner token when every read repository is rate-limited and that read succeeds', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
+      writeRepo.getIssueBodyByUrl.mockResolvedValue('issue body via own token');
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+
+      await expect(rotating.getIssueBodyByUrl(issueUrl)).resolves.toBe(
+        'issue body via own token',
+      );
+      expect(writeRepo.getIssueBodyByUrl.mock.calls).toStrictEqual([
+        [issueUrl],
+      ]);
+    });
+
+    it('rejects with the write repository error when every read repository is rate-limited and the owner token read also fails', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
+      const ownTokenError = new Error('owner token read failed');
+      writeRepo.getIssueBodyByUrl.mockRejectedValue(ownTokenError);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+
+      await expect(rotating.getIssueBodyByUrl(issueUrl)).rejects.toBe(
+        ownTokenError,
+      );
+    });
+
+    it('reads with the owner token for a reprovisionable pool whose every app token is rate-limited, without re-minting', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
+      writeRepo.getIssueBodyByUrl.mockResolvedValue('issue body via own token');
+      const remintAfterUnauthorized = jest.fn();
+      const reprovisionable: ReprovisionableReadRepositories = {
+        getCurrentReadRepositories: () =>
+          Promise.resolve({
+            readRepositories: [repo1, repo2],
+            mintedAtEpochMilliseconds: 0,
+          }),
+        remintAfterUnauthorized,
+      };
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        reprovisionable,
+        writeRepo,
+      );
+
+      await expect(rotating.getIssueBodyByUrl(issueUrl)).resolves.toBe(
+        'issue body via own token',
+      );
+      expect(remintAfterUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('rejects with the write repository error for a reprovisionable pool whose every app token is rate-limited and the owner token read also fails', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      repo1.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.getIssueBodyByUrl.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-2'),
+      );
+      const ownTokenError = new Error('owner token read failed');
+      writeRepo.getIssueBodyByUrl.mockRejectedValue(ownTokenError);
+      const reprovisionable: ReprovisionableReadRepositories = {
+        getCurrentReadRepositories: () =>
+          Promise.resolve({
+            readRepositories: [repo1, repo2],
+            mintedAtEpochMilliseconds: 0,
+          }),
+        remintAfterUnauthorized: jest.fn(),
+      };
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        reprovisionable,
+        writeRepo,
+      );
+
+      await expect(rotating.getIssueBodyByUrl(issueUrl)).rejects.toBe(
+        ownTokenError,
+      );
     });
   });
 
