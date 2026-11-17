@@ -37,7 +37,9 @@ describe('ConsoleStoryDeleteModalDialog', () => {
     const { getByRole } = render(
       <ConsoleStoryDeleteModalDialog {...defaultProps} />,
     );
-    expect(getByRole('button', { name: 'Keep child tasks' })).toBeInTheDocument();
+    expect(
+      getByRole('button', { name: 'Keep child tasks' }),
+    ).toBeInTheDocument();
     expect(getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 

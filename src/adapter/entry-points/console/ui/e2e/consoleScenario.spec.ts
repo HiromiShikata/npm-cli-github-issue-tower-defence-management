@@ -1313,9 +1313,7 @@ test('shows Delete Story in the danger zone of a story-labeled item detail page,
     await expect(dialog).toContainText('Publish product documentation site');
 
     const previousDeleteCount = localHarness.deleteStoryCalls.length;
-    await dialog
-      .getByRole('button', { name: 'Keep child tasks' })
-      .click();
+    await dialog.getByRole('button', { name: 'Keep child tasks' }).click();
 
     await expect
       .poll(() => localHarness.deleteStoryCalls.length, { timeout: 10000 })
