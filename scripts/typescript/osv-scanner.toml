@@ -2,3 +2,8 @@
 id = "GHSA-gcqx-w48m-w2h4"
 ignoreUntil = 2026-12-10
 reason = "deepmerge 4.3.1 is the newest release and the advisory lists no patched version. The CVE record CVE-2026-93753 was rejected on 2026-11-02 because it does not describe a security vulnerability, and withdrawal requests are open at the GitHub Advisory Database."
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2026-12-10
+reason = "picomatch 4.0.7 is the newest picomatch release, and the advisory lists no patched version: its vulnerable range is <= 4.0.7. The upstream fix PR micromatch/picomatch#194 is still open. Every picomatch copy in package-lock.json and scripts/typescript/package-lock.json is a development dependency. The copy bundled inside npm (4.0.5 under npm/node_modules/tinyglobby) cannot be replaced by npm overrides, because npm bundles it."
