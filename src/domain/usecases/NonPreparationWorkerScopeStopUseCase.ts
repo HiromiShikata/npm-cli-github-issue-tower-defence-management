@@ -5,6 +5,10 @@ import { Project } from '../entities/Project';
 import { PREPARATION_STATUS_NAME } from '../entities/WorkflowStatus';
 import { resolveIssueForWorkerScopeUnitName } from './resolveIssueForWorkerScopeUnitName';
 import { issueSnapshotStalenessCheck } from './issueSnapshotStalenessCheck';
+import {
+  issueBelongsToProjectScope,
+  ProjectRepositoryScope,
+} from '../services/projectRepositoryScope';
 
 export class NonPreparationWorkerScopeStopUseCase {
   constructor(
@@ -22,6 +26,7 @@ export class NonPreparationWorkerScopeStopUseCase {
     issues: Issue[];
     currentProjectOrg: string;
     project: Project;
+    projectScope?: ProjectRepositoryScope | null;
   }): Promise<{ stoppedScopeUnitNames: string[] }> => {
     const runningScopeUnitNames =
       await this.tmuxSessionRepository.listRunningWorkerScopeUnitNames();
@@ -36,7 +41,14 @@ export class NonPreparationWorkerScopeStopUseCase {
       if (resolvedIssue === null) {
         continue;
       }
-      if (resolvedIssue.org !== params.currentProjectOrg) {
+      const belongsToProject =
+        params.projectScope === undefined || params.projectScope === null
+          ? resolvedIssue.org === params.currentProjectOrg
+          : issueBelongsToProjectScope(
+              { owner: resolvedIssue.org, repo: resolvedIssue.repo },
+              params.projectScope,
+            );
+      if (!belongsToProject) {
         console.warn(
           `[NonPreparationWorkerScopeStopUseCase] Skipped scope unit ${scopeUnitName}: resolved issue org "${resolvedIssue.org}" does not match current project org "${params.currentProjectOrg}" (resolvedIssue repo: ${resolvedIssue.repo}, url: ${resolvedIssue.url})`,
         );

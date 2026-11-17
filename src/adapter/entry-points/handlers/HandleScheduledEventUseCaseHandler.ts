@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import type { ProjectRepositoryScope } from '../../../domain/services/projectRepositoryScope';
 import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
 import {
@@ -129,6 +130,7 @@ export class HandleScheduledEventUseCaseHandler {
     configFilePath: string,
     _verbose: boolean,
     inTmuxProjectOrderOverride: string[] | null = null,
+    projectScope: ProjectRepositoryScope | null = null,
   ): Promise<{
     project: Project;
     issues: Issue[];
@@ -750,6 +752,7 @@ export class HandleScheduledEventUseCaseHandler {
 
     const result = await handleScheduledEventUseCase.run({
       ...mergedInput,
+      projectScope,
       afterIssuesFetched,
       allowedDependencyRepoNameWithOwner,
       llmModelNameByAgentName:

@@ -61,7 +61,7 @@ import {
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
 import {
   ConsoleGithubTokenResolver,
-  extractRepositoryOwner,
+  extractRepositoryReference,
 } from './consoleGithubTokenResolver';
 import {
   buildComposeDashboardInput,
@@ -444,14 +444,17 @@ const handleImageProxy = async (
     return;
   }
   const itemUrl = searchParams.get('itemUrl') ?? '';
-  const repositoryOwner = extractRepositoryOwner(itemUrl);
-  if (repositoryOwner === null) {
+  const repositoryReference = extractRepositoryReference(itemUrl);
+  if (repositoryReference === null) {
     sendJson(response, 400, {
       error: 'missing or unreadable itemUrl parameter',
     });
     return;
   }
-  const githubToken = resolveGithubToken(repositoryOwner);
+  const githubToken = resolveGithubToken(
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
   if (githubToken.length === 0) {
     sendJson(response, 502, { error: 'github token is not configured' });
     return;

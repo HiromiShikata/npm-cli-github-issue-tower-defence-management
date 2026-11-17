@@ -12320,6 +12320,103 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('findRelatedOpenPRs pull requests recorded in task comments', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const EMPTY_TIMELINE = {
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [],
+            },
+          },
+        },
+      },
+    };
+    const RECORDED_PR_URL =
+      'https://github.com/example-owner/example-tasks/pull/12';
+    const commentWithResult = (json: string): { body: string } => ({
+      body: ['From: :robot: developer (model)', '```json', json, '```'].join(
+        '\n',
+      ),
+    });
+
+    const timelineWithComments = (comments: { body: string }[]) => ({
+      data: {
+        repository: {
+          issue: {
+            comments: { nodes: comments },
+            timelineItems: EMPTY_TIMELINE.data.repository.issue.timelineItems,
+          },
+        },
+      },
+    });
+
+    it.each([
+      {
+        case: 'an open pull request recorded as pullRequestUrl in a task comment is related even though its body does not reference the task',
+        comments: [
+          commentWithResult(`{"pullRequestUrl": "${RECORDED_PR_URL}"}`),
+        ],
+        prState: 'OPEN',
+        expectedUrls: [RECORDED_PR_URL],
+      },
+      {
+        case: 'a recorded pull request that is no longer open is excluded',
+        comments: [
+          commentWithResult(`{"pullRequestUrl": "${RECORDED_PR_URL}"}`),
+        ],
+        prState: 'MERGED',
+        expectedUrls: [],
+      },
+      {
+        case: 'a null pullRequestUrl records nothing and fetches no pull request',
+        comments: [commentWithResult('{"pullRequestUrl": null}')],
+        prState: 'OPEN',
+        expectedUrls: [],
+      },
+    ])('$case', async ({ comments, prState, expectedUrls }) => {
+      const fetchSpy = mockFetchRoutes({
+        timeline: () => timelineWithComments(comments),
+        mergeability: () => ({
+          data: {
+            repository: {
+              pullRequest: {
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+              },
+            },
+          },
+        }),
+        slimPullRequest: (variables) =>
+          buildSlimPullRequestResponse({
+            url: `https://github.com/${variables.owner}/${variables.repo}/pull/${variables.prNumber}`,
+            state: prState,
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11200',
+        { bypassCache: true },
+      );
+
+      expect(result.map((pr) => pr.url)).toEqual(expectedUrls);
+      expect(
+        countCallsMatching(
+          fetchSpy,
+          (url, body) =>
+            url === 'https://api.github.com/graphql' &&
+            body.includes('headRefOid'),
+        ),
+      ).toBe(expectedUrls.length > 0 || prState === 'MERGED' ? 1 : 0);
+    });
+  });
+
   describe('getOpenPullRequest review thread paging', () => {
     afterEach(() => {
       jest.restoreAllMocks();

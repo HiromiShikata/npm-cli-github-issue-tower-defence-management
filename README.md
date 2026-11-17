@@ -328,6 +328,7 @@ Workflow status names (`Unread`, `Awaiting Workspace`, `Awaiting Owner`, `Prepar
 disabled: boolean # When true, skip all processing and return null
 org: string # Organization name
 projectUrl: string # URL of the target project
+repositories?: string[] # Optional: owner/repo names (case-insensitive) whose issues belong to this project; see "Projects that share an owner" below
 manager: string # GitHub account name of the manager
 workingReport:
   repo: string # Repository name
@@ -370,6 +371,32 @@ dailySecurityScan?: # Optional: Run a daily OSV-Scanner security scan across loc
   targetHourUtc: number # UTC hour (0-23) at which the scan runs once per day; the scan runs only when a target date matches this hour at minute zero
   enableKevNvdReport?: boolean # Optional: When true, also report CISA KEV catalog additions that have not been reported yet. A watermark recording the newest reported dateAdded, plus the CVE identifiers already reported on that date, is persisted at $XDG_CACHE_HOME/tdpm/kev-report-watermark.json (falling back to ~/.cache when XDG_CACHE_HOME is unset) and advanced over every addition the run considered, whether or not that addition matched a package the scan actually found and therefore produced a report issue. Only an addition whose CVE identifier matches a package the scan found at an installed version is written into the report issue. On the first run, when no watermark is stored yet, the additions dated on or after the day before the run are considered. Known limitations: (1) if the watermark write fails after the report issue was created, the failure is logged with the state file path and the cause, the run continues so that unrelated scheduled work is not aborted, and the same additions are considered again on the next run, so the guarantee is at-least-once at that boundary rather than exactly-once; (2) an addition whose dateAdded is strictly earlier than the stored watermark date, whether back-dated or published very late, is never selected again, so the protection covers late additions on the watermark date itself and not arbitrary lateness. When the stored watermark file exists but cannot be read or is malformed (including a stored date that is not a real calendar date in YYYY-MM-DD form), the KEV report is skipped for that run, an error naming the file and the cause is logged, the file is left untouched for inspection, and the rest of the scheduled work continues
   kevReportRepo?: string # Optional: Repository name (within org) where the CISA KEV additions issue is created. Required for KEV reporting
+```
+
+#### Projects that share an owner
+
+Projects are told apart by `org` (the owner) unless a project config lists repositories in `repositories`. Two projects may share one owner when each lists its own repositories:
+
+- A repository listed in some config's `repositories` belongs to that config. Its story-gate board cache is the one whose project URL equals that config's `projectUrl`, so `projectUrl` is required whenever `repositories` is set. Config files that fail this rule stop the run with an error that names the file.
+- A repository that no config lists belongs to the config whose `org` matches its owner, preferring a config without `repositories`.
+- A config without `repositories` behaves exactly as before: it owns every repository of its `org` that no sibling config lists.
+- The console token and project lookups use the same rules when they know the repository. The directory `consoleProjectConfigDirectory` supplies the repository lists.
+- A pull request whose body does not name the task can still be linked to the task when a completion comment of that task records it as `"pullRequestUrl": "<url>"` in a fenced JSON result block.
+
+Two configs of the same owner, one listing a repository and one not:
+
+```yaml
+# tdpm/task-project.config.yml
+org: 'my-org'
+projectUrl: 'https://github.com/users/my-org/projects/1'
+repositories:
+  - 'my-org/task-repo'
+```
+
+```yaml
+# tdpm/main-project.config.yml
+org: 'my-org'
+projectUrl: 'https://github.com/users/my-org/projects/2'
 ```
 
 Example:

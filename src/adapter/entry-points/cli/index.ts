@@ -65,6 +65,8 @@ import {
   createConsoleProjectNameResolver,
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
+import { projectRepositoryListsByPjcodeLoad } from '../../repositories/projectRepositoryListsLoad';
+import { projectRepositoryScopeLoad } from '../../repositories/projectRepositoryScopeLoad';
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
 import { buildProjectItemRepositoryFromGraphqlProjectItemRepository } from './buildProjectItemRepositoryFromGraphqlProjectItemRepository';
 import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
@@ -465,6 +467,7 @@ program
           options.config,
           options.verbose,
           parseInTmuxProjectOrder(options.inTmuxProjectOrder),
+          projectRepositoryScopeLoad(options.config),
         );
       } catch (error) {
         if (error instanceof ScheduledEventHandlerInputValidationError) {
@@ -1334,6 +1337,10 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     token,
     config.consoleProjects ?? null,
     config.consoleGithubTokens ?? null,
+    projectRepositoryListsByPjcodeLoad(
+      config.consoleProjectConfigDirectory ?? null,
+      config.consoleProjects ?? null,
+    ),
   );
   const issueRepositoryByToken = new Map<string, IssueRepository>();
   issueRepositoryByToken.set(token, issueRepository);

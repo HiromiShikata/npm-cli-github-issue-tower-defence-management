@@ -19,6 +19,7 @@ import {
 import { localStorageCacheBaseDirectory } from '../../repositories/localStorageCacheDirectory';
 import { LocalStorageStoryGateBoardCacheRepository } from '../../repositories/LocalStorageStoryGateBoardCacheRepository';
 import { YamlStoryGateProjectConfigRepository } from '../../repositories/YamlStoryGateProjectConfigRepository';
+import { projectRepositoryListsByPjcodeLoad } from '../../repositories/projectRepositoryListsLoad';
 import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
@@ -155,6 +156,10 @@ const githubTokenSourceOf = (
       ghToken,
       consoleConfig.consoleProjects ?? null,
       consoleConfig.consoleGithubTokens ?? null,
+      projectRepositoryListsByPjcodeLoad(
+        consoleConfig.consoleProjectConfigDirectory ?? null,
+        consoleConfig.consoleProjects ?? null,
+      ),
     ),
   );
 };

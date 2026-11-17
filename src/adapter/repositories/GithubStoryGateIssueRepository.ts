@@ -15,6 +15,7 @@ import {
   StoryGateIssueState,
 } from '../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
 import { isPullRequestRelatedToIssue } from '../../domain/services/pullRequestIssueRelation';
+import { pullRequestUrlsFromCommentBodies } from '../../domain/services/pullRequestUrlsFromResultJson';
 import { githubRateLimitSignalOf } from './githubRateLimitSignalOf';
 
 export const GITHUB_API_BASE_URL = 'https://api.github.com';
@@ -182,12 +183,18 @@ export const CLOSING_PULL_REQUESTS_QUERY = `query StoryGateClosingPullRequests($
   repository(owner: $owner, name: $repo) {
     issueOrPullRequest(number: $number) {
       ... on Issue {
+        comments(last: 100) { nodes { body } }
         timelineItems(first: 100, itemTypes: [CROSS_REFERENCED_EVENT]) {
           nodes { ... on CrossReferencedEvent { willCloseTarget source { ... on PullRequest { url state body } } } }
         }
       }
     }
   }
+}`;
+
+const recordedPullRequestStatesQuery = (urls: string[]): string =>
+  `query StoryGateRecordedPullRequestStates {
+  ${urls.map((url, index) => `pr${index}: resource(url: ${JSON.stringify(url)}) { ... on PullRequest { state } }`).join('\n  ')}
 }`;
 
 export const PROJECT_ITEM_SINGLE_SELECT_UPDATE_MUTATION = `mutation StoryGateProjectItemSingleSelectUpdate($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
@@ -343,6 +350,37 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
       ) {
         closingPullRequests.push({ url, state });
       }
+    }
+    // A pull request whose body never names this task is still related when a
+    // completion comment of this task records its URL as pullRequestUrl.
+    const commentBodies = arrayFieldOf(
+      fieldOf(
+        fieldOf(fieldOf(data, 'repository'), 'issueOrPullRequest'),
+        'comments',
+      ),
+      'nodes',
+    ).flatMap((node) => {
+      const body = stringFieldOf(node, 'body');
+      return body === null ? [] : [body];
+    });
+    const recordedUrls = pullRequestUrlsFromCommentBodies(commentBodies).filter(
+      (url) =>
+        !closingPullRequests.some((pullRequest) => pullRequest.url === url),
+    );
+    if (recordedUrls.length > 0) {
+      const recordedData = await this.graphql(
+        recordedPullRequestStatesQuery(recordedUrls),
+        {},
+        this.tokenOf(issue.url),
+      );
+      recordedUrls.forEach((url, index) => {
+        const state = closingPullRequestStateParse(
+          stringFieldOf(fieldOf(recordedData, `pr${index}`), 'state'),
+        );
+        if (state !== null) {
+          closingPullRequests.push({ url, state });
+        }
+      });
     }
     return closingPullRequests;
   };

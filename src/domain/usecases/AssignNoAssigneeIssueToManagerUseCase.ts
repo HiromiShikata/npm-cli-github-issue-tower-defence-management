@@ -3,6 +3,10 @@ import { Project } from '../entities/Project';
 import { SearchedIssue } from '../entities/SearchedIssue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Member } from '../entities/Member';
+import {
+  issueBelongsToProjectScope,
+  ProjectRepositoryScope,
+} from '../services/projectRepositoryScope';
 
 export class AssignNoAssigneeIssueToManagerUseCase {
   constructor(
@@ -20,6 +24,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     projectToAddSearchedIssues?: Project | null;
     queryToAddProjectEnabled?: boolean | null;
     queryToAddProject?: string | null;
+    projectScope?: ProjectRepositoryScope | null;
   }): Promise<void> => {
     const authorAllowList =
       input.autoAssignManagerAuthors &&
@@ -59,6 +64,15 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       if (
         projectItemUrls.has(searchedIssue.url) ||
         !isAssignable(searchedIssue)
+      ) {
+        continue;
+      }
+      if (
+        input.projectScope &&
+        !issueBelongsToProjectScope(
+          { owner: searchedIssue.org, repo: searchedIssue.repo },
+          input.projectScope,
+        )
       ) {
         continue;
       }

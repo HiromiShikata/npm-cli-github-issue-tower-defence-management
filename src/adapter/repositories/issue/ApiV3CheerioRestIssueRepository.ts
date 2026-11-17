@@ -17,6 +17,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import { ProjectFieldWriteOutcome } from '../../../domain/entities/ProjectFieldWriteOutcome';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import { isPullRequestRelatedToIssue } from '../../../domain/services/pullRequestIssueRelation';
+import { pullRequestUrlsFromCommentBodies } from '../../../domain/services/pullRequestUrlsFromResultJson';
 import {
   StoryObjectMap,
   buildStoryObjectMap,
@@ -235,6 +236,9 @@ type IssueTimelineResponse = {
   data?: {
     repository?: {
       issue?: {
+        comments?: {
+          nodes: ({ body: string } | null)[] | null;
+        } | null;
         timelineItems: {
           pageInfo: {
             endCursor: string;
@@ -3361,6 +3365,11 @@ export class ApiV3CheerioRestIssueRepository
       query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issueNumber) {
+            comments(last: 100) {
+              nodes {
+                body
+              }
+            }
             timelineItems(first: 100, after: $after, itemTypes: [CROSS_REFERENCED_EVENT]) {
               pageInfo {
                 endCursor
@@ -3398,6 +3407,7 @@ export class ApiV3CheerioRestIssueRepository
     const relatedPRsMap: Map<string, RelatedPullRequest> = new Map();
     let after: string | null = null;
     let hasNextPage = true;
+    let taskCommentBodies: string[] = [];
 
     while (hasNextPage) {
       const response = await this.fetchWithRateLimitRetry(() =>
@@ -3430,6 +3440,12 @@ export class ApiV3CheerioRestIssueRepository
         return [];
       }
 
+      if (after === null) {
+        taskCommentBodies = (issueData.comments?.nodes ?? []).flatMap((node) =>
+          node?.body ? [node.body] : [],
+        );
+      }
+
       for (const item of issueData.timelineItems?.nodes ?? []) {
         if (!item) {
           console.warn(
@@ -3440,116 +3456,29 @@ export class ApiV3CheerioRestIssueRepository
         if (!this.isRelatedOpenPullRequestTimelineItem(item, issueUrl))
           continue;
 
-        const pr = item.source;
-        const prUrl = pr.url || '';
-
-        if (!prUrl) continue;
-
-        const { owner: prOwner, repo: prRepo } = this.parseIssueUrl(prUrl);
-
-        let isConflicted = pr.mergeable === 'CONFLICTING';
-        let mergeable: string | null = pr.mergeable ?? null;
-        if (
-          pr.number !== undefined &&
-          (pr.mergeable === undefined ||
-            pr.mergeable === null ||
-            pr.mergeable === 'UNKNOWN')
-        ) {
-          let resolved: {
-            mergeable: string | null;
-            mergeStateStatus: string | null;
-          } | null;
-          try {
-            resolved = await this.resolveMergeabilityWithRetry(
-              prOwner,
-              prRepo,
-              pr.number,
-            );
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            if (errorMessage.includes('NOT_FOUND')) {
-              console.info(
-                `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
-              );
-            } else {
-              console.warn(
-                `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
-              );
-            }
-            continue;
-          }
-          if (resolved !== null) {
-            mergeable = resolved.mergeable;
-            isConflicted =
-              resolved.mergeable === 'CONFLICTING' ||
-              resolved.mergeStateStatus === 'DIRTY';
-          }
-        }
-
-        if (pr.number === undefined) continue;
-
-        let slimPullRequest: SlimPullRequest;
-        try {
-          const fetchedSlimPullRequest = await this.fetchSlimPullRequest(
-            prOwner,
-            prRepo,
-            pr.number,
-          );
-          if (
-            !fetchedSlimPullRequest ||
-            fetchedSlimPullRequest.state !== 'OPEN'
-          ) {
-            console.info(
-              `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
-            );
-            continue;
-          }
-          slimPullRequest = fetchedSlimPullRequest;
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          console.warn(
-            `ApiV3CheerioRestIssueRepository: fetching pull request status failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
-          );
-          continue;
-        }
-        const baseRefName =
-          slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
-        const slimPullRequestWithRefs: SlimPullRequest = {
-          ...slimPullRequest,
-          url: slimPullRequest.url || prUrl,
-          headRefName: slimPullRequest.headRefName ?? pr.headRefName,
-          baseRefName,
-        };
-        let prStatus: RelatedPullRequest;
-        try {
-          prStatus = await this.buildRelatedPullRequestFromSlim(
-            prOwner,
-            prRepo,
-            slimPullRequestWithRefs,
-          );
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          console.warn(
-            `ApiV3CheerioRestIssueRepository: fetching pull request CI status failed, keeping PR with unknown CI status. prUrl: ${prUrl} error: ${errorMessage}`,
-          );
-          prStatus = this.buildRelatedPullRequestWithUnknownCiStatus(
-            slimPullRequestWithRefs,
-          );
-        }
-
-        relatedPRsMap.set(prUrl, {
-          ...prStatus,
-          isConflicted,
-          mergeable,
-          createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
-        });
+        await this.relatedOpenPullRequestRecord(item.source, relatedPRsMap);
       }
 
       hasNextPage = issueData.timelineItems?.pageInfo?.hasNextPage ?? false;
       after = issueData.timelineItems?.pageInfo?.endCursor ?? null;
+    }
+
+    // A pull request whose body never names this task is still related when a
+    // completion comment of this task records its URL as pullRequestUrl.
+    for (const recordedUrl of pullRequestUrlsFromCommentBodies(
+      taskCommentBodies,
+    )) {
+      if (relatedPRsMap.has(recordedUrl)) continue;
+      await this.relatedOpenPullRequestRecord(
+        {
+          __typename: 'PullRequest',
+          url: recordedUrl,
+          number: Number(recordedUrl.split('/').pop()),
+          body: null,
+          state: 'OPEN',
+        },
+        relatedPRsMap,
+      );
     }
 
     const prs = Array.from(relatedPRsMap.values());
@@ -3561,6 +3490,114 @@ export class ApiV3CheerioRestIssueRepository
       prs,
       includeCiStatusUnavailable,
     );
+  };
+
+  private relatedOpenPullRequestRecord = async (
+    pr: NonNullable<TimelineItem['source']>,
+    relatedPRsMap: Map<string, RelatedPullRequest>,
+  ): Promise<void> => {
+    const prUrl = pr.url || '';
+
+    if (!prUrl) return;
+
+    const { owner: prOwner, repo: prRepo } = this.parseIssueUrl(prUrl);
+
+    let isConflicted = pr.mergeable === 'CONFLICTING';
+    let mergeable: string | null = pr.mergeable ?? null;
+    if (
+      pr.number !== undefined &&
+      (pr.mergeable === undefined ||
+        pr.mergeable === null ||
+        pr.mergeable === 'UNKNOWN')
+    ) {
+      let resolved: {
+        mergeable: string | null;
+        mergeStateStatus: string | null;
+      } | null;
+      try {
+        resolved = await this.resolveMergeabilityWithRetry(
+          prOwner,
+          prRepo,
+          pr.number,
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('NOT_FOUND')) {
+          console.info(
+            `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
+          );
+        } else {
+          console.warn(
+            `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+          );
+        }
+        return;
+      }
+      if (resolved !== null) {
+        mergeable = resolved.mergeable;
+        isConflicted =
+          resolved.mergeable === 'CONFLICTING' ||
+          resolved.mergeStateStatus === 'DIRTY';
+      }
+    }
+
+    if (pr.number === undefined) return;
+
+    let slimPullRequest: SlimPullRequest;
+    try {
+      const fetchedSlimPullRequest = await this.fetchSlimPullRequest(
+        prOwner,
+        prRepo,
+        pr.number,
+      );
+      if (!fetchedSlimPullRequest || fetchedSlimPullRequest.state !== 'OPEN') {
+        console.info(
+          `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
+        );
+        return;
+      }
+      slimPullRequest = fetchedSlimPullRequest;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: fetching pull request status failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+      );
+      return;
+    }
+    const baseRefName =
+      slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
+    const slimPullRequestWithRefs: SlimPullRequest = {
+      ...slimPullRequest,
+      url: slimPullRequest.url || prUrl,
+      headRefName: slimPullRequest.headRefName ?? pr.headRefName,
+      baseRefName,
+    };
+    let prStatus: RelatedPullRequest;
+    try {
+      prStatus = await this.buildRelatedPullRequestFromSlim(
+        prOwner,
+        prRepo,
+        slimPullRequestWithRefs,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: fetching pull request CI status failed, keeping PR with unknown CI status. prUrl: ${prUrl} error: ${errorMessage}`,
+      );
+      prStatus = this.buildRelatedPullRequestWithUnknownCiStatus(
+        slimPullRequestWithRefs,
+      );
+    }
+
+    relatedPRsMap.set(prUrl, {
+      ...prStatus,
+      isConflicted,
+      mergeable,
+      createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
+    });
   };
 
   private isRelatedOpenPullRequestTimelineItem = (
