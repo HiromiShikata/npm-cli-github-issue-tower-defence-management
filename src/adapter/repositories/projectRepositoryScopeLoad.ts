@@ -13,7 +13,11 @@ export const projectRepositoryScopeLoad = (
   const ownResolvedPath = path.resolve(configFilePath);
   const entries = fs
     .readdirSync(configDirectory)
-    .filter((name) => PROJECT_CONFIG_FILE_PATTERN.test(name))
+    .filter(
+      (name) =>
+        PROJECT_CONFIG_FILE_PATTERN.test(name) ||
+        path.resolve(path.join(configDirectory, name)) === ownResolvedPath,
+    )
     .sort()
     .flatMap((fileName) => {
       const filePath = path.join(configDirectory, fileName);

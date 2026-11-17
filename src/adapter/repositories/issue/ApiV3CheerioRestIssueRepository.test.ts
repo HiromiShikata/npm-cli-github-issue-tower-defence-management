@@ -10497,6 +10497,44 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(resolved.get(issueUrlOf(1))).toEqual([recordedPrUrl]);
     });
 
+    it('includes a recorded open pull request when timeline pagination is incomplete', async () => {
+      const recordedPrUrl = relatedPrUrlOf(302);
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: relatedPrUrlOf(303),
+                }),
+              ],
+              hasNextPage: true,
+              comments: {
+                nodes: [
+                  {
+                    body:
+                      'From: :robot: developer (model)\n```json\n' +
+                      `{"pullRequestUrl":"${recordedPrUrl}"}\n` +
+                      '```',
+                  },
+                ],
+              },
+            },
+          ]),
+        }),
+        slimPullRequest: (variables) =>
+          buildSlimPullRequestResponse({
+            url: recordedPrUrl,
+            state: variables.prNumber === 302 ? 'OPEN' : 'CLOSED',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([recordedPrUrl]);
+    });
+
     it('reads every comment page and excludes a recorded pull request that is no longer open', async () => {
       const recordedPrUrl = relatedPrUrlOf(301);
       mockFetchRoutes({
@@ -10707,7 +10745,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ]);
     });
 
-    it('omits an issue whose timeline does not fit one page so it is resolved by the paginating path', async () => {
+    it('omits timeline-derived results when the timeline does not fit one page', async () => {
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
           data: buildBatchData([
@@ -10726,7 +10764,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
-      expect(resolved.has(issueUrlOf(1))).toBe(false);
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
     });
 
     it('omits an issue whose alias failed for a reason other than not found so an unknown state is not read as absent', async () => {

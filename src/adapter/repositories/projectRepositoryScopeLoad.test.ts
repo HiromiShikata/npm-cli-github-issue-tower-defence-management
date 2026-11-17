@@ -56,6 +56,24 @@ describe('projectRepositoryScopeLoad', () => {
     });
   });
 
+  test('loads the own config when its filename does not match the project pattern', () => {
+    const own = configWrite(
+      'config.yml',
+      'org: example-owner\nprojectUrl: https://github.com/users/example-owner/projects/1\nrepositories:\n  - example-owner/example-tasks\n',
+    );
+    configWrite(
+      'sibling.config.yml',
+      'org: example-owner\nprojectUrl: https://github.com/users/example-owner/projects/2\nrepositories:\n  - example-owner/example-other-tasks\n',
+    );
+
+    expect(projectRepositoryScopeLoad(own)).toEqual({
+      org: 'example-owner',
+      repositories: ['example-owner/example-tasks'],
+      listedRepositoriesOfOtherProjects: ['example-owner/example-other-tasks'],
+      ownsUnlistedRepositoriesOfOwner: false,
+    });
+  });
+
   test('a config without an org yields no scope', () => {
     const own = configWrite('own.config.yml', 'agents:\n  - developer-agent\n');
 
