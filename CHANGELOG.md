@@ -1,3 +1,10 @@
+# [2.197.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.196.1...v2.197.0) (2026-11-17)
+
+
+### Features
+
+* **tdpm:** route projects by repository as well as owner ([#3736](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3736)) ([b169f19](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b169f19ba5f6609d245a0f99a66682a9bad2b4fc))
+
 ## [2.196.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.196.0...v2.196.1) (2026-11-17)
 
 
