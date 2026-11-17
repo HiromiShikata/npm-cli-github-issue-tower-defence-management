@@ -79,13 +79,14 @@ describe('createConsoleGithubTokenResolverByItemUrl', () => {
 describe('createConsoleIssueRepositoryResolver', () => {
   it('builds the issue repository from the token of the owner in the url', () => {
     const resolve = createConsoleIssueRepositoryResolver<string>(
-      (repositoryOwner) => `token-of-${repositoryOwner}`,
+      (repositoryOwner, repositoryName) =>
+        `token-of-${repositoryOwner}/${repositoryName}`,
       (githubToken) => `repository-with-${githubToken}`,
     );
 
     expect(
       resolve('https://github.com/acme-labs/acme-portal-mock/issues/178'),
-    ).toBe('repository-with-token-of-acme-labs');
+    ).toBe('repository-with-token-of-acme-labs/acme-portal-mock');
   });
 
   it('throws when the repository owner cannot be read from the url', () => {

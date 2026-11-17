@@ -204,7 +204,7 @@ const cacheOwnedByListedConfig = (
   configs.some(
     (config) =>
       isRepositoryListed(config) &&
-      projectUrlMatches(cache.projectUrl, config.projectUrl),
+      projectUrlMatches(cache.projectUrl ?? null, config.projectUrl ?? null),
   );
 
 const activeStoryOptionNames = (cache: BoardCache | null): string[] =>
@@ -360,8 +360,11 @@ export class StoryGateCheckUseCase {
     configs: StoryGateProjectConfig[],
   ): boolean => {
     const config = projectConfigForRepositoryResolve(configs, issueReference);
-    if (config !== undefined && isRepositoryListed(config)) {
-      return projectUrlMatches(cache.projectUrl, config.projectUrl);
+    if (config !== null && isRepositoryListed(config)) {
+      return projectUrlMatches(
+        cache.projectUrl ?? null,
+        config.projectUrl ?? null,
+      );
     }
     return (
       this.boardCacheOwnerDetect(cache) === issueReference.owner &&
@@ -581,7 +584,7 @@ export class StoryGateCheckUseCase {
     }
     const configs = await this.projectConfigRepository.listProjectConfigs();
     const config = projectConfigForRepositoryResolve(configs, input.issue);
-    if (config === undefined) {
+    if (config === null) {
       return this.decideUnresolvedStory(
         state,
         input,
@@ -682,12 +685,12 @@ export class StoryGateCheckUseCase {
       return [cacheHit.cache];
     }
     const config = projectConfigForRepositoryResolve(configs, issueReference);
-    if (config === undefined) {
+    if (config === null) {
       return [];
     }
     if (isRepositoryListed(config)) {
       return caches.filter((cache) =>
-        projectUrlMatches(cache.projectUrl, config.projectUrl),
+        projectUrlMatches(cache.projectUrl ?? null, config.projectUrl ?? null),
       );
     }
     return caches.filter(

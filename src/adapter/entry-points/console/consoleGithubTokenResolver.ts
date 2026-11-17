@@ -30,13 +30,15 @@ export const createConsoleIssueRepositoryResolver = <IssueRepositoryType>(
   buildIssueRepositoryForToken: (githubToken: string) => IssueRepositoryType,
 ): ((issueOrPullRequestUrl: string) => IssueRepositoryType) => {
   return (issueOrPullRequestUrl: string): IssueRepositoryType => {
-    const repositoryOwner = extractRepositoryOwner(issueOrPullRequestUrl);
-    if (repositoryOwner === null) {
+    const reference = extractRepositoryReference(issueOrPullRequestUrl);
+    if (reference === null) {
       throw new Error(
         `The repository owner cannot be read from the operated url: ${issueOrPullRequestUrl}`,
       );
     }
-    return buildIssueRepositoryForToken(resolveGithubToken(repositoryOwner));
+    return buildIssueRepositoryForToken(
+      resolveGithubToken(reference.owner, reference.repo),
+    );
   };
 };
 
@@ -98,10 +100,15 @@ export const createConsoleProjectNameResolver = (
 export const createConsoleRepositoryProjectNameResolver = (
   consoleProjectUrls: Record<string, string> | null,
   consoleProjectRepositories: ConsoleProjectRepositories | null,
-): ((repositoryOwner: string, repositoryName: string) => string | null) => {
-  return (repositoryOwner: string, repositoryName: string): string | null => {
+): ((repositoryOwner: string, repositoryName?: string) => string | null) => {
+  return (repositoryOwner: string, repositoryName?: string): string | null => {
     if (consoleProjectUrls === null) {
       return null;
+    }
+    if (repositoryName === undefined) {
+      return createConsoleProjectNameResolver(consoleProjectUrls)(
+        repositoryOwner,
+      );
     }
     const matched = projectConfigForRepositoryResolve(
       Object.entries(consoleProjectUrls).map(([pjcode, projectUrl]) => ({

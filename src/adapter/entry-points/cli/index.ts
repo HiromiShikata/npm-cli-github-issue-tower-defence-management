@@ -62,7 +62,7 @@ import { FileSystemWorkerSessionLogRepository } from '../../repositories/FileSys
 import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
-  createConsoleProjectNameResolver,
+  createConsoleRepositoryProjectNameResolver,
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
 import { projectRepositoryListsByPjcodeLoad } from '../../repositories/projectRepositoryListsLoad';
@@ -1343,6 +1343,13 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       config.consoleProjects ?? null,
     ),
   );
+  const resolveProjectName = createConsoleRepositoryProjectNameResolver(
+    config.consoleProjects ?? null,
+    projectRepositoryListsByPjcodeLoad(
+      config.consoleProjectConfigDirectory ?? null,
+      config.consoleProjects ?? null,
+    ),
+  );
   const issueRepositoryByToken = new Map<string, IssueRepository>();
   issueRepositoryByToken.set(token, issueRepository);
   const buildIssueRepositoryForToken = (
@@ -1376,7 +1383,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     mintReadOnlyTokensFromKeyPaths,
     buildIssueRepositoryForToken,
     resolveGithubToken,
-    createConsoleProjectNameResolver(config.consoleProjects ?? null),
+    resolveProjectName,
   );
   const resolveGithubTokenForItemUrl =
     createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);

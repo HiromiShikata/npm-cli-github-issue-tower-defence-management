@@ -54,22 +54,33 @@ describe('projectConfigForRepositoryResolve', () => {
       expected: unlisted,
     },
     {
-      case: 'an unlisted repository falls back to the owner match when only a listed config has that owner',
+      case: 'an unlisted repository resolves to no config when every same-owner config lists repositories',
       configs: [listedA, otherOwner],
       issue: reference('example-owner', 'other-repo'),
-      expected: listedA,
+      expected: null,
+    },
+    {
+      case: 'an unlisted repository resolves to no config when two same-owner configs list repositories',
+      configs: [
+        listedA,
+        config('https://github.com/users/example-owner/projects/4', [
+          'example-owner/example-other-tasks',
+        ]),
+      ],
+      issue: reference('example-owner', 'other-repo'),
+      expected: null,
     },
     {
       case: 'a listed repository name under a different owner does not match',
       configs: [listedA],
       issue: reference('other-owner', 'example-tasks'),
-      expected: undefined,
+      expected: null,
     },
     {
-      case: 'an owner with no config resolves to undefined',
+      case: 'an owner with no config resolves to null',
       configs: [unlisted],
       issue: reference('nobody', 'repo'),
-      expected: undefined,
+      expected: null,
     },
   ])('$case', ({ configs, issue, expected }) => {
     expect(projectConfigForRepositoryResolve(configs, issue)).toBe(expected);
@@ -81,25 +92,25 @@ describe('issueBelongsToProjectScope', () => {
     org: 'example-owner',
     repositories: null,
     listedRepositoriesOfOtherProjects: [],
-    unlistedSiblingOwners: [],
+    ownsUnlistedRepositoriesOfOwner: false,
   };
   const unlistedWithSiblingScope: ProjectRepositoryScope = {
     org: 'example-owner',
     repositories: null,
     listedRepositoriesOfOtherProjects: ['example-owner/example-tasks'],
-    unlistedSiblingOwners: [],
+    ownsUnlistedRepositoriesOfOwner: false,
   };
   const listedScope: ProjectRepositoryScope = {
     org: 'example-owner',
     repositories: ['example-owner/example-tasks'],
     listedRepositoriesOfOtherProjects: [],
-    unlistedSiblingOwners: [],
+    ownsUnlistedRepositoriesOfOwner: false,
   };
   const listedWithUnlistedSiblingScope: ProjectRepositoryScope = {
     org: 'example-owner',
     repositories: ['example-owner/example-tasks'],
     listedRepositoriesOfOtherProjects: [],
-    unlistedSiblingOwners: ['example-owner'],
+    ownsUnlistedRepositoriesOfOwner: false,
   };
 
   test.each([
@@ -140,10 +151,10 @@ describe('issueBelongsToProjectScope', () => {
       expected: true,
     },
     {
-      case: 'a listed project owns an unlisted repository of its owner when no unlisted sibling of that owner exists, as the StoryGate fallback does',
+      case: 'a listed project does not own an unlisted repository when every same-owner project lists repositories',
       scope: listedScope,
       issue: reference('example-owner', 'other-repo'),
-      expected: true,
+      expected: false,
     },
     {
       case: 'a listed project does not own an unlisted repository when an unlisted sibling of the same owner exists',
@@ -167,19 +178,19 @@ describe('issueAddableByProjectScope', () => {
     org: 'testOrg',
     repositories: null,
     listedRepositoriesOfOtherProjects: ['testorg/testrepo'],
-    unlistedSiblingOwners: [],
+    ownsUnlistedRepositoriesOfOwner: false,
   };
   const unlistedScopeWithoutSibling: ProjectRepositoryScope = {
     org: 'testOrg',
     repositories: null,
     listedRepositoriesOfOtherProjects: [],
-    unlistedSiblingOwners: [],
+    ownsUnlistedRepositoriesOfOwner: false,
   };
   const listedScope: ProjectRepositoryScope = {
     org: 'testOrg',
     repositories: ['testOrg/testRepo'],
     listedRepositoriesOfOtherProjects: [],
-    unlistedSiblingOwners: [],
+    ownsUnlistedRepositoriesOfOwner: false,
   };
 
   test.each([
@@ -202,16 +213,16 @@ describe('issueAddableByProjectScope', () => {
       expected: true,
     },
     {
-      case: 'a listed project adds an unlisted repository of its owner when no unlisted sibling exists, as the resolver fallback does',
+      case: 'a listed project does not add an unlisted repository when every same-owner project lists repositories',
       scope: listedScope,
       issue: reference('testOrg', 'other-repo'),
-      expected: true,
+      expected: false,
     },
     {
       case: 'a listed project skips an unlisted repository of its owner when an unlisted sibling of that owner exists',
       scope: {
         ...listedScope,
-        unlistedSiblingOwners: ['testOrg'],
+        ownsUnlistedRepositoriesOfOwner: false,
       },
       issue: reference('testOrg', 'other-repo'),
       expected: false,

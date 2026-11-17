@@ -378,7 +378,7 @@ dailySecurityScan?: # Optional: Run a daily OSV-Scanner security scan across loc
 Projects are told apart by `org` (the owner) unless a project config lists repositories in `repositories`. Two projects may share one owner when each lists its own repositories:
 
 - A repository listed in some config's `repositories` belongs to that config. Its story-gate board cache is the one whose project URL equals that config's `projectUrl`, so `projectUrl` is required whenever `repositories` is set. Config files that fail this rule stop the run with an error that names the file.
-- A repository that no config lists belongs to the config whose `org` matches its owner, preferring a config without `repositories`.
+- A repository that no config lists belongs to the single config whose `org` matches its owner when that config does not set `repositories`. If every config for that owner sets `repositories`, the repository belongs to none of them, including when there is only one such config.
 - A config without `repositories` behaves exactly as before: it owns every repository of its `org` that no sibling config lists.
 - The console token and project lookups use the same rules when they know the repository. The directory `consoleProjectConfigDirectory` supplies the repository lists.
 - A pull request whose body does not name the task can still be linked to the task when a completion comment of that task records it as `"pullRequestUrl": "<url>"` in a fenced JSON result block.

@@ -34,7 +34,7 @@ describe('projectRepositoryScopeLoad', () => {
       org: 'example-owner',
       repositories: null,
       listedRepositoriesOfOtherProjects: ['example-owner/example-tasks'],
-      unlistedSiblingOwners: [],
+      ownsUnlistedRepositoriesOfOwner: false,
     });
   });
 
@@ -52,7 +52,7 @@ describe('projectRepositoryScopeLoad', () => {
       org: 'example-owner',
       repositories: ['example-owner/example-tasks'],
       listedRepositoriesOfOtherProjects: [],
-      unlistedSiblingOwners: ['example-owner'],
+      ownsUnlistedRepositoriesOfOwner: false,
     });
   });
 
@@ -60,5 +60,56 @@ describe('projectRepositoryScopeLoad', () => {
     const own = configWrite('own.config.yml', 'agents:\n  - developer-agent\n');
 
     expect(projectRepositoryScopeLoad(own)).toBeNull();
+  });
+});
+
+describe('projectRepositoryScopeLoad with two listed projects of one owner', () => {
+  let configDirectory: string;
+
+  beforeEach(() => {
+    configDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'repo-scope-pair-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(configDirectory, { recursive: true, force: true });
+  });
+
+  test.each([
+    {
+      case: 'a listed project does not own the owner fallback when every same-owner project lists repositories',
+      ownFileName: 'a.config.yml',
+      expectedOwnsFallback: false,
+      expectedOtherListed: ['example-owner/repo-b'],
+    },
+    {
+      case: 'a later listed project also does not own the owner fallback',
+      ownFileName: 'b.config.yml',
+      expectedOwnsFallback: false,
+      expectedOtherListed: ['example-owner/repo-a'],
+    },
+  ])('$case', ({ ownFileName, expectedOwnsFallback, expectedOtherListed }) => {
+    fs.writeFileSync(
+      path.join(configDirectory, 'a.config.yml'),
+      'org: example-owner\nprojectUrl: https://github.com/users/example-owner/projects/1\nrepositories:\n  - example-owner/repo-a\n',
+    );
+    fs.writeFileSync(
+      path.join(configDirectory, 'b.config.yml'),
+      'org: example-owner\nprojectUrl: https://github.com/users/example-owner/projects/2\nrepositories:\n  - example-owner/repo-b\n',
+    );
+
+    expect(
+      projectRepositoryScopeLoad(path.join(configDirectory, ownFileName)),
+    ).toEqual({
+      org: 'example-owner',
+      repositories: [
+        ownFileName === 'a.config.yml'
+          ? 'example-owner/repo-a'
+          : 'example-owner/repo-b',
+      ],
+      listedRepositoriesOfOtherProjects: expectedOtherListed,
+      ownsUnlistedRepositoriesOfOwner: expectedOwnsFallback,
+    });
   });
 });

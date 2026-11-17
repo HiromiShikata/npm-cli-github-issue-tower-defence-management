@@ -13,7 +13,7 @@ export type ProjectRepositoryScope = {
   org: string;
   repositories: string[] | null;
   listedRepositoriesOfOtherProjects: string[];
-  unlistedSiblingOwners: string[];
+  ownsUnlistedRepositoriesOfOwner: boolean;
 };
 
 const REPOSITORY_LIST_ENTRY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -31,13 +31,11 @@ export const isRepositoryListed = (config: ProjectScopeConfig): boolean =>
   (config.repositories ?? null) !== null;
 
 export const projectUrlMatches = (
-  left: string | null | undefined,
-  right: string | null | undefined,
+  left: string | null,
+  right: string | null,
 ): boolean =>
   left !== null &&
-  left !== undefined &&
   right !== null &&
-  right !== undefined &&
   projectUrlKeyOf(left) === projectUrlKeyOf(right);
 
 const configListsRepository = (
@@ -52,20 +50,16 @@ const configListsRepository = (
 export const projectConfigForRepositoryResolve = <T extends ProjectScopeConfig>(
   configs: T[],
   reference: RepositoryReference,
-): T | undefined => {
-  const listedConfig = configs.find((config) =>
-    configListsRepository(config, reference),
-  );
-  if (listedConfig !== undefined) {
+): T | null => {
+  const listedConfig =
+    configs.find((config) => configListsRepository(config, reference)) ?? null;
+  if (listedConfig !== null) {
     return listedConfig;
   }
   const sameOwnerConfigs = configs.filter(
     (config) => config.org.toLowerCase() === reference.owner.toLowerCase(),
   );
-  return (
-    sameOwnerConfigs.find((config) => !isRepositoryListed(config)) ??
-    sameOwnerConfigs[0]
-  );
+  return sameOwnerConfigs.find((config) => !isRepositoryListed(config)) ?? null;
 };
 
 const listedInScope = (scope: ProjectRepositoryScope, key: string): boolean =>
@@ -87,16 +81,13 @@ export const issueBelongsToProjectScope = (
   if (listedInScope(scope, key)) {
     return true;
   }
-  if (scope.repositories !== null) {
-    return (
-      issue.owner.toLowerCase() === scope.org.toLowerCase() &&
-      !scope.unlistedSiblingOwners.some(
-        (owner) => owner.toLowerCase() === issue.owner.toLowerCase(),
-      ) &&
-      !listedByOtherProject(scope, key)
-    );
+  if (listedByOtherProject(scope, key)) {
+    return false;
   }
-  return issue.owner === scope.org && !listedByOtherProject(scope, key);
+  if (scope.repositories !== null) {
+    return false;
+  }
+  return issue.owner === scope.org;
 };
 
 export const issueAddableByProjectScope = (

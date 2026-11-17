@@ -13,7 +13,7 @@ import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRe
 import type { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
 import {
   createConsoleIssueRepositoryResolver,
-  extractRepositoryOwner,
+  extractRepositoryReference,
 } from './consoleGithubTokenResolver';
 
 const forbiddenOrNotFoundErrorMessagePattern =
@@ -462,7 +462,10 @@ export const buildReadIssueRepositoryResolver = async (
   mintTokens: (paths: string[]) => Promise<string[]>,
   buildIssueRepositoryForToken: (token: string) => IssueRepository,
   resolveGithubToken: ConsoleGithubTokenResolver,
-  resolveProjectName: (repositoryOwner: string) => string | null,
+  resolveProjectName: (
+    repositoryOwner: string,
+    repositoryName?: string,
+  ) => string | null,
   getCurrentEpochMilliseconds: () => number = Date.now,
 ): Promise<(url: string) => IssueRepository> => {
   const ownTokenIssueRepositoryResolver =
@@ -506,9 +509,11 @@ export const buildReadIssueRepositoryResolver = async (
   }
   return (url: string): IssueRepository => {
     const ownTokenIssueRepository = ownTokenIssueRepositoryResolver(url);
-    const repositoryOwner = extractRepositoryOwner(url);
+    const reference = extractRepositoryReference(url);
     const projectName =
-      repositoryOwner === null ? null : resolveProjectName(repositoryOwner);
+      reference === null
+        ? null
+        : resolveProjectName(reference.owner, reference.repo);
     const appTokenReadRepositories =
       projectName === null
         ? undefined
