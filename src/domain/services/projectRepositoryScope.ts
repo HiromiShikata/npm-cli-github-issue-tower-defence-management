@@ -79,9 +79,6 @@ const listedByOtherProject = (
     (entry) => entry.toLowerCase() === key,
   );
 
-// Mirrors projectConfigForRepositoryResolve: a listed project owns its listed
-// repositories, and falls back to its owner only while no unlisted sibling
-// project of that owner exists.
 export const issueBelongsToProjectScope = (
   issue: RepositoryReference,
   scope: ProjectRepositoryScope,
@@ -102,8 +99,6 @@ export const issueBelongsToProjectScope = (
   return issue.owner === scope.org && !listedByOtherProject(scope, key);
 };
 
-// Queue-add keeps its existing reach for unlisted projects: only repositories
-// listed by another project are excluded. A listed project adds only its own.
 export const issueAddableByProjectScope = (
   issue: RepositoryReference,
   scope: ProjectRepositoryScope,
