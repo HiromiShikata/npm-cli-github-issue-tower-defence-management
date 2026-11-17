@@ -878,11 +878,8 @@ export const ConsoleStoryList = ({
           storyName={deleteEntry.storyName}
           isDeleting={activeDeleteState.isDeleting}
           deleteError={activeDeleteState.error}
-          onConfirm={(deleteChildTasks) =>
-            void handleDeleteConfirm(
-              deleteEntry.storyOptionId,
-              deleteChildTasks,
-            )
+          onConfirm={() =>
+            void handleDeleteConfirm(deleteEntry.storyOptionId, false)
           }
           onCancel={() => {
             setDeleteConfirmOptionId(null);

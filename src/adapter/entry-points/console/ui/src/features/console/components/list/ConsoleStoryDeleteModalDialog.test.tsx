@@ -69,11 +69,11 @@ describe('ConsoleStoryDeleteModalDialog', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('shows Deleting… on both confirm buttons when isDeleting is true', () => {
+  it('shows Deleting… on the confirm button when isDeleting is true', () => {
     const { getAllByText } = render(
       <ConsoleStoryDeleteModalDialog {...defaultProps} isDeleting={true} />,
     );
-    expect(getAllByText('Deleting…')).toHaveLength(2);
+    expect(getAllByText('Deleting…')).toHaveLength(1);
   });
 
   it('disables all action buttons when isDeleting is true', () => {

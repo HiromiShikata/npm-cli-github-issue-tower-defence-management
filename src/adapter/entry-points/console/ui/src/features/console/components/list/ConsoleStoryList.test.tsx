@@ -1561,7 +1561,7 @@ describe('ConsoleStoryList', () => {
       expect(alert).toHaveTextContent('Delete failed');
     });
 
-    it('shows Deleting… text on the confirm buttons while deletion is in progress', async () => {
+    it('shows Deleting… text on the confirm button while deletion is in progress', async () => {
       let resolveDelete: () => void;
       const deletePromise = new Promise<void>((resolve) => {
         resolveDelete = resolve;
@@ -1579,7 +1579,7 @@ describe('ConsoleStoryList', () => {
         name: 'Keep child tasks',
       })[0];
       fireEvent.click(confirmButton);
-      await waitFor(() => expect(getAllByText('Deleting…')).toHaveLength(2));
+      await waitFor(() => expect(getAllByText('Deleting…')).toHaveLength(1));
       await act(async () => {
         resolveDelete?.();
       });
