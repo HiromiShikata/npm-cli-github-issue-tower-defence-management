@@ -22,6 +22,7 @@ import { YamlStoryGateProjectConfigRepository } from '../../repositories/YamlSto
 import { projectRepositoryListsByPjcodeLoad } from '../../repositories/projectRepositoryListsLoad';
 import {
   createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByRepository,
   createConsoleGithubTokenResolverByItemUrl,
 } from '../console/consoleGithubTokenResolver';
 import { ConfigFile, loadConfigFile } from './projectConfig';
@@ -153,6 +154,15 @@ const githubTokenSourceOf = (
   }
   return createConsoleGithubTokenResolverByItemUrl(
     createConsoleGithubTokenResolver(
+      ghToken,
+      consoleConfig.consoleProjects ?? null,
+      consoleConfig.consoleGithubTokens ?? null,
+      projectRepositoryListsByPjcodeLoad(
+        consoleConfig.consoleProjectConfigDirectory ?? null,
+        consoleConfig.consoleProjects ?? null,
+      ),
+    ),
+    createConsoleGithubTokenResolverByRepository(
       ghToken,
       consoleConfig.consoleProjects ?? null,
       consoleConfig.consoleGithubTokens ?? null,

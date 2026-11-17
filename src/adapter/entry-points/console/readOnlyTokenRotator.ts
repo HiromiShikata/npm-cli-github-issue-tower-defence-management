@@ -15,6 +15,7 @@ import {
   createConsoleIssueRepositoryResolver,
   extractRepositoryReference,
 } from './consoleGithubTokenResolver';
+import type { ConsoleGithubTokenByRepositoryResolver } from './consoleGithubTokenResolver';
 
 const forbiddenOrNotFoundErrorMessagePattern =
   /\bHTTP 40[34]\b|Resource not accessible by integration|"type":"(?:FORBIDDEN|NOT_FOUND)"/;
@@ -462,16 +463,19 @@ export const buildReadIssueRepositoryResolver = async (
   mintTokens: (paths: string[]) => Promise<string[]>,
   buildIssueRepositoryForToken: (token: string) => IssueRepository,
   resolveGithubToken: ConsoleGithubTokenResolver,
-  resolveProjectName: (
-    repositoryOwner: string,
-    repositoryName?: string,
-  ) => string | null,
+  resolveProjectName: (repositoryOwner: string) => string | null,
   getCurrentEpochMilliseconds: () => number = Date.now,
+  resolveProjectNameByRepository?: (
+    repositoryOwner: string,
+    repositoryName: string,
+  ) => string | null,
+  resolveGithubTokenByRepository?: ConsoleGithubTokenByRepositoryResolver,
 ): Promise<(url: string) => IssueRepository> => {
   const ownTokenIssueRepositoryResolver =
     createConsoleIssueRepositoryResolver<IssueRepository>(
       resolveGithubToken,
       buildIssueRepositoryForToken,
+      resolveGithubTokenByRepository,
     );
   const appTokenReadRepositoriesByProject = new Map<
     string,
@@ -513,7 +517,9 @@ export const buildReadIssueRepositoryResolver = async (
     const projectName =
       reference === null
         ? null
-        : resolveProjectName(reference.owner, reference.repo);
+        : resolveProjectNameByRepository === undefined
+          ? resolveProjectName(reference.owner)
+          : resolveProjectNameByRepository(reference.owner, reference.repo);
     const appTokenReadRepositories =
       projectName === null
         ? undefined

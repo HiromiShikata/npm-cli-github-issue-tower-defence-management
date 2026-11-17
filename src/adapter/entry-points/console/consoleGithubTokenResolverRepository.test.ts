@@ -1,4 +1,7 @@
-import { createConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
+import {
+  createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByRepository,
+} from './consoleGithubTokenResolver';
 
 const ALPHA_URL = 'https://github.com/users/example-owner/projects/1';
 const BETA_URL = 'https://github.com/users/example-owner/projects/2';
@@ -8,7 +11,7 @@ const DEFAULT_TOKEN = 'token-default';
 const LISTED = { alpha: ['example-owner/example-tasks'] };
 
 const resolverOf = (repositories: Record<string, string[]> | null = LISTED) =>
-  createConsoleGithubTokenResolver(
+  createConsoleGithubTokenResolverByRepository(
     DEFAULT_TOKEN,
     CONSOLE_PROJECTS,
     CONSOLE_TOKENS,
@@ -46,19 +49,38 @@ describe('createConsoleGithubTokenResolver by repository', () => {
   });
 
   test('without repository lists, a repository resolves exactly as the owner did before', () => {
-    expect(resolverOf(null)('example-owner', 'example-tasks')).toBe(
-      'token-alpha',
-    );
+    expect(
+      createConsoleGithubTokenResolver(
+        DEFAULT_TOKEN,
+        CONSOLE_PROJECTS,
+        CONSOLE_TOKENS,
+        null,
+      )('example-owner'),
+    ).toBe('token-alpha');
   });
 
   test('the owner-only call keeps the first owner match', () => {
-    expect(resolverOf()('example-owner')).toBe('token-alpha');
+    expect(
+      createConsoleGithubTokenResolver(
+        DEFAULT_TOKEN,
+        CONSOLE_PROJECTS,
+        CONSOLE_TOKENS,
+        LISTED,
+      )('example-owner'),
+    ).toBe('token-alpha');
   });
 
   test('a repository lookup and an owner lookup do not share a cached token', () => {
     const resolve = resolverOf();
     expect(resolve('example-owner', 'other-repo')).toBe('token-beta');
     expect(resolve('example-owner', 'example-tasks')).toBe('token-alpha');
-    expect(resolve('example-owner')).toBe('token-alpha');
+    expect(
+      createConsoleGithubTokenResolver(
+        DEFAULT_TOKEN,
+        CONSOLE_PROJECTS,
+        CONSOLE_TOKENS,
+        LISTED,
+      )('example-owner'),
+    ).toBe('token-alpha');
   });
 });

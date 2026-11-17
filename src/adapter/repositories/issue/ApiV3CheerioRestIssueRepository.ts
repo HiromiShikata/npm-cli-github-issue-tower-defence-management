@@ -3833,18 +3833,19 @@ export class ApiV3CheerioRestIssueRepository
         }
         continue;
       }
+      if (issueNode.timelineItems.pageInfo.hasNextPage) {
+        continue;
+      }
       const prUrls = new Set<string>();
-      if (!issueNode.timelineItems.pageInfo.hasNextPage) {
-        for (const item of issueNode.timelineItems.nodes) {
-          if (
-            !this.isRelatedOpenPullRequestTimelineItem(item, reference.issueUrl)
-          ) {
-            continue;
-          }
-          const prUrl = item.source.url || '';
-          if (!prUrl) continue;
-          prUrls.add(prUrl);
+      for (const item of issueNode.timelineItems.nodes) {
+        if (
+          !this.isRelatedOpenPullRequestTimelineItem(item, reference.issueUrl)
+        ) {
+          continue;
         }
+        const prUrl = item.source.url || '';
+        if (!prUrl) continue;
+        prUrls.add(prUrl);
       }
       const comments = issueNode.comments;
       if (comments) {

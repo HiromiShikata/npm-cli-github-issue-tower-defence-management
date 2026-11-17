@@ -61,6 +61,8 @@ import { FileSystemWorkerSessionFailureStreakRepository } from '../../repositori
 import { FileSystemWorkerSessionLogRepository } from '../../repositories/FileSystemWorkerSessionLogRepository';
 import {
   createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByProjectUrl,
+  createConsoleGithubTokenResolverByRepository,
   createConsoleGithubTokenResolverByItemUrl,
   createConsoleRepositoryProjectNameResolver,
   createConsoleProjectRepositoryResolver,
@@ -1350,6 +1352,22 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       config.consoleProjects ?? null,
     ),
   );
+  const resolveGithubTokenByRepository =
+    createConsoleGithubTokenResolverByRepository(
+      token,
+      config.consoleProjects ?? null,
+      config.consoleGithubTokens ?? null,
+      projectRepositoryListsByPjcodeLoad(
+        config.consoleProjectConfigDirectory ?? null,
+        config.consoleProjects ?? null,
+      ),
+    );
+  const resolveGithubTokenByProjectUrl =
+    createConsoleGithubTokenResolverByProjectUrl(
+      token,
+      config.consoleProjects ?? null,
+      config.consoleGithubTokens ?? null,
+    );
   const issueRepositoryByToken = new Map<string, IssueRepository>();
   issueRepositoryByToken.set(token, issueRepository);
   const buildIssueRepositoryForToken = (
@@ -1384,9 +1402,15 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     buildIssueRepositoryForToken,
     resolveGithubToken,
     resolveProjectName,
+    Date.now,
+    resolveProjectName,
+    resolveGithubTokenByRepository,
   );
   const resolveGithubTokenForItemUrl =
-    createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);
+    createConsoleGithubTokenResolverByItemUrl(
+      resolveGithubToken,
+      resolveGithubTokenByRepository,
+    );
   const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();
   projectRepositoryByToken.set(token, projectRepository);
   const buildProjectRepositoryForToken = (
@@ -1407,6 +1431,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     createConsoleProjectRepositoryResolver<GraphqlProjectRepository>(
       resolveGithubToken,
       buildProjectRepositoryForToken,
+      resolveGithubTokenByProjectUrl,
     );
 
   const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
@@ -1476,6 +1501,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardProjectUrls: pjcodeToProjectUrl,
     fleetTaskCreateUrl,
     resolveGithubToken,
+    resolveGithubTokenByRepository,
     issueRepository,
     liveSessionRepository: new OpenAiLiveSessionRepository(),
     resolveIssueRepository,

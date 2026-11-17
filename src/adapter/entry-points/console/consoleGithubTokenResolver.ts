@@ -3,10 +3,15 @@ import {
   projectUrlKeyOf,
 } from '../../../domain/services/projectRepositoryScope';
 
-export type ConsoleGithubTokenResolver = (
+export type ConsoleGithubTokenResolver = (repositoryOwner: string) => string;
+
+export type ConsoleGithubTokenByRepositoryResolver = (
   repositoryOwner: string,
-  repositoryName?: string,
-  projectUrl?: string,
+  repositoryName: string,
+) => string;
+
+export type ConsoleGithubTokenByProjectUrlResolver = (
+  projectUrl: string,
 ) => string;
 
 export type ConsoleProjectRepositories = Record<string, string[]>;
@@ -32,6 +37,7 @@ export const extractRepositoryReference = (
 export const createConsoleIssueRepositoryResolver = <IssueRepositoryType>(
   resolveGithubToken: ConsoleGithubTokenResolver,
   buildIssueRepositoryForToken: (githubToken: string) => IssueRepositoryType,
+  resolveGithubTokenByRepository?: ConsoleGithubTokenByRepositoryResolver,
 ): ((issueOrPullRequestUrl: string) => IssueRepositoryType) => {
   return (issueOrPullRequestUrl: string): IssueRepositoryType => {
     const reference = extractRepositoryReference(issueOrPullRequestUrl);
@@ -40,9 +46,11 @@ export const createConsoleIssueRepositoryResolver = <IssueRepositoryType>(
         `The repository owner cannot be read from the operated url: ${issueOrPullRequestUrl}`,
       );
     }
-    return buildIssueRepositoryForToken(
-      resolveGithubToken(reference.owner, reference.repo),
-    );
+    const githubToken =
+      resolveGithubTokenByRepository === undefined
+        ? resolveGithubToken(reference.owner)
+        : resolveGithubTokenByRepository(reference.owner, reference.repo);
+    return buildIssueRepositoryForToken(githubToken);
   };
 };
 
@@ -58,6 +66,7 @@ export const createConsoleProjectRepositoryResolver = <ProjectRepositoryType>(
   buildProjectRepositoryForToken: (
     githubToken: string,
   ) => ProjectRepositoryType,
+  resolveGithubTokenByProjectUrl?: ConsoleGithubTokenByProjectUrlResolver,
 ): ((projectUrl: string) => ProjectRepositoryType) => {
   return (projectUrl: string): ProjectRepositoryType => {
     const projectOwner = extractProjectOwner(projectUrl);
@@ -66,14 +75,17 @@ export const createConsoleProjectRepositoryResolver = <ProjectRepositoryType>(
         `The project owner cannot be read from the project url: ${projectUrl}`,
       );
     }
-    return buildProjectRepositoryForToken(
-      resolveGithubToken(projectOwner, undefined, projectUrl),
-    );
+    const githubToken =
+      resolveGithubTokenByProjectUrl === undefined
+        ? resolveGithubToken(projectOwner)
+        : resolveGithubTokenByProjectUrl(projectUrl);
+    return buildProjectRepositoryForToken(githubToken);
   };
 };
 
 export const createConsoleGithubTokenResolverByItemUrl = (
   resolveGithubToken: ConsoleGithubTokenResolver,
+  resolveGithubTokenByRepository?: ConsoleGithubTokenByRepositoryResolver,
 ): ((itemUrl: string) => string) => {
   return (itemUrl: string): string => {
     const reference = extractRepositoryReference(itemUrl);
@@ -82,7 +94,9 @@ export const createConsoleGithubTokenResolverByItemUrl = (
         `The repository owner cannot be read from the url: ${itemUrl}`,
       );
     }
-    return resolveGithubToken(reference.owner, reference.repo);
+    return resolveGithubTokenByRepository === undefined
+      ? resolveGithubToken(reference.owner)
+      : resolveGithubTokenByRepository(reference.owner, reference.repo);
   };
 };
 
@@ -129,31 +143,19 @@ export const createConsoleRepositoryProjectNameResolver = (
   };
 };
 
-export const createConsoleGithubTokenResolver = (
+export const createConsoleGithubTokenResolverByRepository = (
   defaultToken: string,
   consoleProjectUrls: Record<string, string> | null,
   consoleGithubTokens: Record<string, string> | null,
   consoleProjectRepositories: ConsoleProjectRepositories | null = null,
-): ConsoleGithubTokenResolver => {
+): ConsoleGithubTokenByRepositoryResolver => {
+  const resolveProjectName = createConsoleRepositoryProjectNameResolver(
+    consoleProjectUrls,
+    consoleProjectRepositories,
+  );
   const resolvedTokenByRepositoryKey = new Map<string, string>();
-  const resolveProjectName =
-    createConsoleProjectNameResolver(consoleProjectUrls);
-  const resolveRepositoryProjectName =
-    createConsoleRepositoryProjectNameResolver(
-      consoleProjectUrls,
-      consoleProjectRepositories,
-    );
-  return (
-    repositoryOwner: string,
-    repositoryName?: string,
-    projectUrl?: string,
-  ): string => {
-    const cacheKey =
-      projectUrl !== undefined
-        ? `project:${projectUrlKeyOf(projectUrl)}`
-        : repositoryName === undefined
-          ? `owner:${repositoryOwner}`
-          : `repository:${repositoryOwner}/${repositoryName}`;
+  return (repositoryOwner: string, repositoryName: string): string => {
+    const cacheKey = `repository:${repositoryOwner}/${repositoryName}`;
     const alreadyResolved = resolvedTokenByRepositoryKey.get(cacheKey);
     if (alreadyResolved !== undefined) {
       return alreadyResolved;
@@ -161,16 +163,78 @@ export const createConsoleGithubTokenResolver = (
     if (consoleProjectUrls === null || consoleGithubTokens === null) {
       return defaultToken;
     }
+    const matchedPjcode = resolveProjectName(repositoryOwner, repositoryName);
+    if (matchedPjcode === null) {
+      return defaultToken;
+    }
+    const token = consoleGithubTokens[matchedPjcode];
+    if (token === undefined || token.trim().length === 0) {
+      throw new Error(
+        `The GitHub token for pjcode "${matchedPjcode}" is not configured: set consoleGithubTokens.${matchedPjcode} in the console config file`,
+      );
+    }
+    const trimmedToken = token.trim();
+    resolvedTokenByRepositoryKey.set(cacheKey, trimmedToken);
+    return trimmedToken;
+  };
+};
+
+export const createConsoleGithubTokenResolverByProjectUrl = (
+  defaultToken: string,
+  consoleProjectUrls: Record<string, string> | null,
+  consoleGithubTokens: Record<string, string> | null,
+): ConsoleGithubTokenByProjectUrlResolver => {
+  const resolveProjectName =
+    createConsoleProjectNameResolver(consoleProjectUrls);
+  const resolvedTokenByProjectUrl = new Map<string, string>();
+  return (projectUrl: string): string => {
+    const cacheKey = `project:${projectUrlKeyOf(projectUrl)}`;
+    const alreadyResolved = resolvedTokenByProjectUrl.get(cacheKey);
+    if (alreadyResolved !== undefined) {
+      return alreadyResolved;
+    }
+    if (consoleProjectUrls === null || consoleGithubTokens === null) {
+      return defaultToken;
+    }
     const matchedPjcode =
-      projectUrl !== undefined
-        ? (Object.entries(consoleProjectUrls).find(
-            ([, configuredProjectUrl]) =>
-              projectUrlKeyOf(configuredProjectUrl) ===
-              projectUrlKeyOf(projectUrl),
-          )?.[0] ?? resolveProjectName(repositoryOwner))
-        : repositoryName === undefined
-          ? resolveProjectName(repositoryOwner)
-          : resolveRepositoryProjectName(repositoryOwner, repositoryName);
+      Object.entries(consoleProjectUrls).find(
+        ([, configuredProjectUrl]) =>
+          projectUrlKeyOf(configuredProjectUrl) === projectUrlKeyOf(projectUrl),
+      )?.[0] ?? resolveProjectName(extractProjectOwner(projectUrl) ?? '');
+    if (matchedPjcode === null) {
+      return defaultToken;
+    }
+    const token = consoleGithubTokens[matchedPjcode];
+    if (token === undefined || token.trim().length === 0) {
+      throw new Error(
+        `The GitHub token for pjcode "${matchedPjcode}" is not configured: set consoleGithubTokens.${matchedPjcode} in the console config file`,
+      );
+    }
+    const trimmedToken = token.trim();
+    resolvedTokenByProjectUrl.set(cacheKey, trimmedToken);
+    return trimmedToken;
+  };
+};
+
+export const createConsoleGithubTokenResolver = (
+  defaultToken: string,
+  consoleProjectUrls: Record<string, string> | null,
+  consoleGithubTokens: Record<string, string> | null,
+  _consoleProjectRepositories: ConsoleProjectRepositories | null = null,
+): ConsoleGithubTokenResolver => {
+  const resolvedTokenByRepositoryKey = new Map<string, string>();
+  const resolveProjectName =
+    createConsoleProjectNameResolver(consoleProjectUrls);
+  return (repositoryOwner: string): string => {
+    const cacheKey = `owner:${repositoryOwner}`;
+    const alreadyResolved = resolvedTokenByRepositoryKey.get(cacheKey);
+    if (alreadyResolved !== undefined) {
+      return alreadyResolved;
+    }
+    if (consoleProjectUrls === null || consoleGithubTokens === null) {
+      return defaultToken;
+    }
+    const matchedPjcode = resolveProjectName(repositoryOwner);
     if (matchedPjcode === null) {
       return defaultToken;
     }

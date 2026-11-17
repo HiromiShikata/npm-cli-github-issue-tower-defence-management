@@ -10497,7 +10497,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(resolved.get(issueUrlOf(1))).toEqual([recordedPrUrl]);
     });
 
-    it('includes a recorded open pull request when timeline pagination is incomplete', async () => {
+    it('leaves recorded pull requests unresolved when timeline pagination is incomplete', async () => {
       const recordedPrUrl = relatedPrUrlOf(302);
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
@@ -10532,7 +10532,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
-      expect(resolved.get(issueUrlOf(1))).toEqual([recordedPrUrl]);
+      expect(resolved.has(issueUrlOf(1))).toBe(false);
     });
 
     it('reads every comment page and excludes a recorded pull request that is no longer open', async () => {
@@ -10745,7 +10745,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ]);
     });
 
-    it('omits timeline-derived results when the timeline does not fit one page', async () => {
+    it('omits an issue whose timeline does not fit one page so it is resolved by the paginating path', async () => {
       mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: () => ({
           data: buildBatchData([
@@ -10764,7 +10764,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository } = createApiV3CheerioRestIssueRepository();
       const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
 
-      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+      expect(resolved.has(issueUrlOf(1))).toBe(false);
     });
 
     it('omits an issue whose alias failed for a reason other than not found so an unknown state is not read as absent', async () => {

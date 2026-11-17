@@ -1,5 +1,6 @@
 import {
   createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByProjectUrl,
   createConsoleGithubTokenResolverByItemUrl,
   createConsoleIssueRepositoryResolver,
   createConsoleProjectNameResolver,
@@ -52,6 +53,14 @@ describe('createConsoleProjectRepositoryResolver', () => {
     const resolve = createConsoleProjectRepositoryResolver<string>(
       resolveGithubToken,
       (githubToken) => `repository-with-${githubToken}`,
+      createConsoleGithubTokenResolverByProjectUrl(
+        'default-token',
+        {
+          first: 'https://github.com/orgs/example-owner/projects/1',
+          second: 'https://github.com/orgs/example-owner/projects/2',
+        },
+        { first: 'token-first', second: 'token-second' },
+      ),
     );
 
     expect(resolve('https://github.com/orgs/EXAMPLE-OWNER/projects/2/')).toBe(
@@ -98,14 +107,13 @@ describe('createConsoleGithubTokenResolverByItemUrl', () => {
 describe('createConsoleIssueRepositoryResolver', () => {
   it('builds the issue repository from the token of the owner in the url', () => {
     const resolve = createConsoleIssueRepositoryResolver<string>(
-      (repositoryOwner, repositoryName) =>
-        `token-of-${repositoryOwner}/${repositoryName}`,
+      (repositoryOwner) => `token-of-${repositoryOwner}`,
       (githubToken) => `repository-with-${githubToken}`,
     );
 
     expect(
       resolve('https://github.com/acme-labs/acme-portal-mock/issues/178'),
-    ).toBe('repository-with-token-of-acme-labs/acme-portal-mock');
+    ).toBe('repository-with-token-of-acme-labs');
   });
 
   it('throws when the repository owner cannot be read from the url', () => {
