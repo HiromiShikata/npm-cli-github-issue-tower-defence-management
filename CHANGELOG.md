@@ -1,3 +1,10 @@
+# [2.196.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.11...v2.196.0) (2026-11-17)
+
+
+### Features
+
+* **console:** remove Delete with child tasks option from story deletion ([#3732](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3732)) ([8295ff4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8295ff4ce1e76b4243daba010b4702348ddaf899))
+
 ## [2.195.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.10...v2.195.11) (2026-11-15)
 
 
