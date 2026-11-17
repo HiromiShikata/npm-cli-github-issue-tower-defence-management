@@ -13,6 +13,21 @@ describe('pullRequestUrlsFromCommentBodies', () => {
       expected: [PR_URL],
     },
     {
+      case: 'a pullRequestUrl inside a jsonl fence is ignored',
+      bodies: [`\`\`\`jsonl\n{"pullRequestUrl": "${PR_URL}"}\n\`\`\``],
+      expected: [],
+    },
+    {
+      case: 'a pullRequestUrl inside a json5 fence is ignored',
+      bodies: [`\`\`\`json5\n{"pullRequestUrl": "${PR_URL}"}\n\`\`\``],
+      expected: [],
+    },
+    {
+      case: 'a pullRequestUrl inside a javascript fence is ignored',
+      bodies: [`\`\`\`javascript\n{"pullRequestUrl": "${PR_URL}"}\n\`\`\``],
+      expected: [],
+    },
+    {
       case: 'a null pullRequestUrl is ignored',
       bodies: [fenced('{"pullRequestUrl": null}')],
       expected: [],

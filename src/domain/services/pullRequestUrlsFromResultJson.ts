@@ -1,4 +1,4 @@
-const FENCED_JSON_BLOCK_PATTERN = /```json[^\n]*\n([\s\S]*?)```/g;
+const FENCED_JSON_BLOCK_PATTERN = /```json[ \t]*\n([\s\S]*?)```/g;
 
 const PULL_REQUEST_URL_IN_RESULT_PATTERN =
   /"pullRequestUrl"\s*:\s*"(https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/pull\/\d+)"/g;
