@@ -1893,7 +1893,7 @@ describe('buildReadIssueRepositoryResolver', () => {
       const repo = resolver('https://github.com/owner/repo/issues/1');
 
       expect(repo).toBe(primaryRepo);
-      expect(resolveGithubToken).toHaveBeenCalledWith('owner', 'repo');
+      expect(resolveGithubToken).toHaveBeenCalledWith('owner');
       expect(buildIssueRepositoryForToken).toHaveBeenCalledWith(
         'resolved-write-token',
       );
@@ -1921,7 +1921,7 @@ describe('buildReadIssueRepositoryResolver', () => {
       const repo = resolver('https://github.com/owner/repo/issues/1');
 
       expect(repo).toBe(primaryRepo);
-      expect(resolveGithubToken).toHaveBeenCalledWith('owner', 'repo');
+      expect(resolveGithubToken).toHaveBeenCalledWith('owner');
       expect(mintTokens).not.toHaveBeenCalled();
     });
 
@@ -2066,7 +2066,7 @@ describe('buildReadIssueRepositoryResolver', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(readRepo.deleteAllCommentsByUrl).not.toHaveBeenCalled();
-      expect(resolveGithubToken).toHaveBeenCalledWith('owner-a', 'repo');
+      expect(resolveGithubToken).toHaveBeenCalledWith('owner-a');
     });
 
     it('looks up the authenticated user login with the primary-token write repository when the read pool holds only an App installation token', async () => {
@@ -2101,7 +2101,7 @@ describe('buildReadIssueRepositoryResolver', () => {
         'primary-login',
       );
       expect(readRepo.getAuthenticatedUserLogin).not.toHaveBeenCalled();
-      expect(resolveGithubToken).toHaveBeenCalledWith('owner-a', 'repo');
+      expect(resolveGithubToken).toHaveBeenCalledWith('owner-a');
       expect(buildIssueRepositoryForToken).toHaveBeenCalledWith('write-token');
     });
   });

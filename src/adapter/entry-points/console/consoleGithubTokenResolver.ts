@@ -30,15 +30,13 @@ export const createConsoleIssueRepositoryResolver = <IssueRepositoryType>(
   buildIssueRepositoryForToken: (githubToken: string) => IssueRepositoryType,
 ): ((issueOrPullRequestUrl: string) => IssueRepositoryType) => {
   return (issueOrPullRequestUrl: string): IssueRepositoryType => {
-    const reference = extractRepositoryReference(issueOrPullRequestUrl);
-    if (reference === null) {
+    const repositoryOwner = extractRepositoryOwner(issueOrPullRequestUrl);
+    if (repositoryOwner === null) {
       throw new Error(
         `The repository owner cannot be read from the operated url: ${issueOrPullRequestUrl}`,
       );
     }
-    return buildIssueRepositoryForToken(
-      resolveGithubToken(reference.owner, reference.repo),
-    );
+    return buildIssueRepositoryForToken(resolveGithubToken(repositoryOwner));
   };
 };
 

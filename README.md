@@ -383,21 +383,7 @@ Projects are told apart by `org` (the owner) unless a project config lists repos
 - The console token and project lookups use the same rules when they know the repository. The directory `consoleProjectConfigDirectory` supplies the repository lists.
 - A pull request whose body does not name the task can still be linked to the task when a completion comment of that task records it as `"pullRequestUrl": "<url>"` in a fenced JSON result block.
 
-Two configs of the same owner, one listing a repository and one not:
-
-```yaml
-# tdpm/task-project.config.yml
-org: 'my-org'
-projectUrl: 'https://github.com/users/my-org/projects/1'
-repositories:
-  - 'my-org/task-repo'
-```
-
-```yaml
-# tdpm/main-project.config.yml
-org: 'my-org'
-projectUrl: 'https://github.com/users/my-org/projects/2'
-```
+For two configs of the same owner, one listing a repository and one not: `tdpm/task-project.config.yml` sets `org: 'my-org'`, `projectUrl: 'https://github.com/users/my-org/projects/1'` and `repositories: ['my-org/task-repo']`, while `tdpm/main-project.config.yml` sets only `org: 'my-org'` and `projectUrl: 'https://github.com/users/my-org/projects/2'`.
 
 Example:
 

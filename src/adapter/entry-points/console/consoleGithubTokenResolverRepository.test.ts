@@ -1,7 +1,4 @@
-import {
-  createConsoleGithubTokenResolver,
-  createConsoleIssueRepositoryResolver,
-} from './consoleGithubTokenResolver';
+import { createConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
 
 const ALPHA_URL = 'https://github.com/users/example-owner/projects/1';
 const BETA_URL = 'https://github.com/users/example-owner/projects/2';
@@ -63,31 +60,5 @@ describe('createConsoleGithubTokenResolver by repository', () => {
     expect(resolve('example-owner', 'other-repo')).toBe('token-beta');
     expect(resolve('example-owner', 'example-tasks')).toBe('token-alpha');
     expect(resolve('example-owner')).toBe('token-alpha');
-  });
-});
-
-describe('createConsoleIssueRepositoryResolver passes the repository name', () => {
-  test.each([
-    {
-      case: 'an issue URL of a listed repository asks for that repository',
-      url: 'https://github.com/example-owner/example-tasks/issues/3',
-      expectedArgs: ['example-owner', 'example-tasks'],
-    },
-    {
-      case: 'a pull request URL of another repository asks for that repository',
-      url: 'https://github.com/example-owner/other-repo/pull/7',
-      expectedArgs: ['example-owner', 'other-repo'],
-    },
-  ])('$case', ({ url, expectedArgs }) => {
-    const requestedArgs: unknown[][] = [];
-    const resolveGithubToken = (...args: [string, string?]): string => {
-      requestedArgs.push(args);
-      return 'token';
-    };
-    createConsoleIssueRepositoryResolver(
-      resolveGithubToken,
-      (token) => token,
-    )(url);
-    expect(requestedArgs).toEqual([expectedArgs]);
   });
 });
