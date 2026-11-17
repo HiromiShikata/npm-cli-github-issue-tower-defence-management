@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import type { ProjectRepositoryScope } from '../../../domain/services/projectRepositoryScope';
 import fs from 'fs';
 import { writeSituationFile } from './situationFileWriter';
 import {
@@ -125,6 +126,12 @@ const readSilentSeconds = (
 };
 
 export class HandleScheduledEventUseCaseHandler {
+  constructor(
+    private readonly projectScopeOf: (
+      configFilePath: string,
+    ) => ProjectRepositoryScope | null = () => null,
+  ) {}
+
   handle = async (
     configFilePath: string,
     _verbose: boolean,
@@ -750,6 +757,7 @@ export class HandleScheduledEventUseCaseHandler {
 
     const result = await handleScheduledEventUseCase.run({
       ...mergedInput,
+      projectScope: this.projectScopeOf(configFilePath),
       afterIssuesFetched,
       allowedDependencyRepoNameWithOwner,
       llmModelNameByAgentName:

@@ -277,6 +277,97 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       ]);
     });
 
+    describe('issues matched by queryToAddProject with a project repository scope', () => {
+      const project = { ...mock<Project>(), id: 'project-1' };
+      const searchedIssueNonPr: SearchedIssue = {
+        url: 'https://github.com/testOrg/testRepo/issues/11',
+        org: 'testOrg',
+        repo: 'testRepo',
+        number: 11,
+        state: 'OPEN',
+        author: 'dependabot',
+        assignees: [],
+        isPr: false,
+      };
+
+      test.each([
+        {
+          case: 'a listed project adds a matched issue of its listed repository',
+          projectScope: {
+            org: 'testOrg',
+            repositories: ['testOrg/testRepo'],
+            listedRepositoriesOfOtherProjects: [],
+            ownsUnlistedRepositoriesOfOwner: false,
+          },
+          expectedAdded: true,
+        },
+        {
+          case: 'an unlisted project skips a matched issue of a repository listed by its sibling, ignoring case',
+          projectScope: {
+            org: 'testOrg',
+            repositories: null,
+            listedRepositoriesOfOtherProjects: ['testorg/testrepo'],
+            ownsUnlistedRepositoriesOfOwner: false,
+          },
+          expectedAdded: false,
+        },
+        {
+          case: 'an unlisted project with no sibling listing adds the matched issue as before',
+          projectScope: {
+            org: 'testOrg',
+            repositories: null,
+            listedRepositoriesOfOtherProjects: [],
+            ownsUnlistedRepositoriesOfOwner: false,
+          },
+          expectedAdded: true,
+        },
+        {
+          case: 'a listed project skips a matched issue of an unlisted repository when every same-owner project lists repositories',
+          projectScope: {
+            org: 'testOrg',
+            repositories: ['testOrg/listed-repo'],
+            listedRepositoriesOfOtherProjects: [],
+            ownsUnlistedRepositoriesOfOwner: false,
+          },
+          expectedAdded: false,
+        },
+        {
+          case: 'a listed project skips a matched issue of an unlisted repository when an unlisted sibling of its owner exists',
+          projectScope: {
+            org: 'testOrg',
+            repositories: ['testOrg/listed-repo'],
+            listedRepositoriesOfOtherProjects: [],
+            ownsUnlistedRepositoriesOfOwner: false,
+          },
+          expectedAdded: false,
+        },
+      ])('$case', async ({ projectScope, expectedAdded }) => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([
+          searchedIssueNonPr,
+        ]);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          autoAssignManagerAuthors: ['dependabot'],
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+          projectScope,
+        });
+
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual(
+          expectedAdded ? [[project, searchedIssueNonPr.url]] : [],
+        );
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual(
+          expectedAdded
+            ? [[{ org: 'testOrg', repo: 'testRepo', number: 11 }, ['manager1']]]
+            : [],
+        );
+      });
+    });
+
     describe('issues matched by queryToAddProject', () => {
       const project = { ...mock<Project>(), id: 'project-1' };
       const searchedIssue: SearchedIssue = {

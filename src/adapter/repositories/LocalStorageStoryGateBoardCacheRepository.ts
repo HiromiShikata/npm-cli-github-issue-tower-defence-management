@@ -123,6 +123,7 @@ export class LocalStorageStoryGateBoardCacheRepository implements StoryGateBoard
         filePath,
         modifiedAt: stat.mtime,
         projectId: stringFieldOf(project, 'id') ?? '',
+        projectUrl: stringFieldOf(project, 'url'),
         storyFieldId: stringFieldOf(story, 'fieldId'),
         storyOptions: storyOptionsParse(story),
         storyIssueUrlByOptionName: storyIssueUrlByOptionNameParse(json),

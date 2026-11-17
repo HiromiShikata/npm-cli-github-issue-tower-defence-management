@@ -12,7 +12,10 @@ import {
   StoryGateIssueComment,
   StoryGateIssueRepository,
 } from '../adapter-interfaces/StoryGateIssueRepository';
-import { StoryGateProjectConfigRepository } from '../adapter-interfaces/StoryGateProjectConfigRepository';
+import {
+  StoryGateProjectConfig,
+  StoryGateProjectConfigRepository,
+} from '../adapter-interfaces/StoryGateProjectConfigRepository';
 import {
   githubIssueReferenceParse,
   githubIssueUrlsExtractInOrder,
@@ -23,6 +26,11 @@ import {
   issueCommentsFormatAsText,
   issueCommentsSplitByAuthorKind,
 } from './issueCommentSplit';
+import {
+  isRepositoryListed,
+  projectConfigForRepositoryResolve,
+  projectUrlMatches,
+} from '../../services/projectRepositoryScope';
 import { approvedSpecificationUrlsExtract } from './specificationRoutingDetect';
 import { specificationSectionsDetect } from './specificationSectionDetect';
 import {
@@ -189,6 +197,16 @@ const liveStoryNameFirst = (items: IssueProjectItem[]): string | null =>
     .map((item) => item.storyName)
     .find((name): name is string => name !== null && name !== '') ?? null;
 
+const cacheOwnedByListedConfig = (
+  cache: BoardCache,
+  configs: StoryGateProjectConfig[],
+): boolean =>
+  configs.some(
+    (config) =>
+      isRepositoryListed(config) &&
+      projectUrlMatches(cache.projectUrl ?? null, config.projectUrl ?? null),
+  );
+
 const activeStoryOptionNames = (cache: BoardCache | null): string[] =>
   cache === null
     ? []
@@ -205,11 +223,8 @@ export class StoryGateCheckUseCase {
 
   run = async (input: StoryGateCheckInput): Promise<StoryGateCheckOutput> => {
     const caches = await this.boardCacheRepository.listBoardCachesNewestFirst();
-    const cacheHit = this.boardCacheHitFind(
-      caches,
-      input.issue.url,
-      input.issue.owner,
-    );
+    const configs = await this.projectConfigRepository.listProjectConfigs();
+    const cacheHit = this.boardCacheHitFind(caches, input.issue, configs);
     const state = this.evaluationStateCreate(input, cacheHit);
     const facts = state.result.facts;
     const cachedStory = cacheHit?.issue.story ?? null;
@@ -260,10 +275,11 @@ export class StoryGateCheckUseCase {
     if (isRegularStory(storyValue)) {
       return this.assignedIssueEvaluate(state, input, caches, 'REGULAR_STORY');
     }
-    const searchCaches = await this.storyGateSearchCachesResolve(
+    const searchCaches = this.storyGateSearchCachesResolve(
       caches,
       cacheHit,
-      input.issue.owner,
+      input.issue,
+      configs,
     );
     const storyIssueUrls = this.storyIssueUrlsFind(searchCaches, storyValue);
     if (storyIssueUrls.length === 0) {
@@ -321,16 +337,39 @@ export class StoryGateCheckUseCase {
 
   private boardCacheHitFind = (
     caches: BoardCache[],
-    issueUrl: string,
-    issueOwner: string,
+    issueReference: GithubIssueReference,
+    configs: StoryGateProjectConfig[],
   ): BoardCacheHit | null => {
     for (const cache of caches) {
-      const issue = cache.issues.find((cached) => cached.url === issueUrl);
-      if (issue && this.boardCacheOwnerDetect(cache) === issueOwner) {
+      const issue = cache.issues.find(
+        (cached) => cached.url === issueReference.url,
+      );
+      if (
+        issue &&
+        this.boardCacheBelongsToIssueProject(cache, issueReference, configs)
+      ) {
         return { cache, issue };
       }
     }
     return null;
+  };
+
+  private boardCacheBelongsToIssueProject = (
+    cache: BoardCache,
+    issueReference: GithubIssueReference,
+    configs: StoryGateProjectConfig[],
+  ): boolean => {
+    const config = projectConfigForRepositoryResolve(configs, issueReference);
+    if (config !== null && isRepositoryListed(config)) {
+      return projectUrlMatches(
+        cache.projectUrl ?? null,
+        config.projectUrl ?? null,
+      );
+    }
+    return (
+      this.boardCacheOwnerDetect(cache) === issueReference.owner &&
+      !cacheOwnedByListedConfig(cache, configs)
+    );
   };
 
   private issueProjectItemsRead = async (
@@ -544,11 +583,8 @@ export class StoryGateCheckUseCase {
       );
     }
     const configs = await this.projectConfigRepository.listProjectConfigs();
-    const config = configs.find(
-      (candidate) =>
-        candidate.org.toLowerCase() === input.issue.owner.toLowerCase(),
-    );
-    if (config === undefined) {
+    const config = projectConfigForRepositoryResolve(configs, input.issue);
+    if (config === null) {
       return this.decideUnresolvedStory(
         state,
         input,
@@ -639,25 +675,28 @@ export class StoryGateCheckUseCase {
     return majorityIsTied ? null : majorityOwner;
   };
 
-  private storyGateSearchCachesResolve = async (
+  private storyGateSearchCachesResolve = (
     caches: BoardCache[],
     cacheHit: BoardCacheHit | null,
-    issueOwner: string,
-  ): Promise<BoardCache[]> => {
+    issueReference: GithubIssueReference,
+    configs: StoryGateProjectConfig[],
+  ): BoardCache[] => {
     if (cacheHit !== null) {
       return [cacheHit.cache];
     }
-    const configs = await this.projectConfigRepository.listProjectConfigs();
-    const config = configs.find(
-      (candidate) => candidate.org.toLowerCase() === issueOwner.toLowerCase(),
-    );
-    if (config === undefined) {
+    const config = projectConfigForRepositoryResolve(configs, issueReference);
+    if (config === null) {
       return [];
+    }
+    if (isRepositoryListed(config)) {
+      return caches.filter((cache) =>
+        projectUrlMatches(cache.projectUrl ?? null, config.projectUrl ?? null),
+      );
     }
     return caches.filter(
       (cache) =>
         this.boardCacheOwnerDetect(cache)?.toLowerCase() ===
-        config.org.toLowerCase(),
+          config.org.toLowerCase() && !cacheOwnedByListedConfig(cache, configs),
     );
   };
 
@@ -888,8 +927,8 @@ export class StoryGateCheckUseCase {
     }
     const cacheHit = this.boardCacheHitFind(
       caches,
-      issueUrl,
-      issueReference.owner,
+      { ...issueReference, url: issueUrl },
+      await this.projectConfigRepository.listProjectConfigs(),
     );
     if (cacheHit !== null) {
       return cacheHit.issue.body;

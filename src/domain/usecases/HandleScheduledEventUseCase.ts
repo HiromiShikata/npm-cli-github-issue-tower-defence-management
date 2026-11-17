@@ -1,4 +1,5 @@
 import { Issue } from '../entities/Issue';
+import type { ProjectRepositoryScope } from '../services/projectRepositoryScope';
 import { IssueSummary } from '../entities/IssueSummary';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
@@ -201,6 +202,7 @@ export class HandleScheduledEventUseCase {
     thresholdForDispatchLoop?: number;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
+    projectScope?: ProjectRepositoryScope | null;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
     allowedDependencyRepoNameWithOwner?: string | null;
@@ -789,6 +791,9 @@ ${JSON.stringify(e)}
               issues,
               currentProjectOrg: input.org,
               project,
+              ...(input.projectScope
+                ? { projectScope: input.projectScope }
+                : {}),
             });
           if (stoppedScopeUnitNames.length > 0) {
             console.log(
@@ -970,6 +975,7 @@ ${JSON.stringify(e)}
           projectToAddSearchedIssues: project,
           queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
           queryToAddProject: input.queryToAddProject ?? null,
+          projectScope: input.projectScope ?? null,
         }),
       failures,
     );

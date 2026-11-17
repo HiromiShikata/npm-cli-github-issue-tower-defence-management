@@ -61,10 +61,14 @@ import { FileSystemWorkerSessionFailureStreakRepository } from '../../repositori
 import { FileSystemWorkerSessionLogRepository } from '../../repositories/FileSystemWorkerSessionLogRepository';
 import {
   createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByProjectUrl,
+  createConsoleGithubTokenResolverByRepository,
   createConsoleGithubTokenResolverByItemUrl,
-  createConsoleProjectNameResolver,
+  createConsoleRepositoryProjectNameResolver,
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
+import { projectRepositoryListsByPjcodeLoad } from '../../repositories/projectRepositoryListsLoad';
+import { projectRepositoryScopeLoad } from '../../repositories/projectRepositoryScopeLoad';
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
 import { buildProjectItemRepositoryFromGraphqlProjectItemRepository } from './buildProjectItemRepositoryFromGraphqlProjectItemRepository';
 import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
@@ -459,7 +463,9 @@ program
         HandleScheduledEventUseCaseHandler,
         ScheduledEventHandlerInputValidationError,
       } = await import('../handlers/HandleScheduledEventUseCaseHandler');
-      const handler = new HandleScheduledEventUseCaseHandler();
+      const handler = new HandleScheduledEventUseCaseHandler(
+        projectRepositoryScopeLoad,
+      );
       try {
         await handler.handle(
           options.config,
@@ -1334,7 +1340,34 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     token,
     config.consoleProjects ?? null,
     config.consoleGithubTokens ?? null,
+    projectRepositoryListsByPjcodeLoad(
+      config.consoleProjectConfigDirectory ?? null,
+      config.consoleProjects ?? null,
+    ),
   );
+  const resolveProjectName = createConsoleRepositoryProjectNameResolver(
+    config.consoleProjects ?? null,
+    projectRepositoryListsByPjcodeLoad(
+      config.consoleProjectConfigDirectory ?? null,
+      config.consoleProjects ?? null,
+    ),
+  );
+  const resolveGithubTokenByRepository =
+    createConsoleGithubTokenResolverByRepository(
+      token,
+      config.consoleProjects ?? null,
+      config.consoleGithubTokens ?? null,
+      projectRepositoryListsByPjcodeLoad(
+        config.consoleProjectConfigDirectory ?? null,
+        config.consoleProjects ?? null,
+      ),
+    );
+  const resolveGithubTokenByProjectUrl =
+    createConsoleGithubTokenResolverByProjectUrl(
+      token,
+      config.consoleProjects ?? null,
+      config.consoleGithubTokens ?? null,
+    );
   const issueRepositoryByToken = new Map<string, IssueRepository>();
   issueRepositoryByToken.set(token, issueRepository);
   const buildIssueRepositoryForToken = (
@@ -1368,10 +1401,16 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     mintReadOnlyTokensFromKeyPaths,
     buildIssueRepositoryForToken,
     resolveGithubToken,
-    createConsoleProjectNameResolver(config.consoleProjects ?? null),
+    resolveProjectName,
+    Date.now,
+    resolveProjectName,
+    resolveGithubTokenByRepository,
   );
   const resolveGithubTokenForItemUrl =
-    createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);
+    createConsoleGithubTokenResolverByItemUrl(
+      resolveGithubToken,
+      resolveGithubTokenByRepository,
+    );
   const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();
   projectRepositoryByToken.set(token, projectRepository);
   const buildProjectRepositoryForToken = (
@@ -1392,6 +1431,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     createConsoleProjectRepositoryResolver<GraphqlProjectRepository>(
       resolveGithubToken,
       buildProjectRepositoryForToken,
+      resolveGithubTokenByProjectUrl,
     );
 
   const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
@@ -1461,6 +1501,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardProjectUrls: pjcodeToProjectUrl,
     fleetTaskCreateUrl,
     resolveGithubToken,
+    resolveGithubTokenByRepository,
     issueRepository,
     liveSessionRepository: new OpenAiLiveSessionRepository(),
     resolveIssueRepository,

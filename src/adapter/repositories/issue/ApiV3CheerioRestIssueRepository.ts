@@ -17,6 +17,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import { ProjectFieldWriteOutcome } from '../../../domain/entities/ProjectFieldWriteOutcome';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import { isPullRequestRelatedToIssue } from '../../../domain/services/pullRequestIssueRelation';
+import { pullRequestUrlsFromCommentBodies } from '../../../domain/services/pullRequestUrlsFromResultJson';
 import {
   StoryObjectMap,
   buildStoryObjectMap,
@@ -235,6 +236,13 @@ type IssueTimelineResponse = {
   data?: {
     repository?: {
       issue?: {
+        comments?: {
+          pageInfo?: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          } | null;
+          nodes: ({ body: string } | null)[] | null;
+        } | null;
         timelineItems: {
           pageInfo: {
             endCursor: string;
@@ -288,6 +296,13 @@ type IssueRelatedOpenPullRequestUrlsBatchResponse = {
     string,
     {
       issue?: {
+        comments?: {
+          pageInfo: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          };
+          nodes: ({ body: string } | null)[];
+        } | null;
         timelineItems: {
           pageInfo: {
             endCursor: string | null;
@@ -3358,9 +3373,18 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const query = `
-      query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+      query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String, $commentsAfter: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issueNumber) {
+            comments(first: 100, after: $commentsAfter) {
+              pageInfo {
+                endCursor
+                hasNextPage
+              }
+              nodes {
+                body
+              }
+            }
             timelineItems(first: 100, after: $after, itemTypes: [CROSS_REFERENCED_EVENT]) {
               pageInfo {
                 endCursor
@@ -3398,13 +3422,16 @@ export class ApiV3CheerioRestIssueRepository
     const relatedPRsMap: Map<string, RelatedPullRequest> = new Map();
     let after: string | null = null;
     let hasNextPage = true;
+    let commentsAfter: string | null = null;
+    let commentsHasNextPage = true;
+    const taskCommentBodies: string[] = [];
 
-    while (hasNextPage) {
+    while (hasNextPage || commentsHasNextPage) {
       const response = await this.fetchWithRateLimitRetry(() =>
         fetchGithubGraphql({
           ghToken: this.ghToken,
           query,
-          variables: { owner, repo, issueNumber, after },
+          variables: { owner, repo, issueNumber, after, commentsAfter },
         }),
       );
 
@@ -3430,7 +3457,21 @@ export class ApiV3CheerioRestIssueRepository
         return [];
       }
 
-      for (const item of issueData.timelineItems?.nodes ?? []) {
+      if (commentsHasNextPage) {
+        taskCommentBodies.push(
+          ...(issueData.comments?.nodes ?? []).flatMap((node) =>
+            node?.body ? [node.body] : [],
+          ),
+        );
+        commentsHasNextPage =
+          issueData.comments?.pageInfo?.hasNextPage ?? false;
+        commentsAfter = issueData.comments?.pageInfo?.endCursor ?? null;
+      }
+
+      const timelineNodes = hasNextPage
+        ? (issueData.timelineItems?.nodes ?? [])
+        : [];
+      for (const item of timelineNodes) {
         if (!item) {
           console.warn(
             `ApiV3CheerioRestIssueRepository: skipping null timeline node returned by GitHub GraphQL API. issueUrl: ${issueUrl}`,
@@ -3440,116 +3481,29 @@ export class ApiV3CheerioRestIssueRepository
         if (!this.isRelatedOpenPullRequestTimelineItem(item, issueUrl))
           continue;
 
-        const pr = item.source;
-        const prUrl = pr.url || '';
-
-        if (!prUrl) continue;
-
-        const { owner: prOwner, repo: prRepo } = this.parseIssueUrl(prUrl);
-
-        let isConflicted = pr.mergeable === 'CONFLICTING';
-        let mergeable: string | null = pr.mergeable ?? null;
-        if (
-          pr.number !== undefined &&
-          (pr.mergeable === undefined ||
-            pr.mergeable === null ||
-            pr.mergeable === 'UNKNOWN')
-        ) {
-          let resolved: {
-            mergeable: string | null;
-            mergeStateStatus: string | null;
-          } | null;
-          try {
-            resolved = await this.resolveMergeabilityWithRetry(
-              prOwner,
-              prRepo,
-              pr.number,
-            );
-          } catch (error) {
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            if (errorMessage.includes('NOT_FOUND')) {
-              console.info(
-                `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
-              );
-            } else {
-              console.warn(
-                `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
-              );
-            }
-            continue;
-          }
-          if (resolved !== null) {
-            mergeable = resolved.mergeable;
-            isConflicted =
-              resolved.mergeable === 'CONFLICTING' ||
-              resolved.mergeStateStatus === 'DIRTY';
-          }
-        }
-
-        if (pr.number === undefined) continue;
-
-        let slimPullRequest: SlimPullRequest;
-        try {
-          const fetchedSlimPullRequest = await this.fetchSlimPullRequest(
-            prOwner,
-            prRepo,
-            pr.number,
-          );
-          if (
-            !fetchedSlimPullRequest ||
-            fetchedSlimPullRequest.state !== 'OPEN'
-          ) {
-            console.info(
-              `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
-            );
-            continue;
-          }
-          slimPullRequest = fetchedSlimPullRequest;
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          console.warn(
-            `ApiV3CheerioRestIssueRepository: fetching pull request status failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
-          );
-          continue;
-        }
-        const baseRefName =
-          slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
-        const slimPullRequestWithRefs: SlimPullRequest = {
-          ...slimPullRequest,
-          url: slimPullRequest.url || prUrl,
-          headRefName: slimPullRequest.headRefName ?? pr.headRefName,
-          baseRefName,
-        };
-        let prStatus: RelatedPullRequest;
-        try {
-          prStatus = await this.buildRelatedPullRequestFromSlim(
-            prOwner,
-            prRepo,
-            slimPullRequestWithRefs,
-          );
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          console.warn(
-            `ApiV3CheerioRestIssueRepository: fetching pull request CI status failed, keeping PR with unknown CI status. prUrl: ${prUrl} error: ${errorMessage}`,
-          );
-          prStatus = this.buildRelatedPullRequestWithUnknownCiStatus(
-            slimPullRequestWithRefs,
-          );
-        }
-
-        relatedPRsMap.set(prUrl, {
-          ...prStatus,
-          isConflicted,
-          mergeable,
-          createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
-        });
+        await this.relatedOpenPullRequestRecord(item.source, relatedPRsMap);
       }
 
-      hasNextPage = issueData.timelineItems?.pageInfo?.hasNextPage ?? false;
-      after = issueData.timelineItems?.pageInfo?.endCursor ?? null;
+      if (hasNextPage) {
+        hasNextPage = issueData.timelineItems?.pageInfo?.hasNextPage ?? false;
+        after = issueData.timelineItems?.pageInfo?.endCursor ?? null;
+      }
+    }
+
+    for (const recordedUrl of pullRequestUrlsFromCommentBodies(
+      taskCommentBodies,
+    )) {
+      if (relatedPRsMap.has(recordedUrl)) continue;
+      await this.relatedOpenPullRequestRecord(
+        {
+          __typename: 'PullRequest',
+          url: recordedUrl,
+          number: Number(recordedUrl.split('/').pop()),
+          body: null,
+          state: 'OPEN',
+        },
+        relatedPRsMap,
+      );
     }
 
     const prs = Array.from(relatedPRsMap.values());
@@ -3561,6 +3515,114 @@ export class ApiV3CheerioRestIssueRepository
       prs,
       includeCiStatusUnavailable,
     );
+  };
+
+  private relatedOpenPullRequestRecord = async (
+    pr: NonNullable<TimelineItem['source']>,
+    relatedPRsMap: Map<string, RelatedPullRequest>,
+  ): Promise<void> => {
+    const prUrl = pr.url || '';
+
+    if (!prUrl) return;
+
+    const { owner: prOwner, repo: prRepo } = this.parseIssueUrl(prUrl);
+
+    let isConflicted = pr.mergeable === 'CONFLICTING';
+    let mergeable: string | null = pr.mergeable ?? null;
+    if (
+      pr.number !== undefined &&
+      (pr.mergeable === undefined ||
+        pr.mergeable === null ||
+        pr.mergeable === 'UNKNOWN')
+    ) {
+      let resolved: {
+        mergeable: string | null;
+        mergeStateStatus: string | null;
+      } | null;
+      try {
+        resolved = await this.resolveMergeabilityWithRetry(
+          prOwner,
+          prRepo,
+          pr.number,
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('NOT_FOUND')) {
+          console.info(
+            `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
+          );
+        } else {
+          console.warn(
+            `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+          );
+        }
+        return;
+      }
+      if (resolved !== null) {
+        mergeable = resolved.mergeable;
+        isConflicted =
+          resolved.mergeable === 'CONFLICTING' ||
+          resolved.mergeStateStatus === 'DIRTY';
+      }
+    }
+
+    if (pr.number === undefined) return;
+
+    let slimPullRequest: SlimPullRequest;
+    try {
+      const fetchedSlimPullRequest = await this.fetchSlimPullRequest(
+        prOwner,
+        prRepo,
+        pr.number,
+      );
+      if (!fetchedSlimPullRequest || fetchedSlimPullRequest.state !== 'OPEN') {
+        console.info(
+          `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
+        );
+        return;
+      }
+      slimPullRequest = fetchedSlimPullRequest;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: fetching pull request status failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+      );
+      return;
+    }
+    const baseRefName =
+      slimPullRequest.baseRefName ?? pr.baseRefName ?? pr.baseRef?.name;
+    const slimPullRequestWithRefs: SlimPullRequest = {
+      ...slimPullRequest,
+      url: slimPullRequest.url || prUrl,
+      headRefName: slimPullRequest.headRefName ?? pr.headRefName,
+      baseRefName,
+    };
+    let prStatus: RelatedPullRequest;
+    try {
+      prStatus = await this.buildRelatedPullRequestFromSlim(
+        prOwner,
+        prRepo,
+        slimPullRequestWithRefs,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: fetching pull request CI status failed, keeping PR with unknown CI status. prUrl: ${prUrl} error: ${errorMessage}`,
+      );
+      prStatus = this.buildRelatedPullRequestWithUnknownCiStatus(
+        slimPullRequestWithRefs,
+      );
+    }
+
+    relatedPRsMap.set(prUrl, {
+      ...prStatus,
+      isConflicted,
+      mergeable,
+      createdAt: pr.createdAt ? new Date(pr.createdAt) : new Date(0),
+    });
   };
 
   private isRelatedOpenPullRequestTimelineItem = (
@@ -3682,6 +3744,15 @@ export class ApiV3CheerioRestIssueRepository
           index,
         ) => `  ${aliasOf(index)}: repository(owner: $owner${index}, name: $repo${index}) {
     issue(number: $issueNumber${index}) {
+      comments(first: 100) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          body
+        }
+      }
       timelineItems(first: ${RELATED_OPEN_PULL_REQUEST_URLS_TIMELINE_PAGE_SIZE}, itemTypes: [CROSS_REFERENCED_EVENT]) {
         pageInfo {
           endCursor
@@ -3750,20 +3821,20 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const prUrlsByIssueUrl = new Map<string, string[]>();
-    references.forEach((reference, index) => {
+    for (const [index, reference] of references.entries()) {
       const alias = aliasOf(index);
       if (otherErrorAliases.has(alias)) {
-        return;
+        continue;
       }
       const issueNode = responseData.data?.[alias]?.issue ?? null;
       if (!issueNode) {
         if (notFoundAliases.has(alias) || !errors.length) {
           prUrlsByIssueUrl.set(reference.issueUrl, []);
         }
-        return;
+        continue;
       }
       if (issueNode.timelineItems.pageInfo.hasNextPage) {
-        return;
+        continue;
       }
       const prUrls = new Set<string>();
       for (const item of issueNode.timelineItems.nodes) {
@@ -3776,9 +3847,100 @@ export class ApiV3CheerioRestIssueRepository
         if (!prUrl) continue;
         prUrls.add(prUrl);
       }
+      const comments = issueNode.comments;
+      if (comments) {
+        const commentBodies = comments.nodes.flatMap((node) =>
+          node?.body ? [node.body] : [],
+        );
+        const recordedPrUrls = await this.fetchRecordedOpenPrUrls(
+          reference,
+          commentBodies,
+          comments.pageInfo.hasNextPage ? comments.pageInfo.endCursor : null,
+        );
+        recordedPrUrls.forEach((prUrl) => prUrls.add(prUrl));
+      }
       prUrlsByIssueUrl.set(reference.issueUrl, Array.from(prUrls));
-    });
+    }
     return prUrlsByIssueUrl;
+  };
+
+  private fetchRecordedOpenPrUrls = async (
+    reference: {
+      issueUrl: string;
+      owner: string;
+      repo: string;
+      issueNumber: number;
+    },
+    commentBodies: string[],
+    commentsAfter: string | null,
+  ): Promise<string[]> => {
+    let nextCursor = commentsAfter;
+    while (nextCursor !== null) {
+      const query = `
+        query IssueRecordedPullRequestComments($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+          repository(owner: $owner, name: $repo) {
+            issue(number: $issueNumber) {
+              comments(first: 100, after: $after) {
+                pageInfo {
+                  endCursor
+                  hasNextPage
+                }
+                nodes {
+                  body
+                }
+              }
+            }
+          }
+        }
+      `;
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
+          query,
+          variables: {
+            owner: reference.owner,
+            repo: reference.repo,
+            issueNumber: reference.issueNumber,
+            after: nextCursor,
+          },
+        }),
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch issue comments from GitHub GraphQL API: HTTP ${response.status}`,
+        );
+      }
+      const responseData: unknown = await response.json();
+      if (!isIssueTimelineResponse(responseData)) {
+        throw new Error(
+          `Unexpected response shape when fetching issue comments: ${reference.issueUrl}`,
+        );
+      }
+      const issue = responseData.data?.repository?.issue;
+      if (!issue) return [];
+      commentBodies.push(
+        ...(issue.comments?.nodes ?? []).flatMap((node) =>
+          node?.body ? [node.body] : [],
+        ),
+      );
+      nextCursor = issue.comments?.pageInfo?.hasNextPage
+        ? (issue.comments.pageInfo.endCursor ?? null)
+        : null;
+    }
+
+    const openPrUrls: string[] = [];
+    for (const prUrl of pullRequestUrlsFromCommentBodies(commentBodies)) {
+      const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
+      const pullRequest = await this.fetchSlimPullRequest(
+        owner,
+        repo,
+        issueNumber,
+      );
+      if (pullRequest?.state === 'OPEN') {
+        openPrUrls.push(prUrl);
+      }
+    }
+    return openPrUrls;
   };
 
   getAllOpened = async (project: Project): Promise<Issue[]> => {

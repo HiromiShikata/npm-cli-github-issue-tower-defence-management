@@ -660,6 +660,138 @@ describe('GithubStoryGateIssueRepository', () => {
   });
 
   describe('listClosingPullRequests', () => {
+    const RECORDED_PR_URL =
+      'https://github.com/example-owner/example-tasks/pull/12';
+    const closingResponseWithComments = (
+      commentBodies: string[],
+      timelineNodes: unknown[] = [],
+    ) =>
+      jsonResponse({
+        data: {
+          repository: {
+            issueOrPullRequest: {
+              comments: {
+                nodes: commentBodies.map((body) => ({ body })),
+              },
+              timelineItems: { nodes: timelineNodes },
+            },
+          },
+        },
+      });
+    const resourceResponse = (state: string) =>
+      jsonResponse({ data: { pr0: { state } } });
+
+    it.each([
+      {
+        case: 'an open pull request recorded as pullRequestUrl in a task comment is included even though its body does not reference the task',
+        commentBodies: [
+          `From: :robot: developer (model)\n\`\`\`json\n{"pullRequestUrl": "${RECORDED_PR_URL}"}\n\`\`\``,
+        ],
+        recordedState: 'OPEN',
+        expected: [{ url: RECORDED_PR_URL, state: 'OPEN' }],
+        expectedFetchCount: 2,
+      },
+      {
+        case: 'a merged pull request recorded in a task comment is included with its MERGED state',
+        commentBodies: [
+          `From: :robot: developer (model)\n\`\`\`json\n{"pullRequestUrl": "${RECORDED_PR_URL}"}\n\`\`\``,
+        ],
+        recordedState: 'MERGED',
+        expected: [{ url: RECORDED_PR_URL, state: 'MERGED' }],
+        expectedFetchCount: 2,
+      },
+      {
+        case: 'a null pullRequestUrl adds no pull request and no lookup',
+        commentBodies: ['```json\n{"pullRequestUrl": null}\n```'],
+        recordedState: 'OPEN',
+        expected: [],
+        expectedFetchCount: 1,
+      },
+    ])(
+      '$case',
+      async ({
+        commentBodies,
+        recordedState,
+        expected,
+        expectedFetchCount,
+      }) => {
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(closingResponseWithComments(commentBodies))
+          .mockResolvedValueOnce(resourceResponse(recordedState));
+
+        const pullRequests =
+          await repositoryCreate().listClosingPullRequests(ISSUE);
+
+        expect(pullRequests).toEqual(expected);
+        expect(fetchSpy).toHaveBeenCalledTimes(expectedFetchCount);
+      },
+    );
+
+    it('reads every page of the task comments before looking up the recorded pull requests', async () => {
+      const firstPage = jsonResponse({
+        data: {
+          repository: {
+            issueOrPullRequest: {
+              comments: {
+                nodes: [],
+                pageInfo: { endCursor: 'comments-page-2', hasNextPage: true },
+              },
+              timelineItems: { nodes: [] },
+            },
+          },
+        },
+      });
+      const secondPage = jsonResponse({
+        data: {
+          repository: {
+            issueOrPullRequest: {
+              comments: {
+                nodes: [
+                  {
+                    body: `\`\`\`json\n{"pullRequestUrl": "${RECORDED_PR_URL}"}\n\`\`\``,
+                  },
+                ],
+                pageInfo: { endCursor: null, hasNextPage: false },
+              },
+              timelineItems: { nodes: [] },
+            },
+          },
+        },
+      });
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(firstPage)
+        .mockResolvedValueOnce(secondPage)
+        .mockResolvedValueOnce(resourceResponse('OPEN'));
+
+      const pullRequests =
+        await repositoryCreate().listClosingPullRequests(ISSUE);
+
+      expect(pullRequests).toEqual([{ url: RECORDED_PR_URL, state: 'OPEN' }]);
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not look up a recorded pull request that the timeline already returned', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        closingResponseWithComments(
+          [`\`\`\`json\n{"pullRequestUrl": "${RECORDED_PR_URL}"}\n\`\`\``],
+          [
+            {
+              willCloseTarget: true,
+              source: { url: RECORDED_PR_URL, state: 'OPEN', body: '' },
+            },
+          ],
+        ),
+      );
+
+      const pullRequests =
+        await repositoryCreate().listClosingPullRequests(ISSUE);
+
+      expect(pullRequests).toEqual([{ url: RECORDED_PR_URL, state: 'OPEN' }]);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('keeps a pull request whose body carries a closing keyword for the issue when willCloseTarget is false', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         jsonResponse({

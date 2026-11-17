@@ -44,7 +44,64 @@ describe('YamlStoryGateProjectConfigRepository', () => {
         org: 'example-org',
         agents: ['developer-agent', 'triage-agent'],
       },
-      { filePath: secondPath, org: 'Another-Org', agents: [] },
+      {
+        filePath: secondPath,
+        org: 'Another-Org',
+        agents: [],
+        projectUrl: 'https://github.com/orgs/another-org/projects/1',
+      },
     ]);
   });
+
+  it.each([
+    {
+      case: 'a repositories list is read with its projectUrl',
+      content:
+        'org: example-org\nprojectUrl: https://github.com/users/example-org/projects/1\nrepositories:\n  - example-org/example-tasks\n  - Example-Org/other-repo\n',
+      expected: {
+        projectUrl: 'https://github.com/users/example-org/projects/1',
+        repositories: ['example-org/example-tasks', 'Example-Org/other-repo'],
+      },
+    },
+    {
+      case: 'an absent repositories key is read as undefined, not an empty list',
+      content: 'org: example-org\nagents:\n  - developer-agent\n',
+      expected: { projectUrl: undefined, repositories: undefined },
+    },
+  ])('$case', async ({ content, expected }) => {
+    configWrite('delta.config.yml', content);
+
+    const [config] = await new YamlStoryGateProjectConfigRepository(
+      configDirectory,
+    ).listProjectConfigs();
+
+    expect(config.projectUrl).toBe(expected.projectUrl);
+    expect(config.repositories).toEqual(expected.repositories);
+  });
+
+  it.each([
+    {
+      case: 'a repositories value that is not a list',
+      content: 'org: example-org\nrepositories: example-org/example-tasks\n',
+    },
+    {
+      case: 'an entry that is not owner/repo',
+      content: 'org: example-org\nrepositories:\n  - example-tasks\n',
+    },
+    {
+      case: 'an entry that is not a string',
+      content: 'org: example-org\nrepositories:\n  - 42\n',
+    },
+  ])(
+    'rejects a malformed repositories key with $case, naming the file',
+    async ({ content }) => {
+      const filePath = configWrite('epsilon.config.yml', content);
+
+      await expect(
+        new YamlStoryGateProjectConfigRepository(
+          configDirectory,
+        ).listProjectConfigs(),
+      ).rejects.toThrow(filePath);
+    },
+  );
 });

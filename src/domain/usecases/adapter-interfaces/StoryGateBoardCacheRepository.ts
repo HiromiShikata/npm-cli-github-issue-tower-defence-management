@@ -16,6 +16,7 @@ export type BoardCache = {
   filePath: string;
   modifiedAt: Date;
   projectId: string;
+  projectUrl?: string | null;
   storyFieldId: string | null;
   storyOptions: BoardCacheStoryOption[];
   storyIssueUrlByOptionName: Record<string, string>;

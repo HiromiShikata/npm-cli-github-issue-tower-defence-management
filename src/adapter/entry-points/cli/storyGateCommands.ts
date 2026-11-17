@@ -19,8 +19,10 @@ import {
 import { localStorageCacheBaseDirectory } from '../../repositories/localStorageCacheDirectory';
 import { LocalStorageStoryGateBoardCacheRepository } from '../../repositories/LocalStorageStoryGateBoardCacheRepository';
 import { YamlStoryGateProjectConfigRepository } from '../../repositories/YamlStoryGateProjectConfigRepository';
+import { projectRepositoryListsByPjcodeLoad } from '../../repositories/projectRepositoryListsLoad';
 import {
   createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByRepository,
   createConsoleGithubTokenResolverByItemUrl,
 } from '../console/consoleGithubTokenResolver';
 import { ConfigFile, loadConfigFile } from './projectConfig';
@@ -155,6 +157,19 @@ const githubTokenSourceOf = (
       ghToken,
       consoleConfig.consoleProjects ?? null,
       consoleConfig.consoleGithubTokens ?? null,
+      projectRepositoryListsByPjcodeLoad(
+        consoleConfig.consoleProjectConfigDirectory ?? null,
+        consoleConfig.consoleProjects ?? null,
+      ),
+    ),
+    createConsoleGithubTokenResolverByRepository(
+      ghToken,
+      consoleConfig.consoleProjects ?? null,
+      consoleConfig.consoleGithubTokens ?? null,
+      projectRepositoryListsByPjcodeLoad(
+        consoleConfig.consoleProjectConfigDirectory ?? null,
+        consoleConfig.consoleProjects ?? null,
+      ),
     ),
   );
 };

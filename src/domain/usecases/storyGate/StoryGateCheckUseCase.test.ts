@@ -1892,3 +1892,113 @@ describe('StoryGateCheckUseCase', () => {
     );
   });
 });
+
+describe('StoryGateCheckUseCase project routing by repository', () => {
+  const LISTED_PROJECT_URL = 'https://github.com/users/example-org/projects/1';
+  const UNLISTED_PROJECT_URL =
+    'https://github.com/users/example-org/projects/2';
+  const LISTED_CONFIG: StoryGateProjectConfig = {
+    filePath: 'config/listed.config.yaml',
+    org: ORG,
+    agents: ['developer-agent', 'triage-agent', 'spec-agent'],
+    projectUrl: LISTED_PROJECT_URL,
+    repositories: [`${ORG}/${REPO}`],
+  };
+  const UNLISTED_CONFIG: StoryGateProjectConfig = {
+    filePath: 'config/unlisted.config.yaml',
+    org: ORG,
+    agents: ['developer-agent', 'triage-agent', 'spec-agent'],
+    projectUrl: UNLISTED_PROJECT_URL,
+    repositories: null,
+  };
+  const LISTED_CACHE_PATH = 'cache/listed/allIssues-PVT_board/latest.json';
+  const UNLISTED_CACHE_PATH = 'cache/unlisted/allIssues-PVT_other/latest.json';
+
+  it('selects the listed config and its own board cache for a listed repository, even when an unlisted same-owner config is first', async () => {
+    const scenario = new StoryGateScenario({
+      story: 'feature A',
+      inCache: false,
+    });
+    scenario.configs = [UNLISTED_CONFIG, LISTED_CONFIG];
+    scenario.caches = [
+      boardCache({
+        filePath: UNLISTED_CACHE_PATH,
+        modifiedAt: new Date('2026-09-02T00:00:00Z'),
+        projectId: OTHER_PROJECT_ID,
+        projectUrl: UNLISTED_PROJECT_URL,
+        issues: [cacheIssue(500, 'feature B', { url: otherOrgIssueUrl(500) })],
+      }),
+      boardCache({
+        filePath: LISTED_CACHE_PATH,
+        modifiedAt: new Date('2026-09-01T00:00:00Z'),
+        projectId: BOARD_PROJECT_ID,
+        projectUrl: LISTED_PROJECT_URL,
+        issues: [cacheIssue(ASSIGNED, 'feature A')],
+      }),
+    ];
+
+    const { result } = await scenario.run();
+
+    expect(result.facts.boardCacheFilePath).toBe(LISTED_CACHE_PATH);
+    expect(result.story.value).toBe('feature A');
+    expect(result.story.source).toBe('BOARD_CACHE');
+  });
+
+  it('does not use an unlisted-project board cache for a listed repository whose issue is only on the unlisted board', async () => {
+    const scenario = new StoryGateScenario({
+      story: 'feature A',
+      inCache: false,
+    });
+    scenario.configs = [UNLISTED_CONFIG, LISTED_CONFIG];
+    scenario.caches = [
+      boardCache({
+        filePath: UNLISTED_CACHE_PATH,
+        modifiedAt: new Date('2026-09-02T00:00:00Z'),
+        projectId: OTHER_PROJECT_ID,
+        projectUrl: UNLISTED_PROJECT_URL,
+        issues: [cacheIssue(ASSIGNED, 'feature A')],
+      }),
+    ];
+
+    const { result } = await scenario.run();
+
+    expect(result.facts.boardCacheFilePath).toBeNull();
+  });
+
+  it('searches story issues only on the listed project board for a listed repository', async () => {
+    const scenario = new StoryGateScenario({
+      story: 'feature A',
+      inCache: false,
+    });
+    scenario.repository.issueAdd({
+      number: 200,
+      body: 'Story issue on the unlisted board',
+      labels: ['story'],
+    });
+    scenario.configs = [UNLISTED_CONFIG, LISTED_CONFIG];
+    scenario.caches = [
+      boardCache({
+        filePath: UNLISTED_CACHE_PATH,
+        modifiedAt: new Date('2026-09-02T00:00:00Z'),
+        projectId: OTHER_PROJECT_ID,
+        projectUrl: UNLISTED_PROJECT_URL,
+        issues: [],
+        storyIssueUrlByOptionName: { 'feature A': issueUrl(200) },
+      }),
+      boardCache({
+        filePath: LISTED_CACHE_PATH,
+        modifiedAt: new Date('2026-09-01T00:00:00Z'),
+        projectId: BOARD_PROJECT_ID,
+        projectUrl: LISTED_PROJECT_URL,
+        issues: [],
+        storyIssueUrlByOptionName: { 'feature A': issueUrl(100) },
+      }),
+    ];
+
+    const { result } = await scenario.run();
+
+    expect(result.storyIssues.map((storyIssue) => storyIssue.url)).toEqual([
+      issueUrl(100),
+    ]);
+  });
+});

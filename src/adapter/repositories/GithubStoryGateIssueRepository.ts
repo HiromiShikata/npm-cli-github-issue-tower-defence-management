@@ -15,6 +15,7 @@ import {
   StoryGateIssueState,
 } from '../../domain/usecases/adapter-interfaces/StoryGateIssueRepository';
 import { isPullRequestRelatedToIssue } from '../../domain/services/pullRequestIssueRelation';
+import { pullRequestUrlsFromCommentBodies } from '../../domain/services/pullRequestUrlsFromResultJson';
 import { githubRateLimitSignalOf } from './githubRateLimitSignalOf';
 
 export const GITHUB_API_BASE_URL = 'https://api.github.com';
@@ -178,16 +179,22 @@ fragment StoryGateProjectItem on ProjectV2Item {
   status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
 }`;
 
-export const CLOSING_PULL_REQUESTS_QUERY = `query StoryGateClosingPullRequests($owner: String!, $repo: String!, $number: Int!) {
+export const CLOSING_PULL_REQUESTS_QUERY = `query StoryGateClosingPullRequests($owner: String!, $repo: String!, $number: Int!, $commentsAfter: String) {
   repository(owner: $owner, name: $repo) {
     issueOrPullRequest(number: $number) {
       ... on Issue {
+        comments(first: 100, after: $commentsAfter) { pageInfo { endCursor hasNextPage } nodes { body } }
         timelineItems(first: 100, itemTypes: [CROSS_REFERENCED_EVENT]) {
           nodes { ... on CrossReferencedEvent { willCloseTarget source { ... on PullRequest { url state body } } } }
         }
       }
     }
   }
+}`;
+
+const recordedPullRequestStatesQuery = (urls: string[]): string =>
+  `query StoryGateRecordedPullRequestStates {
+  ${urls.map((url, index) => `pr${index}: resource(url: ${JSON.stringify(url)}) { ... on PullRequest { state } }`).join('\n  ')}
 }`;
 
 export const PROJECT_ITEM_SINGLE_SELECT_UPDATE_MUTATION = `mutation StoryGateProjectItemSingleSelectUpdate($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
@@ -307,42 +314,88 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
   listClosingPullRequests = async (
     issue: GithubIssueReference,
   ): Promise<ClosingPullRequest[]> => {
-    const data = await this.graphql(
-      CLOSING_PULL_REQUESTS_QUERY,
-      {
+    const token = this.tokenOf(issue.url);
+    const closingPullRequests: ClosingPullRequest[] = [];
+    const commentBodies: string[] = [];
+    let commentsAfter: string | null = null;
+    let commentsHasNextPage = true;
+    let isFirstPage = true;
+    while (commentsHasNextPage) {
+      const variables: Record<string, string | number> = {
         owner: issue.owner,
         repo: issue.repo,
         number: issue.number,
-      },
-      this.tokenOf(issue.url),
-    );
-    const nodes = arrayFieldOf(
-      fieldOf(
-        fieldOf(fieldOf(data, 'repository'), 'issueOrPullRequest'),
-        'timelineItems',
-      ),
-      'nodes',
-    );
-    const closingPullRequests: ClosingPullRequest[] = [];
-    for (const node of nodes) {
-      const source = fieldOf(node, 'source');
-      const url = stringFieldOf(source, 'url');
-      const state = closingPullRequestStateParse(
-        stringFieldOf(source, 'state'),
-      );
-      if (
-        url !== null &&
-        state !== null &&
-        !closingPullRequests.some((pullRequest) => pullRequest.url === url) &&
-        isPullRequestRelatedToIssue({
-          willCloseTarget: fieldOf(node, 'willCloseTarget') === true,
-          prBody: stringFieldOf(source, 'body'),
-          prUrl: url,
-          issueUrl: issue.url,
-        })
-      ) {
-        closingPullRequests.push({ url, state });
+      };
+      if (commentsAfter !== null) {
+        variables.commentsAfter = commentsAfter;
       }
+      const data = await this.graphql(
+        CLOSING_PULL_REQUESTS_QUERY,
+        variables,
+        token,
+      );
+      const issueNode = fieldOf(
+        fieldOf(data, 'repository'),
+        'issueOrPullRequest',
+      );
+      if (isFirstPage) {
+        isFirstPage = false;
+        const nodes = arrayFieldOf(
+          fieldOf(issueNode, 'timelineItems'),
+          'nodes',
+        );
+        for (const node of nodes) {
+          const source = fieldOf(node, 'source');
+          const url = stringFieldOf(source, 'url');
+          const state = closingPullRequestStateParse(
+            stringFieldOf(source, 'state'),
+          );
+          if (
+            url !== null &&
+            state !== null &&
+            !closingPullRequests.some(
+              (pullRequest) => pullRequest.url === url,
+            ) &&
+            isPullRequestRelatedToIssue({
+              willCloseTarget: fieldOf(node, 'willCloseTarget') === true,
+              prBody: stringFieldOf(source, 'body'),
+              prUrl: url,
+              issueUrl: issue.url,
+            })
+          ) {
+            closingPullRequests.push({ url, state });
+          }
+        }
+      }
+      const commentsConnection = fieldOf(issueNode, 'comments');
+      commentBodies.push(
+        ...arrayFieldOf(commentsConnection, 'nodes').flatMap((node) => {
+          const body = stringFieldOf(node, 'body');
+          return body === null ? [] : [body];
+        }),
+      );
+      const pageInfo = fieldOf(commentsConnection, 'pageInfo');
+      commentsHasNextPage = fieldOf(pageInfo, 'hasNextPage') === true;
+      commentsAfter = stringFieldOf(pageInfo, 'endCursor');
+    }
+    const recordedUrls = pullRequestUrlsFromCommentBodies(commentBodies).filter(
+      (url) =>
+        !closingPullRequests.some((pullRequest) => pullRequest.url === url),
+    );
+    if (recordedUrls.length > 0) {
+      const recordedData = await this.graphql(
+        recordedPullRequestStatesQuery(recordedUrls),
+        {},
+        this.tokenOf(issue.url),
+      );
+      recordedUrls.forEach((url, index) => {
+        const state = closingPullRequestStateParse(
+          stringFieldOf(fieldOf(recordedData, `pr${index}`), 'state'),
+        );
+        if (state !== null) {
+          closingPullRequests.push({ url, state });
+        }
+      });
     }
     return closingPullRequests;
   };

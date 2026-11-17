@@ -709,3 +709,86 @@ describe('NonPreparationWorkerScopeStopUseCase', () => {
     consoleErrorSpy.mockRestore();
   });
 });
+
+describe('NonPreparationWorkerScopeStopUseCase with a project repository scope', () => {
+  const listedScope = {
+    org: 'owner',
+    repositories: ['owner/listed-tasks'],
+    listedRepositoriesOfOtherProjects: [],
+    ownsUnlistedRepositoriesOfOwner: false,
+  };
+  const listedWithUnlistedSiblingScope = {
+    org: 'owner',
+    repositories: ['owner/listed-tasks'],
+    listedRepositoriesOfOtherProjects: [],
+    ownsUnlistedRepositoriesOfOwner: false,
+  };
+  const unlistedScope = {
+    org: 'owner',
+    repositories: null,
+    listedRepositoriesOfOtherProjects: ['Owner/Listed-Tasks'],
+    ownsUnlistedRepositoriesOfOwner: false,
+  };
+
+  test.each([
+    {
+      case: 'a listed project stops a scope of its listed repository',
+      scope: listedScope,
+      repo: 'listed-tasks',
+      expectedStopped: true,
+    },
+    {
+      case: 'a listed project keeps a scope of an unlisted repository when every same-owner project lists repositories',
+      scope: listedScope,
+      repo: 'other-repo',
+      expectedStopped: false,
+    },
+    {
+      case: 'a listed project keeps a scope of an unlisted repository when an unlisted sibling of the same owner exists',
+      scope: listedWithUnlistedSiblingScope,
+      repo: 'other-repo',
+      expectedStopped: false,
+    },
+    {
+      case: 'an unlisted project keeps a scope of a repository listed by its sibling project',
+      scope: unlistedScope,
+      repo: 'listed-tasks',
+      expectedStopped: false,
+    },
+    {
+      case: 'an unlisted project stops a scope of its own repository',
+      scope: unlistedScope,
+      repo: 'own-repo',
+      expectedStopped: true,
+    },
+  ])('$case', async ({ scope, repo, expectedStopped }) => {
+    const tmuxSessionRepository = createMockTmuxSessionRepository();
+    const issueRepository = createMockIssueRepository();
+    tmuxSessionRepository.listRunningWorkerScopeUnitNames.mockResolvedValue([
+      `aw-owner-${repo}-1-100.scope`,
+    ]);
+    const issue = buildIssue({
+      org: 'owner',
+      repo,
+      number: 1,
+      status: AWAITING_WORKSPACE_STATUS_NAME,
+      url: `https://github.com/owner/${repo}/issues/1`,
+    });
+    issueRepository.get.mockResolvedValue(issue);
+    const useCase = new NonPreparationWorkerScopeStopUseCase(
+      tmuxSessionRepository,
+      issueRepository,
+    );
+
+    const result = await useCase.run({
+      issues: [issue],
+      currentProjectOrg: 'owner',
+      project,
+      projectScope: scope,
+    });
+
+    expect(result.stoppedScopeUnitNames).toEqual(
+      expectedStopped ? [`aw-owner-${repo}-1-100.scope`] : [],
+    );
+  });
+});

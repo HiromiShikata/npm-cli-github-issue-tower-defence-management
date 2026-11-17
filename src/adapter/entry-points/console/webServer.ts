@@ -61,7 +61,8 @@ import {
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
 import {
   ConsoleGithubTokenResolver,
-  extractRepositoryOwner,
+  ConsoleGithubTokenByRepositoryResolver,
+  extractRepositoryReference,
 } from './consoleGithubTokenResolver';
 import {
   buildComposeDashboardInput,
@@ -267,6 +268,7 @@ export type WebServerOptions = {
   dashboardProjectUrls?: Record<string, string> | null;
   fleetTaskCreateUrl?: string | null;
   resolveGithubToken?: ConsoleGithubTokenResolver | null;
+  resolveGithubTokenByRepository?: ConsoleGithubTokenByRepositoryResolver | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
   liveSessionRepository?: LiveSessionRepository | null;
@@ -444,22 +446,30 @@ const handleImageProxy = async (
     return;
   }
   const itemUrl = searchParams.get('itemUrl') ?? '';
-  const repositoryOwner = extractRepositoryOwner(itemUrl);
-  if (repositoryOwner === null) {
+  const repositoryReference = extractRepositoryReference(itemUrl);
+  if (repositoryReference === null) {
     sendJson(response, 400, {
       error: 'missing or unreadable itemUrl parameter',
     });
     return;
   }
-  const githubToken = resolveGithubToken(repositoryOwner);
-  if (githubToken.length === 0) {
+  const repositoryAwareTokenResolver =
+    options.resolveGithubTokenByRepository ?? null;
+  const resolvedGithubToken =
+    repositoryAwareTokenResolver === null
+      ? resolveGithubToken(repositoryReference.owner)
+      : repositoryAwareTokenResolver(
+          repositoryReference.owner,
+          repositoryReference.repo,
+        );
+  if (resolvedGithubToken.length === 0) {
     sendJson(response, 502, { error: 'github token is not configured' });
     return;
   }
   const url = searchParams.get('url') ?? '';
   const result = await fetchProxiedImage(
     url,
-    githubToken,
+    resolvedGithubToken,
     options.imageFetcher ?? undefined,
   );
   if (!result.ok) {

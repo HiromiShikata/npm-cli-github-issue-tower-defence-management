@@ -91,6 +91,25 @@ describe('LocalStorageStoryGateBoardCacheRepository', () => {
     fs.rmSync(baseDirectory, { recursive: true, force: true });
   });
 
+  it('reads the project URL of the board cache so a config can be matched to its own board', async () => {
+    boardCacheWrite(
+      baseDirectory,
+      'example',
+      'allIssues-PVT_board',
+      'PVT_board',
+      [],
+      new Date('2026-09-10T00:00:00Z'),
+    );
+
+    const [cache] = await new LocalStorageStoryGateBoardCacheRepository(
+      baseDirectory,
+    ).listBoardCachesNewestFirst();
+
+    expect(cache.projectUrl).toBe(
+      'https://github.com/orgs/example-org/projects/1',
+    );
+  });
+
   it('maps a board cache file', async () => {
     const modifiedAt = new Date('2026-09-10T00:00:00Z');
     const filePath = boardCacheWrite(
@@ -119,6 +138,7 @@ describe('LocalStorageStoryGateBoardCacheRepository', () => {
         filePath,
         modifiedAt,
         projectId: 'PVT_board',
+        projectUrl: 'https://github.com/orgs/example-org/projects/1',
         storyFieldId: 'FIELD_story',
         storyOptions: [
           { id: 'OPT_feature_a', name: 'feature A', color: 'GREEN' },
