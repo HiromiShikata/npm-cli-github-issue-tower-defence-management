@@ -6,9 +6,6 @@ import {
   storyGateProjectConfigParse,
 } from './YamlStoryGateProjectConfigRepository';
 
-// Builds the repository scope of the project whose config file is given. The
-// listed repositories of the sibling project configs in the same directory are
-// read so an unlisted project never claims a repository another project lists.
 export const projectRepositoryScopeLoad = (
   configFilePath: string,
 ): ProjectRepositoryScope | null => {

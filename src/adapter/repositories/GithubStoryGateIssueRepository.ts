@@ -351,8 +351,6 @@ export class GithubStoryGateIssueRepository implements StoryGateIssueRepository 
         closingPullRequests.push({ url, state });
       }
     }
-    // A pull request whose body never names this task is still related when a
-    // completion comment of this task records its URL as pullRequestUrl.
     const commentBodies = arrayFieldOf(
       fieldOf(
         fieldOf(fieldOf(data, 'repository'), 'issueOrPullRequest'),

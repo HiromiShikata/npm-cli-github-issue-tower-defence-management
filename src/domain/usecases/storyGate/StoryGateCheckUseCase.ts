@@ -354,9 +354,6 @@ export class StoryGateCheckUseCase {
     return null;
   };
 
-  // A repository listed by a config is answered only by that config's own board
-  // cache. An unlisted repository keeps the owner match, except that boards of
-  // listed projects are not taken for it.
   private boardCacheBelongsToIssueProject = (
     cache: BoardCache,
     issueReference: GithubIssueReference,

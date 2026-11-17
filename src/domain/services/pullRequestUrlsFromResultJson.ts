@@ -3,8 +3,6 @@ const FENCED_BLOCK_PATTERN = /```[^\n]*\n([\s\S]*?)```/g;
 const PULL_REQUEST_URL_IN_RESULT_PATTERN =
   /"pullRequestUrl"\s*:\s*"(https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/pull\/\d+)"/g;
 
-// Reads the pull request URLs recorded as "pullRequestUrl" inside the fenced
-// JSON result blocks of issue comments. A null value never matches.
 export const pullRequestUrlsFromCommentBodies = (
   commentBodies: string[],
 ): string[] => {

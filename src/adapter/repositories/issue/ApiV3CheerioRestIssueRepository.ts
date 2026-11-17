@@ -3463,8 +3463,6 @@ export class ApiV3CheerioRestIssueRepository
       after = issueData.timelineItems?.pageInfo?.endCursor ?? null;
     }
 
-    // A pull request whose body never names this task is still related when a
-    // completion comment of this task records its URL as pullRequestUrl.
     for (const recordedUrl of pullRequestUrlsFromCommentBodies(
       taskCommentBodies,
     )) {

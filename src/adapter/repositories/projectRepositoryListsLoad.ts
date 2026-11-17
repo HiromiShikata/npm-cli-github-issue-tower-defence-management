@@ -6,9 +6,6 @@ import {
   storyGateProjectConfigParse,
 } from './YamlStoryGateProjectConfigRepository';
 
-// Reads the repositories lists of the project configs in the directory and
-// keys them by the console project name whose projectUrl matches. Returns null
-// when no directory is configured, so the owner-only resolution applies.
 export const projectRepositoryListsByPjcodeLoad = (
   configDirectory: string | null,
   consoleProjects: Record<string, string> | null,

@@ -48,9 +48,6 @@ const configListsRepository = (
     (entry) => entry.toLowerCase() === repositoryKeyOf(reference),
   );
 
-// A config that lists the repository wins. Otherwise the owner match applies:
-// an unlisted config of that owner is preferred so a repository listed by a
-// sibling project is never routed to an unlisted project's config.
 export const projectConfigForRepositoryResolve = <T extends ProjectScopeConfig>(
   configs: T[],
   reference: RepositoryReference,

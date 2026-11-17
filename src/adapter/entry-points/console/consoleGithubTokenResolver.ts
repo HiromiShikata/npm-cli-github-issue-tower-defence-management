@@ -1,13 +1,10 @@
 import { projectConfigForRepositoryResolve } from '../../../domain/services/projectRepositoryScope';
 
-// repositoryName is given when the caller knows the repository; the owner alone
-// resolves as before.
 export type ConsoleGithubTokenResolver = (
   repositoryOwner: string,
   repositoryName?: string,
 ) => string;
 
-// Maps a project name (pjcode) to the owner/repo strings its config lists.
 export type ConsoleProjectRepositories = Record<string, string[]>;
 
 export const extractRepositoryOwner = (

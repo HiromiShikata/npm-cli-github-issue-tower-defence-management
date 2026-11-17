@@ -10,8 +10,6 @@ import { isRepositoryListEntry } from '../../domain/services/projectRepositorySc
 
 export const PROJECT_CONFIG_FILE_PATTERN = /\.config\.ya?ml$/;
 
-// Reads the optional repositories key. Absent means undefined; a value that is
-// not a list of owner/repo strings fails loudly, naming the file.
 const repositoriesRead = (
   parsed: Record<string, unknown>,
   filePath: string,
@@ -34,9 +32,6 @@ const repositoriesRead = (
   return value;
 };
 
-// Parses one project config file. A file without a string org is not a
-// project config and yields null. A repositories list requires projectUrl,
-// because the board cache of the listed project is matched by that URL.
 export const storyGateProjectConfigParse = (
   filePath: string,
   content: string,
