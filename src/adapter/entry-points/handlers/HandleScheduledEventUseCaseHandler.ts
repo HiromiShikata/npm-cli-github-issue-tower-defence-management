@@ -126,11 +126,16 @@ const readSilentSeconds = (
 };
 
 export class HandleScheduledEventUseCaseHandler {
+  constructor(
+    private readonly projectScopeOf: (
+      configFilePath: string,
+    ) => ProjectRepositoryScope | null = () => null,
+  ) {}
+
   handle = async (
     configFilePath: string,
     _verbose: boolean,
     inTmuxProjectOrderOverride: string[] | null = null,
-    projectScope: ProjectRepositoryScope | null = null,
   ): Promise<{
     project: Project;
     issues: Issue[];
@@ -752,7 +757,7 @@ export class HandleScheduledEventUseCaseHandler {
 
     const result = await handleScheduledEventUseCase.run({
       ...mergedInput,
-      projectScope,
+      projectScope: this.projectScopeOf(configFilePath),
       afterIssuesFetched,
       allowedDependencyRepoNameWithOwner,
       llmModelNameByAgentName:

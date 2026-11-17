@@ -461,13 +461,14 @@ program
         HandleScheduledEventUseCaseHandler,
         ScheduledEventHandlerInputValidationError,
       } = await import('../handlers/HandleScheduledEventUseCaseHandler');
-      const handler = new HandleScheduledEventUseCaseHandler();
+      const handler = new HandleScheduledEventUseCaseHandler(
+        projectRepositoryScopeLoad,
+      );
       try {
         await handler.handle(
           options.config,
           options.verbose,
           parseInTmuxProjectOrder(options.inTmuxProjectOrder),
-          projectRepositoryScopeLoad(options.config),
         );
       } catch (error) {
         if (error instanceof ScheduledEventHandlerInputValidationError) {

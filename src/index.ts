@@ -6,16 +6,8 @@ dotenv.config();
 export const hello = (name: string) => `hello ${name}`;
 export { Project } from './domain/entities/Project';
 export { Issue } from './domain/entities/Issue';
-export const scheduledEvent = (
-  configFilePath: string,
-  verbose: boolean,
-  inTmuxProjectOrderOverride: string[] | null = null,
-) =>
-  new HandleScheduledEventUseCaseHandler().handle(
-    configFilePath,
-    verbose,
-    inTmuxProjectOrderOverride,
-    projectRepositoryScopeLoad(configFilePath),
-  );
+export const scheduledEvent = new HandleScheduledEventUseCaseHandler(
+  projectRepositoryScopeLoad,
+).handle;
 export { getStoryObjectMap };
 export { StoryObject, StoryObjectMap } from './domain/entities/StoryObjectMap';
