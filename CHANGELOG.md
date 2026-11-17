@@ -1,3 +1,10 @@
+## [2.196.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.196.0...v2.196.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* **deps:** ignore picomatch ReDoS advisory without a patched release until 2026-12-10 ([#3735](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3735)) ([462cee5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/462cee55ed6649fb63d36791ea3b345d671cba2d))
+
 # [2.196.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.195.11...v2.196.0) (2026-11-17)
 
 
