@@ -4,7 +4,7 @@ export type ConsoleStoryDeleteModalDialogProps = {
   storyName: string;
   isDeleting: boolean;
   deleteError: string | null;
-  onConfirm: (deleteChildTasks: boolean) => void;
+  onConfirm: () => void;
   onCancel: () => void;
 };
 
@@ -51,15 +51,7 @@ export const ConsoleStoryDeleteModalDialog = ({
           <button
             type="button"
             className="console-op-button console-op-button-danger"
-            onClick={() => onConfirm(true)}
-            disabled={isDeleting}
-          >
-            {isDeleting ? 'Deleting…' : 'Delete with child tasks'}
-          </button>
-          <button
-            type="button"
-            className="console-op-button console-op-button-danger"
-            onClick={() => onConfirm(false)}
+            onClick={() => onConfirm()}
             disabled={isDeleting}
           >
             {isDeleting ? 'Deleting…' : 'Keep child tasks'}

@@ -26,14 +26,12 @@ export const ConsoleDangerousActions = ({
     setStoryDeleteError(null);
   };
 
-  const handleStoryDeleteConfirm = async (
-    deleteChildTasks: boolean,
-  ): Promise<void> => {
+  const handleStoryDeleteConfirm = async (): Promise<void> => {
     if (!onDeleteStory) return;
     setIsStoryDeleting(true);
     setStoryDeleteError(null);
     try {
-      await onDeleteStory(deleteChildTasks);
+      await onDeleteStory(false);
     } catch (err) {
       setStoryDeleteError(err instanceof Error ? err.message : String(err));
       setIsStoryDeleting(false);
@@ -95,15 +93,7 @@ export const ConsoleDangerousActions = ({
             <button
               type="button"
               className="console-op-button console-op-button-danger"
-              onClick={() => void handleStoryDeleteConfirm(true)}
-              disabled={isStoryDeleting}
-            >
-              {isStoryDeleting ? 'Deleting…' : 'Delete with child tasks'}
-            </button>
-            <button
-              type="button"
-              className="console-op-button console-op-button-danger"
-              onClick={() => void handleStoryDeleteConfirm(false)}
+              onClick={() => void handleStoryDeleteConfirm()}
               disabled={isStoryDeleting}
             >
               {isStoryDeleting ? 'Deleting…' : 'Keep child tasks'}
