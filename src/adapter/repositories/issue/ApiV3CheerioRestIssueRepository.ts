@@ -296,6 +296,13 @@ type IssueRelatedOpenPullRequestUrlsBatchResponse = {
     string,
     {
       issue?: {
+        comments?: {
+          pageInfo: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          };
+          nodes: ({ body: string } | null)[];
+        } | null;
         timelineItems: {
           pageInfo: {
             endCursor: string | null;
@@ -3737,6 +3744,15 @@ export class ApiV3CheerioRestIssueRepository
           index,
         ) => `  ${aliasOf(index)}: repository(owner: $owner${index}, name: $repo${index}) {
     issue(number: $issueNumber${index}) {
+      comments(first: 100) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          body
+        }
+      }
       timelineItems(first: ${RELATED_OPEN_PULL_REQUEST_URLS_TIMELINE_PAGE_SIZE}, itemTypes: [CROSS_REFERENCED_EVENT]) {
         pageInfo {
           endCursor
@@ -3805,20 +3821,20 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const prUrlsByIssueUrl = new Map<string, string[]>();
-    references.forEach((reference, index) => {
+    for (const [index, reference] of references.entries()) {
       const alias = aliasOf(index);
       if (otherErrorAliases.has(alias)) {
-        return;
+        continue;
       }
       const issueNode = responseData.data?.[alias]?.issue ?? null;
       if (!issueNode) {
         if (notFoundAliases.has(alias) || !errors.length) {
           prUrlsByIssueUrl.set(reference.issueUrl, []);
         }
-        return;
+        continue;
       }
       if (issueNode.timelineItems.pageInfo.hasNextPage) {
-        return;
+        continue;
       }
       const prUrls = new Set<string>();
       for (const item of issueNode.timelineItems.nodes) {
@@ -3831,9 +3847,100 @@ export class ApiV3CheerioRestIssueRepository
         if (!prUrl) continue;
         prUrls.add(prUrl);
       }
+      const comments = issueNode.comments;
+      if (comments) {
+        const commentBodies = comments.nodes.flatMap((node) =>
+          node?.body ? [node.body] : [],
+        );
+        const recordedPrUrls = await this.fetchRecordedOpenPrUrls(
+          reference,
+          commentBodies,
+          comments.pageInfo.hasNextPage ? comments.pageInfo.endCursor : null,
+        );
+        recordedPrUrls.forEach((prUrl) => prUrls.add(prUrl));
+      }
       prUrlsByIssueUrl.set(reference.issueUrl, Array.from(prUrls));
-    });
+    }
     return prUrlsByIssueUrl;
+  };
+
+  private fetchRecordedOpenPrUrls = async (
+    reference: {
+      issueUrl: string;
+      owner: string;
+      repo: string;
+      issueNumber: number;
+    },
+    commentBodies: string[],
+    commentsAfter: string | null,
+  ): Promise<string[]> => {
+    let nextCursor = commentsAfter;
+    while (nextCursor !== null) {
+      const query = `
+        query IssueRecordedPullRequestComments($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+          repository(owner: $owner, name: $repo) {
+            issue(number: $issueNumber) {
+              comments(first: 100, after: $after) {
+                pageInfo {
+                  endCursor
+                  hasNextPage
+                }
+                nodes {
+                  body
+                }
+              }
+            }
+          }
+        }
+      `;
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetchGithubGraphql({
+          ghToken: this.ghToken,
+          query,
+          variables: {
+            owner: reference.owner,
+            repo: reference.repo,
+            issueNumber: reference.issueNumber,
+            after: nextCursor,
+          },
+        }),
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch issue comments from GitHub GraphQL API: HTTP ${response.status}`,
+        );
+      }
+      const responseData: unknown = await response.json();
+      if (!isIssueTimelineResponse(responseData)) {
+        throw new Error(
+          `Unexpected response shape when fetching issue comments: ${reference.issueUrl}`,
+        );
+      }
+      const issue = responseData.data?.repository?.issue;
+      if (!issue) return [];
+      commentBodies.push(
+        ...(issue.comments?.nodes ?? []).flatMap((node) =>
+          node?.body ? [node.body] : [],
+        ),
+      );
+      nextCursor = issue.comments?.pageInfo?.hasNextPage
+        ? (issue.comments.pageInfo.endCursor ?? null)
+        : null;
+    }
+
+    const openPrUrls: string[] = [];
+    for (const prUrl of pullRequestUrlsFromCommentBodies(commentBodies)) {
+      const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
+      const pullRequest = await this.fetchSlimPullRequest(
+        owner,
+        repo,
+        issueNumber,
+      );
+      if (pullRequest?.state === 'OPEN') {
+        openPrUrls.push(prUrl);
+      }
+    }
+    return openPrUrls;
   };
 
   getAllOpened = async (project: Project): Promise<Issue[]> => {

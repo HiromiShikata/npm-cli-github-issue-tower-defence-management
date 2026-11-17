@@ -1176,6 +1176,22 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
       });
 
+      it('should not revert an issue when the batched lookup finds its recorded open pull request', async () => {
+        const issues = createUncoveredAwaitingQualityCheckIssues([1]);
+        const recordedPrUrl = prUrlOf(100);
+        mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(
+          new Map([[issues[0].url, [recordedPrUrl]]]),
+        );
+        mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+          new Map([[recordedPrUrl, createReadyPr(recordedPrUrl)]]),
+        );
+
+        await runCycle();
+
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+
       it('should exclude an Awaiting Owner pull request item from the batched lookup', async () => {
         const pullRequestItem = createMockPullRequest({
           status: 'Awaiting Owner',

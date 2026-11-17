@@ -40,6 +40,25 @@ describe('createConsoleProjectRepositoryResolver', () => {
     );
   });
 
+  it('uses the token for the exact normalized project url before owner fallback', () => {
+    const resolveGithubToken = createConsoleGithubTokenResolver(
+      'default-token',
+      {
+        first: 'https://github.com/orgs/example-owner/projects/1',
+        second: 'https://github.com/orgs/example-owner/projects/2',
+      },
+      { first: 'token-first', second: 'token-second' },
+    );
+    const resolve = createConsoleProjectRepositoryResolver<string>(
+      resolveGithubToken,
+      (githubToken) => `repository-with-${githubToken}`,
+    );
+
+    expect(resolve('https://github.com/orgs/EXAMPLE-OWNER/projects/2/')).toBe(
+      'repository-with-token-second',
+    );
+  });
+
   it('throws when the project owner cannot be read from the project url', () => {
     const resolve = createConsoleProjectRepositoryResolver<string>(
       (repositoryOwner) => `token-of-${repositoryOwner}`,

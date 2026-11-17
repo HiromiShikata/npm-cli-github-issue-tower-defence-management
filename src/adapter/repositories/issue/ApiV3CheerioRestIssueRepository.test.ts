@@ -10007,6 +10007,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     relatedOpenPullRequestUrlsBatch?: (
       variables: Record<string, unknown>,
     ) => Response | object;
+    recordedPullRequestComments?: (
+      variables: Record<string, unknown>,
+    ) => Response | object;
     branchRules?: (url: string) => Response | object;
     branchDetail?: (url: string) => Response | object;
     checkRuns?: (url: string) => Response | object;
@@ -10089,6 +10092,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ) {
               return toResponse(
                 routes.relatedOpenPullRequestUrlsBatch(body.rawVariables),
+              );
+            }
+            if (
+              body.query.includes('IssueRecordedPullRequestComments') &&
+              routes.recordedPullRequestComments
+            ) {
+              return toResponse(
+                routes.recordedPullRequestComments(body.rawVariables),
               );
             }
             if (body.query.includes('timelineItems') && routes.timeline) {
@@ -10418,13 +10429,32 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     const buildBatchData = (
-      aliasEntries: { nodes: unknown[]; hasNextPage?: boolean }[],
+      aliasEntries: {
+        nodes: unknown[];
+        hasNextPage?: boolean;
+        comments?: {
+          nodes: { body: string }[];
+          endCursor?: string | null;
+          hasNextPage?: boolean;
+        };
+      }[],
     ) =>
       Object.fromEntries(
         aliasEntries.map((entry, index) => [
           `issue${index}`,
           {
             issue: {
+              ...(entry.comments
+                ? {
+                    comments: {
+                      nodes: entry.comments.nodes,
+                      pageInfo: {
+                        endCursor: entry.comments.endCursor ?? null,
+                        hasNextPage: entry.comments.hasNextPage ?? false,
+                      },
+                    },
+                  }
+                : {}),
               timelineItems: {
                 pageInfo: {
                   endCursor: null,
@@ -10436,6 +10466,80 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           },
         ]),
       );
+
+    it('includes an open pull request recorded in a task comment', async () => {
+      const recordedPrUrl = relatedPrUrlOf(300);
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [],
+              comments: {
+                nodes: [
+                  {
+                    body: `From: :robot: developer (model)\n\`\`\`json\n{"pullRequestUrl":"${recordedPrUrl}"}\n\`\`\``,
+                  },
+                ],
+              },
+            },
+          ]),
+        }),
+        slimPullRequest: (variables) =>
+          buildSlimPullRequestResponse({
+            url: recordedPrUrl,
+            state: variables.prNumber === 300 ? 'OPEN' : 'CLOSED',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([recordedPrUrl]);
+    });
+
+    it('reads every comment page and excludes a recorded pull request that is no longer open', async () => {
+      const recordedPrUrl = relatedPrUrlOf(301);
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [],
+              comments: {
+                nodes: [],
+                endCursor: 'comments-page-2',
+                hasNextPage: true,
+              },
+            },
+          ]),
+        }),
+        recordedPullRequestComments: () => ({
+          data: {
+            repository: {
+              issue: {
+                comments: {
+                  nodes: [
+                    {
+                      body: `\`\`\`json\n{"pullRequestUrl":"${recordedPrUrl}"}\n\`\`\``,
+                    },
+                  ],
+                  pageInfo: { endCursor: null, hasNextPage: false },
+                },
+              },
+            },
+          },
+        }),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: recordedPrUrl,
+            state: 'MERGED',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
 
     it('resolves the related open pull request urls of every issue in one GraphQL request', async () => {
       const capturedVariables: Record<string, unknown>[] = [];

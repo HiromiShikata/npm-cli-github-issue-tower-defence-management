@@ -1,8 +1,12 @@
-import { projectConfigForRepositoryResolve } from '../../../domain/services/projectRepositoryScope';
+import {
+  projectConfigForRepositoryResolve,
+  projectUrlKeyOf,
+} from '../../../domain/services/projectRepositoryScope';
 
 export type ConsoleGithubTokenResolver = (
   repositoryOwner: string,
   repositoryName?: string,
+  projectUrl?: string,
 ) => string;
 
 export type ConsoleProjectRepositories = Record<string, string[]>;
@@ -62,7 +66,9 @@ export const createConsoleProjectRepositoryResolver = <ProjectRepositoryType>(
         `The project owner cannot be read from the project url: ${projectUrl}`,
       );
     }
-    return buildProjectRepositoryForToken(resolveGithubToken(projectOwner));
+    return buildProjectRepositoryForToken(
+      resolveGithubToken(projectOwner, undefined, projectUrl),
+    );
   };
 };
 
@@ -137,11 +143,17 @@ export const createConsoleGithubTokenResolver = (
       consoleProjectUrls,
       consoleProjectRepositories,
     );
-  return (repositoryOwner: string, repositoryName?: string): string => {
+  return (
+    repositoryOwner: string,
+    repositoryName?: string,
+    projectUrl?: string,
+  ): string => {
     const cacheKey =
-      repositoryName === undefined
-        ? repositoryOwner
-        : `${repositoryOwner}/${repositoryName}`;
+      projectUrl !== undefined
+        ? `project:${projectUrlKeyOf(projectUrl)}`
+        : repositoryName === undefined
+          ? `owner:${repositoryOwner}`
+          : `repository:${repositoryOwner}/${repositoryName}`;
     const alreadyResolved = resolvedTokenByRepositoryKey.get(cacheKey);
     if (alreadyResolved !== undefined) {
       return alreadyResolved;
@@ -150,9 +162,15 @@ export const createConsoleGithubTokenResolver = (
       return defaultToken;
     }
     const matchedPjcode =
-      repositoryName === undefined
-        ? resolveProjectName(repositoryOwner)
-        : resolveRepositoryProjectName(repositoryOwner, repositoryName);
+      projectUrl !== undefined
+        ? (Object.entries(consoleProjectUrls).find(
+            ([, configuredProjectUrl]) =>
+              projectUrlKeyOf(configuredProjectUrl) ===
+              projectUrlKeyOf(projectUrl),
+          )?.[0] ?? resolveProjectName(repositoryOwner))
+        : repositoryName === undefined
+          ? resolveProjectName(repositoryOwner)
+          : resolveRepositoryProjectName(repositoryOwner, repositoryName);
     if (matchedPjcode === null) {
       return defaultToken;
     }
