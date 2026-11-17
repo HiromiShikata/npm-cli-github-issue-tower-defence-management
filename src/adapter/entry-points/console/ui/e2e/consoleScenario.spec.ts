@@ -1103,7 +1103,7 @@ test('deletes a story option from the GitHub custom field when confirmed via the
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('TDPM Console port');
 
-  await dialog.getByRole('button', { name: 'Delete with child tasks' }).click();
+  await dialog.getByRole('button', { name: 'Keep child tasks' }).click();
 
   await expect
     .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
@@ -1314,7 +1314,7 @@ test('shows Delete Story in the danger zone of a story-labeled item detail page,
 
     const previousDeleteCount = localHarness.deleteStoryCalls.length;
     await dialog
-      .getByRole('button', { name: 'Delete with child tasks' })
+      .getByRole('button', { name: 'Keep child tasks' })
       .click();
 
     await expect

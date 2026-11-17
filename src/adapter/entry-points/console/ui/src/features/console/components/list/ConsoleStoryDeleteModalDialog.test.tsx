@@ -24,22 +24,31 @@ describe('ConsoleStoryDeleteModalDialog', () => {
     expect(getByRole('dialog')).toHaveTextContent('TDPM Console port');
   });
 
-  it('calls onConfirm with true when Delete with child tasks is clicked', () => {
-    const onConfirm = jest.fn();
-    const { getByRole } = render(
-      <ConsoleStoryDeleteModalDialog {...defaultProps} onConfirm={onConfirm} />,
+  it('does not render a Delete with child tasks button', () => {
+    const { queryByRole } = render(
+      <ConsoleStoryDeleteModalDialog {...defaultProps} />,
     );
-    fireEvent.click(getByRole('button', { name: 'Delete with child tasks' }));
-    expect(onConfirm).toHaveBeenCalledWith(true);
+    expect(
+      queryByRole('button', { name: 'Delete with child tasks' }),
+    ).toBeNull();
   });
 
-  it('calls onConfirm with false when Keep child tasks is clicked', () => {
+  it('renders only Keep child tasks and Cancel as action buttons', () => {
+    const { getByRole } = render(
+      <ConsoleStoryDeleteModalDialog {...defaultProps} />,
+    );
+    expect(getByRole('button', { name: 'Keep child tasks' })).toBeInTheDocument();
+    expect(getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  it('calls onConfirm with no argument when Keep child tasks is clicked', () => {
     const onConfirm = jest.fn();
     const { getByRole } = render(
       <ConsoleStoryDeleteModalDialog {...defaultProps} onConfirm={onConfirm} />,
     );
     fireEvent.click(getByRole('button', { name: 'Keep child tasks' }));
-    expect(onConfirm).toHaveBeenCalledWith(false);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledWith();
   });
 
   it('calls onCancel when Cancel is clicked', () => {

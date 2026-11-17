@@ -1487,23 +1487,18 @@ describe('ConsoleStoryList', () => {
       expect(queryByRole('dialog')).toBeNull();
     });
 
-    it('calls onDeleteStory with storyOptionId and deleteChildTasks true when Delete with child tasks is confirmed', async () => {
-      const onDeleteStory = jest.fn().mockResolvedValue(undefined);
-      const { getAllByRole } = render(
-        <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
+    it('does not render a Delete with child tasks button in the story delete dialog', () => {
+      const { getAllByRole, queryAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} />,
       );
       const [firstOverflowBtn] = getAllByRole('button', {
         name: 'More options',
       });
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
-      const confirmButton = getAllByRole('button', {
-        name: 'Delete with child tasks',
-      })[0];
-      await act(async () => {
-        fireEvent.click(confirmButton);
-      });
-      expect(onDeleteStory).toHaveBeenCalledWith('1491051e', true);
+      expect(
+        queryAllByRole('button', { name: 'Delete with child tasks' }),
+      ).toHaveLength(0);
     });
 
     it('calls onDeleteStory with storyOptionId and deleteChildTasks false when Keep child tasks is confirmed', async () => {
@@ -1536,7 +1531,7 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {
-        name: 'Delete with child tasks',
+        name: 'Keep child tasks',
       })[0];
       await act(async () => {
         fireEvent.click(confirmButton);
@@ -1557,7 +1552,7 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {
-        name: 'Delete with child tasks',
+        name: 'Keep child tasks',
       })[0];
       await act(async () => {
         fireEvent.click(confirmButton);
@@ -1581,7 +1576,7 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(firstOverflowBtn);
       fireEvent.click(getAllByRole('menuitem', { name: 'Delete story' })[0]);
       const confirmButton = getAllByRole('button', {
-        name: 'Delete with child tasks',
+        name: 'Keep child tasks',
       })[0];
       fireEvent.click(confirmButton);
       await waitFor(() => expect(getAllByText('Deleting…')).toHaveLength(2));
