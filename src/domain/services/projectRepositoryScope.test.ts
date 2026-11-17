@@ -1,4 +1,5 @@
 import {
+  issueAddableByProjectScope,
   issueBelongsToProjectScope,
   projectConfigForRepositoryResolve,
   projectUrlKeyOf,
@@ -80,16 +81,25 @@ describe('issueBelongsToProjectScope', () => {
     org: 'example-owner',
     repositories: null,
     listedRepositoriesOfOtherProjects: [],
+    unlistedSiblingOwners: [],
   };
   const unlistedWithSiblingScope: ProjectRepositoryScope = {
     org: 'example-owner',
     repositories: null,
     listedRepositoriesOfOtherProjects: ['example-owner/example-tasks'],
+    unlistedSiblingOwners: [],
   };
   const listedScope: ProjectRepositoryScope = {
     org: 'example-owner',
     repositories: ['example-owner/example-tasks'],
     listedRepositoriesOfOtherProjects: [],
+    unlistedSiblingOwners: [],
+  };
+  const listedWithUnlistedSiblingScope: ProjectRepositoryScope = {
+    org: 'example-owner',
+    repositories: ['example-owner/example-tasks'],
+    listedRepositoriesOfOtherProjects: [],
+    unlistedSiblingOwners: ['example-owner'],
   };
 
   test.each([
@@ -106,6 +116,12 @@ describe('issueBelongsToProjectScope', () => {
       expected: false,
     },
     {
+      case: 'an unlisted project compares the owner exactly, as the owner check did before',
+      scope: ownerOnlyScope,
+      issue: reference('Example-Owner', 'anything'),
+      expected: false,
+    },
+    {
       case: 'an unlisted project does not own a repository listed by its sibling project',
       scope: unlistedWithSiblingScope,
       issue: reference('example-owner', 'example-tasks'),
@@ -118,19 +134,90 @@ describe('issueBelongsToProjectScope', () => {
       expected: true,
     },
     {
-      case: 'a listed project owns its listed repository',
+      case: 'a listed project owns its listed repository, ignoring letter case',
       scope: listedScope,
       issue: reference('Example-Owner', 'Example-Tasks'),
       expected: true,
     },
     {
-      case: 'a listed project does not own an unlisted repository of the same owner',
+      case: 'a listed project owns an unlisted repository of its owner when no unlisted sibling of that owner exists, as the StoryGate fallback does',
       scope: listedScope,
       issue: reference('example-owner', 'other-repo'),
+      expected: true,
+    },
+    {
+      case: 'a listed project does not own an unlisted repository when an unlisted sibling of the same owner exists',
+      scope: listedWithUnlistedSiblingScope,
+      issue: reference('example-owner', 'other-repo'),
+      expected: false,
+    },
+    {
+      case: 'a listed project does not own a repository of another owner',
+      scope: listedScope,
+      issue: reference('other-owner', 'other-repo'),
       expected: false,
     },
   ])('$case', ({ scope, issue, expected }) => {
     expect(issueBelongsToProjectScope(issue, scope)).toBe(expected);
+  });
+});
+
+describe('issueAddableByProjectScope', () => {
+  const unlistedScope: ProjectRepositoryScope = {
+    org: 'testOrg',
+    repositories: null,
+    listedRepositoriesOfOtherProjects: ['testorg/testrepo'],
+    unlistedSiblingOwners: [],
+  };
+  const unlistedScopeWithoutSibling: ProjectRepositoryScope = {
+    org: 'testOrg',
+    repositories: null,
+    listedRepositoriesOfOtherProjects: [],
+    unlistedSiblingOwners: [],
+  };
+  const listedScope: ProjectRepositoryScope = {
+    org: 'testOrg',
+    repositories: ['testOrg/testRepo'],
+    listedRepositoriesOfOtherProjects: [],
+    unlistedSiblingOwners: [],
+  };
+
+  test.each([
+    {
+      case: 'an unlisted project adds an issue of another owner that no project lists, as before',
+      scope: unlistedScopeWithoutSibling,
+      issue: reference('other-owner', 'repo'),
+      expected: true,
+    },
+    {
+      case: 'an unlisted project skips an issue of a repository listed by its sibling, ignoring case',
+      scope: unlistedScope,
+      issue: reference('testOrg', 'testRepo'),
+      expected: false,
+    },
+    {
+      case: 'a listed project adds an issue of its listed repository',
+      scope: listedScope,
+      issue: reference('testOrg', 'testRepo'),
+      expected: true,
+    },
+    {
+      case: 'a listed project adds an unlisted repository of its owner when no unlisted sibling exists, as the resolver fallback does',
+      scope: listedScope,
+      issue: reference('testOrg', 'other-repo'),
+      expected: true,
+    },
+    {
+      case: 'a listed project skips an unlisted repository of its owner when an unlisted sibling of that owner exists',
+      scope: {
+        ...listedScope,
+        unlistedSiblingOwners: ['testOrg'],
+      },
+      issue: reference('testOrg', 'other-repo'),
+      expected: false,
+    },
+  ])('$case', ({ scope, issue, expected }) => {
+    expect(issueAddableByProjectScope(issue, scope)).toBe(expected);
   });
 });
 

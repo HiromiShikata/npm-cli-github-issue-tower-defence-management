@@ -297,6 +297,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
             org: 'testOrg',
             repositories: ['testOrg/testRepo'],
             listedRepositoriesOfOtherProjects: [],
+            unlistedSiblingOwners: [],
           },
           expectedAdded: true,
         },
@@ -306,6 +307,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
             org: 'testOrg',
             repositories: null,
             listedRepositoriesOfOtherProjects: ['testorg/testrepo'],
+            unlistedSiblingOwners: [],
           },
           expectedAdded: false,
         },
@@ -315,8 +317,29 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
             org: 'testOrg',
             repositories: null,
             listedRepositoriesOfOtherProjects: [],
+            unlistedSiblingOwners: [],
           },
           expectedAdded: true,
+        },
+        {
+          case: 'a listed project adds a matched issue of an unlisted repository of its owner when no unlisted sibling exists',
+          projectScope: {
+            org: 'testOrg',
+            repositories: ['testOrg/listed-repo'],
+            listedRepositoriesOfOtherProjects: [],
+            unlistedSiblingOwners: [],
+          },
+          expectedAdded: true,
+        },
+        {
+          case: 'a listed project skips a matched issue of an unlisted repository when an unlisted sibling of its owner exists',
+          projectScope: {
+            org: 'testOrg',
+            repositories: ['testOrg/listed-repo'],
+            listedRepositoriesOfOtherProjects: [],
+            unlistedSiblingOwners: ['testOrg'],
+          },
+          expectedAdded: false,
         },
       ])('$case', async ({ projectScope, expectedAdded }) => {
         mockIssueRepository.searchIssues.mockResolvedValueOnce([

@@ -728,6 +728,50 @@ describe('GithubStoryGateIssueRepository', () => {
       },
     );
 
+    it('reads every page of the task comments before looking up the recorded pull requests', async () => {
+      const firstPage = jsonResponse({
+        data: {
+          repository: {
+            issueOrPullRequest: {
+              comments: {
+                nodes: [],
+                pageInfo: { endCursor: 'comments-page-2', hasNextPage: true },
+              },
+              timelineItems: { nodes: [] },
+            },
+          },
+        },
+      });
+      const secondPage = jsonResponse({
+        data: {
+          repository: {
+            issueOrPullRequest: {
+              comments: {
+                nodes: [
+                  {
+                    body: `\`\`\`json\n{"pullRequestUrl": "${RECORDED_PR_URL}"}\n\`\`\``,
+                  },
+                ],
+                pageInfo: { endCursor: null, hasNextPage: false },
+              },
+              timelineItems: { nodes: [] },
+            },
+          },
+        },
+      });
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(firstPage)
+        .mockResolvedValueOnce(secondPage)
+        .mockResolvedValueOnce(resourceResponse('OPEN'));
+
+      const pullRequests =
+        await repositoryCreate().listClosingPullRequests(ISSUE);
+
+      expect(pullRequests).toEqual([{ url: RECORDED_PR_URL, state: 'OPEN' }]);
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+    });
+
     it('does not look up a recorded pull request that the timeline already returned', async () => {
       const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         closingResponseWithComments(

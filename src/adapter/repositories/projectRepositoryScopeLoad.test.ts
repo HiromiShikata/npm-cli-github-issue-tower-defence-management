@@ -34,6 +34,7 @@ describe('projectRepositoryScopeLoad', () => {
       org: 'example-owner',
       repositories: null,
       listedRepositoriesOfOtherProjects: ['example-owner/example-tasks'],
+      unlistedSiblingOwners: [],
     });
   });
 
@@ -51,6 +52,7 @@ describe('projectRepositoryScopeLoad', () => {
       org: 'example-owner',
       repositories: ['example-owner/example-tasks'],
       listedRepositoriesOfOtherProjects: [],
+      unlistedSiblingOwners: ['example-owner'],
     });
   });
 

@@ -237,6 +237,10 @@ type IssueTimelineResponse = {
     repository?: {
       issue?: {
         comments?: {
+          pageInfo?: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          } | null;
           nodes: ({ body: string } | null)[] | null;
         } | null;
         timelineItems: {
@@ -3362,10 +3366,14 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const query = `
-      query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
+      query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String, $commentsAfter: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issueNumber) {
-            comments(last: 100) {
+            comments(first: 100, after: $commentsAfter) {
+              pageInfo {
+                endCursor
+                hasNextPage
+              }
               nodes {
                 body
               }
@@ -3407,14 +3415,16 @@ export class ApiV3CheerioRestIssueRepository
     const relatedPRsMap: Map<string, RelatedPullRequest> = new Map();
     let after: string | null = null;
     let hasNextPage = true;
-    let taskCommentBodies: string[] = [];
+    let commentsAfter: string | null = null;
+    let commentsHasNextPage = true;
+    const taskCommentBodies: string[] = [];
 
-    while (hasNextPage) {
+    while (hasNextPage || commentsHasNextPage) {
       const response = await this.fetchWithRateLimitRetry(() =>
         fetchGithubGraphql({
           ghToken: this.ghToken,
           query,
-          variables: { owner, repo, issueNumber, after },
+          variables: { owner, repo, issueNumber, after, commentsAfter },
         }),
       );
 
@@ -3440,13 +3450,21 @@ export class ApiV3CheerioRestIssueRepository
         return [];
       }
 
-      if (after === null) {
-        taskCommentBodies = (issueData.comments?.nodes ?? []).flatMap((node) =>
-          node?.body ? [node.body] : [],
+      if (commentsHasNextPage) {
+        taskCommentBodies.push(
+          ...(issueData.comments?.nodes ?? []).flatMap((node) =>
+            node?.body ? [node.body] : [],
+          ),
         );
+        commentsHasNextPage =
+          issueData.comments?.pageInfo?.hasNextPage ?? false;
+        commentsAfter = issueData.comments?.pageInfo?.endCursor ?? null;
       }
 
-      for (const item of issueData.timelineItems?.nodes ?? []) {
+      const timelineNodes = hasNextPage
+        ? (issueData.timelineItems?.nodes ?? [])
+        : [];
+      for (const item of timelineNodes) {
         if (!item) {
           console.warn(
             `ApiV3CheerioRestIssueRepository: skipping null timeline node returned by GitHub GraphQL API. issueUrl: ${issueUrl}`,
@@ -3459,8 +3477,10 @@ export class ApiV3CheerioRestIssueRepository
         await this.relatedOpenPullRequestRecord(item.source, relatedPRsMap);
       }
 
-      hasNextPage = issueData.timelineItems?.pageInfo?.hasNextPage ?? false;
-      after = issueData.timelineItems?.pageInfo?.endCursor ?? null;
+      if (hasNextPage) {
+        hasNextPage = issueData.timelineItems?.pageInfo?.hasNextPage ?? false;
+        after = issueData.timelineItems?.pageInfo?.endCursor ?? null;
+      }
     }
 
     for (const recordedUrl of pullRequestUrlsFromCommentBodies(

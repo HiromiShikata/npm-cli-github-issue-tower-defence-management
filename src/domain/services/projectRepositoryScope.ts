@@ -13,6 +13,7 @@ export type ProjectRepositoryScope = {
   org: string;
   repositories: string[] | null;
   listedRepositoriesOfOtherProjects: string[];
+  unlistedSiblingOwners: string[];
 };
 
 const REPOSITORY_LIST_ENTRY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
@@ -67,23 +68,48 @@ export const projectConfigForRepositoryResolve = <T extends ProjectScopeConfig>(
   );
 };
 
+const listedInScope = (scope: ProjectRepositoryScope, key: string): boolean =>
+  scope.repositories?.some((entry) => entry.toLowerCase() === key) === true;
+
+const listedByOtherProject = (
+  scope: ProjectRepositoryScope,
+  key: string,
+): boolean =>
+  scope.listedRepositoriesOfOtherProjects.some(
+    (entry) => entry.toLowerCase() === key,
+  );
+
+// Mirrors projectConfigForRepositoryResolve: a listed project owns its listed
+// repositories, and falls back to its owner only while no unlisted sibling
+// project of that owner exists.
 export const issueBelongsToProjectScope = (
   issue: RepositoryReference,
   scope: ProjectRepositoryScope,
 ): boolean => {
   const key = repositoryKeyOf(issue);
-  if (
-    scope.repositories?.some((entry) => entry.toLowerCase() === key) === true
-  ) {
+  if (listedInScope(scope, key)) {
     return true;
   }
   if (scope.repositories !== null) {
-    return false;
+    return (
+      issue.owner.toLowerCase() === scope.org.toLowerCase() &&
+      !scope.unlistedSiblingOwners.some(
+        (owner) => owner.toLowerCase() === issue.owner.toLowerCase(),
+      ) &&
+      !listedByOtherProject(scope, key)
+    );
   }
-  if (issue.owner.toLowerCase() !== scope.org.toLowerCase()) {
-    return false;
+  return issue.owner === scope.org && !listedByOtherProject(scope, key);
+};
+
+// Queue-add keeps its existing reach for unlisted projects: only repositories
+// listed by another project are excluded. A listed project adds only its own.
+export const issueAddableByProjectScope = (
+  issue: RepositoryReference,
+  scope: ProjectRepositoryScope,
+): boolean => {
+  if (scope.repositories !== null) {
+    return issueBelongsToProjectScope(issue, scope);
   }
-  return !scope.listedRepositoriesOfOtherProjects.some(
-    (entry) => entry.toLowerCase() === key,
-  );
+  return !listedByOtherProject(scope, repositoryKeyOf(issue));
 };

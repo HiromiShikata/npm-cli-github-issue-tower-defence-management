@@ -9993,7 +9993,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     value instanceof Response ? value : jsonResponse(value);
 
   type FetchRoutes = {
-    timeline?: () => Response | object;
+    timeline?: (variables: Record<string, unknown>) => Response | object;
     mergeability?: () => Response | object;
     slimPullRequest?: (variables: {
       owner?: string;
@@ -10092,7 +10092,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               );
             }
             if (body.query.includes('timelineItems') && routes.timeline) {
-              return toResponse(routes.timeline());
+              return toResponse(routes.timeline(body.rawVariables));
             }
             if (
               body.query.includes('mergeStateStatus') &&
@@ -12354,6 +12354,79 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           },
         },
       },
+    });
+
+    it('reads every page of the task comments before deciding which pull requests are recorded', async () => {
+      const fetchSpy = mockFetchRoutes({
+        timeline: (variables) =>
+          variables.commentsAfter === null
+            ? {
+                data: {
+                  repository: {
+                    issue: {
+                      comments: {
+                        nodes: [],
+                        pageInfo: {
+                          endCursor: 'comments-page-2',
+                          hasNextPage: true,
+                        },
+                      },
+                      timelineItems:
+                        EMPTY_TIMELINE.data.repository.issue.timelineItems,
+                    },
+                  },
+                },
+              }
+            : {
+                data: {
+                  repository: {
+                    issue: {
+                      comments: {
+                        nodes: [
+                          commentWithResult(
+                            `{"pullRequestUrl": "${RECORDED_PR_URL}"}`,
+                          ),
+                        ],
+                        pageInfo: { endCursor: null, hasNextPage: false },
+                      },
+                      timelineItems:
+                        EMPTY_TIMELINE.data.repository.issue.timelineItems,
+                    },
+                  },
+                },
+              },
+        mergeability: () => ({
+          data: {
+            repository: {
+              pullRequest: {
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+              },
+            },
+          },
+        }),
+        slimPullRequest: (variables) =>
+          buildSlimPullRequestResponse({
+            url: `https://github.com/${variables.owner}/${variables.repo}/pull/${variables.prNumber}`,
+            state: 'OPEN',
+          }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11201',
+        { bypassCache: true },
+      );
+
+      expect(result.map((pr) => pr.url)).toEqual([RECORDED_PR_URL]);
+      expect(
+        countCallsMatching(
+          fetchSpy,
+          (url, body) =>
+            url === 'https://api.github.com/graphql' &&
+            body.includes('timelineItems'),
+        ),
+      ).toBe(2);
     });
 
     it.each([

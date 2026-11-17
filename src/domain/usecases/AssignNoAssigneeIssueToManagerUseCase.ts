@@ -4,7 +4,7 @@ import { SearchedIssue } from '../entities/SearchedIssue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Member } from '../entities/Member';
 import {
-  issueBelongsToProjectScope,
+  issueAddableByProjectScope,
   ProjectRepositoryScope,
 } from '../services/projectRepositoryScope';
 
@@ -69,7 +69,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       }
       if (
         input.projectScope &&
-        !issueBelongsToProjectScope(
+        !issueAddableByProjectScope(
           { owner: searchedIssue.org, repo: searchedIssue.repo },
           input.projectScope,
         )

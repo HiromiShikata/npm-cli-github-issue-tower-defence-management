@@ -18,6 +18,7 @@ export const projectRepositoryScopeLoad = (
   }
   const configDirectory = path.dirname(configFilePath);
   const listedRepositoriesOfOtherProjects: string[] = [];
+  const unlistedSiblingOwners: string[] = [];
   for (const fileName of fs
     .readdirSync(configDirectory)
     .filter((name) => PROJECT_CONFIG_FILE_PATTERN.test(name))
@@ -30,11 +31,20 @@ export const projectRepositoryScopeLoad = (
       siblingPath,
       fs.readFileSync(siblingPath, 'utf8'),
     );
-    listedRepositoriesOfOtherProjects.push(...(sibling?.repositories ?? []));
+    if (sibling === null) {
+      continue;
+    }
+    const siblingRepositories = sibling.repositories ?? null;
+    if (siblingRepositories === null) {
+      unlistedSiblingOwners.push(sibling.org);
+    } else {
+      listedRepositoriesOfOtherProjects.push(...siblingRepositories);
+    }
   }
   return {
     org: own.org,
     repositories: own.repositories ?? null,
     listedRepositoriesOfOtherProjects,
+    unlistedSiblingOwners,
   };
 };

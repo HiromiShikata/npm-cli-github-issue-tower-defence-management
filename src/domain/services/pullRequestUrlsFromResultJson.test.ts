@@ -41,6 +41,11 @@ describe('pullRequestUrlsFromCommentBodies', () => {
       expected: [PR_URL, OTHER_PR_URL],
     },
     {
+      case: 'a pullRequestUrl inside a fenced block that is not labelled json is ignored',
+      bodies: [`\`\`\`text\n{"pullRequestUrl": "${PR_URL}"}\n\`\`\``],
+      expected: [],
+    },
+    {
       case: 'a comment without any fenced block yields nothing',
       bodies: ['From: :robot: developer (model)\nplain text'],
       expected: [],

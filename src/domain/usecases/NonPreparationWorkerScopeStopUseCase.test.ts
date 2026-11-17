@@ -715,11 +715,19 @@ describe('NonPreparationWorkerScopeStopUseCase with a project repository scope',
     org: 'owner',
     repositories: ['owner/listed-tasks'],
     listedRepositoriesOfOtherProjects: [],
+    unlistedSiblingOwners: [],
+  };
+  const listedWithUnlistedSiblingScope = {
+    org: 'owner',
+    repositories: ['owner/listed-tasks'],
+    listedRepositoriesOfOtherProjects: [],
+    unlistedSiblingOwners: ['owner'],
   };
   const unlistedScope = {
     org: 'owner',
     repositories: null,
     listedRepositoriesOfOtherProjects: ['Owner/Listed-Tasks'],
+    unlistedSiblingOwners: [],
   };
 
   test.each([
@@ -730,8 +738,14 @@ describe('NonPreparationWorkerScopeStopUseCase with a project repository scope',
       expectedStopped: true,
     },
     {
-      case: 'a listed project keeps a scope of an unlisted repository of the same owner',
+      case: 'a listed project stops a scope of an unlisted repository of the same owner when no unlisted sibling exists',
       scope: listedScope,
+      repo: 'other-repo',
+      expectedStopped: true,
+    },
+    {
+      case: 'a listed project keeps a scope of an unlisted repository when an unlisted sibling of the same owner exists',
+      scope: listedWithUnlistedSiblingScope,
       repo: 'other-repo',
       expectedStopped: false,
     },
