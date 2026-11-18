@@ -1,3 +1,10 @@
+# [2.199.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.198.0...v2.199.0) (2026-11-18)
+
+
+### Features
+
+* **daily-scan:** support repository list and findings repository ([#3740](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3740)) ([5585edf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5585edf23c3e2266dc04e76db6b0bc62b938a086))
+
 # [2.198.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.197.1...v2.198.0) (2026-11-18)
 
 
