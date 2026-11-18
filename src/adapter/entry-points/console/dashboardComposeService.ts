@@ -2,6 +2,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Issue } from '../../../domain/entities/Issue';
 import {
+  CODEX_SEVEN_DAY_WINDOW_DIR_NAME,
+  CodexSevenDayWindowState,
+  CodexSevenDayWindowStatus,
+} from '../../../domain/usecases/dashboard/CodexSevenDayWindowUseCase';
+import {
   CloseEventCounts,
   ComposeDashboardDisk,
   ComposeDashboardInput,
@@ -321,6 +326,134 @@ const readTokenStatusFile = (
   };
 };
 
+const CODEX_SEVEN_DAY_WINDOW_STATES: CodexSevenDayWindowState[] = [
+  'observed',
+  'no-data',
+  'error',
+];
+
+const isCodexSevenDayWindowState = (
+  value: unknown,
+): value is CodexSevenDayWindowState =>
+  CODEX_SEVEN_DAY_WINDOW_STATES.some((state) => state === value);
+
+const parseCodexSevenDayWindowStatus = (
+  value: unknown,
+): CodexSevenDayWindowStatus | null => {
+  if (!isRecord(value) || typeof value.codexHome !== 'string') {
+    return null;
+  }
+  if (!isCodexSevenDayWindowState(value.state)) {
+    return null;
+  }
+  const usedPercent = asNullableNumber(value.usedPercent);
+  const resetsAtEpochSeconds = asNullableNumber(value.resetsAtEpochSeconds);
+  if (
+    value.state === 'observed' &&
+    (usedPercent === null || resetsAtEpochSeconds === null)
+  ) {
+    return null;
+  }
+  return {
+    codexHome: value.codexHome,
+    state: value.state,
+    usedPercent,
+    resetsAtEpochSeconds,
+    capturedAt: typeof value.capturedAt === 'string' ? value.capturedAt : null,
+    errorMessage:
+      typeof value.errorMessage === 'string' ? value.errorMessage : null,
+  };
+};
+
+type CodexSevenDayWindowFileContent = {
+  capturedAt: string;
+  windows: CodexSevenDayWindowStatus[];
+};
+
+const isNotFoundError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === 'ENOENT';
+
+const readCodexSevenDayWindowFiles = (
+  dashboardDataDir: string,
+): CodexSevenDayWindowFileContent[] => {
+  const directory = path.join(
+    dashboardDataDir,
+    CODEX_SEVEN_DAY_WINDOW_DIR_NAME,
+  );
+  let fileNames: string[];
+  try {
+    fileNames = fs.readdirSync(directory);
+  } catch (error) {
+    if (!isNotFoundError(error)) {
+      console.error(
+        `Failed to list Codex seven day window files in ${directory}:`,
+        error,
+      );
+    }
+    return [];
+  }
+  const files: CodexSevenDayWindowFileContent[] = [];
+  for (const fileName of fileNames) {
+    if (!fileName.endsWith('.json')) {
+      continue;
+    }
+    const filePath = path.join(directory, fileName);
+    const value = readJsonFile(filePath);
+    if (
+      !isRecord(value) ||
+      typeof value.capturedAt !== 'string' ||
+      !Array.isArray(value.windows)
+    ) {
+      console.error(
+        `Ignored unreadable Codex seven day window file ${filePath}`,
+      );
+      continue;
+    }
+    const windows: CodexSevenDayWindowStatus[] = [];
+    for (const entry of value.windows) {
+      const window = parseCodexSevenDayWindowStatus(entry);
+      if (window === null) {
+        console.error(
+          `Ignored malformed Codex seven day window entry in ${filePath}`,
+        );
+      } else {
+        windows.push(window);
+      }
+    }
+    files.push({ capturedAt: value.capturedAt, windows });
+  }
+  return files;
+};
+
+const compareText = (left: string, right: string): number => {
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
+};
+
+const mergeCodexSevenDayWindows = (
+  files: CodexSevenDayWindowFileContent[],
+): CodexSevenDayWindowStatus[] => {
+  const newestFirst = [...files].sort((left, right) =>
+    compareText(right.capturedAt, left.capturedAt),
+  );
+  const windowByHome = new Map<string, CodexSevenDayWindowStatus>();
+  for (const file of newestFirst) {
+    for (const window of file.windows) {
+      if (!windowByHome.has(window.codexHome)) {
+        windowByHome.set(window.codexHome, window);
+      }
+    }
+  }
+  return [...windowByHome.values()].sort((left, right) =>
+    compareText(left.codexHome, right.codexHome),
+  );
+};
+
 export const buildComposeDashboardInput = (
   options: DashboardComposeOptions,
 ): ComposeDashboardInput => {
@@ -345,11 +478,18 @@ export const buildComposeDashboardInput = (
     },
   );
   const tokenStatusFile = readTokenStatusFile(options.dashboardDataDir);
+  const codexSevenDayWindowFiles = readCodexSevenDayWindowFiles(
+    options.dashboardDataDir,
+  );
   return {
     projects,
     machineStatus: readMachineStatus(options.dashboardDataDir),
     tokens: tokenStatusFile.tokens,
     sevenDayWindowAggregate: tokenStatusFile.sevenDayWindowAggregate,
+    codexSevenDayWindows:
+      codexSevenDayWindowFiles.length === 0
+        ? null
+        : mergeCodexSevenDayWindows(codexSevenDayWindowFiles),
     nowMs,
   };
 };
