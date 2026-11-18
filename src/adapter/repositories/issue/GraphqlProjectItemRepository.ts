@@ -89,6 +89,18 @@ type ProjectV2ItemFieldValuesOnlyNode = {
     nodes: ProjectV2ItemFieldValueNode[];
   };
 };
+
+type ProjectSideItemsPageResponse = {
+  data?: {
+    node: {
+      items: {
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        nodes: ProjectV2ItemNode[];
+      };
+    } | null;
+  };
+  errors?: GraphqlError[];
+};
 // Rate-limit cost of a GraphQL query grows with the number of requested
 // nodes (roughly totalNodes / 100, see
 // https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api).
@@ -239,6 +251,7 @@ ${PROJECT_V2_ITEM_FIELD_VALUE_NODE_FRAGMENT}
               }
             }
           }`;
+const PROJECT_ITEM_LOOKUP_PAGE_SIZE = 100;
 export const PAGINATION_DELAY_MS = 5000;
 export const FETCH_PROJECT_ITEMS_INITIAL_PAGE_SIZE = 100;
 export const FETCH_PROJECT_ITEMS_BY_IDS_BATCH_SIZE = 100;
@@ -534,7 +547,21 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
       const projectItemId = projectItems.find(
         (item) => item.project.id === projectId,
       )?.id;
-      return projectItemId;
+      if (projectItemId !== undefined) {
+        return projectItemId;
+      }
+      const projectSideItemNode =
+        await this.findProjectSideItemNodeByContentUrls(
+          'fetchItemId',
+          projectId,
+          owner,
+          repositoryName,
+          [
+            `https://github.com/${owner}/${repositoryName}/issues/${issueNumber}`,
+            `https://github.com/${owner}/${repositoryName}/pull/${issueNumber}`,
+          ],
+        );
+      return projectSideItemNode?.id;
     } catch (error) {
       console.error('Error fetching GitHub Project V2 ID:', error);
       if (error instanceof GraphqlRateLimitError) {
@@ -828,6 +855,80 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
     );
     return retryAttempt;
   };
+  private findProjectSideItemNodeByContentUrls = async (
+    operation: string,
+    projectId: string,
+    owner: string,
+    repositoryName: string,
+    contentUrls: string[],
+  ): Promise<ProjectV2ItemNode | null> => {
+    const graphqlQueryString = `
+query GetProjectItemsOfRepository($projectId: ID!, $after: String, $query: String) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: ${PROJECT_ITEM_LOOKUP_PAGE_SIZE}, after: $after, query: $query) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          isArchived${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
+        }
+      }
+    }
+  }
+}
+`;
+    let after: string | null = null;
+    for (;;) {
+      const response = await callWithRateLimitRetry(async () => {
+        const result =
+          await postGithubGraphqlJson<ProjectSideItemsPageResponse>({
+            ghToken: this.ghToken,
+            query: graphqlQueryString,
+            variables: {
+              projectId,
+              after,
+              query: `repo:${owner}/${repositoryName}`,
+            },
+          });
+        throwIfGraphqlRateLimitError(result);
+        return result;
+      });
+      if (!response.data) {
+        const errorMessages = response.errors
+          ? response.errors.map((e) => e.message).join('; ')
+          : 'no data field in response';
+        throw new Error(
+          `GitHub GraphQL API returned no data for ${operation}: ${errorMessages}`,
+        );
+      }
+      const items = response.data.node?.items;
+      if (!items) {
+        return null;
+      }
+      const matchedNode = items.nodes.find(
+        (node) =>
+          node.content !== null &&
+          typeof node.content.url === 'string' &&
+          contentUrls.includes(node.content.url),
+      );
+      if (matchedNode) {
+        return matchedNode;
+      }
+      if (!items.pageInfo.hasNextPage) {
+        return null;
+      }
+      if (!items.pageInfo.endCursor) {
+        throw new Error(
+          `${operation}: project ${projectId} page reports hasNextPage without endCursor`,
+        );
+      }
+      after = items.pageInfo.endCursor;
+    }
+  };
+
   private extractPlainCrossRepoIssueReferenceUrls = (
     body: string | null,
   ): string[] => pullRequestRefLineIssueUrls(body);
@@ -1596,6 +1697,20 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       : projectItems[0];
     if (!item) {
       if (projectId) {
+        const projectSideItemNode =
+          await this.findProjectSideItemNodeByContentUrls(
+            'fetchProjectItemByUrl',
+            projectId,
+            owner,
+            repo,
+            [issueUrl],
+          );
+        const projectSideItem = projectSideItemNode
+          ? this.mapProjectV2ItemNodeToProjectItem(projectSideItemNode)
+          : null;
+        if (projectSideItem) {
+          return projectSideItem;
+        }
         console.warn(
           `No project item found for issue ${issueUrl} on project ${projectId}`,
         );
