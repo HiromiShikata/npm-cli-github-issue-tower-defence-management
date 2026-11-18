@@ -706,6 +706,7 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
     status: string;
     story: string;
     storyOptionId: string | null | undefined;
+    assignees?: string[];
   };
 
   const cacheIssue = ({
@@ -713,6 +714,7 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
     status,
     story,
     storyOptionId,
+    assignees = ['HiromiShikata'],
   }: CacheIssueFields) => ({
     nameWithOwner: 'demo/repo',
     number,
@@ -727,7 +729,7 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
     dependedIssueUrls: [],
     completionDate50PercentConfidence: null,
     url: `https://github.com/demo/repo/issues/${number}`,
-    assignees: ['HiromiShikata'],
+    assignees,
     labels: [],
     org: 'demo',
     repo: 'repo',
@@ -877,6 +879,56 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
       rowCapturedAt: '2026-06-26T12:05:00.000Z',
       humanPendingRed: 1,
       humanPendingYellow: 0,
+    });
+  });
+
+  it('counts only pending issues assigned to the row assignee in the recomputed red and yellow counts', () => {
+    expect(
+      readHumanPendingFromFresherCache(
+        [
+          { id: 'opt-red-story', name: 'Red Story', color: 'RED' },
+          { id: 'opt-yellow-story', name: 'Yellow Story', color: 'YELLOW' },
+        ],
+        [
+          {
+            number: 1,
+            status: 'Awaiting Owner',
+            story: 'Red Story',
+            storyOptionId: 'opt-red-story',
+          },
+          {
+            number: 2,
+            status: 'Todo by human',
+            story: 'Yellow Story',
+            storyOptionId: 'opt-yellow-story',
+          },
+          {
+            number: 3,
+            status: 'Awaiting Owner',
+            story: 'Red Story',
+            storyOptionId: 'opt-red-story',
+            assignees: ['other-user'],
+          },
+          {
+            number: 4,
+            status: 'Todo by human',
+            story: 'Yellow Story',
+            storyOptionId: 'opt-yellow-story',
+            assignees: ['other-user'],
+          },
+          {
+            number: 5,
+            status: 'Awaiting Owner',
+            story: 'Red Story',
+            storyOptionId: 'opt-red-story',
+            assignees: [],
+          },
+        ],
+      ),
+    ).toEqual({
+      rowCapturedAt: '2026-06-26T12:05:00.000Z',
+      humanPendingRed: 1,
+      humanPendingYellow: 1,
     });
   });
 
