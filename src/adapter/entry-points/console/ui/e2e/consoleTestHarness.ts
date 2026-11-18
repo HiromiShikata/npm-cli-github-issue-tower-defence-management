@@ -755,6 +755,7 @@ const createStubIssueRepository = (
   getOrCreateLabel: () => notImplemented('getOrCreateLabel'),
   updateAssigneeList: () => notImplemented('updateAssigneeList'),
   searchIssues: () => notImplemented('searchIssues'),
+  isRepositoryArchived: () => notImplemented('isRepositoryArchived'),
   getIssueSummariesByLabelAndState: () =>
     notImplemented('getIssueSummariesByLabelAndState'),
   get: async (issueUrl: string): Promise<Issue | null> =>

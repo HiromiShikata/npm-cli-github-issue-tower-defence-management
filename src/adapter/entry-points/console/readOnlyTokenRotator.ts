@@ -188,6 +188,8 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       rotate(JSON.stringify(query), (r) => r.searchIssue(query)),
     searchIssues: (query: string) =>
       rotate(query, (r) => r.searchIssues(query)),
+    isRepositoryArchived: (org: string, repo: string) =>
+      rotate(`${org}/${repo}`, (r) => r.isRepositoryArchived(org, repo)),
     getIssueSummariesByLabelAndState: (
       params: Parameters<
         IssueRepository['getIssueSummariesByLabelAndState']

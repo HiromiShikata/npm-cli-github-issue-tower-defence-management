@@ -880,9 +880,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
         expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
           ['repo:testOrg/testRepo is:open no:project'],
         ]);
-        expect(mockIssueRepository.isRepositoryArchived.mock.calls).toEqual(
-          [],
-        );
+        expect(mockIssueRepository.isRepositoryArchived.mock.calls).toEqual([]);
       },
     );
 

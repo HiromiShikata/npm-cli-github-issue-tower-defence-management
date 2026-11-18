@@ -950,6 +950,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'removeLabel'
       | 'updateAssigneeList'
       | 'searchIssues'
+      | 'isRepositoryArchived'
       | 'getIssueSummariesByLabelAndState'
       | 'getOrCreateLabel'
     >,
@@ -2410,6 +2411,9 @@ export class ApiV3CheerioRestIssueRepository
   };
   searchIssues = (query: string): Promise<SearchedIssue[]> => {
     return this.restIssueRepository.searchIssues(query);
+  };
+  isRepositoryArchived = (org: string, repo: string): Promise<boolean> => {
+    return this.restIssueRepository.isRepositoryArchived(org, repo);
   };
   getIssueSummariesByLabelAndState: IssueRepository['getIssueSummariesByLabelAndState'] =
     (params) => {

@@ -222,6 +222,7 @@ export class RestIssueRepository
       | 'updateAssigneeList'
       | 'removeLabel'
       | 'searchIssues'
+      | 'isRepositoryArchived'
       | 'getIssueSummariesByLabelAndState'
       | 'getIssueOrPullRequestComments'
     >
@@ -630,6 +631,18 @@ export class RestIssueRepository
       await this.detectAndRecordSecondaryRateLimit(e);
       throw e;
     }
+  };
+
+  isRepositoryArchived = async (
+    org: string,
+    repo: string,
+  ): Promise<boolean> => {
+    const response = await ky
+      .get(`https://api.github.com/repos/${org}/${repo}`, {
+        headers: { Authorization: `token ${this.selectReadToken()}` },
+      })
+      .json<{ archived: boolean }>();
+    return response.archived;
   };
 
   searchIssues = async (query: string): Promise<SearchedIssue[]> => {

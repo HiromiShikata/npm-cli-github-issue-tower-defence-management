@@ -202,6 +202,7 @@ export class HandleScheduledEventUseCase {
     thresholdForDispatchLoop?: number;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
+    queryToAddManagerAssignedIssues?: string | null;
     projectScope?: ProjectRepositoryScope | null;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
@@ -976,6 +977,8 @@ ${JSON.stringify(e)}
           projectToAddSearchedIssues: project,
           queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
           queryToAddProject: input.queryToAddProject ?? null,
+          queryToAddManagerAssignedIssues:
+            input.queryToAddManagerAssignedIssues ?? null,
           projectScope: input.projectScope ?? null,
         }),
       failures,

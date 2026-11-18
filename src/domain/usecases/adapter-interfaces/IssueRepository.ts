@@ -185,6 +185,7 @@ export interface IssueRepository {
     assigneeList: Member['name'][],
   ) => Promise<void>;
   searchIssues: (query: string) => Promise<SearchedIssue[]>;
+  isRepositoryArchived: (org: string, repo: string) => Promise<boolean>;
   getIssueSummariesByLabelAndState: (params: {
     owner: string;
     repositoryName: string;
