@@ -1,3 +1,10 @@
+## [2.200.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.200.1...v2.200.2) (2026-11-18)
+
+
+### Bug Fixes
+
+* **graphql:** resolve project items of other-owner repositories via project side ([#3743](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3743)) ([8eb3878](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8eb38782d2939a64c05cf7ff25c69eb39527a331))
+
 ## [2.200.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.200.0...v2.200.1) (2026-11-18)
 
 
