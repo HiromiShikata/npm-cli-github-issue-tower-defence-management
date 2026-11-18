@@ -1,3 +1,10 @@
+## [2.200.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.200.0...v2.200.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **dashboard:** count red and yellow pending tasks only for the row assignee ([#3742](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3742)) ([3d4f88e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3d4f88e7f49078a7d0036ae38db9f505bc34e197))
+
 # [2.200.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.199.0...v2.200.0) (2026-11-18)
 
 
