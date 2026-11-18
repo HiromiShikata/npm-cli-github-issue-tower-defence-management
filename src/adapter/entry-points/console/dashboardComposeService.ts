@@ -8,7 +8,7 @@ import {
   ComposeDashboardMachineStatus,
   ComposeDashboardProject,
 } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
-import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
+import { assignDashboardDisplayLabels } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import {
   DashboardRow,
   GenerateDashboardRowUseCase,
@@ -325,14 +325,15 @@ export const buildComposeDashboardInput = (
   options: DashboardComposeOptions,
 ): ComposeDashboardInput => {
   const nowMs = options.nowMs ?? Date.now();
-  const projects: ComposeDashboardProject[] = options.projectNames.map(
-    (projectName) => {
+  const projects: ComposeDashboardProject[] = Array.from(
+    assignDashboardDisplayLabels(options.projectNames),
+    ([projectName, displayLabel]) => {
       const { row, capturedAt } = readProjectRowWithFreshness(
         options.dashboardDataDir,
         projectName,
       );
       return {
-        code: toDashboardDisplayLabel(projectName),
+        code: displayLabel,
         row,
         closeEventCounts: readCloseEventCounts(
           options.consoleDataOutputDir,

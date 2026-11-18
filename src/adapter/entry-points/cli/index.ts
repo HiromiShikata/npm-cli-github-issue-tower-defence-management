@@ -17,7 +17,7 @@ import type { IssueRepository } from '../../../domain/usecases/adapter-interface
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
 import { CliErrorReportUseCase } from '../../../domain/usecases/CliErrorReportUseCase';
 import { ConsoleErrorReportUseCase } from '../../../domain/usecases/ConsoleErrorReportUseCase';
-import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
+import { assignDashboardDisplayLabels } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { PullRequestProjectItemRemoveUseCase } from '../../../domain/usecases/PullRequestProjectItemRemoveUseCase';
@@ -293,7 +293,9 @@ const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
-const parseDashboardProjectNames = (raw: string | undefined): string[] => {
+export const parseDashboardProjectNames = (
+  raw: string | undefined,
+): string[] => {
   const names = (raw ?? '')
     .split(',')
     .map((name) => name.trim())
@@ -305,7 +307,7 @@ const parseDashboardProjectNames = (raw: string | undefined): string[] => {
     return process.exit(1);
   }
   try {
-    assertDashboardDisplayLabelsUnique(names);
+    assignDashboardDisplayLabels(names);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     return process.exit(1);

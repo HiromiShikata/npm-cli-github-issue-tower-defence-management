@@ -22,6 +22,7 @@ import {
   runCliProgram,
   reportFatalErrorAndExit,
   extractOwnerRepoFromGithubUrl,
+  parseDashboardProjectNames,
 } from './index';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
@@ -4984,7 +4985,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       processExitSpy.mockRestore();
     });
 
-    it('should exit with error when two --dashboardProjectNames share a display label', async () => {
+    it('should start the console when two --dashboardProjectNames share their first two characters', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const processExitSpy = jest
@@ -4993,23 +4994,19 @@ ${removedSettingName}: 'claude-sonnet-4-6'
           throw new Error('process.exit called');
         });
 
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'serveWeb',
-          '--configFilePath',
-          configFilePath,
-          '--dashboardProjectNames',
-          'acme,acmelabs',
-        ]),
-      ).rejects.toThrow('process.exit called');
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveWeb',
+        '--configFilePath',
+        configFilePath,
+        '--dashboardProjectNames',
+        'acme,acmelabs',
+      ]);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Dashboard project names acme and acmelabs share the display label ac',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-      expect(mockStartWebServer).not.toHaveBeenCalled();
+      expect(processExitSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      expect(mockStartWebServer).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
@@ -6446,5 +6443,46 @@ describe('select-resumable-session command', () => {
     expect(
       fs.existsSync(path.join(sessionDir, `${resumableSessionId}.jsonl`)),
     ).toBe(true);
+  });
+});
+
+describe('parseDashboardProjectNames', () => {
+  it('returns colliding project names without exiting so the console can start', () => {
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      expect(parseDashboardProjectNames('acme, acmetools')).toEqual([
+        'acme',
+        'acmetools',
+      ]);
+      expect(processExitSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    } finally {
+      processExitSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    }
+  });
+
+  it('exits with a clear error when no distinct display label remains', () => {
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      parseDashboardProjectNames('ab,ac,abc');
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Dashboard project name abc cannot be given a distinct 2-character display label',
+      );
+    } finally {
+      processExitSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    }
   });
 });

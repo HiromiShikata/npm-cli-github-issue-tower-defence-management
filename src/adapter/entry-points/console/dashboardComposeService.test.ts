@@ -915,3 +915,23 @@ describe('buildComposeDashboardInput human pending story colors recomputed from 
     },
   );
 });
+
+describe('buildComposeDashboardInput display labels for colliding project names', () => {
+  it('gives each project a distinct display label derived from the whole configured list', () => {
+    const dataDir = makeDataDir();
+    try {
+      const input = buildComposeDashboardInput({
+        projectNames: ['acme', 'acmetools', 'globex'],
+        dashboardDataDir: dataDir,
+        nowMs: 0,
+      });
+      expect(input.projects.map((project) => project.code)).toEqual([
+        'ac',
+        'at',
+        'gl',
+      ]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+});
