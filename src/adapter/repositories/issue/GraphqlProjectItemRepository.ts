@@ -90,17 +90,31 @@ type ProjectV2ItemFieldValuesOnlyNode = {
   };
 };
 
-type ProjectSideItemsPageResponse = {
+type ProjectSideScanNode = {
+  id: string;
+  isArchived: boolean;
+  content: { url?: string } | null;
+};
+
+type ProjectSideScanPageResponse = {
   data?: {
     node: {
       items: {
         pageInfo: { hasNextPage: boolean; endCursor: string | null };
-        nodes: ProjectV2ItemNode[];
+        nodes: ProjectSideScanNode[];
       };
     } | null;
   };
   errors?: GraphqlError[];
 };
+
+class ProjectSideItemLookupError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProjectSideItemLookupError';
+  }
+}
+
 // Rate-limit cost of a GraphQL query grows with the number of requested
 // nodes (roughly totalNodes / 100, see
 // https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api).
@@ -550,21 +564,23 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
       if (projectItemId !== undefined) {
         return projectItemId;
       }
-      const projectSideItemNode =
-        await this.findProjectSideItemNodeByContentUrls(
-          'fetchItemId',
-          projectId,
-          owner,
-          repositoryName,
-          [
-            `https://github.com/${owner}/${repositoryName}/issues/${issueNumber}`,
-            `https://github.com/${owner}/${repositoryName}/pull/${issueNumber}`,
-          ],
-        );
-      return projectSideItemNode?.id;
+      const projectSideItemId = await this.findProjectSideItemIdByContentUrls(
+        'fetchItemId',
+        projectId,
+        owner,
+        repositoryName,
+        [
+          `https://github.com/${owner}/${repositoryName}/issues/${issueNumber}`,
+          `https://github.com/${owner}/${repositoryName}/pull/${issueNumber}`,
+        ],
+      );
+      return projectSideItemId ?? undefined;
     } catch (error) {
       console.error('Error fetching GitHub Project V2 ID:', error);
-      if (error instanceof GraphqlRateLimitError) {
+      if (
+        error instanceof GraphqlRateLimitError ||
+        error instanceof ProjectSideItemLookupError
+      ) {
         throw error;
       }
       return undefined;
@@ -855,15 +871,15 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
     );
     return retryAttempt;
   };
-  private findProjectSideItemNodeByContentUrls = async (
+  private findProjectSideItemIdByContentUrls = async (
     operation: string,
     projectId: string,
     owner: string,
     repositoryName: string,
     contentUrls: string[],
-  ): Promise<ProjectV2ItemNode | null> => {
+  ): Promise<string | null> => {
     const graphqlQueryString = `
-query GetProjectItemsOfRepository($projectId: ID!, $after: String, $query: String) {
+query GetProjectItemIdsOfRepository($projectId: ID!, $after: String, $query: String) {
   node(id: $projectId) {
     ... on ProjectV2 {
       items(first: ${PROJECT_ITEM_LOOKUP_PAGE_SIZE}, after: $after, query: $query) {
@@ -873,7 +889,15 @@ query GetProjectItemsOfRepository($projectId: ID!, $after: String, $query: Strin
         }
         nodes {
           id
-          isArchived${PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION}
+          isArchived
+          content {
+            ... on Issue {
+              url
+            }
+            ... on PullRequest {
+              url
+            }
+          }
         }
       }
     }
@@ -883,8 +907,8 @@ query GetProjectItemsOfRepository($projectId: ID!, $after: String, $query: Strin
     let after: string | null = null;
     for (;;) {
       const response = await callWithRateLimitRetry(async () => {
-        const result =
-          await postGithubGraphqlJson<ProjectSideItemsPageResponse>({
+        const result = await postGithubGraphqlJson<ProjectSideScanPageResponse>(
+          {
             ghToken: this.ghToken,
             query: graphqlQueryString,
             variables: {
@@ -892,7 +916,8 @@ query GetProjectItemsOfRepository($projectId: ID!, $after: String, $query: Strin
               after,
               query: `repo:${owner}/${repositoryName}`,
             },
-          });
+          },
+        );
         throwIfGraphqlRateLimitError(result);
         return result;
       });
@@ -900,7 +925,7 @@ query GetProjectItemsOfRepository($projectId: ID!, $after: String, $query: Strin
         const errorMessages = response.errors
           ? response.errors.map((e) => e.message).join('; ')
           : 'no data field in response';
-        throw new Error(
+        throw new ProjectSideItemLookupError(
           `GitHub GraphQL API returned no data for ${operation}: ${errorMessages}`,
         );
       }
@@ -915,13 +940,13 @@ query GetProjectItemsOfRepository($projectId: ID!, $after: String, $query: Strin
           contentUrls.includes(node.content.url),
       );
       if (matchedNode) {
-        return matchedNode;
+        return matchedNode.id;
       }
       if (!items.pageInfo.hasNextPage) {
         return null;
       }
       if (!items.pageInfo.endCursor) {
-        throw new Error(
+        throw new ProjectSideItemLookupError(
           `${operation}: project ${projectId} page reports hasNextPage without endCursor`,
         );
       }
@@ -1697,19 +1722,20 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       : projectItems[0];
     if (!item) {
       if (projectId) {
-        const projectSideItemNode =
-          await this.findProjectSideItemNodeByContentUrls(
-            'fetchProjectItemByUrl',
-            projectId,
-            owner,
-            repo,
-            [issueUrl],
-          );
-        const projectSideItem = projectSideItemNode
-          ? this.mapProjectV2ItemNodeToProjectItem(projectSideItemNode)
-          : null;
-        if (projectSideItem) {
-          return projectSideItem;
+        const projectSideItemId = await this.findProjectSideItemIdByContentUrls(
+          'fetchProjectItemByUrl',
+          projectId,
+          owner,
+          repo,
+          [issueUrl],
+        );
+        if (projectSideItemId !== null) {
+          const [projectSideItem] = await this.fetchProjectItemsByIds([
+            projectSideItemId,
+          ]);
+          if (projectSideItem) {
+            return projectSideItem;
+          }
         }
         console.warn(
           `No project item found for issue ${issueUrl} on project ${projectId}`,
