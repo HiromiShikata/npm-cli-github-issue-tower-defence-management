@@ -3107,6 +3107,18 @@ describe('GraphqlProjectItemRepository', () => {
           },
         }),
       );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [],
+              },
+            },
+          },
+        }),
+      );
 
       const result = await repository.fetchProjectItemByUrl(
         'https://github.com/owner/repo/pull/12',
@@ -3298,6 +3310,18 @@ describe('GraphqlProjectItemRepository', () => {
                 },
               },
               pullRequest: null,
+            },
+          },
+        }),
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [],
+              },
             },
           },
         }),
