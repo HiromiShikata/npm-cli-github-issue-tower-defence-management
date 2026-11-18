@@ -363,6 +363,23 @@ describe('DailySecurityScanUseCase repository scope without a repositories list'
       },
     ]);
   });
+
+  it('keeps reading an org remote name that contains a dot up to the first dot when no list is set', async () => {
+    const environment = buildScanEnvironment({
+      repositories: [
+        {
+          directory: '/repos/example-org/my.repo',
+          remoteUrl: 'git@github.com:example-org/my.repo.git',
+        },
+      ],
+    });
+
+    await runScan(environment.useCase);
+
+    expect(environment.snapshot().runLogEntries).toMatchObject([
+      { repositoryName: 'my' },
+    ]);
+  });
 });
 
 describe('DailySecurityScanUseCase repository scope with a repositories list and a findings repository', () => {
@@ -575,7 +592,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
     expect(snapshot.commentedUrls).toEqual([]);
   });
 
-  it('keeps the current findings destination and title when the findings repository is not set and the list is', async () => {
+  it('does not write findings into a repository of another owner when the findings repository is not set, and logs why', async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     const environment = buildScanEnvironment({
       repositories: [
         {
@@ -588,12 +608,50 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
 
     await runScan(environment.useCase, {}, ['client-org/client-app']);
 
-    expect(environment.snapshot().createdIssues).toMatchObject([
+    const snapshot = environment.snapshot();
+    expect(snapshot.scannerInvocations).toBe(1);
+    expect(snapshot.searchCalls).toEqual([]);
+    expect(snapshot.createdIssues).toEqual([]);
+    expect(snapshot.commentedUrls).toEqual([]);
+    expect(snapshot.runLogEntries).toMatchObject([
       {
-        owner: 'client-org',
         repositoryName: 'client-app',
-        title: FINDINGS_TITLE,
+        outcome: { type: 'scanCompletedWithVulnerabilities' },
       },
+    ]);
+    expect(
+      consoleErrorSpy.mock.calls.some(
+        (call) =>
+          String(call[0]).includes('client-org/client-app') &&
+          String(call[0]).includes('findingsRepo'),
+      ),
+    ).toBe(true);
+  });
+
+  it('scans a repository once when its remote differs only by letter case', async () => {
+    const environment = buildScanEnvironment({
+      repositories: [
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: 'git@github.com:Client-Org/Client-App.git',
+        },
+        {
+          directory: '/repos/client-org/client-app-copy',
+          remoteUrl: 'https://github.com/client-org/client-app',
+        },
+      ],
+      scanByRemoteUrl: {
+        'git@github.com:Client-Org/Client-App.git': CLEAN_SCAN,
+        'https://github.com/client-org/client-app': CLEAN_SCAN,
+      },
+    });
+
+    await runScan(environment.useCase, { findingsRepo: DESTINATION }, [
+      'client-org/client-app',
+    ]);
+
+    expect(environment.snapshot().clonedRemoteUrls).toEqual([
+      'git@github.com:Client-Org/Client-App.git',
     ]);
   });
 

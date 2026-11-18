@@ -32,8 +32,14 @@ type FindingsDestination = {
   title: string;
 };
 
-const parseGithubRemote = (remoteUrl: string): GithubRemote | null => {
-  const match = remoteUrl.match(/github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/);
+const parseGithubRemote = (
+  remoteUrl: string,
+  repositories: string[] | null,
+): GithubRemote | null => {
+  const match =
+    repositories === null
+      ? remoteUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/)
+      : remoteUrl.match(/github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/);
   return match === null ? null : { owner: match[1], repositoryName: match[2] };
 };
 
@@ -53,18 +59,23 @@ const findingsDestinationOf = (
   org: string,
   findingsRepo: string | undefined,
   scannedRemote: GithubRemote,
-): FindingsDestination =>
-  findingsRepo
-    ? {
-        owner: org,
-        repositoryName: findingsRepo,
-        title: `${FINDINGS_ISSUE_TITLE}: ${scannedRemote.owner}/${scannedRemote.repositoryName}`,
-      }
-    : {
-        owner: scannedRemote.owner,
-        repositoryName: scannedRemote.repositoryName,
-        title: FINDINGS_ISSUE_TITLE,
-      };
+): FindingsDestination | null => {
+  if (findingsRepo) {
+    return {
+      owner: org,
+      repositoryName: findingsRepo,
+      title: `${FINDINGS_ISSUE_TITLE}: ${scannedRemote.owner}/${scannedRemote.repositoryName}`,
+    };
+  }
+  if (scannedRemote.owner !== org) {
+    return null;
+  }
+  return {
+    owner: scannedRemote.owner,
+    repositoryName: scannedRemote.repositoryName,
+    title: FINDINGS_ISSUE_TITLE,
+  };
+};
 
 type KevVulnerability = {
   cveID: string;
@@ -317,11 +328,12 @@ export class DailySecurityScanUseCase {
         continue;
       }
 
-      const remote = parseGithubRemote(remoteUrl.trim());
+      const remote = parseGithubRemote(remoteUrl.trim(), repositories);
       if (remote === null || !isScannedRepository(remote, org, repositories)) {
         continue;
       }
-      const remoteKey = `${remote.owner}/${remote.repositoryName}`;
+      const remoteKey =
+        `${remote.owner}/${remote.repositoryName}`.toLowerCase();
       if (!remoteByRepositoryKey.has(remoteKey)) {
         remoteByRepositoryKey.set(remoteKey, {
           ...remote,
@@ -444,6 +456,12 @@ export class DailySecurityScanUseCase {
         owner: repositoryOwner,
         repositoryName,
       });
+      if (destination === null) {
+        console.error(
+          `The findings of ${repositoryOwner}/${repositoryName} were not written to GitHub: no findingsRepo is set and the repository is not owned by ${org}, so its findings are not written into it. Set findingsRepo to write them to an org-owned repository. The remaining repositories are still scanned and the CISA KEV report still runs.`,
+        );
+        continue;
+      }
       try {
         const existingIssues = await this.issueRepository.searchIssue({
           owner: destination.owner,
