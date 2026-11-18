@@ -677,6 +677,79 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
     expect(result?.storyOptions).toEqual(storyOptions);
   });
 
+  const watermarkEvictionCases: {
+    name: string;
+    cachedItemIds: string[];
+    watermarks: Record<string, string>;
+    evictItemId: string;
+    expectedItemIds: string[];
+    expectedWatermarks: Record<string, string>;
+  }[] = [
+    {
+      name: 'drops the watermark of the evicted item together with its cached issue',
+      cachedItemIds: ['PVTI_keep', 'PVTI_stale'],
+      watermarks: {
+        PVTI_keep: '2026-07-06T23:58:00.000Z',
+        PVTI_stale: '2026-07-07T00:10:00.000Z',
+      },
+      evictItemId: 'PVTI_stale',
+      expectedItemIds: ['PVTI_keep'],
+      expectedWatermarks: { PVTI_keep: '2026-07-06T23:58:00.000Z' },
+    },
+    {
+      name: 'drops the watermark of the evicted item when it has no cached issue',
+      cachedItemIds: ['PVTI_keep'],
+      watermarks: {
+        PVTI_keep: '2026-07-06T23:58:00.000Z',
+        PVTI_orphan: '2026-07-07T00:10:00.000Z',
+      },
+      evictItemId: 'PVTI_orphan',
+      expectedItemIds: ['PVTI_keep'],
+      expectedWatermarks: { PVTI_keep: '2026-07-06T23:58:00.000Z' },
+    },
+    {
+      name: 'keeps every watermark and issue when the evicted item id is unknown',
+      cachedItemIds: ['PVTI_keep'],
+      watermarks: { PVTI_keep: '2026-07-06T23:58:00.000Z' },
+      evictItemId: 'PVTI_unknown',
+      expectedItemIds: ['PVTI_keep'],
+      expectedWatermarks: { PVTI_keep: '2026-07-06T23:58:00.000Z' },
+    },
+  ];
+
+  it.each(watermarkEvictionCases)(
+    '$name',
+    async ({
+      cachedItemIds,
+      watermarks,
+      evictItemId,
+      expectedItemIds,
+      expectedWatermarks,
+    }) => {
+      const cache = buildSharedCache();
+      const repo = new ProjectIssuesCacheRepository(cache);
+      await repo.write(projectId, {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project: cachedProject,
+        issues: cachedItemIds.map((itemId, index) =>
+          buildIssueEntry(itemId, `https://github.com/o/r/issues/${index + 1}`),
+        ),
+        storyIssueUrlByOptionName: {},
+        storyOptions: [],
+        itemUpdatedAtByItemId: watermarks,
+      });
+
+      await repo.removeIssueByItemId(projectId, evictItemId);
+
+      const result = await repo.read(projectId);
+      expect(result?.issues.map((issue) => issue.itemId)).toEqual(
+        expectedItemIds,
+      );
+      expect(result?.itemUpdatedAtByItemId).toEqual(expectedWatermarks);
+    },
+  );
+
   it('deserializeStoryOptions returns empty array when storyOptions is not a valid array', () => {
     expect(deserializeStoryOptions({ storyOptions: 'not-an-array' })).toEqual(
       [],

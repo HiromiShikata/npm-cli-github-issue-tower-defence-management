@@ -3512,6 +3512,193 @@ describe('GraphqlProjectItemRepository', () => {
       expect(result?.isArchivedFromProject).toBe(false);
     });
 
+    describe('user-owned board lookup for an organization-owned issue', () => {
+      const userBoardId = 'PVT_user_board';
+      const orgBoardId = 'PVT_org_board';
+      const issueUrl = 'https://github.com/example-org/example-repo/issues/7';
+      const otherIssueUrl =
+        'https://github.com/example-org/example-repo/issues/70';
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+        mockPost.mockReset();
+      });
+
+      const issueResponseWithOrgBoardItemOnly = () => ({
+        data: {
+          repository: {
+            issue: {
+              ...makeContentNode(issueUrl, 7, 'Board Issue'),
+              repository: { nameWithOwner: 'example-org/example-repo' },
+              projectItems: {
+                nodes: [
+                  {
+                    id: 'PVTI_org_item',
+                    isArchived: false,
+                    project: { id: orgBoardId },
+                    fieldValues: {
+                      nodes: [
+                        {
+                          name: 'Backlog',
+                          field: { name: 'Status' },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+            pullRequest: null,
+          },
+        },
+      });
+
+      const boardNode = (url: string, id: string) => ({
+        id,
+        isArchived: false,
+        content: { url },
+        fieldValues: {
+          nodes: [
+            {
+              name: 'Preparation',
+              optionId: 'opt-preparation',
+              field: { name: 'Status' },
+            },
+            {
+              text: 'hello',
+              field: { name: 'Note' },
+            },
+          ],
+        },
+      });
+
+      const userBoardCustomFields = [
+        { name: 'Status', value: 'Preparation', optionId: 'opt-preparation' },
+        { name: 'Note', value: 'hello', optionId: undefined },
+      ];
+
+      const readRequestJsonFromMockCall = (
+        call: unknown,
+      ): Record<string, unknown> | undefined => {
+        if (!Array.isArray(call)) {
+          return undefined;
+        }
+        const second: unknown = call[1];
+        if (!isRecord(second)) {
+          return undefined;
+        }
+        const json: unknown = second.json;
+        return isRecord(json) ? json : undefined;
+      };
+
+      const cases: {
+        name: string;
+        boardNodes: ReturnType<typeof boardNode>[];
+        expected: { id: string; customFields: unknown[] } | null;
+      }[] = [
+        {
+          name: 'returns the user-board item whose content URL equals the issue URL',
+          boardNodes: [boardNode(issueUrl, 'PVTI_user_item')],
+          expected: {
+            id: 'PVTI_user_item',
+            customFields: userBoardCustomFields,
+          },
+        },
+        {
+          name: 'returns the exact-URL match when the board also returns another issue',
+          boardNodes: [
+            boardNode(otherIssueUrl, 'PVTI_other_item'),
+            boardNode(issueUrl, 'PVTI_user_item'),
+          ],
+          expected: {
+            id: 'PVTI_user_item',
+            customFields: userBoardCustomFields,
+          },
+        },
+        {
+          name: 'returns null when the board lookup returns only nodes whose content URL differs',
+          boardNodes: [boardNode(otherIssueUrl, 'PVTI_other_item')],
+          expected: null,
+        },
+        {
+          name: 'returns null when the board lookup returns no nodes',
+          boardNodes: [],
+          expected: null,
+        },
+      ];
+
+      it.each(cases)('$name', async ({ boardNodes, expected }) => {
+        const repository = new GraphqlProjectItemRepository(
+          new LocalStorageRepository(),
+          'dummy-token',
+        );
+
+        mockPost
+          .mockReturnValueOnce(
+            mockJsonResponse(issueResponseWithOrgBoardItemOnly()),
+          )
+          .mockReturnValueOnce(
+            mockJsonResponse({
+              data: { node: { items: { nodes: boardNodes } } },
+            }),
+          );
+
+        const result = await repository.fetchProjectItemByUrl(
+          issueUrl,
+          userBoardId,
+        );
+
+        expect(
+          result === null
+            ? null
+            : { id: result.id, customFields: result.customFields },
+        ).toEqual(expected);
+      });
+
+      it('sends the board lookup with the user board id and the issue owner, repo and number', async () => {
+        const repository = new GraphqlProjectItemRepository(
+          new LocalStorageRepository(),
+          'dummy-token',
+        );
+
+        mockPost
+          .mockReturnValueOnce(
+            mockJsonResponse(issueResponseWithOrgBoardItemOnly()),
+          )
+          .mockReturnValueOnce(
+            mockJsonResponse({
+              data: {
+                node: {
+                  items: {
+                    nodes: [boardNode(issueUrl, 'PVTI_user_item')],
+                  },
+                },
+              },
+            }),
+          );
+
+        await repository.fetchProjectItemByUrl(issueUrl, userBoardId);
+
+        expect(mockPost).toHaveBeenCalledTimes(2);
+        const boardRequest = readRequestJsonFromMockCall(
+          mockPost.mock.calls[1],
+        );
+        expect(boardRequest).toBeDefined();
+        const boardVariables: unknown = boardRequest?.variables;
+        expect(
+          isRecord(boardVariables) ? Object.values(boardVariables) : [],
+        ).toContain(userBoardId);
+        const boardRequestText = JSON.stringify(boardRequest);
+        expect(boardRequestText).toContain('example-org/example-repo');
+        expect(boardRequestText).toMatch(/\b7\b/);
+      });
+    });
+
     describe('rate limit retry', () => {
       beforeEach(() => {
         jest.useFakeTimers();
