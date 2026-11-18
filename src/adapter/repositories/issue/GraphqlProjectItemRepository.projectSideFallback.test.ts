@@ -154,21 +154,40 @@ const projectSideContent = (
   repository: { nameWithOwner: REPOSITORY_NAME_WITH_OWNER },
 });
 
+// A node of the lightweight project-side scan: id, isArchived and content url only.
 const projectSideItem = (input: {
   id: string;
   content: unknown;
   isArchived?: boolean;
-  status?: string;
 }) => ({
   id: input.id,
   isArchived: input.isArchived ?? false,
-  fieldValues: { nodes: [statusValue(input.status ?? 'In Progress')] },
   content: input.content,
 });
 
+// The full node returned by the by-ids load of the matched item.
+const projectItemByIdsResponse = (input: {
+  id: string;
+  content: unknown;
+  isArchived?: boolean;
+  status?: string;
+}) =>
+  mockJsonResponse({
+    data: {
+      nodes: [
+        {
+          id: input.id,
+          isArchived: input.isArchived ?? false,
+          fieldValues: { nodes: [statusValue(input.status ?? 'In Progress')] },
+          content: input.content,
+        },
+      ],
+    },
+  });
+
 const projectSidePage = (
   hasNextPage: boolean,
-  endCursor: string,
+  endCursor: string | null,
   totalCount: number,
   nodes: unknown[],
 ) =>
@@ -342,7 +361,7 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
   });
 
   describe('fetchProjectItemByUrl with a projectId when the issue side has no item', () => {
-    it('returns the project-side item with customFields built from its fieldValues when the first project-side page matches the issue URL', async () => {
+    it('returns the project-side item with customFields and archive flag from the by-ids load when the first project-side page matches the issue URL', async () => {
       mockPost
         .mockReturnValueOnce(issueSideIssueResponse([]))
         .mockReturnValueOnce(
@@ -350,9 +369,15 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
             projectSideItem({
               id: 'project-side-item-b1',
               content: exactIssueContent(),
-              status: 'In Progress',
             }),
           ]),
+        )
+        .mockReturnValueOnce(
+          projectItemByIdsResponse({
+            id: 'project-side-item-b1',
+            content: exactIssueContent(),
+            status: 'In Progress',
+          }),
         );
       const warnCallsBefore = warnSpy.mock.calls.length;
 
@@ -365,14 +390,16 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
         id: 'project-side-item-b1',
         url: ISSUE_URL,
         customFields: [{ name: 'Status', value: 'In Progress' }],
+        isArchivedFromProject: false,
       });
       const requests = readSentRequests();
-      expect(requests).toHaveLength(2);
+      expect(requests).toHaveLength(3);
       expect(requests[1].query).toContain('items(');
       expect(requests[1].variables).toMatchObject({
         projectId: PROJECT_ID,
         query: PROJECT_QUERY,
       });
+      expect(requests[2].variables).toEqual({ ids: ['project-side-item-b1'] });
       expect(
         warnSpy.mock.calls
           .slice(warnCallsBefore)
@@ -400,6 +427,12 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
               content: exactIssueContent(),
             }),
           ]),
+        )
+        .mockReturnValueOnce(
+          projectItemByIdsResponse({
+            id: 'project-side-item-b2',
+            content: exactIssueContent(),
+          }),
         );
 
       const outcome = await settleWithTimers(
@@ -412,12 +445,13 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
         url: ISSUE_URL,
       });
       const requests = readSentRequests();
-      expect(requests).toHaveLength(3);
+      expect(requests).toHaveLength(4);
       expect(requests[2].variables).toMatchObject({
         projectId: PROJECT_ID,
         query: PROJECT_QUERY,
         after: 'cursor-1',
       });
+      expect(requests[3].variables).toEqual({ ids: ['project-side-item-b2'] });
     });
 
     it('returns null and warns with the exact message when no project-side page matches the issue URL across all pages', async () => {
@@ -461,6 +495,12 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
               content: projectSideContent(PULL_REQUEST_URL, 8, 'PullRequest'),
             }),
           ]),
+        )
+        .mockReturnValueOnce(
+          projectItemByIdsResponse({
+            id: 'project-side-item-b4',
+            content: projectSideContent(PULL_REQUEST_URL, 8, 'PullRequest'),
+          }),
         );
 
       const outcome = await settleWithTimers(
@@ -472,7 +512,7 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
         id: 'project-side-item-b4',
         url: PULL_REQUEST_URL,
       });
-      expect(readSentRequests()).toHaveLength(2);
+      expect(readSentRequests()).toHaveLength(3);
     });
 
     it('matches project-side content only by exact issue URL and reports archive state for each case', async () => {
@@ -555,6 +595,15 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
               }),
             ]),
           );
+        if (testCase.expected.id !== null) {
+          mockPost.mockReturnValueOnce(
+            projectItemByIdsResponse({
+              id: 'project-side-item-b5',
+              content: testCase.content,
+              isArchived: testCase.isArchived,
+            }),
+          );
+        }
 
         const outcome = await settleWithTimers(
           newRepository().fetchProjectItemByUrl(ISSUE_URL, PROJECT_ID),
@@ -574,7 +623,9 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
           name: testCase.name,
           ...testCase.expected,
         });
-        expect(readSentRequests()).toHaveLength(2);
+        expect(readSentRequests()).toHaveLength(
+          testCase.expected.id === null ? 2 : 3,
+        );
       }
     });
 
@@ -649,7 +700,7 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
           name: testCase.name,
           outcome: { status: 'fulfilled', value: testCase.expected },
         });
-        expect(readSentRequests()).toHaveLength(2);
+        expect(readSentRequests()).toHaveLength(1);
       }
     });
 
@@ -669,7 +720,7 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
       ).toBe(true);
     });
 
-    it('returns undefined and logs the error when the project side returns errors without data', async () => {
+    it('rejects with the no-data error when the project side returns errors without data', async () => {
       mockPost
         .mockReturnValueOnce(issueOrPullRequestProjectItemsResponse([]))
         .mockReturnValue(projectSideErrorsWithoutDataResponse());
@@ -678,8 +729,77 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
         newRepository().fetchItemId(PROJECT_ID, 'client-org', 'client-app', 7),
       );
 
-      expect(outcome).toEqual({ status: 'fulfilled', value: undefined });
-      expect(errorSpy).toHaveBeenCalled();
+      expect(outcome.status).toBe('rejected');
+      expect(rejectionMessage(outcome)).toContain(
+        'GitHub GraphQL API returned no data',
+      );
+    });
+
+    it('sends a project-side scan query that selects neither fieldValues nor labels', async () => {
+      mockPost
+        .mockReturnValueOnce(issueOrPullRequestProjectItemsResponse([]))
+        .mockReturnValueOnce(
+          projectSidePage(false, 'cursor-b7-query', 1, [
+            projectSideItem({
+              id: 'project-side-item-b7-query',
+              content: exactIssueContent(),
+            }),
+          ]),
+        );
+
+      await settleWithTimers(
+        newRepository().fetchItemId(PROJECT_ID, 'client-org', 'client-app', 7),
+      );
+
+      const scanRequest = readSentRequests()[1];
+      expect(scanRequest.query).toContain('items(');
+      expect(scanRequest.query).not.toContain('fieldValues');
+      expect(scanRequest.query).not.toContain('labels');
+    });
+
+    it('rejects with the missing-endCursor error for both fetchProjectItemByUrl and fetchItemId when the scan reports hasNextPage without endCursor', async () => {
+      const cases: Array<{
+        name: string;
+        issueSideResponse: () => ReturnType<typeof issueSideIssueResponse>;
+        run: (repository: GraphqlProjectItemRepository) => Promise<unknown>;
+      }> = [
+        {
+          name: 'fetchProjectItemByUrl',
+          issueSideResponse: () => issueSideIssueResponse([]),
+          run: (repository) =>
+            repository.fetchProjectItemByUrl(ISSUE_URL, PROJECT_ID),
+        },
+        {
+          name: 'fetchItemId',
+          issueSideResponse: () => issueOrPullRequestProjectItemsResponse([]),
+          run: (repository) =>
+            repository.fetchItemId(PROJECT_ID, 'client-org', 'client-app', 7),
+        },
+      ];
+
+      for (const testCase of cases) {
+        mockPost.mockReset();
+        mockPost
+          .mockReturnValueOnce(testCase.issueSideResponse())
+          .mockReturnValueOnce(
+            projectSidePage(true, null, 2, [
+              projectSideItem({
+                id: 'project-side-item-b8-other',
+                content: nonMatchingIssueContent(8),
+              }),
+            ]),
+          );
+
+        const outcome = await settleWithTimers(testCase.run(newRepository()));
+
+        expect({ name: testCase.name, status: outcome.status }).toEqual({
+          name: testCase.name,
+          status: 'rejected',
+        });
+        expect(rejectionMessage(outcome)).toContain(
+          `project ${PROJECT_ID} page reports hasNextPage without endCursor`,
+        );
+      }
     });
   });
 
