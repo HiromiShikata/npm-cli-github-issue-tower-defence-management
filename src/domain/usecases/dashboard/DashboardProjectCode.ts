@@ -9,19 +9,70 @@ export const toDashboardDisplayLabel = (projectName: string): string => {
   return projectName.slice(0, DASHBOARD_DISPLAY_LABEL_LENGTH);
 };
 
-export const assertDashboardDisplayLabelsUnique = (
+const commonPrefixLength = (first: string, second: string): number => {
+  let length = 0;
+  while (
+    length < first.length &&
+    length < second.length &&
+    first[length] === second[length]
+  ) {
+    length++;
+  }
+  return length;
+};
+
+const chooseDashboardDisplayLabel = (
+  projectName: string,
+  labeledProjectNames: string[],
+  usedLabels: Set<string>,
+): string | null => {
+  const leadingLabel = toDashboardDisplayLabel(projectName);
+  if (!usedLabels.has(leadingLabel)) {
+    return leadingLabel;
+  }
+  const longestSharedPrefix = Math.max(
+    0,
+    ...labeledProjectNames.map((labeledName) =>
+      commonPrefixLength(projectName, labeledName),
+    ),
+  );
+  const divergingCharacter = projectName.charAt(longestSharedPrefix);
+  const divergingLabel = `${projectName.charAt(0)}${divergingCharacter}`;
+  if (divergingCharacter !== '' && !usedLabels.has(divergingLabel)) {
+    return divergingLabel;
+  }
+  for (let index = 1; index < projectName.length; index++) {
+    const candidateLabel = `${projectName.charAt(0)}${projectName.charAt(index)}`;
+    if (!usedLabels.has(candidateLabel)) {
+      return candidateLabel;
+    }
+  }
+  return null;
+};
+
+export const assignDashboardDisplayLabels = (
   projectNames: string[],
-): void => {
-  const projectNameByDisplayLabel = new Map<string, string>();
+): Map<string, string> => {
+  const displayLabelByProjectName = new Map<string, string>();
+  const usedLabels = new Set<string>();
   for (const projectName of projectNames) {
-    const displayLabel = toDashboardDisplayLabel(projectName);
-    const alreadyRegistered =
-      projectNameByDisplayLabel.get(displayLabel) ?? null;
-    if (alreadyRegistered !== null) {
+    if (displayLabelByProjectName.has(projectName)) {
       throw new Error(
-        `Dashboard project names ${alreadyRegistered} and ${projectName} share the display label ${displayLabel}`,
+        `Dashboard project name ${projectName} is listed more than once`,
       );
     }
-    projectNameByDisplayLabel.set(displayLabel, projectName);
+    const displayLabel = chooseDashboardDisplayLabel(
+      projectName,
+      Array.from(displayLabelByProjectName.keys()),
+      usedLabels,
+    );
+    if (displayLabel === null) {
+      throw new Error(
+        `Dashboard project name ${projectName} cannot be given a distinct ${DASHBOARD_DISPLAY_LABEL_LENGTH}-character display label`,
+      );
+    }
+    displayLabelByProjectName.set(projectName, displayLabel);
+    usedLabels.add(displayLabel);
   }
+  return displayLabelByProjectName;
 };

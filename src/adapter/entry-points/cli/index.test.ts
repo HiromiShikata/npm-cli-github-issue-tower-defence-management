@@ -4985,7 +4985,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       processExitSpy.mockRestore();
     });
 
-    it('should exit with error when two --dashboardProjectNames share a display label', async () => {
+    it('should start the console when two --dashboardProjectNames share their first two characters', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const processExitSpy = jest
@@ -4994,23 +4994,19 @@ ${removedSettingName}: 'claude-sonnet-4-6'
           throw new Error('process.exit called');
         });
 
-      await expect(
-        program.parseAsync([
-          'node',
-          'test',
-          'serveWeb',
-          '--configFilePath',
-          configFilePath,
-          '--dashboardProjectNames',
-          'acme,acmelabs',
-        ]),
-      ).rejects.toThrow('process.exit called');
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveWeb',
+        '--configFilePath',
+        configFilePath,
+        '--dashboardProjectNames',
+        'acme,acmelabs',
+      ]);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Dashboard project names acme and acmelabs share the display label ac',
-      );
-      expect(processExitSpy).toHaveBeenCalledWith(1);
-      expect(mockStartWebServer).not.toHaveBeenCalled();
+      expect(processExitSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      expect(mockStartWebServer).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();

@@ -32,7 +32,7 @@ describe('DashboardProjectCode', () => {
         },
         {
           projectNames: ['acme', 'acmetools', 'atlas'],
-          labels: ['ac', 'at', 'as'],
+          labels: ['ac', 'at', 'al'],
         },
         { projectNames: ['acmetools', 'acme'], labels: ['ac', 'am'] },
       ];
@@ -40,9 +40,9 @@ describe('DashboardProjectCode', () => {
         const labelByProjectName = assignDashboardDisplayLabels(
           testCase.projectNames,
         );
-        expect(testCase.projectNames.map((n) => labelByProjectName.get(n))).toEqual(
-          testCase.labels,
-        );
+        expect(
+          testCase.projectNames.map((n) => labelByProjectName.get(n)),
+        ).toEqual(testCase.labels);
       }
     });
 
@@ -53,9 +53,7 @@ describe('DashboardProjectCode', () => {
     });
 
     it('throws when no unused display label remains for a project name', () => {
-      expect(() =>
-        assignDashboardDisplayLabels(['ab', 'ac', 'abc']),
-      ).toThrow(
+      expect(() => assignDashboardDisplayLabels(['ab', 'ac', 'abc'])).toThrow(
         'Dashboard project name abc cannot be given a distinct 2-character display label',
       );
     });
