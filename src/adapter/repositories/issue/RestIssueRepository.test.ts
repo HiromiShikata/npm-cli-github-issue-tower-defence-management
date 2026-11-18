@@ -2453,4 +2453,27 @@ describe('RestIssueRepository', () => {
       expect(secondResult).toEqual([firstIssueComment]);
     });
   });
+
+  describe('isRepositoryArchived', () => {
+    test.each([
+      { case: 'reports an archived repository as archived', archived: true },
+      {
+        case: 'reports a non-archived repository as not archived',
+        archived: false,
+      },
+    ])('$case', async ({ archived }) => {
+      mockGet.mockReturnValueOnce(mockJsonResponse({ archived }));
+
+      const result = await restIssueRepository.isRepositoryArchived(
+        'HiromiShikata',
+        'test-repository',
+      );
+
+      expect(mockGet).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository',
+        expect.anything(),
+      );
+      expect(result).toBe(archived);
+    });
+  });
 });
