@@ -906,6 +906,29 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       consoleLogSpy.mockRestore();
     });
 
+    it('logs the skip reason when the author is not the manager and the manager is not assigned', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        { ...matchedIssue, author: 'someone-else', assignees: [] },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `Skipped issue ${matchedIssue.url}: author someone-else is not manager1`,
+      );
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      consoleLogSpy.mockRestore();
+    });
+
     it('logs the skip reason when the project scope does not list the repository', async () => {
       const consoleLogSpy = jest
         .spyOn(console, 'log')
