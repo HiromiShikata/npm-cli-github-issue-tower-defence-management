@@ -1,3 +1,10 @@
+# [2.200.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.199.0...v2.200.0) (2026-11-18)
+
+
+### Features
+
+* **assignment:** add manager-assigned issue query for project board ([#3741](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3741)) ([2c0f7f7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2c0f7f7451e28661717e928c49f017a717ad0e71))
+
 # [2.199.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.198.0...v2.199.0) (2026-11-18)
 
 
