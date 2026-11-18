@@ -63,17 +63,14 @@ export class GenerateDashboardRowUseCase {
       issues.filter((issue) => mine(issue) && issue.status === statusName)
         .length;
 
-    const isOpenNotDoneWithoutDependencyOrSchedule = (issue: Issue): boolean =>
-      issue.isClosed === false &&
-      issue.status !== DONE_STATUS_NAME &&
-      issue.dependedIssueUrls.length === 0 &&
-      issue.nextActionDate === null &&
-      issue.nextActionHour === null;
-
     const countHumanPendingByStoryColor = (color: string): number =>
       issues.filter(
         (issue) =>
-          isOpenNotDoneWithoutDependencyOrSchedule(issue) &&
+          mine(issue) &&
+          issue.status !== DONE_STATUS_NAME &&
+          issue.dependedIssueUrls.length === 0 &&
+          issue.nextActionDate === null &&
+          issue.nextActionHour === null &&
           issue.storyOptionId != null &&
           storyColorMap.get(issue.storyOptionId) === color,
       ).length;
