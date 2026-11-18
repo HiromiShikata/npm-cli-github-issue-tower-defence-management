@@ -32,8 +32,14 @@ type FindingsDestination = {
   title: string;
 };
 
-const parseGithubRemote = (remoteUrl: string): GithubRemote | null => {
-  const match = remoteUrl.match(/github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/);
+const parseGithubRemote = (
+  remoteUrl: string,
+  repositories: string[] | null,
+): GithubRemote | null => {
+  const match =
+    repositories === null
+      ? remoteUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/)
+      : remoteUrl.match(/github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/);
   return match === null ? null : { owner: match[1], repositoryName: match[2] };
 };
 
@@ -322,7 +328,7 @@ export class DailySecurityScanUseCase {
         continue;
       }
 
-      const remote = parseGithubRemote(remoteUrl.trim());
+      const remote = parseGithubRemote(remoteUrl.trim(), repositories);
       if (remote === null || !isScannedRepository(remote, org, repositories)) {
         continue;
       }

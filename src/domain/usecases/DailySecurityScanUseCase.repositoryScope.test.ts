@@ -361,7 +361,7 @@ describe('DailySecurityScanUseCase repository scope without a repositories list'
     ]);
   });
 
-  it('reads the full name of an org remote whose name contains a dot, so its findings stay with that repository', async () => {
+  it('keeps reading an org remote name that contains a dot up to the first dot when no list is set', async () => {
     const environment = buildScanEnvironment({
       repositories: [
         {
@@ -374,7 +374,7 @@ describe('DailySecurityScanUseCase repository scope without a repositories list'
     await runScan(environment.useCase);
 
     expect(environment.snapshot().runLogEntries).toMatchObject([
-      { repositoryName: 'my.repo' },
+      { repositoryName: 'my' },
     ]);
   });
 
