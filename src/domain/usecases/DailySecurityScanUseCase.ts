@@ -17,6 +17,89 @@ export type DailySecurityScanConfig = {
   targetHourUtc: number;
   enableKevNvdReport?: boolean;
   kevReportRepo?: string;
+  findingsRepo?: string;
+};
+
+const FINDINGS_ISSUE_TITLE = 'Daily security scan findings';
+
+type GithubRemote = {
+  owner: string;
+  repositoryName: string;
+  fullRepositoryName: string;
+};
+
+type ScannedRepositoryRemote = GithubRemote & { remoteUrl: string };
+
+type FindingsDestination = {
+  owner: string;
+  repositoryName: string;
+  title: string;
+};
+
+const parseGithubRemote = (
+  remoteUrl: string,
+  repositories: string[] | null,
+): GithubRemote | null => {
+  const fullMatch = remoteUrl.match(
+    /github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/,
+  );
+  if (fullMatch === null) {
+    return null;
+  }
+  const owner = fullMatch[1];
+  const fullRepositoryName = fullMatch[2];
+  if (repositories !== null) {
+    return {
+      owner,
+      repositoryName: fullRepositoryName,
+      fullRepositoryName,
+    };
+  }
+  const legacyMatch = remoteUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+  return legacyMatch === null
+    ? null
+    : { owner, repositoryName: legacyMatch[2], fullRepositoryName };
+};
+
+const isScannedRepository = (
+  remote: GithubRemote,
+  org: string,
+  repositories: string[] | null,
+): boolean => {
+  if (repositories === null) {
+    return remote.owner === org;
+  }
+  const remoteKey = `${remote.owner}/${remote.repositoryName}`.toLowerCase();
+  return repositories.some((entry) => entry.toLowerCase() === remoteKey);
+};
+
+const findingsDestinationOf = (
+  org: string,
+  findingsRepo: string | null,
+  scannedRemote: GithubRemote,
+): FindingsDestination | null => {
+  if (findingsRepo) {
+    const findingsRepoIsScannedRepository =
+      scannedRemote.owner.toLowerCase() === org.toLowerCase() &&
+      scannedRemote.fullRepositoryName.toLowerCase() ===
+        findingsRepo.toLowerCase();
+    if (findingsRepoIsScannedRepository) {
+      return null;
+    }
+    return {
+      owner: org,
+      repositoryName: findingsRepo,
+      title: `${FINDINGS_ISSUE_TITLE}: ${scannedRemote.owner}/${scannedRemote.fullRepositoryName}`,
+    };
+  }
+  if (scannedRemote.owner !== org) {
+    return null;
+  }
+  return {
+    owner: scannedRemote.owner,
+    repositoryName: scannedRemote.repositoryName,
+    title: FINDINGS_ISSUE_TITLE,
+  };
 };
 
 type KevVulnerability = {
@@ -193,6 +276,7 @@ export class DailySecurityScanUseCase {
     org: string;
     manager: Member['name'];
     dailySecurityScan: DailySecurityScanConfig;
+    repositories?: string[] | null;
   }): Promise<void> => {
     const shouldRun = input.targetDates.some(
       (targetDate) =>
@@ -211,6 +295,7 @@ export class DailySecurityScanUseCase {
       input.manager,
       today,
       input.dailySecurityScan,
+      input.repositories ?? null,
     );
 
     await this.reportKevAdditions(
@@ -227,6 +312,7 @@ export class DailySecurityScanUseCase {
     manager: Member['name'],
     today: string,
     config: DailySecurityScanConfig,
+    repositories: string[] | null,
   ): Promise<ScannedVulnerablePackage[]> => {
     const { stdout: findOutput } = await this.localCommandRunner.runCommand(
       'find',
@@ -253,7 +339,7 @@ export class DailySecurityScanUseCase {
       return [];
     }
 
-    const remoteUrlByRepositoryName = new Map<string, string>();
+    const remoteByRepositoryKey = new Map<string, ScannedRepositoryRemote>();
     for (const repositoryDirectory of repositoryDirectories) {
       const { stdout: remoteUrl, exitCode: remoteExitCode } =
         await this.localCommandRunner.runCommand('git', [
@@ -267,20 +353,28 @@ export class DailySecurityScanUseCase {
         continue;
       }
 
-      const remoteMatch = remoteUrl
-        .trim()
-        .match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-      if (!remoteMatch || remoteMatch[1] !== org) {
+      const remote = parseGithubRemote(remoteUrl.trim(), repositories);
+      if (remote === null || !isScannedRepository(remote, org, repositories)) {
         continue;
       }
-      if (!remoteUrlByRepositoryName.has(remoteMatch[2])) {
-        remoteUrlByRepositoryName.set(remoteMatch[2], remoteUrl.trim());
+      const remoteRawKey = `${remote.owner}/${remote.repositoryName}`;
+      const remoteKey =
+        repositories === null ? remoteRawKey : remoteRawKey.toLowerCase();
+      if (!remoteByRepositoryKey.has(remoteKey)) {
+        remoteByRepositoryKey.set(remoteKey, {
+          ...remote,
+          remoteUrl: remoteUrl.trim(),
+        });
       }
     }
 
     const scannedVulnerablePackages: ScannedVulnerablePackage[] = [];
-    for (const [repositoryName, remoteUrl] of remoteUrlByRepositoryName) {
-      const repositoryOrg = org;
+    for (const {
+      owner: repositoryOwner,
+      repositoryName,
+      fullRepositoryName,
+      remoteUrl,
+    } of remoteByRepositoryKey.values()) {
       const executedAtIso = this.clock().toISOString();
       const checkoutResult = await this.checkoutDefaultBranch(
         repositoryName,
@@ -385,16 +479,31 @@ export class DailySecurityScanUseCase {
       });
 
       const findingsBody = renderScannerFindings(today, vulnerablePackages);
+      const destination = findingsDestinationOf(
+        org,
+        config.findingsRepo ?? null,
+        {
+          owner: repositoryOwner,
+          repositoryName,
+          fullRepositoryName,
+        },
+      );
+      if (destination === null) {
+        console.error(
+          `The findings of ${repositoryOwner}/${fullRepositoryName} were not written to GitHub: no findings destination is available. Either findingsRepo is not set for a repository owned by another owner, or findingsRepo names the scanned repository itself, which is never written to. The remaining repositories are still scanned and the CISA KEV report still runs.`,
+        );
+        continue;
+      }
       try {
         const existingIssues = await this.issueRepository.searchIssue({
-          owner: repositoryOrg,
-          repositoryName,
+          owner: destination.owner,
+          repositoryName: destination.repositoryName,
           type: 'issue',
           state: 'open',
-          title: 'Daily security scan findings',
+          title: destination.title,
         });
         const existingIssue = existingIssues.find(
-          (issue) => issue.title === 'Daily security scan findings',
+          (issue) => issue.title === destination.title,
         );
         if (existingIssue) {
           await this.createCommentByUrlWithDedup(
@@ -403,9 +512,9 @@ export class DailySecurityScanUseCase {
           );
         } else {
           await this.issueRepository.createNewIssue(
-            repositoryOrg,
-            repositoryName,
-            'Daily security scan findings',
+            destination.owner,
+            destination.repositoryName,
+            destination.title,
             findingsBody,
             [manager],
             [],
@@ -413,7 +522,7 @@ export class DailySecurityScanUseCase {
         }
       } catch (error) {
         console.error(
-          `The findings of ${repositoryOrg}/${repositoryName} were not written to GitHub: ${String(error)}. The remaining repositories are still scanned and the CISA KEV report still runs.`,
+          `The findings of ${repositoryOwner}/${repositoryName} were not written to GitHub (destination ${destination.owner}/${destination.repositoryName}): ${String(error)}. The remaining repositories are still scanned and the CISA KEV report still runs.`,
         );
       }
     }

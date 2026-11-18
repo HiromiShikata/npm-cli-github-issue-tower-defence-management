@@ -3279,6 +3279,76 @@ describe('HandleScheduledEventUseCase', () => {
         }
       });
 
+      it('passes the project repositories list to the daily security scan', async () => {
+        const cases: {
+          label: string;
+          projectScope: {
+            org: string;
+            repositories: string[] | null;
+            listedRepositoriesOfOtherProjects: string[];
+            ownsUnlistedRepositoriesOfOwner: boolean;
+          } | null;
+          expectedRepositories: string[] | null;
+        }[] = [
+          {
+            label: 'project scope with a repositories list',
+            projectScope: {
+              org: 'example-org',
+              repositories: ['client-org/client-app'],
+              listedRepositoriesOfOtherProjects: [],
+              ownsUnlistedRepositoriesOfOwner: false,
+            },
+            expectedRepositories: ['client-org/client-app'],
+          },
+          {
+            label: 'project scope without a repositories list',
+            projectScope: {
+              org: 'example-org',
+              repositories: null,
+              listedRepositoriesOfOtherProjects: [],
+              ownsUnlistedRepositoriesOfOwner: true,
+            },
+            expectedRepositories: null,
+          },
+          {
+            label: 'no project scope',
+            projectScope: null,
+            expectedRepositories: null,
+          },
+        ];
+
+        for (const testCase of cases) {
+          mockDailySecurityScanUseCase.run.mockClear();
+
+          await useCase.runEachUseCases(
+            {
+              ...baseInput,
+              projectScope: testCase.projectScope,
+              dailySecurityScan: {
+                scanBaseDirectory: '/repos',
+                targetHourUtc: 5,
+              },
+            },
+            project,
+            issues,
+            false,
+            [new Date('2024-01-01T00:00:00Z')],
+            storyObjectMap,
+            false,
+            now,
+          );
+
+          expect({
+            label: testCase.label,
+            repositories:
+              mockDailySecurityScanUseCase.run.mock.calls[0]?.[0].repositories,
+          }).toEqual({
+            label: testCase.label,
+            repositories: testCase.expectedRepositories,
+          });
+        }
+      });
+
       it('defers updateIssueStatusByLabelUseCase.run, issueNoStatusUpdateUseCase.run, and startPreparationUseCase.run for the cycle when runSlowSweep is true and runSlowSweepUseCases rejects its aggregate error', async () => {
         mockActionAnnouncementUseCase.run.mockRejectedValueOnce(
           new Error('ActionAnnouncementUseCase exploded'),

@@ -746,6 +746,7 @@ ${JSON.stringify(e)}
             org: input.org,
             manager: input.manager,
             dailySecurityScan,
+            repositories: input.projectScope?.repositories ?? null,
           }),
         failures,
       );
