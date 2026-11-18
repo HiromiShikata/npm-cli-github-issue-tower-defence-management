@@ -22,6 +22,7 @@ import {
   runCliProgram,
   reportFatalErrorAndExit,
   extractOwnerRepoFromGithubUrl,
+  parseDashboardProjectNames,
 } from './index';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
@@ -6446,5 +6447,46 @@ describe('select-resumable-session command', () => {
     expect(
       fs.existsSync(path.join(sessionDir, `${resumableSessionId}.jsonl`)),
     ).toBe(true);
+  });
+});
+
+describe('parseDashboardProjectNames', () => {
+  it('returns colliding project names without exiting so the console can start', () => {
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      expect(parseDashboardProjectNames('acme, acmetools')).toEqual([
+        'acme',
+        'acmetools',
+      ]);
+      expect(processExitSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    } finally {
+      processExitSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    }
+  });
+
+  it('exits with a clear error when no distinct display label remains', () => {
+    const processExitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation(jest.fn<never, Parameters<typeof process.exit>>());
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      parseDashboardProjectNames('ab,ac,abc');
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Dashboard project name abc cannot be given a distinct 2-character display label',
+      );
+    } finally {
+      processExitSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    }
   });
 });
