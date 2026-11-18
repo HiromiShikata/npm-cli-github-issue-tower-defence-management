@@ -762,7 +762,11 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
     it('rejects with the transport error and does not report the item as not found when the project-side scan answers HTTP 500', async () => {
       mockPost
         .mockReturnValueOnce(issueOrPullRequestProjectItemsResponse([]))
-        .mockRejectedValueOnce(new Error('HTTP 500 Internal Server Error'));
+        .mockReturnValueOnce({
+          json: jest
+            .fn()
+            .mockRejectedValue(new Error('HTTP 500 Internal Server Error')),
+        });
 
       const outcome = await settleWithTimers(
         newRepository().fetchItemId(PROJECT_ID, 'client-org', 'client-app', 7),
