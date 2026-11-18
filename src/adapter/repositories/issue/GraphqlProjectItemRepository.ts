@@ -92,7 +92,6 @@ type ProjectV2ItemFieldValuesOnlyNode = {
 
 type ProjectSideScanNode = {
   id: string;
-  isArchived: boolean;
   content: { url?: string } | null;
 };
 
@@ -564,27 +563,24 @@ export class GraphqlProjectItemRepository extends BaseGitHubRepository {
       if (projectItemId !== undefined) {
         return projectItemId;
       }
-      const projectSideItemId = await this.findProjectSideItemIdByContentUrls(
-        'fetchItemId',
-        projectId,
-        owner,
-        repositoryName,
-        [
-          `https://github.com/${owner}/${repositoryName}/issues/${issueNumber}`,
-          `https://github.com/${owner}/${repositoryName}/pull/${issueNumber}`,
-        ],
-      );
-      return projectSideItemId ?? undefined;
     } catch (error) {
       console.error('Error fetching GitHub Project V2 ID:', error);
-      if (
-        error instanceof GraphqlRateLimitError ||
-        error instanceof ProjectSideItemLookupError
-      ) {
+      if (error instanceof GraphqlRateLimitError) {
         throw error;
       }
       return undefined;
     }
+    const projectSideItemId = await this.findProjectSideItemIdByContentUrls(
+      'fetchItemId',
+      projectId,
+      owner,
+      repositoryName,
+      [
+        `https://github.com/${owner}/${repositoryName}/issues/${issueNumber}`,
+        `https://github.com/${owner}/${repositoryName}/pull/${issueNumber}`,
+      ],
+    );
+    return projectSideItemId ?? undefined;
   };
   fetchProjectItems = async (
     projectId: string,
@@ -889,7 +885,6 @@ query GetProjectItemIdsOfRepository($projectId: ID!, $after: String, $query: Str
         }
         nodes {
           id
-          isArchived
           content {
             ... on Issue {
               url
