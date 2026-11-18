@@ -57,7 +57,7 @@ const isScannedRepository = (
 
 const findingsDestinationOf = (
   org: string,
-  findingsRepo: string | undefined,
+  findingsRepo: string | null,
   scannedRemote: GithubRemote,
 ): FindingsDestination | null => {
   if (findingsRepo) {
@@ -332,8 +332,9 @@ export class DailySecurityScanUseCase {
       if (remote === null || !isScannedRepository(remote, org, repositories)) {
         continue;
       }
+      const remoteRawKey = `${remote.owner}/${remote.repositoryName}`;
       const remoteKey =
-        `${remote.owner}/${remote.repositoryName}`.toLowerCase();
+        repositories === null ? remoteRawKey : remoteRawKey.toLowerCase();
       if (!remoteByRepositoryKey.has(remoteKey)) {
         remoteByRepositoryKey.set(remoteKey, {
           ...remote,
@@ -452,10 +453,14 @@ export class DailySecurityScanUseCase {
       });
 
       const findingsBody = renderScannerFindings(today, vulnerablePackages);
-      const destination = findingsDestinationOf(org, config.findingsRepo, {
-        owner: repositoryOwner,
-        repositoryName,
-      });
+      const destination = findingsDestinationOf(
+        org,
+        config.findingsRepo ?? null,
+        {
+          owner: repositoryOwner,
+          repositoryName,
+        },
+      );
       if (destination === null) {
         console.error(
           `The findings of ${repositoryOwner}/${repositoryName} were not written to GitHub: no findingsRepo is set and the repository is not owned by ${org}, so its findings are not written into it. Set findingsRepo to write them to an org-owned repository. The remaining repositories are still scanned and the CISA KEV report still runs.`,

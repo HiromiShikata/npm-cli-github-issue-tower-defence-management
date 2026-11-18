@@ -377,6 +377,28 @@ describe('DailySecurityScanUseCase repository scope without a repositories list'
       { repositoryName: 'my' },
     ]);
   });
+
+  it('keeps scanning both clones whose org remote names differ only by letter case when no list is set', async () => {
+    const environment = buildScanEnvironment({
+      repositories: [
+        {
+          directory: '/repos/example-org/App',
+          remoteUrl: 'git@github.com:example-org/App.git',
+        },
+        {
+          directory: '/repos/example-org/app',
+          remoteUrl: 'https://github.com/example-org/app',
+        },
+      ],
+    });
+
+    await runScan(environment.useCase);
+
+    expect(environment.snapshot().clonedRemoteUrls).toEqual([
+      'git@github.com:example-org/App.git',
+      'https://github.com/example-org/app',
+    ]);
+  });
 });
 
 describe('DailySecurityScanUseCase repository scope with a repositories list and a findings repository', () => {
