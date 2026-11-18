@@ -3,7 +3,10 @@ import {
   DailySecurityScanUseCase,
 } from './DailySecurityScanUseCase';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import {
+  IssueComment,
+  IssueRepository,
+} from './adapter-interfaces/IssueRepository';
 import { HttpRepository } from './adapter-interfaces/HttpRepository';
 import { KevReportWatermarkRepository } from './adapter-interfaces/KevReportWatermarkRepository';
 import { DailySecurityScanRunLogRepository } from './adapter-interfaces/DailySecurityScanRunLogRepository';
@@ -168,42 +171,42 @@ const buildScanEnvironment = (options: ScanEnvironmentOptions) => {
       issues.push({ url, owner, repositoryName, title });
       return createdIssues.length;
     },
-    createCommentByUrl: async (url, body) => {
+    createCommentByUrl: async (url, body): Promise<IssueComment> => {
       commentedUrls.push({ url, body });
       return {
         id: commentedUrls.length,
+        author: 'fake-author',
         body,
-        createdAt: '2024-03-05T10:15:00.000Z',
-      } as unknown as Awaited<ReturnType<IssueRepository['createCommentByUrl']>>;
+        createdAt: new Date('2024-03-05T10:15:00.000Z'),
+      };
     },
-    getIssueOrPullRequestComments: async (url) =>
+    getIssueOrPullRequestComments: async (url): Promise<IssueComment[]> =>
       commentedUrls
         .filter((comment) => comment.url === url)
-        .map((comment) => ({
+        .map((comment, index) => ({
+          id: index + 1,
+          author: 'fake-author',
           body: comment.body,
-          createdAt: '2024-03-05T10:15:00.000Z',
-        })) as unknown as Awaited<
-        ReturnType<IssueRepository['getIssueOrPullRequestComments']>
-      >,
+          createdAt: new Date('2024-03-05T10:15:00.000Z'),
+        })),
   };
 
   const httpRepository: HttpRepository = {
     get: async () => {
       throw new Error('The CISA KEV catalog must not be fetched');
     },
-  } as HttpRepository;
+  };
 
   const kevReportWatermarkRepository: KevReportWatermarkRepository = {
     load: async () => ({ type: 'absent' }),
     save: async () => undefined,
   };
 
-  const dailySecurityScanRunLogRepository: DailySecurityScanRunLogRepository =
-    {
-      append: async (entry) => {
-        runLogEntries.push(entry);
-      },
-    };
+  const dailySecurityScanRunLogRepository: DailySecurityScanRunLogRepository = {
+    append: async (entry) => {
+      runLogEntries.push(entry);
+    },
+  };
 
   const useCase = new DailySecurityScanUseCase(
     localCommandRunner,
@@ -286,7 +289,9 @@ describe('DailySecurityScanUseCase repository scope without a repositories list'
     ];
     for (const remoteUrl of remoteUrls) {
       const environment = buildScanEnvironment({
-        repositories: [{ directory: '/repos/client-org/client-app', remoteUrl }],
+        repositories: [
+          { directory: '/repos/client-org/client-app', remoteUrl },
+        ],
         scanByRemoteUrl: { [remoteUrl]: vulnerableScan('CVE-2024-0002') },
       });
 
@@ -333,9 +338,7 @@ describe('DailySecurityScanUseCase repository scope without a repositories list'
     expect(snapshot.commentedUrls[0].url).toBe(
       'https://github.com/example-org/app/issues/7',
     );
-    expect(snapshot.commentedUrls[0].body).toContain(
-      '## OSV-Scanner findings',
-    );
+    expect(snapshot.commentedUrls[0].body).toContain('## OSV-Scanner findings');
   });
 
   it('records a clean scan in the run log without creating or updating any issue', async () => {
@@ -438,16 +441,18 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
         repositories: [
           { directory: '/repos/checkout', remoteUrl: testCase.remoteUrl },
         ],
-        scanByRemoteUrl: { [testCase.remoteUrl]: vulnerableScan('CVE-2024-1001') },
+        scanByRemoteUrl: {
+          [testCase.remoteUrl]: vulnerableScan('CVE-2024-1001'),
+        },
       });
 
       await runScan(environment.useCase, {}, testCase.repositories);
 
       expect({
         label: testCase.label,
-        scanned: environment.snapshot().clonedRemoteUrls.includes(
-          testCase.remoteUrl,
-        ),
+        scanned: environment
+          .snapshot()
+          .clonedRemoteUrls.includes(testCase.remoteUrl),
       }).toEqual({ label: testCase.label, scanned: testCase.expectedScanned });
     }
   });
@@ -455,7 +460,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
   it('writes each scanned repository findings to the findings repository under a title naming that repository', async () => {
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
         {
           directory: '/repos/client-org/client-api',
           remoteUrl: 'https://github.com/client-org/client-api',
@@ -463,18 +471,24 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       ],
       scanByRemoteUrl: {
         [CLIENT_SCP_REMOTE]: vulnerableScan('CVE-2024-1002'),
-        'https://github.com/client-org/client-api': vulnerableScan('CVE-2024-1003'),
+        'https://github.com/client-org/client-api':
+          vulnerableScan('CVE-2024-1003'),
       },
     });
 
-    await runScan(
-      environment.useCase,
-      { findingsRepo: DESTINATION },
-      ['client-org/client-app', 'client-org/client-api'],
-    );
+    await runScan(environment.useCase, { findingsRepo: DESTINATION }, [
+      'client-org/client-app',
+      'client-org/client-api',
+    ]);
 
     const snapshot = environment.snapshot();
-    expect(snapshot.searchCalls.map((call) => [call.owner, call.repositoryName, call.title])).toEqual([
+    expect(
+      snapshot.searchCalls.map((call) => [
+        call.owner,
+        call.repositoryName,
+        call.title,
+      ]),
+    ).toEqual([
       [ORG, DESTINATION, 'Daily security scan findings: client-org/client-app'],
       [ORG, DESTINATION, 'Daily security scan findings: client-org/client-api'],
     ]);
@@ -495,7 +509,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
   it('comments on the destination issue with the exact title of the scanned repository and ignores the plain or other-repository titles', async () => {
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
       ],
       scanByRemoteUrl: { [CLIENT_SCP_REMOTE]: vulnerableScan('CVE-2024-1004') },
       existingIssues: [
@@ -534,7 +551,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
   it('never searches, creates or comments in the scanned repository itself when the findings repository is set', async () => {
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
       ],
       scanByRemoteUrl: { [CLIENT_SCP_REMOTE]: vulnerableScan('CVE-2024-1005') },
     });
@@ -550,7 +570,7 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
         issue.owner,
         issue.repositoryName,
       ]),
-    ].some(([owner, repositoryName]) => owner === 'client-org');
+    ].some(([owner]) => owner === 'client-org');
     expect(touchedScannedRepository).toBe(false);
     expect(snapshot.commentedUrls).toEqual([]);
   });
@@ -558,7 +578,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
   it('keeps the current findings destination and title when the findings repository is not set and the list is', async () => {
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
       ],
       scanByRemoteUrl: { [CLIENT_SCP_REMOTE]: vulnerableScan('CVE-2024-1006') },
     });
@@ -566,7 +589,11 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
     await runScan(environment.useCase, {}, ['client-org/client-app']);
 
     expect(environment.snapshot().createdIssues).toMatchObject([
-      { owner: 'client-org', repositoryName: 'client-app', title: FINDINGS_TITLE },
+      {
+        owner: 'client-org',
+        repositoryName: 'client-app',
+        title: FINDINGS_TITLE,
+      },
     ]);
   });
 
@@ -576,7 +603,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       .mockImplementation(() => undefined);
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
         {
           directory: '/repos/client-org/client-api',
           remoteUrl: 'https://github.com/client-org/client-api',
@@ -584,7 +614,8 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       ],
       scanByRemoteUrl: {
         [CLIENT_SCP_REMOTE]: vulnerableScan('CVE-2024-1007'),
-        'https://github.com/client-org/client-api': vulnerableScan('CVE-2024-1008'),
+        'https://github.com/client-org/client-api':
+          vulnerableScan('CVE-2024-1008'),
       },
       failingCreateRepositoryKeys: [`${ORG}/${DESTINATION}`],
     });
@@ -603,7 +634,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       String(call[0]),
     );
     expect(loggedMessages).toHaveLength(2);
-    for (const repositoryName of ['client-org/client-app', 'client-org/client-api']) {
+    for (const repositoryName of [
+      'client-org/client-app',
+      'client-org/client-api',
+    ]) {
       expect(
         loggedMessages.some(
           (message) =>
@@ -621,7 +655,10 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       .mockImplementation(() => undefined);
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
       ],
       scanByRemoteUrl: { [CLIENT_SCP_REMOTE]: vulnerableScan('CVE-2024-1009') },
       failingSearchRepositoryKeys: [`${ORG}/${DESTINATION}`],
@@ -639,7 +676,9 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       consoleErrorSpy.mock.calls.some(
         (call) =>
           String(call[0]).includes('client-org/client-app') &&
-          String(call[0]).includes('search failed for example-org/security-tasks'),
+          String(call[0]).includes(
+            'search failed for example-org/security-tasks',
+          ),
       ),
     ).toBe(true);
   });
@@ -650,14 +689,18 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       .mockImplementation(() => undefined);
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
         {
           directory: '/repos/client-org/client-api',
           remoteUrl: 'https://github.com/client-org/client-api',
         },
       ],
       scanByRemoteUrl: {
-        'https://github.com/client-org/client-api': vulnerableScan('CVE-2024-1010'),
+        'https://github.com/client-org/client-api':
+          vulnerableScan('CVE-2024-1010'),
       },
       cloneFailingRemoteUrls: [CLIENT_SCP_REMOTE],
     });
@@ -668,14 +711,22 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
     ]);
 
     const snapshot = environment.snapshot();
-    expect(snapshot.runLogEntries.map((entry) => [entry.repositoryName, entry.outcome.type])).toEqual([
+    expect(
+      snapshot.runLogEntries.map((entry) => [
+        entry.repositoryName,
+        entry.outcome.type,
+      ]),
+    ).toEqual([
       ['client-app', 'checkoutFailed'],
       ['client-api', 'scanCompletedWithVulnerabilities'],
     ]);
     expect(
-      consoleErrorSpy.mock.calls.some((call) =>
-        String(call[0]).includes('client-org/client-app') ||
-        String(call[0]).includes('Failed to clone the default branch of client-app'),
+      consoleErrorSpy.mock.calls.some(
+        (call) =>
+          String(call[0]).includes('client-org/client-app') ||
+          String(call[0]).includes(
+            'Failed to clone the default branch of client-app',
+          ),
       ),
     ).toBe(true);
   });
@@ -686,14 +737,21 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
       .mockImplementation(() => undefined);
     const environment = buildScanEnvironment({
       repositories: [
-        { directory: '/repos/client-org/client-app', remoteUrl: CLIENT_SCP_REMOTE },
+        {
+          directory: '/repos/client-org/client-app',
+          remoteUrl: CLIENT_SCP_REMOTE,
+        },
         {
           directory: '/repos/client-org/client-api',
           remoteUrl: 'https://github.com/client-org/client-api',
         },
       ],
       scanByRemoteUrl: {
-        [CLIENT_SCP_REMOTE]: { exitCode: 2, stdout: '', stderr: 'scanner crashed' },
+        [CLIENT_SCP_REMOTE]: {
+          exitCode: 2,
+          stdout: '',
+          stderr: 'scanner crashed',
+        },
         'https://github.com/client-org/client-api': CLEAN_SCAN,
       },
     });
@@ -704,13 +762,20 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
     ]);
 
     const snapshot = environment.snapshot();
-    expect(snapshot.runLogEntries.map((entry) => [entry.repositoryName, entry.outcome.type])).toEqual([
+    expect(
+      snapshot.runLogEntries.map((entry) => [
+        entry.repositoryName,
+        entry.outcome.type,
+      ]),
+    ).toEqual([
       ['client-app', 'scanFailed'],
       ['client-api', 'scanCompletedClean'],
     ]);
     expect(
       consoleErrorSpy.mock.calls.some((call) =>
-        String(call[0]).includes('osv-scanner failed with exit code 2 for client-app'),
+        String(call[0]).includes(
+          'osv-scanner failed with exit code 2 for client-app',
+        ),
       ),
     ).toBe(true);
   });
