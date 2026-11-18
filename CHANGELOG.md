@@ -1,3 +1,10 @@
+## [2.197.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.197.0...v2.197.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **dashboard:** start the console when project names share a two-character prefix ([#3737](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3737)) ([7520d6d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7520d6d5dca06f3da409cb111c846504c989974d))
+
 # [2.197.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.196.1...v2.197.0) (2026-11-17)
 
 
