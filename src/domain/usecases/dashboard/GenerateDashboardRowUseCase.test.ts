@@ -303,7 +303,7 @@ describe('GenerateDashboardRowUseCase', () => {
     ).toBe(2);
   });
 
-  it('counts open AQC and TodoByHuman issues by story color across all assignees', () => {
+  it('counts open AQC and TodoByHuman issues by story color for issues assigned to the row assignee', () => {
     const storyColorMap = new Map([
       ['opt-red-story', 'RED'],
       ['opt-yellow-story', 'YELLOW'],
@@ -406,7 +406,7 @@ describe('GenerateDashboardRowUseCase', () => {
     ).toBe(0);
   });
 
-  it('counts story color pending regardless of issue assignee', () => {
+  it('excludes story color pending issues assigned only to another login', () => {
     const storyColorMap = new Map([
       ['opt-red-story', 'RED'],
       ['red-story', 'RED'],
@@ -423,7 +423,170 @@ describe('GenerateDashboardRowUseCase', () => {
     expect(
       usecase.run({ issues, assigneeLogin: ASSIGNEE, storyColorMap })
         .humanPendingRed,
-    ).toBe(1);
+    ).toBe(0);
+  });
+
+  describe('human pending story color counts restricted to the row assignee', () => {
+    const storyColorMap = new Map([
+      ['opt-red', 'RED'],
+      ['opt-yellow', 'YELLOW'],
+    ]);
+
+    it.each([
+      {
+        scenario: 'red issue assigned to the row assignee',
+        issues: [
+          makeIssue({ status: 'Awaiting Owner', storyOptionId: 'opt-red' }),
+        ],
+        expected: { humanPendingRed: 1, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'yellow issue assigned to the row assignee',
+        issues: [
+          makeIssue({ status: 'Todo by human', storyOptionId: 'opt-yellow' }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 1 },
+      },
+      {
+        scenario: 'red issue assigned only to another login',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            assignees: ['someone-else'],
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'yellow issue assigned only to another login',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Workspace',
+            storyOptionId: 'opt-yellow',
+            assignees: ['someone-else'],
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'red issue with several assignees including the row assignee',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            assignees: ['someone-else', ASSIGNEE],
+          }),
+        ],
+        expected: { humanPendingRed: 1, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'red issue with no assignee',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            assignees: [],
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'closed red issue assigned to the row assignee',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            isClosed: true,
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario: 'red Done issue assigned to the row assignee',
+        issues: [makeIssue({ status: 'Done', storyOptionId: 'opt-red' })],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario:
+          'red issue with dependedIssueUrls set, assigned to the row assignee',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            dependedIssueUrls: ['https://github.com/demo/repo/issues/999'],
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario:
+          'red issue with nextActionDate set, assigned to the row assignee',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario:
+          'yellow issue with nextActionHour set, assigned to the row assignee',
+        issues: [
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-yellow',
+            nextActionHour: 10,
+          }),
+        ],
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
+      },
+      {
+        scenario:
+          'mixed assignees: two red and one yellow mine, three red and one yellow of others',
+        issues: [
+          makeIssue({ status: 'Awaiting Owner', storyOptionId: 'opt-red' }),
+          makeIssue({ status: 'Todo by human', storyOptionId: 'opt-red' }),
+          makeIssue({ status: 'Awaiting Owner', storyOptionId: 'opt-yellow' }),
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-red',
+            assignees: ['someone-else'],
+          }),
+          makeIssue({
+            status: 'Todo by human',
+            storyOptionId: 'opt-red',
+            assignees: ['someone-else'],
+          }),
+          makeIssue({
+            status: 'Awaiting Workspace',
+            storyOptionId: 'opt-red',
+            assignees: ['someone-else'],
+          }),
+          makeIssue({
+            status: 'Awaiting Owner',
+            storyOptionId: 'opt-yellow',
+            assignees: ['someone-else'],
+          }),
+        ],
+        expected: { humanPendingRed: 2, humanPendingYellow: 1 },
+      },
+    ])(
+      'counts only issues assigned to the row assignee: $scenario',
+      ({ issues, expected }) => {
+        const result = usecase.run({
+          issues,
+          assigneeLogin: ASSIGNEE,
+          storyColorMap,
+        });
+        expect({
+          humanPendingRed: result.humanPendingRed,
+          humanPendingYellow: result.humanPendingYellow,
+        }).toEqual(expected);
+      },
+    );
   });
 
   describe('human pending story color lookup by story option id', () => {
@@ -706,7 +869,7 @@ describe('GenerateDashboardRowUseCase', () => {
     }
   });
 
-  it('pins humanPendingRed and humanPendingYellow for cases the new rule leaves unchanged', () => {
+  it('pins humanPendingRed and humanPendingYellow for the row assignee story colour cases', () => {
     const storyColorMap = new Map([
       ['opt-red', 'RED'],
       ['opt-yellow', 'YELLOW'],
@@ -748,7 +911,7 @@ describe('GenerateDashboardRowUseCase', () => {
             assignees: ['someone-else'],
           }),
         ],
-        expected: { humanPendingRed: 1, humanPendingYellow: 0 },
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
       },
       {
         scenario: 'closed red issue',
@@ -958,7 +1121,7 @@ describe('GenerateDashboardRowUseCase', () => {
             assignees: ['someone-else'],
           }),
         ],
-        expected: { humanPendingRed: 1, humanPendingYellow: 0 },
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
       },
       {
         scenario:
@@ -970,7 +1133,7 @@ describe('GenerateDashboardRowUseCase', () => {
             assignees: ['someone-else'],
           }),
         ],
-        expected: { humanPendingRed: 0, humanPendingYellow: 1 },
+        expected: { humanPendingRed: 0, humanPendingYellow: 0 },
       },
       {
         scenario:
