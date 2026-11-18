@@ -24,7 +24,7 @@ const observedWindow = (
 describe('formatCodexSevenDayWindowLines', () => {
   const cases: {
     name: string;
-    windows: CodexSevenDayWindowStatus[] | null | undefined;
+    windows: CodexSevenDayWindowStatus[] | null;
     expected: string[];
   }[] = [
     {
@@ -73,12 +73,7 @@ describe('formatCodexSevenDayWindowLines', () => {
       expected: ['cx -- no data'],
     },
     {
-      name: 'renders nothing when the windows were not provided',
-      windows: undefined,
-      expected: [],
-    },
-    {
-      name: 'renders nothing when the windows are null',
+      name: 'renders nothing when the windows are not collected yet',
       windows: null,
       expected: [],
     },

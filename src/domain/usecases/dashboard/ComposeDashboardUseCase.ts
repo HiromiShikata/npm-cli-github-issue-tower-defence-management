@@ -507,10 +507,10 @@ const formatCodexWindowLine = (
 };
 
 export const formatCodexSevenDayWindowLines = (
-  windows: CodexSevenDayWindowStatus[] | null | undefined,
+  windows: CodexSevenDayWindowStatus[] | null,
   nowEpochSeconds: number,
 ): string[] => {
-  if (windows === undefined || windows === null) {
+  if (windows === null) {
     return [];
   }
   if (windows.length === 0) {
@@ -556,7 +556,7 @@ export class ComposeDashboardUseCase {
       ];
     })();
     const codexLines = formatCodexSevenDayWindowLines(
-      input.codexSevenDayWindows,
+      input.codexSevenDayWindows ?? null,
       Math.floor((input.nowMs ?? Date.now()) / 1000),
     );
     const lines = [
