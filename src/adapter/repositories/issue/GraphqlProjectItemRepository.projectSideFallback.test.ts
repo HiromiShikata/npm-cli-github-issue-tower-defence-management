@@ -643,6 +643,30 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
         'GitHub GraphQL API returned no data',
       );
     });
+
+    it('returns null and warns with the exact message when the by-ids load returns a null node for the matched id', async () => {
+      mockPost
+        .mockReturnValueOnce(issueSideIssueResponse([]))
+        .mockReturnValueOnce(
+          projectSidePage(false, 'cursor-b12', 1, [
+            projectSideItem({
+              id: 'project-side-item-b12',
+              content: exactIssueContent(),
+            }),
+          ]),
+        )
+        .mockReturnValueOnce(mockJsonResponse({ data: { nodes: [null] } }));
+
+      const outcome = await settleWithTimers(
+        newRepository().fetchProjectItemByUrl(ISSUE_URL, PROJECT_ID),
+      );
+
+      expect(outcome).toEqual({ status: 'fulfilled', value: null });
+      expect(readSentRequests()).toHaveLength(3);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'No project item found for issue https://github.com/client-org/client-app/issues/7 on project PVT_test_project',
+      );
+    });
   });
 
   describe('fetchItemId when the issue side has no item', () => {
@@ -735,7 +759,23 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
       );
     });
 
-    it('sends a project-side scan query that selects neither fieldValues nor labels', async () => {
+    it('rejects with the transport error and does not report the item as not found when the project-side scan answers HTTP 500', async () => {
+      mockPost
+        .mockReturnValueOnce(issueOrPullRequestProjectItemsResponse([]))
+        .mockRejectedValueOnce(new Error('HTTP 500 Internal Server Error'));
+
+      const outcome = await settleWithTimers(
+        newRepository().fetchItemId(PROJECT_ID, 'client-org', 'client-app', 7),
+      );
+
+      expect(outcome.status).toBe('rejected');
+      expect(rejectionMessage(outcome)).toContain('HTTP 500');
+      expect(rejectionMessage(outcome)).not.toContain(
+        'Issue not found in project',
+      );
+    });
+
+    it('sends a project-side scan query that selects id and url and neither fieldValues, labels, assignees nor closingIssuesReferences', async () => {
       mockPost
         .mockReturnValueOnce(issueOrPullRequestProjectItemsResponse([]))
         .mockReturnValueOnce(
@@ -753,8 +793,12 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
 
       const scanRequest = readSentRequests()[1];
       expect(scanRequest.query).toContain('items(');
+      expect(scanRequest.query).toMatch(/\bid\b/);
+      expect(scanRequest.query).toMatch(/\burl\b/);
       expect(scanRequest.query).not.toContain('fieldValues');
       expect(scanRequest.query).not.toContain('labels');
+      expect(scanRequest.query).not.toContain('assignees');
+      expect(scanRequest.query).not.toContain('closingIssuesReferences');
     });
 
     it('rejects with the missing-endCursor error for both fetchProjectItemByUrl and fetchItemId when the scan reports hasNextPage without endCursor', async () => {
