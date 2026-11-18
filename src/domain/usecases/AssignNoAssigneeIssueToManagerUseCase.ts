@@ -125,8 +125,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       if (
         input.projectItemUrls.has(searchedIssue.url) ||
         searchedIssue.isPr ||
-        searchedIssue.state !== 'OPEN' ||
-        !searchedIssue.assignees.includes(input.manager)
+        searchedIssue.state !== 'OPEN'
       ) {
         continue;
       }
@@ -134,6 +133,9 @@ export class AssignNoAssigneeIssueToManagerUseCase {
         console.log(
           `Skipped issue ${searchedIssue.url}: author ${searchedIssue.author} is not ${input.manager}`,
         );
+        continue;
+      }
+      if (!searchedIssue.assignees.includes(input.manager)) {
         continue;
       }
       if (
