@@ -1,3 +1,10 @@
+# [2.198.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.197.1...v2.198.0) (2026-11-18)
+
+
+### Features
+
+* **dashboard:** show Codex 7-day window usage on the dashboard ([#3738](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3738)) ([954e1e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/954e1e08ec7fb5304fb9420d0e3e86c33b39be61))
+
 ## [2.197.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.197.0...v2.197.1) (2026-11-18)
 
 
