@@ -857,3 +857,69 @@ describe('DailySecurityScanUseCase repository scope with a repositories list and
     ).toBe(true);
   });
 });
+
+describe('DailySecurityScanUseCase findings destination for dotted and self-referencing repositories', () => {
+  const DESTINATION = 'security-tasks';
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('titles the findings of a dotted org repository with its full name when no list is set and findingsRepo is set', async () => {
+    const environment = buildScanEnvironment({
+      repositories: [
+        {
+          directory: '/repos/example-org/app.v2',
+          remoteUrl: 'git@github.com:example-org/app.v2.git',
+        },
+      ],
+      scanByRemoteUrl: {
+        'git@github.com:example-org/app.v2.git':
+          vulnerableScan('CVE-2024-1011'),
+      },
+    });
+
+    await runScan(environment.useCase, { findingsRepo: DESTINATION });
+
+    expect(environment.snapshot().createdIssues).toMatchObject([
+      {
+        owner: ORG,
+        repositoryName: DESTINATION,
+        title: 'Daily security scan findings: example-org/app.v2',
+      },
+    ]);
+  });
+
+  it('never writes into the scanned repository when findingsRepo names it, and logs why', async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const environment = buildScanEnvironment({
+      repositories: [
+        {
+          directory: '/repos/example-org/security-tasks',
+          remoteUrl: 'git@github.com:example-org/security-tasks.git',
+        },
+      ],
+      scanByRemoteUrl: {
+        'git@github.com:example-org/security-tasks.git':
+          vulnerableScan('CVE-2024-1012'),
+      },
+    });
+
+    await runScan(environment.useCase, { findingsRepo: DESTINATION });
+
+    const snapshot = environment.snapshot();
+    expect(snapshot.scannerInvocations).toBe(1);
+    expect(snapshot.searchCalls).toEqual([]);
+    expect(snapshot.createdIssues).toEqual([]);
+    expect(snapshot.commentedUrls).toEqual([]);
+    expect(
+      consoleErrorSpy.mock.calls.some(
+        (call) =>
+          String(call[0]).includes('example-org/security-tasks') &&
+          String(call[0]).includes('names the scanned repository itself'),
+      ),
+    ).toBe(true);
+  });
+});
