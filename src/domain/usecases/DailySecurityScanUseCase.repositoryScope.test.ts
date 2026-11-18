@@ -62,9 +62,6 @@ type ScanEnvironmentOptions = {
 const repositoryKey = (owner: string, repositoryName: string): string =>
   `${owner}/${repositoryName}`;
 
-// In-memory fakes of every adapter the use case depends on. The fake GitHub
-// returns every issue of a repository from searchIssue, so the use case's own
-// exact-title filter is what decides which issue it updates.
 const buildScanEnvironment = (options: ScanEnvironmentOptions) => {
   const remoteByDirectory = new Map(
     options.repositories.map((repository) => [
