@@ -30,14 +30,14 @@ const window = (
 });
 
 describe('buildComposeDashboardInput Codex seven day windows', () => {
-  it('returns an empty list when no Codex window file exists', () => {
+  it('returns null when no Codex window file exists so no Codex line is drawn', () => {
     const dataDir = makeDataDir();
     try {
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
         projectNames: ['acme'],
       });
-      expect(input.codexSevenDayWindows).toEqual([]);
+      expect(input.codexSevenDayWindows).toBeNull();
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

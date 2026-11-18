@@ -15,8 +15,7 @@ const observedWindow = (
   codexHome: '.codex',
   state: 'observed',
   usedPercent: 11,
-  resetsAtEpochSeconds:
-    NOW_EPOCH_SECONDS + 6 * 86400 + 12 * 3600 + 34 * 60,
+  resetsAtEpochSeconds: NOW_EPOCH_SECONDS + 6 * 86400 + 12 * 3600 + 34 * 60,
   capturedAt: CAPTURED_AT,
   errorMessage: null,
   ...overrides,
@@ -40,9 +39,7 @@ describe('formatCodexSevenDayWindowLines', () => {
     },
     {
       name: 'renders reset when the window end is at or before now',
-      windows: [
-        observedWindow({ resetsAtEpochSeconds: NOW_EPOCH_SECONDS }),
-      ],
+      windows: [observedWindow({ resetsAtEpochSeconds: NOW_EPOCH_SECONDS })],
       expected: ['cx .codex reset @11-18 02:16Z'],
     },
     {

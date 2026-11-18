@@ -1,3 +1,7 @@
+import {
+  CodexSevenDayWindowStatus,
+  isCodexSevenDayWindowReset,
+} from './CodexSevenDayWindowUseCase';
 import { DashboardRow } from './GenerateDashboardRowUseCase';
 import {
   SevenDayWindowAggregate,
@@ -39,6 +43,7 @@ export type ComposeDashboardInput = {
   machineStatus: ComposeDashboardMachineStatus | null;
   tokens: TokenStatus[];
   sevenDayWindowAggregate?: SevenDayWindowAggregate | null;
+  codexSevenDayWindows?: CodexSevenDayWindowStatus[] | null;
   nowMs?: number;
 };
 
@@ -457,6 +462,65 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
   ]);
 };
 
+const CODEX_LINE_PREFIX = 'cx';
+
+const NO_CODEX_HOME_LABEL = '--';
+
+const padTwoDigits = (value: number): string => String(value).padStart(2, '0');
+
+export const formatCodexCaptureStamp = (isoTimestamp: string): string => {
+  const captured = new Date(isoTimestamp);
+  return `@${padTwoDigits(captured.getUTCMonth() + 1)}-${padTwoDigits(
+    captured.getUTCDate(),
+  )} ${padTwoDigits(captured.getUTCHours())}:${padTwoDigits(
+    captured.getUTCMinutes(),
+  )}Z`;
+};
+
+const formatCodexWindowLine = (
+  window: CodexSevenDayWindowStatus,
+  nowEpochSeconds: number,
+): string => {
+  const head = `${CODEX_LINE_PREFIX} ${window.codexHome}`;
+  if (window.state === 'error') {
+    return `${head} error`;
+  }
+  if (
+    window.state === 'no-data' ||
+    window.usedPercent === null ||
+    window.resetsAtEpochSeconds === null
+  ) {
+    return `${head} no data`;
+  }
+  const stamp =
+    window.capturedAt === null
+      ? ''
+      : ` ${formatCodexCaptureStamp(window.capturedAt)}`;
+  if (
+    isCodexSevenDayWindowReset(window.resetsAtEpochSeconds, nowEpochSeconds)
+  ) {
+    return `${head} reset${stamp}`;
+  }
+  return `${head} ${roundHalfToEven(window.usedPercent)}% ${formatResetCountdown(
+    window.resetsAtEpochSeconds - nowEpochSeconds,
+  )}${stamp}`;
+};
+
+export const formatCodexSevenDayWindowLines = (
+  windows: CodexSevenDayWindowStatus[] | null | undefined,
+  nowEpochSeconds: number,
+): string[] => {
+  if (windows === undefined || windows === null) {
+    return [];
+  }
+  if (windows.length === 0) {
+    return [`${CODEX_LINE_PREFIX} ${NO_CODEX_HOME_LABEL} no data`];
+  }
+  return windows.map((window) =>
+    formatCodexWindowLine(window, nowEpochSeconds),
+  );
+};
+
 const wrapLine = (line: string): string =>
   `<tt>${line.replace(/ /g, '&nbsp;')}</tt><br>`;
 
@@ -491,11 +555,16 @@ export class ComposeDashboardUseCase {
         ...(sessionTotalLine !== null ? [sessionTotalLine] : []),
       ];
     })();
+    const codexLines = formatCodexSevenDayWindowLines(
+      input.codexSevenDayWindows,
+      Math.floor((input.nowMs ?? Date.now()) / 1000),
+    );
     const lines = [
       ...statsLines,
       ...projectLines,
       ...aggrTotalLines,
       ...tokenLines,
+      ...codexLines,
     ];
     return lines.map((line) => wrapLine(line)).join('\n') + '\n';
   };

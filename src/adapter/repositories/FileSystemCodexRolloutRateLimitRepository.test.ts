@@ -42,9 +42,10 @@ describe('FileSystemCodexRolloutRateLimitRepository', () => {
   });
 
   it('returns null with no errors when the Codex home has no rollout files', () => {
-    const result = new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
-      codexHome,
-    );
+    const result =
+      new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
+        codexHome,
+      );
     expect(result).toEqual({ observation: null, errorMessages: [] });
   });
 
@@ -59,9 +60,10 @@ describe('FileSystemCodexRolloutRateLimitRepository', () => {
       [sevenDayLine('2026-11-18T02:16:17.179Z', 11)],
       1795100000,
     );
-    const result = new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
-      codexHome,
-    );
+    const result =
+      new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
+        codexHome,
+      );
     expect(result.observation).toEqual({
       capturedAt: '2026-11-18T02:16:17.179Z',
       usedPercent: 11,
@@ -83,9 +85,10 @@ describe('FileSystemCodexRolloutRateLimitRepository', () => {
       [sevenDayLine('2026-11-18T03:00:00.000Z', 7)],
       1795100000,
     );
-    const result = new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
-      codexHome,
-    );
+    const result =
+      new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
+        codexHome,
+      );
     expect(result.observation?.usedPercent).toBe(7);
   });
 
@@ -114,9 +117,10 @@ describe('FileSystemCodexRolloutRateLimitRepository', () => {
       ['{"payload":{"rate_limits":{"primary":'],
       1795100000,
     );
-    const result = new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
-      codexHome,
-    );
+    const result =
+      new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
+        codexHome,
+      );
     expect(result.observation?.usedPercent).toBe(5);
     expect(result.errorMessages).toHaveLength(1);
     expect(result.errorMessages[0]).toContain('rollout-corrupt.jsonl');
@@ -128,9 +132,10 @@ describe('FileSystemCodexRolloutRateLimitRepository', () => {
       ['{"payload":{"rate_limits":{"primary":'],
       1795100000,
     );
-    const result = new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
-      codexHome,
-    );
+    const result =
+      new FileSystemCodexRolloutRateLimitRepository().readLatestSevenDayRateLimit(
+        codexHome,
+      );
     expect(result.observation).toBeNull();
     expect(result.errorMessages).toHaveLength(1);
   });

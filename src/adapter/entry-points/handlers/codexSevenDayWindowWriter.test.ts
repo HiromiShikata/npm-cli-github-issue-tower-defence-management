@@ -6,7 +6,6 @@ import {
   CodexRolloutRateLimitRepository,
 } from '../../../domain/usecases/adapter-interfaces/CodexRolloutRateLimitRepository';
 import {
-  CodexSevenDayWindowFile,
   resolveCodexHomeReferences,
   writeCodexSevenDayWindowStatus,
 } from './codexSevenDayWindowWriter';
@@ -21,7 +20,9 @@ const stubRepository = (
     calls,
     readLatestSevenDayRateLimit: (directory: string) => {
       calls.push(directory);
-      return resultByDirectory[directory] ?? { observation: null, errorMessages: [] };
+      return (
+        resultByDirectory[directory] ?? { observation: null, errorMessages: [] }
+      );
     },
   };
 };
@@ -84,13 +85,15 @@ describe('writeCodexSevenDayWindowStatus', () => {
     fs.rmSync(dashboardDataDir, { recursive: true, force: true });
   });
 
-  const readWritten = (): CodexSevenDayWindowFile =>
-    JSON.parse(
+  const readWritten = (): unknown => {
+    const parsed: unknown = JSON.parse(
       fs.readFileSync(
         path.join(dashboardDataDir, 'codex-seven-day-window', 'acme.json'),
         'utf8',
       ),
-    ) as CodexSevenDayWindowFile;
+    );
+    return parsed;
+  };
 
   it('writes an observed window per Codex home with its own capture time', () => {
     const repository = stubRepository({
@@ -140,16 +143,18 @@ describe('writeCodexSevenDayWindowStatus', () => {
       repository,
       logError: () => undefined,
     });
-    expect(readWritten().windows).toEqual([
-      {
-        codexHome: '.codex-a',
-        state: 'no-data',
-        usedPercent: null,
-        resetsAtEpochSeconds: null,
-        capturedAt: null,
-        errorMessage: null,
-      },
-    ]);
+    expect(readWritten()).toMatchObject({
+      windows: [
+        {
+          codexHome: '.codex-a',
+          state: 'no-data',
+          usedPercent: null,
+          resetsAtEpochSeconds: null,
+          capturedAt: null,
+          errorMessage: null,
+        },
+      ],
+    });
   });
 
   it('writes an error state and logs every read error for a home', () => {
@@ -170,16 +175,18 @@ describe('writeCodexSevenDayWindowStatus', () => {
       repository,
       logError: (message) => logged.push(message),
     });
-    expect(readWritten().windows).toEqual([
-      {
-        codexHome: '.codex-a',
-        state: 'error',
-        usedPercent: null,
-        resetsAtEpochSeconds: null,
-        capturedAt: null,
-        errorMessage: 'rollout-x.jsonl: Unexpected end of JSON input',
-      },
-    ]);
+    expect(readWritten()).toMatchObject({
+      windows: [
+        {
+          codexHome: '.codex-a',
+          state: 'error',
+          usedPercent: null,
+          resetsAtEpochSeconds: null,
+          capturedAt: null,
+          errorMessage: 'rollout-x.jsonl: Unexpected end of JSON input',
+        },
+      ],
+    });
     expect(logged).toEqual([
       'Failed to read Codex rate limits for .codex-a: rollout-x.jsonl: Unexpected end of JSON input',
     ]);
@@ -207,9 +214,8 @@ describe('writeCodexSevenDayWindowStatus', () => {
       repository,
       logError: (message) => logged.push(message),
     });
-    expect(readWritten().windows[0]).toMatchObject({
-      state: 'observed',
-      usedPercent: 5,
+    expect(readWritten()).toMatchObject({
+      windows: [expect.objectContaining({ state: 'observed', usedPercent: 5 })],
     });
     expect(logged).toHaveLength(1);
   });

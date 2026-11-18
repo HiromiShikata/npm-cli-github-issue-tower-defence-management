@@ -1,6 +1,7 @@
 import YAML from 'yaml';
 import type { ProjectRepositoryScope } from '../../../domain/services/projectRepositoryScope';
 import fs from 'fs';
+import os from 'os';
 import { writeSituationFile } from './situationFileWriter';
 import {
   formatConsoleGeneratedAt,
@@ -9,6 +10,8 @@ import {
 import { writeDashboardRow } from './dashboardRowWriter';
 import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
+import { writeCodexSevenDayWindowStatus } from './codexSevenDayWindowWriter';
+import { FileSystemCodexRolloutRateLimitRepository } from '../../repositories/FileSystemCodexRolloutRateLimitRepository';
 import { handleSubscriptionDisabledTokens } from './subscriptionDisabledTokenHandler';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { cleanClosedIssueOwnerCallFiles } from './ownerCallFileCleaner';
@@ -814,6 +817,26 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write token status: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        writeCodexSevenDayWindowStatus({
+          dashboardDataDir,
+          pjcode: input.projectName,
+          codexHomeCandidates:
+            mergedInput.startPreparation?.codexHomeCandidates ?? null,
+          codexHomeEnv: process.env.CODEX_HOME,
+          homeDirectory: os.homedir(),
+          now: new Date(),
+          repository: new FileSystemCodexRolloutRateLimitRepository(),
+          logError: (message) => console.error(message),
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write Codex seven day window status: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

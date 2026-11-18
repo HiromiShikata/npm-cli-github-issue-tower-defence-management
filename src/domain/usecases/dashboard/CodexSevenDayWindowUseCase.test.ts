@@ -178,7 +178,11 @@ describe('findLatestCodexSevenDayRateLimit', () => {
 describe('isCodexSevenDayWindowReset', () => {
   const RESETS_AT = 1795004568;
   const cases: { name: string; now: number; expected: boolean }[] = [
-    { name: 'is false one second before resets_at', now: RESETS_AT - 1, expected: false },
+    {
+      name: 'is false one second before resets_at',
+      now: RESETS_AT - 1,
+      expected: false,
+    },
     { name: 'is true exactly at resets_at', now: RESETS_AT, expected: true },
     { name: 'is true after resets_at', now: RESETS_AT + 3600, expected: true },
   ];
