@@ -126,8 +126,11 @@ const issues: Issue[] = [
   fixtureIssue(19, null, { status: 'Awaiting Owner' }),
 ];
 
+// Mirrors the owner-visible restriction: the Story tab is built only from
+// issues assigned to ASSIGNEE, so the badge counts only the owner's issues.
 const stories: ConsoleStoryEntry[] = STORY_OPTIONS.map((option) => {
   const items = issues
+    .filter((issue) => issue.assignees.includes(ASSIGNEE))
     .filter((issue) => issue.storyOptionId === option.storyOptionId)
     .map(toStoryListItem);
   return {
@@ -168,7 +171,7 @@ describe('dashboard red and yellow counts against the Story tab badge', () => {
     expect(dashboardRow.humanPendingYellow).toBe(
       storyBadgeSumForColor('YELLOW'),
     );
-    expect(dashboardRow.humanPendingRed).toBe(5);
+    expect(dashboardRow.humanPendingRed).toBe(4);
     expect(dashboardRow.humanPendingYellow).toBe(3);
   });
 });
