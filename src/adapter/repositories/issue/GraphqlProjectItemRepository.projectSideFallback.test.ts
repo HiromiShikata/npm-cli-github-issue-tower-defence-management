@@ -700,7 +700,7 @@ describe('GraphqlProjectItemRepository project-side fallback', () => {
           name: testCase.name,
           outcome: { status: 'fulfilled', value: testCase.expected },
         });
-        expect(readSentRequests()).toHaveLength(1);
+        expect(readSentRequests()).toHaveLength(2);
       }
     });
 
