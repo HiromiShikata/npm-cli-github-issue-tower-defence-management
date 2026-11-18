@@ -5044,6 +5044,22 @@ describe('HandleScheduledEventUseCase', () => {
         mockAssignNoAssigneeIssueToManagerUseCase.run,
       ];
 
+      it('forwards queryToAddManagerAssignedIssues to the assignee use case, or null when the key is absent', async () => {
+        mockAssignNoAssigneeIssueToManagerUseCase.run.mockClear();
+        await useCase.run({
+          ...isolationInput,
+          queryToAddManagerAssignedIssues:
+            'repo:client-org/client-app is:issue',
+        });
+        await useCase.run(isolationInput);
+
+        expect(
+          mockAssignNoAssigneeIssueToManagerUseCase.run.mock.calls.map(
+            (call) => call[0].queryToAddManagerAssignedIssues,
+          ),
+        ).toEqual(['repo:client-org/client-app is:issue', null]);
+      });
+
       it('calls all 8 slow-sweep operations and resolves when none fail', async () => {
         await expect(useCase.run(isolationInput)).resolves.not.toBeNull();
 

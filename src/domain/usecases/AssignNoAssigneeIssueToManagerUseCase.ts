@@ -12,7 +12,10 @@ export class AssignNoAssigneeIssueToManagerUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateAssigneeList' | 'searchIssues' | 'addIssueToProject'
+      | 'updateAssigneeList'
+      | 'searchIssues'
+      | 'addIssueToProject'
+      | 'isRepositoryArchived'
     >,
   ) {}
 
@@ -24,6 +27,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     projectToAddSearchedIssues?: Project | null;
     queryToAddProjectEnabled?: boolean | null;
     queryToAddProject?: string | null;
+    queryToAddManagerAssignedIssues?: string | null;
     projectScope?: ProjectRepositoryScope | null;
   }): Promise<void> => {
     const authorAllowList =
@@ -55,10 +59,19 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     }
     const project = input.projectToAddSearchedIssues;
     const query = input.queryToAddProject;
+    const projectItemUrls = new Set(input.issues.map((issue) => issue.url));
+    if (project && input.queryToAddManagerAssignedIssues) {
+      await this.addManagerAssignedIssuesToProject({
+        project,
+        query: input.queryToAddManagerAssignedIssues,
+        manager: input.manager,
+        projectItemUrls,
+        projectScope: input.projectScope ?? null,
+      });
+    }
     if (!input.queryToAddProjectEnabled || !project || !query) {
       return;
     }
-    const projectItemUrls = new Set(input.issues.map((issue) => issue.url));
     const searchedIssues = await this.searchIssues(query);
     for (const searchedIssue of searchedIssues) {
       if (
@@ -96,6 +109,84 @@ export class AssignNoAssigneeIssueToManagerUseCase {
         continue;
       }
       await this.waitBeforeNextRequest();
+    }
+  };
+
+  private addManagerAssignedIssuesToProject = async (input: {
+    project: Project;
+    query: string;
+    manager: Member['name'];
+    projectItemUrls: Set<string>;
+    projectScope: ProjectRepositoryScope | null;
+  }): Promise<void> => {
+    const searchedIssues = await this.searchIssues(input.query);
+    const archivedByRepository = new Map<string, boolean>();
+    for (const searchedIssue of searchedIssues) {
+      if (
+        input.projectItemUrls.has(searchedIssue.url) ||
+        searchedIssue.isPr ||
+        searchedIssue.state !== 'OPEN'
+      ) {
+        continue;
+      }
+      if (searchedIssue.author !== input.manager) {
+        console.log(
+          `Skipped issue ${searchedIssue.url}: author ${searchedIssue.author} is not ${input.manager}`,
+        );
+        continue;
+      }
+      if (!searchedIssue.assignees.includes(input.manager)) {
+        continue;
+      }
+      if (
+        input.projectScope &&
+        !issueAddableByProjectScope(
+          { owner: searchedIssue.org, repo: searchedIssue.repo },
+          input.projectScope,
+        )
+      ) {
+        console.log(
+          `Skipped issue ${searchedIssue.url}: repository ${searchedIssue.org}/${searchedIssue.repo} is outside the project scope`,
+        );
+        continue;
+      }
+      const repositoryKey = `${searchedIssue.org}/${searchedIssue.repo}`;
+      let isArchived = archivedByRepository.get(repositoryKey);
+      if (isArchived === undefined) {
+        const fetched = await this.fetchRepositoryArchived(
+          searchedIssue.url,
+          searchedIssue.org,
+          searchedIssue.repo,
+        );
+        if (fetched === null) {
+          continue;
+        }
+        isArchived = fetched;
+        archivedByRepository.set(repositoryKey, fetched);
+      }
+      if (isArchived) {
+        continue;
+      }
+      await this.addToProject(input.project, searchedIssue);
+      await this.waitBeforeNextRequest();
+    }
+  };
+
+  private fetchRepositoryArchived = async (
+    issueUrl: string,
+    org: string,
+    repo: string,
+  ): Promise<boolean | null> => {
+    try {
+      return await this.issueRepository.isRepositoryArchived(org, repo);
+    } catch (e) {
+      if (!(e instanceof Error)) {
+        throw e;
+      }
+      console.error(
+        `Failed to check whether repository of ${issueUrl} is archived: ${e.message}`,
+      );
+      return null;
     }
   };
 

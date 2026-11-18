@@ -700,4 +700,380 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       ).rejects.toBe('string-failure');
     });
   });
+
+  describe('queryToAddManagerAssignedIssues', () => {
+    const project = { ...mock<Project>(), id: 'project-1' };
+    const managerQuery =
+      'repo:testOrg/testRepo is:issue is:open assignee:manager1 author:manager1';
+    const matchedIssue: SearchedIssue = {
+      url: 'https://github.com/testOrg/testRepo/issues/21',
+      org: 'testOrg',
+      repo: 'testRepo',
+      number: 21,
+      state: 'OPEN',
+      author: 'manager1',
+      assignees: ['manager1'],
+      isPr: false,
+    };
+    const scopeListingTestRepo = {
+      org: 'testOrg',
+      repositories: ['testOrg/testRepo'],
+      listedRepositoriesOfOtherProjects: [],
+      ownsUnlistedRepositoriesOfOwner: false,
+    };
+    const scopeListingOtherRepo = {
+      org: 'testOrg',
+      repositories: ['testOrg/other-repo'],
+      listedRepositoriesOfOtherProjects: [],
+      ownsUnlistedRepositoriesOfOwner: false,
+    };
+
+    test.each([
+      {
+        case: 'adds an open issue authored and assigned to the manager',
+        searched: {},
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: true,
+      },
+      {
+        case: 'adds the issue when the project scope lists its repository',
+        searched: {},
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: scopeListingTestRepo,
+        expectedAdded: true,
+      },
+      {
+        case: 'skips a matched pull request',
+        searched: { isPr: true },
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips a closed issue',
+        searched: { state: 'CLOSED' as const },
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips a merged item',
+        searched: { state: 'MERGED' as const },
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips an issue in an archived repository',
+        searched: {},
+        isRepoArchived: true,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips an issue already on the project board',
+        searched: {},
+        isRepoArchived: false,
+        onBoard: true,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips an issue whose author is not the manager',
+        searched: { author: 'someone-else' },
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips an issue with no assignee',
+        searched: { assignees: [] },
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips an issue assigned only to someone other than the manager',
+        searched: { assignees: ['someone-else'] },
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: null,
+        expectedAdded: false,
+      },
+      {
+        case: 'skips an issue whose repository the project scope does not list',
+        searched: {},
+        isRepoArchived: false,
+        onBoard: false,
+        projectScope: scopeListingOtherRepo,
+        expectedAdded: false,
+      },
+    ])(
+      '$case',
+      async ({
+        searched,
+        isRepoArchived,
+        onBoard,
+        projectScope,
+        expectedAdded,
+      }) => {
+        const target: SearchedIssue = { ...matchedIssue, ...searched };
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([target]);
+        mockIssueRepository.isRepositoryArchived.mockResolvedValue(
+          isRepoArchived,
+        );
+        const boardItems = onBoard
+          ? [{ ...basicIssue, url: target.url, assignees: ['manager1'] }]
+          : [];
+        const consoleLogSpy = jest
+          .spyOn(console, 'log')
+          .mockImplementation(() => undefined);
+
+        await useCase.run({
+          issues: boardItems,
+          manager: 'manager1',
+          cacheUsed: false,
+          projectToAddSearchedIssues: project,
+          queryToAddManagerAssignedIssues: managerQuery,
+          projectScope,
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
+          [managerQuery],
+        ]);
+        expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual(
+          expectedAdded ? [[project, target.url]] : [],
+        );
+        expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([]);
+
+        consoleLogSpy.mockRestore();
+      },
+    );
+
+    test.each([
+      { case: 'absent', extra: {} },
+      { case: 'null', extra: { queryToAddManagerAssignedIssues: null } },
+    ])(
+      'runs only the queryToAddProject search when the key is $case',
+      async ({ extra }) => {
+        mockIssueRepository.searchIssues.mockResolvedValueOnce([]);
+
+        await useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          projectToAddSearchedIssues: project,
+          queryToAddProjectEnabled: true,
+          queryToAddProject: 'repo:testOrg/testRepo is:open no:project',
+          ...extra,
+        });
+
+        expect(mockIssueRepository.searchIssues.mock.calls).toEqual([
+          ['repo:testOrg/testRepo is:open no:project'],
+        ]);
+        expect(mockIssueRepository.isRepositoryArchived.mock.calls).toEqual([]);
+      },
+    );
+
+    it('logs the skip reason when the author is not the manager', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        { ...matchedIssue, author: 'someone-else' },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `Skipped issue ${matchedIssue.url}: author someone-else is not manager1`,
+      );
+      consoleLogSpy.mockRestore();
+    });
+
+    it('logs the skip reason when the author is not the manager and the manager is not assigned', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        { ...matchedIssue, author: 'someone-else', assignees: [] },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `Skipped issue ${matchedIssue.url}: author someone-else is not manager1`,
+      );
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      consoleLogSpy.mockRestore();
+    });
+
+    it('logs the skip reason when the project scope does not list the repository', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([matchedIssue]);
+      mockIssueRepository.isRepositoryArchived.mockResolvedValue(false);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+        projectScope: scopeListingOtherRepo,
+      });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        `Skipped issue ${matchedIssue.url}: repository testOrg/testRepo is outside the project scope`,
+      );
+      consoleLogSpy.mockRestore();
+    });
+
+    it('checks the archived state once per repository within a run', async () => {
+      const secondIssue: SearchedIssue = {
+        ...matchedIssue,
+        url: 'https://github.com/testOrg/testRepo/issues/22',
+        number: 22,
+      };
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        matchedIssue,
+        secondIssue,
+      ]);
+      mockIssueRepository.isRepositoryArchived.mockResolvedValue(false);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+      });
+
+      expect(mockIssueRepository.isRepositoryArchived.mock.calls).toEqual([
+        ['testOrg', 'testRepo'],
+      ]);
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
+        [project, matchedIssue.url],
+        [project, secondIssue.url],
+      ]);
+    });
+
+    it('logs the query and continues when the manager-assigned search fails', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockRejectedValueOnce(
+        new Error('rate limited'),
+      );
+
+      await expect(
+        useCase.run({
+          issues: [],
+          manager: 'manager1',
+          cacheUsed: false,
+          projectToAddSearchedIssues: project,
+          queryToAddManagerAssignedIssues: managerQuery,
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `Failed to search issues by ${managerQuery}: rate limited`,
+      );
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('logs the URL and continues with remaining issues when adding one fails', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const secondIssue: SearchedIssue = {
+        ...matchedIssue,
+        url: 'https://github.com/testOrg/testRepo/issues/23',
+        number: 23,
+      };
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        matchedIssue,
+        secondIssue,
+      ]);
+      mockIssueRepository.isRepositoryArchived.mockResolvedValue(false);
+      mockIssueRepository.addIssueToProject.mockRejectedValueOnce(
+        new Error('Content not found'),
+      );
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `Failed to add issue ${matchedIssue.url} to project: Content not found`,
+      );
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
+        [project, matchedIssue.url],
+        [project, secondIssue.url],
+      ]);
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('logs the URL and continues with remaining issues when the archived check fails', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const otherRepoIssue: SearchedIssue = {
+        ...matchedIssue,
+        url: 'https://github.com/testOrg/other-repo/issues/31',
+        repo: 'other-repo',
+        number: 31,
+      };
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        matchedIssue,
+        otherRepoIssue,
+      ]);
+      mockIssueRepository.isRepositoryArchived
+        .mockRejectedValueOnce(new Error('Not Found'))
+        .mockResolvedValueOnce(false);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        `Failed to check whether repository of ${matchedIssue.url} is archived: Not Found`,
+      );
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
+        [project, otherRepoIssue.url],
+      ]);
+      consoleErrorSpy.mockRestore();
+    });
+  });
 });
