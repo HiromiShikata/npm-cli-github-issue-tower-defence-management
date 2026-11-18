@@ -181,7 +181,14 @@ export class ProjectIssuesCacheRepository {
           !hasItemId(issue) ||
           issue.itemId !== itemId,
       );
-      if (filteredIssues.length === raw.issues.length) {
+      const currentWatermarks = deserializeItemUpdatedAtByItemId(raw);
+      const remainingWatermarks = Object.fromEntries(
+        Object.entries(currentWatermarks).filter(([key]) => key !== itemId),
+      );
+      const watermarkRemoved =
+        Object.keys(remainingWatermarks).length !==
+        Object.keys(currentWatermarks).length;
+      if (filteredIssues.length === raw.issues.length && !watermarkRemoved) {
         return;
       }
       await this.localStorageCacheRepository.setSingle(
@@ -189,6 +196,7 @@ export class ProjectIssuesCacheRepository {
         {
           ...raw,
           issues: filteredIssues,
+          itemUpdatedAtByItemId: remainingWatermarks,
         },
       );
     });

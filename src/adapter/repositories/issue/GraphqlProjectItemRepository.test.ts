@@ -3107,6 +3107,9 @@ describe('GraphqlProjectItemRepository', () => {
           },
         }),
       );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({ data: { node: { items: { nodes: [] } } } }),
+      );
 
       const result = await repository.fetchProjectItemByUrl(
         'https://github.com/owner/repo/pull/12',
@@ -3301,6 +3304,9 @@ describe('GraphqlProjectItemRepository', () => {
             },
           },
         }),
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({ data: { node: { items: { nodes: [] } } } }),
       );
 
       const result = await repository.fetchProjectItemByUrl(

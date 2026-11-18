@@ -1521,6 +1521,13 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         }[];
       };
     };
+    type ProjectItemNode = ContentNode['projectItems']['nodes'][number];
+    type ProjectBoardItemNode = {
+      id: string;
+      isArchived: boolean;
+      content: { url: string } | null;
+      fieldValues: ProjectItemNode['fieldValues'];
+    };
     const response = await callWithRateLimitRetry(async () => {
       const result = await postGithubGraphqlJson<{
         data?: {
@@ -1590,22 +1597,10 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       stateReason: toStateReason(content.stateReason),
       customFields,
     });
-    const projectItems = content.projectItems.nodes;
-    const item = projectId
-      ? projectItems.find((node) => node.project?.id === projectId)
-      : projectItems[0];
-    if (!item) {
-      if (projectId) {
-        console.warn(
-          `No project item found for issue ${issueUrl} on project ${projectId}`,
-        );
-        return null;
-      }
-      return buildProjectItem('', [], false);
-    }
-    return buildProjectItem(
-      item.id,
-      item.fieldValues.nodes
+    const toCustomFields = (
+      fieldValueNodes: ProjectItemNode['fieldValues']['nodes'],
+    ): ProjectItem['customFields'] =>
+      fieldValueNodes
         .filter((field) => !!field.field)
         .map((field) => ({
           name: field.field.name,
@@ -1616,8 +1611,131 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
             field.date ??
             null,
           optionId: field.optionId,
-        })),
-      item.isArchived ?? false,
+        }));
+    const projectItems = content.projectItems.nodes;
+    if (!projectId) {
+      const item = projectItems[0];
+      if (!item) {
+        return buildProjectItem('', [], false);
+      }
+      return buildProjectItem(
+        item.id,
+        toCustomFields(item.fieldValues.nodes),
+        item.isArchived ?? false,
+      );
+    }
+    const item = projectItems.find((node) => node.project?.id === projectId);
+    if (item) {
+      return buildProjectItem(
+        item.id,
+        toCustomFields(item.fieldValues.nodes),
+        item.isArchived ?? false,
+      );
+    }
+    const boardItemQuery = `repo:${owner}/${repo} is:issue ${issueNumber}`;
+    const boardGraphql = `query GetProjectItemByIssueUrl($projectId: ID!, $itemQuery: String!) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: 100, query: $itemQuery) {
+        nodes {
+          id
+          isArchived
+          content {
+            ... on Issue {
+              url
+            }
+          }
+          fieldValues(first: 10) {
+            nodes {
+              ... on ProjectV2ItemFieldTextValue {
+                text
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldNumberValue {
+                number
+                id
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldDateValue {
+                date
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                optionId
+                field {
+                  ... on ProjectV2SingleSelectField {
+                    name
+                  }
+                }
+              }
+              ... on ProjectV2ItemFieldIterationValue {
+                title
+                field {
+                  ... on ProjectV2Field {
+                    name
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+    const boardResponse = await callWithRateLimitRetry(async () => {
+      const result = await postGithubGraphqlJson<{
+        data?: {
+          node: {
+            items: { nodes: ProjectBoardItemNode[] };
+          } | null;
+        };
+        errors?: GraphqlError[];
+      }>({
+        ghToken: this.ghToken,
+        query: boardGraphql,
+        variables: {
+          projectId: projectId,
+          itemQuery: boardItemQuery,
+        },
+      });
+      throwIfGraphqlRateLimitError(result);
+      return result;
+    });
+    if (!boardResponse.data) {
+      const errorMessages = boardResponse.errors
+        ? boardResponse.errors.map((e) => e.message).join('; ')
+        : 'no data field in response';
+      throw new Error(
+        `GitHub GraphQL API returned no data for fetchProjectItemByUrl: ${errorMessages}`,
+      );
+    }
+    const boardItem = boardResponse.data.node?.items.nodes.find(
+      (node) => node.content?.url === issueUrl,
+    );
+    if (!boardItem) {
+      console.warn(
+        `No project item found for issue ${issueUrl} on project ${projectId}`,
+      );
+      return null;
+    }
+    return buildProjectItem(
+      boardItem.id,
+      toCustomFields(boardItem.fieldValues.nodes),
+      boardItem.isArchived ?? false,
     );
   };
   convertStrToState = (state: string): 'OPEN' | 'CLOSED' | 'MERGED' => {
