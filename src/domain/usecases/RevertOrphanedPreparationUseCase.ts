@@ -173,6 +173,8 @@ export class RevertOrphanedPreparationUseCase {
           await this.evaluateOutcome(
             issue,
             resolveLabelsNotRequiringPullRequest(params),
+            params.labelsNotRequiringPullRequest ?? [],
+            params.labelsAsLlmAgentName ?? [],
             params.allowedIssueAuthors,
             params.developerAgentNames,
           );
@@ -436,6 +438,8 @@ export class RevertOrphanedPreparationUseCase {
   private evaluateOutcome = async (
     issue: Issue,
     labelsNotRequiringPullRequest: string[],
+    explicitLabelsNotRequiringPullRequest: string[],
+    explicitLabelsAsLlmAgentName: string[],
     allowedIssueAuthors: string[] | null | undefined,
     developerAgentNames?: string[] | null,
   ): Promise<{
@@ -493,6 +497,12 @@ export class RevertOrphanedPreparationUseCase {
     const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
       labelsNotRequiringPullRequest.includes(label),
     );
+    const hasExplicitLabelNotRequiringPullRequest = issue.labels.some((label) =>
+      explicitLabelsNotRequiringPullRequest.includes(label),
+    );
+    const hasLabelAsLlmAgentName = issue.labels.some((label) =>
+      explicitLabelsAsLlmAgentName.includes(label),
+    );
     const hasNonE2eCategoryLabel =
       categoryLabels.length > 0 && !categoryLabels.includes('category:e2e');
     if (
@@ -519,7 +529,7 @@ export class RevertOrphanedPreparationUseCase {
       }
       if (
         isNonDeveloperAgent &&
-        !hasLabelNotRequiringPullRequest &&
+        (!hasExplicitLabelNotRequiringPullRequest || hasLabelAsLlmAgentName) &&
         !hasNonE2eCategoryLabel
       ) {
         const isTrustedAuthor = (author: string) =>
