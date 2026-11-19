@@ -88,6 +88,7 @@ import {
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
   isConsoleStoryDoneShown,
+  migrateLegacyConsoleStoryStatusSelection,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
@@ -303,9 +304,13 @@ export const createIssueWithAttachments = async (
   }
 };
 
-const resolveStoryStatusSelectionFromLocation = (): string[] | null =>
-  parseConsoleStoryStatusSelectionFromSearch(window.location.search) ??
-  readConsoleStoryStatusSelection();
+const resolveStoryStatusSelectionFromLocation = (): string[] | null => {
+  migrateLegacyConsoleStoryStatusSelection();
+  return (
+    parseConsoleStoryStatusSelectionFromSearch(window.location.search) ??
+    readConsoleStoryStatusSelection()
+  );
+};
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();

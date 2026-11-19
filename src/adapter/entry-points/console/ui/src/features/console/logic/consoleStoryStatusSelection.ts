@@ -4,6 +4,11 @@ import type { ConsoleStoryEntry } from './types';
 export const CONSOLE_STORY_STATUS_SELECTION_KEY =
   'console-story-selected-statuses';
 
+export const CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY =
+  'console-story-selected-statuses-format';
+
+const CURRENT_CONSOLE_STORY_STATUS_SELECTION_FORMAT = '2';
+
 export const readConsoleStoryStatusSelection = (): string[] | null => {
   if (typeof localStorage === 'undefined') {
     return null;
@@ -47,7 +52,30 @@ export const writeConsoleStoryStatusSelection = (statuses: string[]): void => {
       CONSOLE_STORY_STATUS_SELECTION_KEY,
       JSON.stringify(statuses),
     );
+    localStorage.setItem(
+      CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY,
+      CURRENT_CONSOLE_STORY_STATUS_SELECTION_FORMAT,
+    );
   }
+};
+
+export const migrateLegacyConsoleStoryStatusSelection = (): void => {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+  if (
+    localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY) ===
+    CURRENT_CONSOLE_STORY_STATUS_SELECTION_FORMAT
+  ) {
+    return;
+  }
+  if (localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_KEY) === '[]') {
+    localStorage.removeItem(CONSOLE_STORY_STATUS_SELECTION_KEY);
+  }
+  localStorage.setItem(
+    CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY,
+    CURRENT_CONSOLE_STORY_STATUS_SELECTION_FORMAT,
+  );
 };
 
 export const resolveEffectiveConsoleStoryStatusSelection = (

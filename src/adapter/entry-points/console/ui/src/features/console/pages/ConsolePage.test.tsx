@@ -13533,6 +13533,7 @@ describe('ConsolePage story task row story pulldown', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('console-story-selected-statuses', '[]');
+    localStorage.setItem('console-story-selected-statuses-format', '2');
   });
 
   const moveCases = [
