@@ -2294,6 +2294,141 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
+  describe('labelsAsLlmAgentName routing for orphaned Preparation issues with a non-developer Agent field', () => {
+    const arrangeOrphanedPreparationIssue = (
+      issueOverrides: Partial<Issue>,
+      resultJson: string,
+    ): Issue => {
+      const agentName = issueOverrides.agent ?? 'example-agent';
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        ...issueOverrides,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'agent-bot',
+          content: `From: :robot: ${agentName} (model)\n\n\`\`\`json\n${resultJson}\n\`\`\``,
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+      return stuckIssue;
+    };
+
+    it('should route an orphaned non-developer agent issue with a labelsAsLlmAgentName label to Awaiting Workspace when its last trusted report has no owner-confirmation request', async () => {
+      const stuckIssue = arrangeOrphanedPreparationIssue(
+        { labels: ['example-agent-label'], agent: 'example-agent' },
+        '{}',
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['agent-bot'],
+        labelsAsLlmAgentName: ['example-agent-label'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+        [mockProject, stuckIssue, '1'],
+      ]);
+    });
+
+    it('should keep an orphaned non-developer agent issue with a labelsAsLlmAgentName label on the quality-check option when its last trusted report requests owner confirmation and the owner has not answered', async () => {
+      const stuckIssue = arrangeOrphanedPreparationIssue(
+        { labels: ['example-agent-label'], agent: 'example-agent' },
+        '{"needOwnerConfirmationOrApproval": true, "nextStep": null}',
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['agent-bot'],
+        labelsAsLlmAgentName: ['example-agent-label'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+        [mockProject, stuckIssue, '4'],
+      ]);
+    });
+
+    it('keeps the orphaned-issue routing unchanged for labels in labelsNotRequiringPullRequest only, category labels, labels outside labelsAsLlmAgentName and issues with no Agent field', async () => {
+      const cases: {
+        name: string;
+        issue: Partial<Issue>;
+        resultJson: string;
+        labelsAsLlmAgentName?: string[];
+        labelsNotRequiringPullRequest?: string[];
+        expectedStatusId: string;
+      }[] = [
+        {
+          name: 'non-developer agent with a labelsNotRequiringPullRequest label only',
+          issue: { labels: ['story'], agent: 'example-agent' },
+          resultJson: '{}',
+          labelsAsLlmAgentName: ['example-agent-label'],
+          labelsNotRequiringPullRequest: ['story'],
+          expectedStatusId: '4',
+        },
+        {
+          name: 'non-developer agent with a non-e2e category label',
+          issue: { labels: ['category:bug'], agent: 'example-agent' },
+          resultJson: '{}',
+          labelsAsLlmAgentName: ['example-agent-label'],
+          expectedStatusId: '4',
+        },
+        {
+          name: 'non-developer agent whose label is not in labelsAsLlmAgentName',
+          issue: { labels: ['other-label'], agent: 'example-agent' },
+          resultJson: '{}',
+          labelsAsLlmAgentName: ['example-agent-label'],
+          expectedStatusId: '1',
+        },
+        {
+          name: 'issue with no Agent field and a labelsAsLlmAgentName label',
+          issue: { labels: ['example-agent-label'], agent: null },
+          resultJson: '{}',
+          labelsAsLlmAgentName: ['example-agent-label'],
+          expectedStatusId: '4',
+        },
+      ];
+
+      for (const testCase of cases) {
+        mockIssueRepository.updateStatus.mockClear();
+        arrangeOrphanedPreparationIssue(testCase.issue, testCase.resultJson);
+
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+          thresholdForAutoReject: 3,
+          allowedIssueAuthors: ['agent-bot'],
+          labelsAsLlmAgentName: testCase.labelsAsLlmAgentName,
+          labelsNotRequiringPullRequest: testCase.labelsNotRequiringPullRequest,
+        });
+
+        const statusIds = mockIssueRepository.updateStatus.mock.calls.map(
+          (call) => call[2],
+        );
+        expect({ case: testCase.name, statusIds }).toEqual({
+          case: testCase.name,
+          statusIds: [testCase.expectedStatusId],
+        });
+      }
+    });
+  });
+
   describe('live status re-read before writing', () => {
     const arrangeSnapshotSaysPreparation = (
       liveStatus: string | null,
