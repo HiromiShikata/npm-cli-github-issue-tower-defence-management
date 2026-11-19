@@ -1,3 +1,10 @@
+# [2.201.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.200.2...v2.201.0) (2026-11-19)
+
+
+### Features
+
+* **console:** default story status filter to non-Done and reorder display items ([9c035bb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9c035bb0aedc96d19619d33f0ef9415415a0f46b))
+
 ## [2.200.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.200.1...v2.200.2) (2026-11-18)
 
 
