@@ -2372,6 +2372,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         resultJson: string;
         labelsAsLlmAgentName?: string[];
         labelsNotRequiringPullRequest?: string[];
+        developerAgentNames?: string[];
         expectedStatusId: string;
       }[] = [
         {
@@ -2403,6 +2404,14 @@ describe('RevertOrphanedPreparationUseCase', () => {
           labelsAsLlmAgentName: ['example-agent-label'],
           expectedStatusId: '4',
         },
+        {
+          name: 'developer agent with a labelsAsLlmAgentName label',
+          issue: { labels: ['example-agent-label'], agent: 'developer' },
+          resultJson: '{}',
+          labelsAsLlmAgentName: ['example-agent-label'],
+          developerAgentNames: ['developer'],
+          expectedStatusId: '4',
+        },
       ];
 
       for (const testCase of cases) {
@@ -2416,6 +2425,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
           allowedIssueAuthors: ['agent-bot'],
           labelsAsLlmAgentName: testCase.labelsAsLlmAgentName,
           labelsNotRequiringPullRequest: testCase.labelsNotRequiringPullRequest,
+          developerAgentNames: testCase.developerAgentNames,
         });
 
         const statusIds = mockIssueRepository.updateStatus.mock.calls.map(
