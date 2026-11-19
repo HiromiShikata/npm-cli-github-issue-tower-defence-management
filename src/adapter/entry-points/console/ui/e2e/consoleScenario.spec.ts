@@ -2323,11 +2323,7 @@ test('phone viewport keeps the Archived, Hide triggered and Hide empty switches 
     await tabByLabel(page, 'Stories').click();
     await expect(activeTabLabel(page)).toHaveText('Stories');
 
-    const toggleLabels = [
-      'Archived',
-      'Hide triggered',
-      'Hide empty',
-    ] as const;
+    const toggleLabels = ['Archived', 'Hide triggered', 'Hide empty'] as const;
 
     for (const label of toggleLabels) {
       const toggleSwitch = page.getByRole('switch', {
@@ -2480,9 +2476,7 @@ test('story tab task row shows the title on its own line, then trigger fields, a
     ];
     for (const { checkbox, param, controls } of hiddenFieldCases) {
       await displayItems.getByRole('checkbox', { name: checkbox }).uncheck();
-      await expect(page).not.toHaveURL(
-        new RegExp(`shownStoryField=${param}`),
-      );
+      await expect(page).not.toHaveURL(new RegExp(`shownStoryField=${param}`));
       for (const label of controls) {
         await expect(taskRow.locator(`[aria-label="${label}"]`)).toHaveCount(0);
       }

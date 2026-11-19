@@ -349,10 +349,7 @@ describe('consoleStoryStatusSelection', () => {
   });
 
   it('parses back exactly the selection that was formatted into the query', () => {
-    const selections: string[][] = [
-      ['Done'],
-      ['Unread', 'In Tmux by agent'],
-    ];
+    const selections: string[][] = [['Done'], ['Unread', 'In Tmux by agent']];
     for (const statuses of selections) {
       const search = formatConsoleStoryStatusSelectionIntoSearch(
         '?k=token',

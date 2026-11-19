@@ -32,8 +32,7 @@ export const defaultConsoleStoryStatusSelection = (
 export const displayedConsoleStoryStatusSelection = (
   selected: string[] | null,
   optionNames: string[],
-): string[] =>
-  selected ?? defaultConsoleStoryStatusSelection(optionNames);
+): string[] => selected ?? defaultConsoleStoryStatusSelection(optionNames);
 
 export const isConsoleStoryDoneShown = (selected: string[] | null): boolean => {
   if (selected === null) {

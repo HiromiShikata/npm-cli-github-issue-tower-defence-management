@@ -21,8 +21,7 @@ const isSameFieldSet = (
   left: ConsoleStoryRowField[],
   right: ConsoleStoryRowField[],
 ): boolean =>
-  left.length === right.length &&
-  left.every((field) => right.includes(field));
+  left.length === right.length && left.every((field) => right.includes(field));
 
 export const parseShownConsoleStoryRowFieldsFromSearch = (
   search: string,

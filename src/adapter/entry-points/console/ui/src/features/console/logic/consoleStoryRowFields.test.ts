@@ -139,9 +139,9 @@ describe('formatShownConsoleStoryRowFieldsIntoSearch', () => {
       expected: '?tab=stories',
     },
   ])('$name', ({ search, shown, expected }) => {
-    expect(
-      formatShownConsoleStoryRowFieldsIntoSearch(search, [...shown]),
-    ).toBe(expected);
+    expect(formatShownConsoleStoryRowFieldsIntoSearch(search, [...shown])).toBe(
+      expected,
+    );
   });
 
   it.each(
@@ -150,7 +150,10 @@ describe('formatShownConsoleStoryRowFieldsIntoSearch', () => {
       shown,
     })),
   )('$name through the URL and back', ({ shown }) => {
-    const search = formatShownConsoleStoryRowFieldsIntoSearch('?k=token', shown);
+    const search = formatShownConsoleStoryRowFieldsIntoSearch(
+      '?k=token',
+      shown,
+    );
     expect([...parseShownConsoleStoryRowFieldsFromSearch(search)]).toEqual(
       shown,
     );
@@ -183,7 +186,12 @@ describe('hiddenConsoleStoryRowFields', () => {
     {
       name: 'hides the unshown fields in display order regardless of shown order',
       shown: ['agent', 'story'] as const,
-      expected: ['status', 'dependedIssueUrl', 'nextActionDate', 'nextActionHour'],
+      expected: [
+        'status',
+        'dependedIssueUrl',
+        'nextActionDate',
+        'nextActionHour',
+      ],
     },
   ])('$name', ({ shown, expected }) => {
     expect([...hiddenConsoleStoryRowFields([...shown])]).toEqual(expected);
