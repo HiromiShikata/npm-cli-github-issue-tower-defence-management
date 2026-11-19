@@ -270,7 +270,16 @@ describe('consoleStoryStatusSelection', () => {
         search: '?status=Done&status=Done',
         expected: ['Done'],
       },
-      { label: 'an empty value is ignored', search: '?status=', expected: [] },
+      {
+        label: 'an empty value is an explicitly empty selection',
+        search: '?status=',
+        expected: [],
+      },
+      {
+        label: 'an empty value next to a name keeps the name',
+        search: '?status=&status=Done',
+        expected: ['Done'],
+      },
       {
         label: 'a plus-encoded name with spaces is decoded',
         search: '?status=In+Tmux+by+agent',
@@ -298,10 +307,10 @@ describe('consoleStoryStatusSelection', () => {
       expected: string;
     }[] = [
       {
-        label: 'empty selection and empty query stay empty',
+        label: 'empty selection and empty query write an explicit empty marker',
         search: '',
         statuses: [],
-        expected: '',
+        expected: '?status=',
       },
       {
         label: 'selection is appended after other parameters',
@@ -316,10 +325,18 @@ describe('consoleStoryStatusSelection', () => {
         expected: '?k=token&status=Done',
       },
       {
-        label: 'an empty selection removes only the status parameters',
+        label:
+          'an empty selection replaces the status parameters with the explicit empty marker',
         search: '?k=token&status=Done&status=Unread',
         statuses: [],
-        expected: '?k=token',
+        expected: '?k=token&status=',
+      },
+      {
+        label:
+          'an empty selection replaces a previous explicit empty marker and keeps other parameters',
+        search: '?status=&k=token',
+        statuses: [],
+        expected: '?k=token&status=',
       },
       {
         label: 'selection order is preserved',
@@ -349,7 +366,11 @@ describe('consoleStoryStatusSelection', () => {
   });
 
   it('parses back exactly the selection that was formatted into the query', () => {
-    const selections: string[][] = [['Done'], ['Unread', 'In Tmux by agent']];
+    const selections: string[][] = [
+      [],
+      ['Done'],
+      ['Unread', 'In Tmux by agent'],
+    ];
     for (const statuses of selections) {
       const search = formatConsoleStoryStatusSelectionIntoSearch(
         '?k=token',

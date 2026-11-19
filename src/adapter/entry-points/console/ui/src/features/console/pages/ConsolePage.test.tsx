@@ -13012,7 +13012,7 @@ describe('ConsolePage story status filter', () => {
       expect(replaceStateSpy).toHaveBeenCalled();
     });
 
-    it('removes the status parameters when Clear is clicked and keeps the other parameters', async () => {
+    it('writes an explicit empty status parameter when Clear is clicked and keeps the other parameters', async () => {
       localStorage.setItem('console-story-selected-statuses', '["Done"]');
       installStoriesFetch();
       window.history.replaceState(
@@ -13024,12 +13024,44 @@ describe('ConsolePage story status filter', () => {
       const { findByRole, findByText } = render(<ConsolePage />);
       fireEvent.click(await findByRole('button', { name: 'Clear' }));
       await waitFor(() => {
-        expect(statusParams()).toEqual([]);
+        expect(statusParams()).toEqual(['']);
       });
       expect(new URLSearchParams(window.location.search).get('k')).toBe(
         'token',
       );
       expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    });
+
+    it('restores a cleared selection from its URL on a browser with no saved selection, showing Done tasks', async () => {
+      localStorage.setItem('console-story-selected-statuses', '["Done"]');
+      installStoriesFetch();
+      window.history.replaceState(
+        {},
+        '',
+        '/projects/acme/stories?k=token&status=Done',
+      );
+
+      const first = render(<ConsolePage />);
+      fireEvent.click(await first.findByRole('button', { name: 'Clear' }));
+      await waitFor(() => {
+        expect(statusParams()).toEqual(['']);
+      });
+      const clearedSearch = window.location.search;
+      expect(clearedSearch).not.toBe('?k=token');
+      first.unmount();
+
+      localStorage.clear();
+      window.history.replaceState(
+        {},
+        '',
+        `/projects/acme/stories${clearedSearch}`,
+      );
+      const second = render(<ConsolePage />);
+      expect(await second.findByText('Completed Story')).toBeInTheDocument();
+      expect(
+        await second.findByRole('checkbox', { name: 'Done' }),
+      ).not.toBeChecked();
+      expect(window.location.search).toBe(clearedSearch);
     });
 
     it('ignores a status parameter that is not an existing status and does not write it back', async () => {
