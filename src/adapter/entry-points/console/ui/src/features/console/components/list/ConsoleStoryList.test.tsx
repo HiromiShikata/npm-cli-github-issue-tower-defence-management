@@ -270,7 +270,6 @@ const defaultProps = {
   onAddStory: () => Promise.resolve(),
   onSelectColor: () => undefined,
   onToggleArchived: () => undefined,
-  onToggleDone: () => undefined,
   hideTriggered: false,
   hideEmptyStories: false,
   onToggleHideTriggered: () => undefined,
@@ -994,34 +993,23 @@ describe('ConsoleStoryList', () => {
       expect(queryByRole('button', { name: 'Hide archived' })).toBeNull();
     });
 
-    it('calls onToggleArchived and not onToggleDone when the Archived switch is clicked', () => {
+    it('calls onToggleArchived when the Archived switch is clicked', () => {
       const onToggleArchived = jest.fn();
-      const onToggleDone = jest.fn();
       const { getByRole } = render(
         <ConsoleStoryList
           {...defaultProps}
           onToggleArchived={onToggleArchived}
-          onToggleDone={onToggleDone}
         />,
       );
       fireEvent.click(getByRole('switch', { name: 'Archived' }));
       expect(onToggleArchived).toHaveBeenCalledTimes(1);
-      expect(onToggleDone).not.toHaveBeenCalled();
     });
 
-    it('calls onToggleDone and not onToggleArchived when the Done switch is clicked', () => {
-      const onToggleArchived = jest.fn();
-      const onToggleDone = jest.fn();
-      const { getByRole } = render(
-        <ConsoleStoryList
-          {...defaultProps}
-          onToggleArchived={onToggleArchived}
-          onToggleDone={onToggleDone}
-        />,
+    it('renders no Done toggle, because Done visibility is controlled only by the Status filter', () => {
+      const { queryByRole } = render(
+        <ConsoleStoryList {...defaultProps} statusOptionNames={['Done']} />,
       );
-      fireEvent.click(getByRole('switch', { name: 'Done' }));
-      expect(onToggleDone).toHaveBeenCalledTimes(1);
-      expect(onToggleArchived).not.toHaveBeenCalled();
+      expect(queryByRole('switch', { name: 'Done' })).toBeNull();
     });
 
     it('shows No active stories when all stories are gray and showArchived is false', () => {

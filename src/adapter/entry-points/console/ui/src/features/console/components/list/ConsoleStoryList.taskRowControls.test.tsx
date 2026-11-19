@@ -77,7 +77,6 @@ const renderRowList = (overrides: Partial<ConsoleStoryListProps> = {}) => {
     onAddStory: () => Promise.resolve(),
     onSelectColor: () => undefined,
     onToggleArchived: () => undefined,
-    onToggleDone: () => undefined,
     hideTriggered: false,
     hideEmptyStories: false,
     onToggleHideTriggered: () => undefined,

@@ -1,7 +1,10 @@
 import {
   CONSOLE_STORY_STATUS_SELECTION_KEY,
+  defaultConsoleStoryStatusSelection,
+  displayedConsoleStoryStatusSelection,
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
+  isConsoleStoryDoneShown,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
@@ -72,16 +75,20 @@ describe('consoleStoryStatusSelection', () => {
   });
 
   it('reads the saved selection as a list of status names for every stored shape', () => {
-    const cases: { label: string; raw: string | null; expected: string[] }[] = [
-      { label: 'nothing saved', raw: null, expected: [] },
+    const cases: {
+      label: string;
+      raw: string | null;
+      expected: string[] | null;
+    }[] = [
+      { label: 'nothing saved (never set)', raw: null, expected: null },
       {
         label: 'valid array',
         raw: '["Done","Unread"]',
         expected: ['Done', 'Unread'],
       },
-      { label: 'empty array', raw: '[]', expected: [] },
-      { label: 'broken JSON', raw: '["Done"', expected: [] },
-      { label: 'non-array JSON', raw: '{"status":"Done"}', expected: [] },
+      { label: 'empty array (explicitly empty)', raw: '[]', expected: [] },
+      { label: 'broken JSON', raw: '["Done"', expected: null },
+      { label: 'non-array JSON', raw: '{"status":"Done"}', expected: null },
       {
         label: 'array containing non-strings',
         raw: '["Done",1,null,{"a":1},"Unread"]',
@@ -111,12 +118,18 @@ describe('consoleStoryStatusSelection', () => {
   it('keeps only selected names that exist in the current status options', () => {
     const cases: {
       label: string;
-      selected: string[];
+      selected: string[] | null;
       optionNames: string[];
       expected: string[];
     }[] = [
       {
-        label: 'no selection',
+        label: 'never set (null) applies no filter',
+        selected: null,
+        optionNames: ['Unread', 'Done'],
+        expected: [],
+      },
+      {
+        label: 'explicitly empty applies no filter',
         selected: [],
         optionNames: ['Unread', 'Done'],
         expected: [],
@@ -235,9 +248,17 @@ describe('consoleStoryStatusSelection', () => {
   );
 
   it('parses every status query parameter into status names, keeping order and skipping empty or repeated values', () => {
-    const cases: { label: string; search: string; expected: string[] }[] = [
-      { label: 'empty query', search: '', expected: [] },
-      { label: 'no status parameter', search: '?k=token', expected: [] },
+    const cases: {
+      label: string;
+      search: string;
+      expected: string[] | null;
+    }[] = [
+      { label: 'empty query has no status key', search: '', expected: null },
+      {
+        label: 'no status parameter has no status key',
+        search: '?k=token',
+        expected: null,
+      },
       { label: 'one status', search: '?status=Done', expected: ['Done'] },
       {
         label: 'repeated status parameters keep their order',
@@ -329,7 +350,6 @@ describe('consoleStoryStatusSelection', () => {
 
   it('parses back exactly the selection that was formatted into the query', () => {
     const selections: string[][] = [
-      [],
       ['Done'],
       ['Unread', 'In Tmux by agent'],
     ];
@@ -343,5 +363,148 @@ describe('consoleStoryStatusSelection', () => {
         value: parseConsoleStoryStatusSelectionFromSearch(search),
       }).toEqual({ statuses, value: statuses });
     }
+  });
+
+  describe('defaultConsoleStoryStatusSelection', () => {
+    it.each([
+      {
+        label: 'excludes Done and keeps the other options in order',
+        optionNames: ['Unread', 'Done', 'Preparation'],
+        expected: ['Unread', 'Preparation'],
+      },
+      {
+        label: 'excludes Done wherever it appears',
+        optionNames: ['Done', 'Unread'],
+        expected: ['Unread'],
+      },
+      {
+        label: 'returns an option list without Done unchanged',
+        optionNames: ['Awaiting Owner', 'Icebox'],
+        expected: ['Awaiting Owner', 'Icebox'],
+      },
+      {
+        label: 'yields nothing when Done is the only option',
+        optionNames: ['Done'],
+        expected: [],
+      },
+      {
+        label: 'yields nothing while the options have not loaded yet',
+        optionNames: [],
+        expected: [],
+      },
+    ])('$label', ({ optionNames, expected }) => {
+      expect(defaultConsoleStoryStatusSelection(optionNames)).toEqual(expected);
+    });
+  });
+
+  describe('displayedConsoleStoryStatusSelection', () => {
+    it.each([
+      {
+        label: 'never set shows the default, with Done unchecked',
+        selected: null,
+        optionNames: ['Unread', 'Done'],
+        expected: ['Unread'],
+      },
+      {
+        label: 'never set while options are still loading shows nothing',
+        selected: null,
+        optionNames: [],
+        expected: [],
+      },
+      {
+        label: 'explicitly empty shows nothing checked',
+        selected: [],
+        optionNames: ['Unread', 'Done'],
+        expected: [],
+      },
+      {
+        label: 'an explicit set is shown as stored, including Done',
+        selected: ['Done'],
+        optionNames: ['Unread', 'Done'],
+        expected: ['Done'],
+      },
+      {
+        label: 'an explicit set is not replaced by the default',
+        selected: ['Preparation'],
+        optionNames: ['Unread', 'Preparation', 'Done'],
+        expected: ['Preparation'],
+      },
+    ])('$label', ({ selected, optionNames, expected }) => {
+      expect(
+        displayedConsoleStoryStatusSelection(selected, optionNames),
+      ).toEqual(expected);
+    });
+  });
+
+  describe('never set, explicitly empty and explicitly set stay distinct', () => {
+    it.each([
+      {
+        label: 'never set',
+        selected: null,
+        displayed: ['Unread'],
+        effective: [],
+        doneShown: false,
+      },
+      {
+        label: 'explicitly empty',
+        selected: [],
+        displayed: [],
+        effective: [],
+        doneShown: true,
+      },
+      {
+        label: 'explicitly set to the non-Done options',
+        selected: ['Unread'],
+        displayed: ['Unread'],
+        effective: ['Unread'],
+        doneShown: false,
+      },
+      {
+        label: 'explicitly set including Done',
+        selected: ['Unread', 'Done'],
+        displayed: ['Unread', 'Done'],
+        effective: ['Unread', 'Done'],
+        doneShown: true,
+      },
+    ])(
+      '$label: displayed, effective and Done visibility follow the selection',
+      ({ selected, displayed, effective, doneShown }) => {
+        const optionNames = ['Unread', 'Done'];
+        expect({
+          displayed: displayedConsoleStoryStatusSelection(
+            selected,
+            optionNames,
+          ),
+          effective: resolveEffectiveConsoleStoryStatusSelection(
+            selected,
+            optionNames,
+          ),
+          doneShown: isConsoleStoryDoneShown(selected),
+        }).toEqual({ displayed, effective, doneShown });
+      },
+    );
+  });
+
+  describe('isConsoleStoryDoneShown', () => {
+    it.each([
+      { label: 'never set hides Done', selected: null, expected: false },
+      {
+        label: 'explicitly empty shows Done',
+        selected: [],
+        expected: true,
+      },
+      {
+        label: 'a selection with Done shows Done',
+        selected: ['Done'],
+        expected: true,
+      },
+      {
+        label: 'a selection without Done hides Done',
+        selected: ['Unread'],
+        expected: false,
+      },
+    ])('$label', ({ selected, expected }) => {
+      expect(isConsoleStoryDoneShown(selected)).toBe(expected);
+    });
   });
 });

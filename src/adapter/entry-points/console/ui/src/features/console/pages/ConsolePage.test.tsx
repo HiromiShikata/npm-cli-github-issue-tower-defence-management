@@ -4296,7 +4296,7 @@ describe('ConsolePage auto-advance tab', () => {
     expect(localStorage.getItem('console-story-show-archived')).toBe('true');
   });
 
-  it('reads console-story-show-done from localStorage and shows a story whose tasks are all Done when true', async () => {
+  it('ignores the retired console-story-show-done key, so Done tasks stay hidden by default', async () => {
     localStorage.setItem('console-story-show-done', 'true');
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     global.fetch = jest.fn(async (url: string) => {
@@ -4363,22 +4363,30 @@ describe('ConsolePage auto-advance tab', () => {
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
     }) as unknown as typeof fetch;
 
-    const { findByText, findByRole } = render(<ConsolePage />);
-    expect(await findByText('Completed Story')).toBeInTheDocument();
-    expect(await findByRole('switch', { name: 'Done' })).toHaveAttribute(
-      'aria-checked',
-      'true',
+    const { findByText, findByRole, queryByRole, container } = render(
+      <ConsolePage />,
     );
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    expect(queryByRole('switch', { name: 'Done' })).toBeNull();
+    const completedRow = (await findByText('Completed Story')).closest('li');
+    if (completedRow === null) {
+      throw new Error('Completed Story row not found');
+    }
+    fireEvent.click(
+      within(completedRow).getByRole('button', { name: 'Show tasks' }),
+    );
+    expect(container.textContent).not.toContain('Nested done task');
   });
 
-  it('writes true to console-story-show-done in localStorage when the Done switch is clicked', async () => {
+  it('does not write console-story-show-done to localStorage when another toggle is clicked', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     installFetch();
 
     const { findByRole } = render(<ConsolePage />);
-    const doneSwitch = await findByRole('switch', { name: 'Done' });
-    fireEvent.click(doneSwitch);
-    expect(localStorage.getItem('console-story-show-done')).toBe('true');
+    fireEvent.click(await findByRole('switch', { name: 'Archived' }));
+    expect(localStorage.getItem('console-story-show-archived')).toBe('true');
+    expect(localStorage.getItem('console-story-show-done')).toBeNull();
   });
 
   it('does not render the Archived or Done switches on a non-Stories tab', async () => {
@@ -4390,15 +4398,15 @@ describe('ConsolePage auto-advance tab', () => {
     expect(queryByRole('switch', { name: 'Done' })).toBeNull();
   });
 
-  it('renders the Archived and Done switches on the Stories tab', async () => {
+  it('renders the Archived switch and no Done switch on the Stories tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     installFetch();
 
-    const { findByRole } = render(<ConsolePage />);
+    const { findByRole, queryByRole } = render(<ConsolePage />);
     expect(
       await findByRole('switch', { name: 'Archived' }),
     ).toBeInTheDocument();
-    expect(await findByRole('switch', { name: 'Done' })).toBeInTheDocument();
+    expect(queryByRole('switch', { name: 'Done' })).toBeNull();
   });
 
   it('renders the new story in the list immediately after handleStoryAdd succeeds without waiting for a poll cycle', async () => {
@@ -12816,18 +12824,67 @@ describe('ConsolePage story status filter', () => {
     expect(queryByText('TDPM Console port')).toBeNull();
   });
 
-  it('writes each checkbox change to console-story-selected-statuses in localStorage', async () => {
+  it('writes each checkbox change to console-story-selected-statuses in localStorage, starting from the default when nothing is stored', async () => {
     installStoriesFetch();
 
     const { findByRole } = render(<ConsolePage />);
+    expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
     fireEvent.click(await findByRole('checkbox', { name: 'Done' }));
     expect(localStorage.getItem('console-story-selected-statuses')).toBe(
-      '["Done"]',
+      '["Unread","Done"]',
     );
     fireEvent.click(await findByRole('checkbox', { name: 'Unread' }));
     expect(localStorage.getItem('console-story-selected-statuses')).toBe(
-      '["Done","Unread"]',
+      '["Done"]',
     );
+  });
+
+  it('starts from the default checks when nothing is stored, so a user toggle writes the non-Done list minus the toggled name', async () => {
+    installStoriesFetch();
+
+    const { findByRole } = render(<ConsolePage />);
+    fireEvent.click(await findByRole('checkbox', { name: 'Unread' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe('[]');
+    expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
+  });
+
+  it('checks every non-Done status and hides Done tasks on load when nothing is stored', async () => {
+    installStoriesFetch();
+
+    const { findByRole, findByText, container } = render(<ConsolePage />);
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    const completedRow = (await findByText('Completed Story')).closest('li');
+    if (completedRow === null) {
+      throw new Error('Completed Story row not found');
+    }
+    fireEvent.click(
+      within(completedRow).getByRole('button', { name: 'Show tasks' }),
+    );
+    expect(container.textContent).not.toContain('Nested done task');
+  });
+
+  it('after Clear, a reload shows nothing checked and shows Done tasks', async () => {
+    installStoriesFetch();
+
+    const first = render(<ConsolePage />);
+    fireEvent.click(await first.findByRole('button', { name: 'Clear' }));
+    expect(localStorage.getItem('console-story-selected-statuses')).toBe('[]');
+    first.unmount();
+
+    const { findByRole, findByText, container } = render(<ConsolePage />);
+    expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    const completedRow = (await findByText('Completed Story')).closest('li');
+    if (completedRow === null) {
+      throw new Error('Completed Story row not found');
+    }
+    fireEvent.click(
+      within(completedRow).getByRole('button', { name: 'Show tasks' }),
+    );
+    expect(container.textContent).toContain('Nested done task');
   });
 
   it('empties the saved selection and shows every story again when Clear is clicked', async () => {
@@ -12841,15 +12898,14 @@ describe('ConsolePage story status filter', () => {
     expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
   });
 
-  it('falls back to no selection and shows every story when the saved value is corrupted', async () => {
+  it('treats a corrupted saved value as never set, so the default checks apply', async () => {
     localStorage.setItem('console-story-selected-statuses', 'not json [');
     installStoriesFetch();
 
     const { findByRole, findByText } = render(<ConsolePage />);
     expect(await findByText('TDPM Console port')).toBeInTheDocument();
-    expect(await findByText('Completed Story')).toBeInTheDocument();
     expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
-    expect(await findByRole('checkbox', { name: 'Unread' })).not.toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
   });
 
   describe('status parameters in the URL', () => {
@@ -12919,11 +12975,11 @@ describe('ConsolePage story status filter', () => {
       const { findByRole } = render(<ConsolePage />);
       fireEvent.click(await findByRole('checkbox', { name: 'Done' }));
       await waitFor(() => {
-        expect(statusParams()).toEqual(['Done']);
+        expect(statusParams()).toEqual(['Unread', 'Done']);
       });
       fireEvent.click(await findByRole('checkbox', { name: 'Unread' }));
       await waitFor(() => {
-        expect(statusParams()).toEqual(['Done', 'Unread']);
+        expect(statusParams()).toEqual(['Done']);
       });
 
       expect(new URLSearchParams(window.location.search).get('k')).toBe(
@@ -13405,7 +13461,7 @@ describe('ConsolePage story task row story pulldown', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('console-story-show-done', 'true');
+    localStorage.setItem('console-story-selected-statuses', '[]');
   });
 
   const moveCases = [
@@ -14383,6 +14439,10 @@ describe('ConsolePage story status filter counts', () => {
     expect(await findByText('Story One')).toBeInTheDocument();
     expect(storyRowCountText(container, 'Story One')).toBe('3');
     expect(storyRowCountText(container, 'Story Two')).toBe('1');
+    expect(storiesTabBadgeText(container)).toBe('2');
+
+    fireEvent.click(await findByRole('button', { name: 'Clear' }));
+    expect(storyRowCountText(container, 'Story One')).toBe('3');
     expect(storiesTabBadgeText(container)).toBe('2');
 
     fireEvent.click(await findByRole('checkbox', { name: 'Awaiting Owner' }));

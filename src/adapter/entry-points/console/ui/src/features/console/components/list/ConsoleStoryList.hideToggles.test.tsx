@@ -96,7 +96,6 @@ const baseProps: ConsoleStoryListProps = {
   onAddStory: () => Promise.resolve(),
   onSelectColor: () => undefined,
   onToggleArchived: () => undefined,
-  onToggleDone: () => undefined,
   onToggleHideTriggered: () => undefined,
   onToggleHideEmptyStories: () => undefined,
   onReorderStory: () => Promise.resolve(),
