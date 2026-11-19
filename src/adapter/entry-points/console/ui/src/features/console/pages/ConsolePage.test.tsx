@@ -12947,6 +12947,25 @@ describe('ConsolePage story status filter', () => {
     expect(container.textContent).not.toContain('Nested done task');
   });
 
+  it('treats a stored selection whose options no longer exist as never set, and does not write an explicit empty status into the URL', async () => {
+    localStorage.setItem('console-story-selected-statuses', '["Removed status"]');
+    installStoriesFetch();
+
+    const { findByRole, findByText, container } = render(<ConsolePage />);
+    expect(await findByText('TDPM Console port')).toBeInTheDocument();
+    expect(await findByRole('checkbox', { name: 'Unread' })).toBeChecked();
+    expect(await findByRole('checkbox', { name: 'Done' })).not.toBeChecked();
+    const completedRow = (await findByText('Completed Story')).closest('li');
+    if (completedRow === null) {
+      throw new Error('Completed Story row not found');
+    }
+    fireEvent.click(
+      within(completedRow).getByRole('button', { name: 'Show tasks' }),
+    );
+    expect(container.textContent).not.toContain('Nested done task');
+    expect(window.location.search).not.toContain('status=');
+  });
+
   describe('status parameters in the URL', () => {
     const statusParams = (): string[] =>
       new URLSearchParams(window.location.search).getAll('status');
@@ -13533,7 +13552,6 @@ describe('ConsolePage story task row story pulldown', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('console-story-selected-statuses', '[]');
-    localStorage.setItem('console-story-selected-statuses-format', '2');
   });
 
   const moveCases = [

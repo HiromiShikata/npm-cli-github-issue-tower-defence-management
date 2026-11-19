@@ -7,6 +7,7 @@ import {
   formatConsoleStoryStatusSelectionIntoSearch,
   isConsoleStoryDoneShown,
   migrateLegacyConsoleStoryStatusSelection,
+  normalizeConsoleStoryStatusSelection,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
@@ -466,6 +467,51 @@ describe('consoleStoryStatusSelection', () => {
       writeConsoleStoryStatusSelection([]);
       migrateLegacyConsoleStoryStatusSelection();
       expect(readConsoleStoryStatusSelection()).toEqual([]);
+    });
+  });
+
+  describe('normalizeConsoleStoryStatusSelection', () => {
+    it.each([
+      {
+        label: 'never set stays never set',
+        selected: null,
+        optionNames: ['Unread', 'Done'],
+        expected: null,
+      },
+      {
+        label: 'explicitly empty stays explicitly empty',
+        selected: [],
+        optionNames: ['Unread', 'Done'],
+        expected: [],
+      },
+      {
+        label: 'a selection with an existing option is kept as stored',
+        selected: ['Done'],
+        optionNames: ['Unread', 'Done'],
+        expected: ['Done'],
+      },
+      {
+        label: 'a selection of only removed options becomes never set',
+        selected: ['Icebox'],
+        optionNames: ['Unread', 'Done'],
+        expected: null,
+      },
+      {
+        label: 'a mixed selection keeps the stored list',
+        selected: ['Done', 'Icebox'],
+        optionNames: ['Unread', 'Done'],
+        expected: ['Done', 'Icebox'],
+      },
+      {
+        label: 'while the options have not loaded, a selection is kept',
+        selected: ['Icebox'],
+        optionNames: [],
+        expected: ['Icebox'],
+      },
+    ])('$label', ({ selected, optionNames, expected }) => {
+      expect(
+        normalizeConsoleStoryStatusSelection(selected, optionNames),
+      ).toEqual(expected);
     });
   });
 
