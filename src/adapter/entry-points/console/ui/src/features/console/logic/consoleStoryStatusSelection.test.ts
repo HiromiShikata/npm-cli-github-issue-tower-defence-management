@@ -1,10 +1,12 @@
 import {
+  CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY,
   CONSOLE_STORY_STATUS_SELECTION_KEY,
   defaultConsoleStoryStatusSelection,
   displayedConsoleStoryStatusSelection,
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
   isConsoleStoryDoneShown,
+  migrateLegacyConsoleStoryStatusSelection,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
@@ -381,6 +383,90 @@ describe('consoleStoryStatusSelection', () => {
         value: parseConsoleStoryStatusSelectionFromSearch(search),
       }).toEqual({ statuses, value: statuses });
     }
+  });
+
+  describe('migrateLegacyConsoleStoryStatusSelection', () => {
+    it.each([
+      {
+        label: 'nothing saved becomes the current format with no selection',
+        raw: null,
+        format: null,
+        expectedRaw: null,
+        expectedFormat: '2',
+        expectedRead: null,
+      },
+      {
+        label:
+          'a legacy empty array (written by Clear before this format) is removed, so it reads as never set',
+        raw: '[]',
+        format: null,
+        expectedRaw: null,
+        expectedFormat: '2',
+        expectedRead: null,
+      },
+      {
+        label: 'a legacy non-empty selection keeps its meaning',
+        raw: '["Done"]',
+        format: null,
+        expectedRaw: '["Done"]',
+        expectedFormat: '2',
+        expectedRead: ['Done'],
+      },
+      {
+        label: 'a legacy corrupted value is left as is and reads as never set',
+        raw: 'not json [',
+        format: null,
+        expectedRaw: 'not json [',
+        expectedFormat: '2',
+        expectedRead: null,
+      },
+      {
+        label:
+          'an explicit empty array saved in the current format is kept as explicitly empty',
+        raw: '[]',
+        format: '2',
+        expectedRaw: '[]',
+        expectedFormat: '2',
+        expectedRead: [],
+      },
+      {
+        label: 'a non-empty selection saved in the current format is kept',
+        raw: '["Unread"]',
+        format: '2',
+        expectedRaw: '["Unread"]',
+        expectedFormat: '2',
+        expectedRead: ['Unread'],
+      },
+    ])(
+      '$label',
+      ({ raw, format, expectedRaw, expectedFormat, expectedRead }) => {
+        localStorage.clear();
+        if (raw !== null) {
+          localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_KEY, raw);
+        }
+        if (format !== null) {
+          localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY, format);
+        }
+        migrateLegacyConsoleStoryStatusSelection();
+        expect({
+          raw: localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_KEY),
+          format: localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY),
+          read: readConsoleStoryStatusSelection(),
+        }).toEqual({
+          raw: expectedRaw,
+          format: expectedFormat,
+          read: expectedRead,
+        });
+      },
+    );
+
+    it('keeps an explicit empty selection explicit across repeated migrations', () => {
+      localStorage.clear();
+      migrateLegacyConsoleStoryStatusSelection();
+      writeConsoleStoryStatusSelection([]);
+      migrateLegacyConsoleStoryStatusSelection();
+      expect(readConsoleStoryStatusSelection()).toEqual([]);
+    });
   });
 
   describe('defaultConsoleStoryStatusSelection', () => {
