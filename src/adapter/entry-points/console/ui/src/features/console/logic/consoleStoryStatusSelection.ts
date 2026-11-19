@@ -96,6 +96,9 @@ export const formatConsoleStoryStatusSelectionIntoSearch = (
 ): string => {
   const params = new URLSearchParams(search);
   params.delete(CONSOLE_STORY_STATUS_PARAM);
+  if (statuses.length === 0) {
+    params.append(CONSOLE_STORY_STATUS_PARAM, '');
+  }
   for (const status of Array.from(new Set(statuses))) {
     params.append(CONSOLE_STORY_STATUS_PARAM, status);
   }
