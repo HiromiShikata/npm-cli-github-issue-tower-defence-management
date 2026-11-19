@@ -1689,7 +1689,9 @@ test('shows latest comment expanded and non-latest as preview in summary mode, e
 test('shows and hides task rows when Show tasks and Hide tasks are clicked on a story row', async ({
   page,
 }) => {
-  await page.goto(harness.appRootUrl);
+  await page.goto(
+    `${harness.appRootUrl}&shownStoryField=story&shownStoryField=status&shownStoryField=dependedIssueUrl&shownStoryField=nextActionDate&shownStoryField=nextActionHour&shownStoryField=agent`,
+  );
 
   await tabByLabel(page, 'Stories').click();
   await expect(activeTabLabel(page)).toHaveText('Stories');
