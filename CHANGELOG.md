@@ -1,3 +1,10 @@
+## [2.201.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.1...v2.201.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **orphaned-preparation:** route llm agent labelled orphaned issues by last agent report ([#3746](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3746)) ([6995bdd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6995bdd611c6c1e8f7e472f0023f939a3ca3eeb6))
+
 ## [2.201.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.0...v2.201.1) (2026-11-19)
 
 
