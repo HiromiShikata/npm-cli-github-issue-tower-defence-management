@@ -4,23 +4,42 @@ import type { ConsoleStoryEntry } from './types';
 export const CONSOLE_STORY_STATUS_SELECTION_KEY =
   'console-story-selected-statuses';
 
-export const readConsoleStoryStatusSelection = (): string[] => {
+export const readConsoleStoryStatusSelection = (): string[] | null => {
   if (typeof localStorage === 'undefined') {
-    return [];
+    return null;
   }
   const raw = localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_KEY);
   if (raw === null) {
-    return [];
+    return null;
   }
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) {
-      return [];
+      return null;
     }
     return parsed.filter((value): value is string => typeof value === 'string');
   } catch {
-    return [];
+    return null;
   }
+};
+
+const DONE_STATUS_NAME = 'Done';
+
+export const defaultConsoleStoryStatusSelection = (
+  optionNames: string[],
+): string[] => optionNames.filter((name) => name !== DONE_STATUS_NAME);
+
+export const displayedConsoleStoryStatusSelection = (
+  selected: string[] | null,
+  optionNames: string[],
+): string[] =>
+  selected ?? defaultConsoleStoryStatusSelection(optionNames);
+
+export const isConsoleStoryDoneShown = (selected: string[] | null): boolean => {
+  if (selected === null) {
+    return false;
+  }
+  return selected.length === 0 || selected.includes(DONE_STATUS_NAME);
 };
 
 export const writeConsoleStoryStatusSelection = (statuses: string[]): void => {
@@ -33,9 +52,12 @@ export const writeConsoleStoryStatusSelection = (statuses: string[]): void => {
 };
 
 export const resolveEffectiveConsoleStoryStatusSelection = (
-  selected: string[],
+  selected: string[] | null,
   optionNames: string[],
 ): string[] => {
+  if (selected === null) {
+    return [];
+  }
   const present = selected.filter((name) => optionNames.includes(name));
   return Array.from(new Set(present));
 };
@@ -60,8 +82,12 @@ const CONSOLE_STORY_STATUS_PARAM = 'status';
 
 export const parseConsoleStoryStatusSelectionFromSearch = (
   search: string,
-): string[] => {
-  const names = new URLSearchParams(search).getAll(CONSOLE_STORY_STATUS_PARAM);
+): string[] | null => {
+  const params = new URLSearchParams(search);
+  if (!params.has(CONSOLE_STORY_STATUS_PARAM)) {
+    return null;
+  }
+  const names = params.getAll(CONSOLE_STORY_STATUS_PARAM);
   return Array.from(new Set(names.filter((name) => name.length > 0)));
 };
 

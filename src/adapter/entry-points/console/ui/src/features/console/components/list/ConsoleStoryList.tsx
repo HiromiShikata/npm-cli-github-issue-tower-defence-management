@@ -353,7 +353,6 @@ export type ConsoleStoryListProps = {
   onAddStory: (storyName: string) => Promise<void>;
   onSelectColor: (storyOptionId: string, newColor: ConsoleColor) => void;
   onToggleArchived: () => void;
-  onToggleDone: () => void;
   hideTriggered: boolean;
   hideEmptyStories: boolean;
   onToggleHideTriggered: () => void;
@@ -378,6 +377,7 @@ export type ConsoleStoryListProps = {
   onOpenItem: (item: ConsoleListItem) => void;
   selectedStatuses?: string[];
   statusOptionNames?: string[];
+  isStatusSelectionDefault?: boolean;
   onToggleStatus?: (status: string) => void;
   onClearStatuses?: () => void;
   agentOptions: ConsoleFieldOption[];
@@ -402,7 +402,6 @@ export const ConsoleStoryList = ({
   onAddStory,
   onSelectColor,
   onToggleArchived,
-  onToggleDone,
   hideTriggered,
   hideEmptyStories,
   onToggleHideTriggered,
@@ -418,6 +417,7 @@ export const ConsoleStoryList = ({
   onOpenItem,
   selectedStatuses = [],
   statusOptionNames = [],
+  isStatusSelectionDefault = false,
   onToggleStatus,
   onClearStatuses,
   agentOptions,
@@ -536,10 +536,12 @@ export const ConsoleStoryList = ({
     }
   };
 
-  const effectiveStatusSelection = resolveEffectiveConsoleStoryStatusSelection(
-    selectedStatuses,
-    statusOptionNames,
-  );
+  const effectiveStatusSelection = isStatusSelectionDefault
+    ? []
+    : resolveEffectiveConsoleStoryStatusSelection(
+        selectedStatuses,
+        statusOptionNames,
+      );
   const hasStatusSelection = effectiveStatusSelection.length > 0;
   const reorderLockTitle = hasStatusSelection
     ? 'Clear the status filter to reorder stories'
@@ -623,11 +625,6 @@ export const ConsoleStoryList = ({
           label="Archived"
           checked={showArchived}
           onChange={onToggleArchived}
-        />
-        <StoryVisibilityToggle
-          label="Done"
-          checked={showDone}
-          onChange={onToggleDone}
         />
         <StoryVisibilityToggle
           label="Hide triggered"
