@@ -87,11 +87,13 @@ import {
   displayedConsoleStoryStatusSelection,
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
+  hasLegacyConsoleStoryStatusSelection,
   isConsoleStoryDoneShown,
   migrateLegacyConsoleStoryStatusSelection,
   normalizeConsoleStoryStatusSelection,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
+  removeConsoleStoryStatusSelectionFromSearch,
   resolveEffectiveConsoleStoryStatusSelection,
   writeConsoleStoryStatusSelection,
 } from '../logic/consoleStoryStatusSelection';
@@ -306,11 +308,20 @@ export const createIssueWithAttachments = async (
 };
 
 const resolveStoryStatusSelectionFromLocation = (): string[] | null => {
+  const hadLegacySelection = hasLegacyConsoleStoryStatusSelection();
   migrateLegacyConsoleStoryStatusSelection();
-  return (
-    parseConsoleStoryStatusSelectionFromSearch(window.location.search) ??
-    readConsoleStoryStatusSelection()
+  const fromUrl = parseConsoleStoryStatusSelectionFromSearch(
+    window.location.search,
   );
+  if (hadLegacySelection && fromUrl !== null && fromUrl.length === 0) {
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${removeConsoleStoryStatusSelectionFromSearch(window.location.search)}${window.location.hash}`,
+    );
+    return null;
+  }
+  return fromUrl ?? readConsoleStoryStatusSelection();
 };
 
 export const ConsolePage = () => {

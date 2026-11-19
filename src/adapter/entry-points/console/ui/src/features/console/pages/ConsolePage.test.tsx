@@ -12970,6 +12970,7 @@ describe('ConsolePage story status filter', () => {
   });
 
   it('loads a legacy empty status parameter in the URL as never set, with the default checks and hidden Done tasks, and removes it from the URL', async () => {
+    localStorage.setItem('console-story-selected-statuses', '[]');
     installStoriesFetch();
     window.history.replaceState(
       {},

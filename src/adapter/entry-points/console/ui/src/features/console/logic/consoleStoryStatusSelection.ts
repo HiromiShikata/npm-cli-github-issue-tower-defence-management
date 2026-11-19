@@ -59,13 +59,20 @@ export const writeConsoleStoryStatusSelection = (statuses: string[]): void => {
   }
 };
 
+export const isCurrentConsoleStoryStatusSelectionFormat = (): boolean =>
+  typeof localStorage !== 'undefined' &&
+  localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY) ===
+    CURRENT_CONSOLE_STORY_STATUS_SELECTION_FORMAT;
+
+export const hasLegacyConsoleStoryStatusSelection = (): boolean =>
+  typeof localStorage !== 'undefined' &&
+  !isCurrentConsoleStoryStatusSelectionFormat() &&
+  localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_KEY) !== null;
+
 export const migrateLegacyConsoleStoryStatusSelection = (): void => {
-  if (typeof localStorage === 'undefined') {
-    return;
-  }
   if (
-    localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY) ===
-    CURRENT_CONSOLE_STORY_STATUS_SELECTION_FORMAT
+    typeof localStorage === 'undefined' ||
+    isCurrentConsoleStoryStatusSelectionFormat()
   ) {
     return;
   }
@@ -119,6 +126,15 @@ export const filterConsoleStoryEntriesByStatusSelection = (
 };
 
 const CONSOLE_STORY_STATUS_PARAM = 'status';
+
+export const removeConsoleStoryStatusSelectionFromSearch = (
+  search: string,
+): string => {
+  const params = new URLSearchParams(search);
+  params.delete(CONSOLE_STORY_STATUS_PARAM);
+  const query = params.toString();
+  return query.length > 0 ? `?${query}` : '';
+};
 
 export const parseConsoleStoryStatusSelectionFromSearch = (
   search: string,
