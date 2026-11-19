@@ -1,3 +1,10 @@
+## [2.201.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.0...v2.201.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **console:** read legacy empty status selection as never set ([#3745](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3745)) ([9469674](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9469674f60d47408ff99972a010096b72e4ccbe4))
+
 # [2.201.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.200.2...v2.201.0) (2026-11-19)
 
 
