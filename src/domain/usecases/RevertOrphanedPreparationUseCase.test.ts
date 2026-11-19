@@ -2384,6 +2384,17 @@ describe('RevertOrphanedPreparationUseCase', () => {
           expectedStatusId: '4',
         },
         {
+          name: 'non-developer agent with a labelsNotRequiringPullRequest label and a labelsAsLlmAgentName label',
+          issue: {
+            labels: ['story', 'example-agent-label'],
+            agent: 'example-agent',
+          },
+          resultJson: '{}',
+          labelsAsLlmAgentName: ['example-agent-label'],
+          labelsNotRequiringPullRequest: ['story'],
+          expectedStatusId: '4',
+        },
+        {
           name: 'non-developer agent with a non-e2e category label',
           issue: { labels: ['category:bug'], agent: 'example-agent' },
           resultJson: '{}',
