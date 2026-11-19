@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import type { ConsoleListItem, ConsoleStoryEntry } from '../../logic/types';
 import {
   ConsoleStoryList,
@@ -104,6 +104,18 @@ const storyNamesShown = (container: HTMLElement): string[] =>
     .map((row) => row.querySelector('.console-storytag')?.textContent)
     .filter((name): name is string => name !== undefined && name !== null);
 
+const storyRows = (container: HTMLElement): HTMLElement[] =>
+  Array.from(
+    container.querySelectorAll<HTMLElement>('li.console-story-list-row'),
+  );
+
+const moveButtons = (row: HTMLElement) => ({
+  up: within(row).getByRole('button', { name: 'Move up' }),
+  down: within(row).getByRole('button', { name: 'Move down' }),
+});
+
+const LOCK_TITLE = 'Clear the status filter to reorder stories';
+
 describe('ConsoleStoryList when the status selection is the default', () => {
   it.each([
     {
@@ -130,37 +142,47 @@ describe('ConsoleStoryList when the status selection is the default', () => {
     }).toEqual({ name: 'Empty', shown: expectedShown });
   });
 
-  it.each([
-    {
-      name: 'the default selection leaves reorder buttons enabled and untitled',
-      isStatusSelectionDefault: true,
-      disabled: false,
-      title: null,
-    },
-    {
-      name: 'an explicit selection still locks reorder buttons',
-      isStatusSelectionDefault: false,
-      disabled: true,
-      title: 'Clear the status filter to reorder stories',
-    },
-  ])('$name', ({ isStatusSelectionDefault, disabled, title }) => {
-    const { getAllByRole } = render(
+  it('the default selection leaves reorder buttons enabled and untitled', () => {
+    const { container } = render(
+      <ConsoleStoryList {...baseProps} isStatusSelectionDefault />,
+    );
+    const rows = storyRows(container);
+    expect(rows.length).toBeGreaterThan(1);
+    rows.forEach((row, index) => {
+      const { up, down } = moveButtons(row);
+      expect({
+        up: up.hasAttribute('disabled'),
+        down: down.hasAttribute('disabled'),
+        upTitle: up.getAttribute('title'),
+        downTitle: down.getAttribute('title'),
+      }).toEqual({
+        up: index === 0,
+        down: index === rows.length - 1,
+        upTitle: null,
+        downTitle: null,
+      });
+    });
+  });
+
+  it('an explicit selection still locks reorder buttons', () => {
+    const { container } = render(
       <ConsoleStoryList
         {...baseProps}
-        isStatusSelectionDefault={isStatusSelectionDefault}
+        isStatusSelectionDefault={false}
+        selectedStatuses={['Unread', 'Preparation']}
       />,
     );
-    const buttons = [
-      ...getAllByRole('button', { name: 'Move up' }),
-      ...getAllByRole('button', { name: 'Move down' }),
-    ];
-    expect(buttons).toHaveLength(6);
-    for (const button of buttons) {
-      expect({
-        disabled: button.hasAttribute('disabled'),
-        title: button.getAttribute('title'),
-      }).toEqual({ disabled, title });
-    }
+    const rows = storyRows(container);
+    expect(rows.length).toBeGreaterThan(1);
+    rows.forEach((row) => {
+      const { up, down } = moveButtons(row);
+      for (const button of [up, down]) {
+        expect({
+          disabled: button.hasAttribute('disabled'),
+          title: button.getAttribute('title'),
+        }).toEqual({ disabled: true, title: LOCK_TITLE });
+      }
+    });
   });
 
   it('applies no status filter, so a story whose tasks are not selected stays visible', () => {
@@ -179,6 +201,17 @@ describe('ConsoleStoryList when the status selection is the default', () => {
       />,
     );
     expect(storyNamesShown(container)).toEqual(['Alpha']);
+    const rows = storyRows(container);
+    expect(rows).toHaveLength(1);
+    for (const row of rows) {
+      const { up, down } = moveButtons(row);
+      for (const button of [up, down]) {
+        expect({
+          disabled: button.hasAttribute('disabled'),
+          title: button.getAttribute('title'),
+        }).toEqual({ disabled: true, title: LOCK_TITLE });
+      }
+    }
   });
 
   it('checks the status boxes from selectedStatuses', () => {

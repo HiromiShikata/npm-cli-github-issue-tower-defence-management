@@ -170,6 +170,10 @@ const storiesDetailPayload = (generatedAt = '2026-06-19T00:00:00.000Z') => {
   return {
     ...payload,
     generatedAt,
+    statusOptions: [
+      { id: 'done', name: 'Done', color: 'GRAY' },
+      ...payload.statusOptions,
+    ],
     stories: [
       {
         ...payload.stories[0],
@@ -393,6 +397,7 @@ describe('ConsolePage', () => {
           ts: Date.parse('2026-06-19T00:01:00.000Z'),
           mode: 'todo-by-human',
           closed: true,
+          closedAtMs: Date.parse('2026-06-19T00:01:00.000Z'),
         },
       }),
     );
@@ -407,6 +412,11 @@ describe('ConsolePage', () => {
             json: async () => ({
               ...payload,
               generatedAt: '2026-06-19T00:00:00.000Z',
+              statusOptions: [
+                { id: 'done', name: 'Done', color: 'GRAY' },
+                { id: 's1', name: 'Awaiting Workspace', color: 'BLUE' },
+                { id: 's2', name: 'In Tmux by human', color: 'BLUE' },
+              ],
               stories: [
                 {
                   ...payload.stories[0],
@@ -451,10 +461,11 @@ describe('ConsolePage', () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     const { queryByText, getByRole } = render(<ConsolePage />);
     await waitFor(() => {
-      expect(getByRole('switch', { name: /Done/ })).toBeInTheDocument();
+      expect(getByRole('checkbox', { name: 'Done' })).toBeInTheDocument();
     });
+    expect(getByRole('checkbox', { name: 'Done' })).not.toBeChecked();
     expect(queryByText('Example task for closed-state story')).toBeNull();
-    fireEvent.click(getByRole('switch', { name: /Done/ }));
+    fireEvent.click(getByRole('checkbox', { name: 'Done' }));
     fireEvent.click(
       await waitFor(() => getByRole('button', { name: 'Show tasks' })),
     );
@@ -475,10 +486,7 @@ describe('ConsolePage', () => {
     await waitFor(() => {
       expect(getByText('Stories detail task')).toBeInTheDocument();
     });
-    expect(getByRole('switch', { name: /Done/ })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    );
+    expect(getByRole('checkbox', { name: 'Done' })).not.toBeChecked();
     fireEvent.click(getByText('Stories detail task'));
     fireEvent.click(await waitFor(() => getByText('Close')));
     fireEvent.click(
@@ -4309,6 +4317,10 @@ describe('ConsolePage auto-advance tab', () => {
             status: 200,
             json: async () => ({
               generatedAt: '2026-06-19T00:00:00.000Z',
+              statusOptions: [
+                { id: 'done', name: 'Done', color: 'GRAY' },
+                { id: 's1', name: 'Awaiting Workspace', color: 'BLUE' },
+              ],
               stories: [
                 {
                   storyName: 'TDPM Console port',
@@ -11468,6 +11480,15 @@ describe('ConsolePage operation bar status buttons', () => {
     awaitingWorkspaceName,
   ];
 
+  const allRowFieldsStoriesUrl =
+    '/projects/acme/stories?k=token' +
+    '&shownStoryField=story' +
+    '&shownStoryField=status' +
+    '&shownStoryField=dependedIssueUrl' +
+    '&shownStoryField=nextActionDate' +
+    '&shownStoryField=nextActionHour' +
+    '&shownStoryField=agent';
+
   const statusOptionsNamed = (names: string[]) =>
     names.map((name, index) => ({
       id: `operation-bar-status-${index}`,
@@ -11561,7 +11582,7 @@ describe('ConsolePage operation bar status buttons', () => {
   };
 
   it('replaces the depended issue URL of a row task from the stories tab in replace mode', async () => {
-    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    window.history.replaceState({}, '', allRowFieldsStoriesUrl);
     installFetchWithActiveTabPayload('stories', {
       ...listPayload('stories'),
       statusOptions: statusOptionsNamed(allStatusButtonNames),
@@ -11599,7 +11620,7 @@ describe('ConsolePage operation bar status buttons', () => {
   });
 
   it('posts the chosen next action date and hour of a row task from the stories tab', async () => {
-    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    window.history.replaceState({}, '', allRowFieldsStoriesUrl);
     installFetchWithActiveTabPayload('stories', {
       ...listPayload('stories'),
       statusOptions: statusOptionsNamed(allStatusButtonNames),
@@ -11643,7 +11664,7 @@ describe('ConsolePage operation bar status buttons', () => {
   });
 
   it('requires the live request to carry the persisted actionId for set next action hour', async () => {
-    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    window.history.replaceState({}, '', allRowFieldsStoriesUrl);
     installFetchWithActiveTabPayload('stories', {
       ...listPayload('stories'),
       statusOptions: statusOptionsNamed(allStatusButtonNames),

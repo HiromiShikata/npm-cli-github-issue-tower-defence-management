@@ -974,12 +974,16 @@ describe('ConsoleStoryList', () => {
       expect(getByText('Move to Okinawa')).toBeInTheDocument();
     });
 
-    it('renders exactly one Archived switch and one Done switch even when no story qualifies for either filter', () => {
-      const { getByRole } = render(
+    it('renders exactly one Archived switch and no Done switch even when no story qualifies for the Archived filter', () => {
+      const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} stories={storyEntries} />,
       );
-      expect(getByRole('switch', { name: 'Archived' })).toBeInTheDocument();
-      expect(getByRole('switch', { name: 'Done' })).toBeInTheDocument();
+      expect(
+        getAllByRole('switch').filter(
+          (toggle) => toggle.getAttribute('aria-label') === 'Archived',
+        ),
+      ).toHaveLength(1);
+      expect(queryByRole('switch', { name: 'Done' })).toBeNull();
     });
 
     it('does not render the bottom Show archived or Hide archived button', () => {
