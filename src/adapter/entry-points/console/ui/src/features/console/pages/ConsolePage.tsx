@@ -1129,7 +1129,12 @@ export const ConsolePage = () => {
         `${window.location.pathname}${search}${window.location.hash}`,
       );
     }
-  }, [activeTab, selectedStoryStatuses, storedStoryStatuses, storyStatusOptionNames]);
+  }, [
+    activeTab,
+    selectedStoryStatuses,
+    storedStoryStatuses,
+    storyStatusOptionNames,
+  ]);
 
   useEffect(() => {
     const handlePopState = (): void => {

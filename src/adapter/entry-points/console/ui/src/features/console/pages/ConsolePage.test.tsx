@@ -12948,7 +12948,10 @@ describe('ConsolePage story status filter', () => {
   });
 
   it('treats a stored selection whose options no longer exist as never set, and does not write an explicit empty status into the URL', async () => {
-    localStorage.setItem('console-story-selected-statuses', '["Removed status"]');
+    localStorage.setItem(
+      'console-story-selected-statuses',
+      '["Removed status"]',
+    );
     installStoriesFetch();
 
     const { findByRole, findByText, container } = render(<ConsolePage />);

@@ -446,12 +446,17 @@ describe('consoleStoryStatusSelection', () => {
           localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_KEY, raw);
         }
         if (format !== null) {
-          localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY, format);
+          localStorage.setItem(
+            CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY,
+            format,
+          );
         }
         migrateLegacyConsoleStoryStatusSelection();
         expect({
           raw: localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_KEY),
-          format: localStorage.getItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY),
+          format: localStorage.getItem(
+            CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY,
+          ),
           read: readConsoleStoryStatusSelection(),
         }).toEqual({
           raw: expectedRaw,
