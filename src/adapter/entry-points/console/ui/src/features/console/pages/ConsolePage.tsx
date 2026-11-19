@@ -87,9 +87,13 @@ import {
   displayedConsoleStoryStatusSelection,
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
+  hasLegacyConsoleStoryStatusSelection,
   isConsoleStoryDoneShown,
+  migrateLegacyConsoleStoryStatusSelection,
+  normalizeConsoleStoryStatusSelection,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
+  removeConsoleStoryStatusSelectionFromSearch,
   resolveEffectiveConsoleStoryStatusSelection,
   writeConsoleStoryStatusSelection,
 } from '../logic/consoleStoryStatusSelection';
@@ -303,9 +307,22 @@ export const createIssueWithAttachments = async (
   }
 };
 
-const resolveStoryStatusSelectionFromLocation = (): string[] | null =>
-  parseConsoleStoryStatusSelectionFromSearch(window.location.search) ??
-  readConsoleStoryStatusSelection();
+const resolveStoryStatusSelectionFromLocation = (): string[] | null => {
+  const hadLegacySelection = hasLegacyConsoleStoryStatusSelection();
+  migrateLegacyConsoleStoryStatusSelection();
+  const fromUrl = parseConsoleStoryStatusSelectionFromSearch(
+    window.location.search,
+  );
+  if (hadLegacySelection && fromUrl !== null && fromUrl.length === 0) {
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${removeConsoleStoryStatusSelectionFromSearch(window.location.search)}${window.location.hash}`,
+    );
+    return null;
+  }
+  return fromUrl ?? readConsoleStoryStatusSelection();
+};
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
@@ -1042,15 +1059,23 @@ export const ConsolePage = () => {
   const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<
     string[] | null
   >(resolveStoryStatusSelectionFromLocation);
-  const displayedStoryStatuses = useMemo(
+  const storedStoryStatuses = useMemo(
     () =>
-      displayedConsoleStoryStatusSelection(
+      normalizeConsoleStoryStatusSelection(
         selectedStoryStatuses,
         storyStatusOptionNames,
       ),
     [selectedStoryStatuses, storyStatusOptionNames],
   );
-  const showDone = isConsoleStoryDoneShown(selectedStoryStatuses);
+  const displayedStoryStatuses = useMemo(
+    () =>
+      displayedConsoleStoryStatusSelection(
+        storedStoryStatuses,
+        storyStatusOptionNames,
+      ),
+    [storedStoryStatuses, storyStatusOptionNames],
+  );
+  const showDone = isConsoleStoryDoneShown(storedStoryStatuses);
   const statusesFromPopStateRef = useRef<string[] | null>(null);
 
   const handleToggleStoryStatus = useCallback(
@@ -1058,7 +1083,7 @@ export const ConsolePage = () => {
       statusesFromPopStateRef.current = null;
       setSelectedStoryStatuses((prev) => {
         const current = displayedConsoleStoryStatusSelection(
-          prev,
+          normalizeConsoleStoryStatusSelection(prev, storyStatusOptionNames),
           storyStatusOptionNames,
         );
         const next = current.includes(status)
@@ -1094,14 +1119,14 @@ export const ConsolePage = () => {
       return;
     }
     if (
-      selectedStoryStatuses === null ||
+      storedStoryStatuses === null ||
       activeTab !== 'stories' ||
       storyStatusOptionNames.length === 0
     ) {
       return;
     }
     const effectiveStatuses = resolveEffectiveConsoleStoryStatusSelection(
-      selectedStoryStatuses,
+      storedStoryStatuses,
       storyStatusOptionNames,
     );
     const search = formatConsoleStoryStatusSelectionIntoSearch(
@@ -1115,7 +1140,12 @@ export const ConsolePage = () => {
         `${window.location.pathname}${search}${window.location.hash}`,
       );
     }
-  }, [activeTab, selectedStoryStatuses, storyStatusOptionNames]);
+  }, [
+    activeTab,
+    selectedStoryStatuses,
+    storedStoryStatuses,
+    storyStatusOptionNames,
+  ]);
 
   useEffect(() => {
     const handlePopState = (): void => {
@@ -1927,7 +1957,7 @@ export const ConsolePage = () => {
             onToggleHideEmptyStories={handleToggleHideEmptyStories}
             selectedStatuses={displayedStoryStatuses}
             statusOptionNames={storyStatusOptionNames}
-            isStatusSelectionDefault={selectedStoryStatuses === null}
+            isStatusSelectionDefault={storedStoryStatuses === null}
             onToggleStatus={handleToggleStoryStatus}
             onClearStatuses={handleClearStoryStatuses}
             onReorderStory={handleReorderStory}
