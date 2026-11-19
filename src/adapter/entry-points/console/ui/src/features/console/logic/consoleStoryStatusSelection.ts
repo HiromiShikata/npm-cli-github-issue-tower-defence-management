@@ -89,6 +89,19 @@ export const resolveEffectiveConsoleStoryStatusSelection = (
   return Array.from(new Set(present));
 };
 
+export const normalizeConsoleStoryStatusSelection = (
+  selected: string[] | null,
+  optionNames: string[],
+): string[] | null => {
+  if (selected === null || selected.length === 0 || optionNames.length === 0) {
+    return selected;
+  }
+  return resolveEffectiveConsoleStoryStatusSelection(selected, optionNames)
+    .length === 0
+    ? null
+    : selected;
+};
+
 export const filterConsoleStoryEntriesByStatusSelection = (
   stories: ConsoleStoryEntry[],
   effectiveSelection: string[],
