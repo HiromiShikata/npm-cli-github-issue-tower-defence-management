@@ -5,6 +5,7 @@ import {
   displayedConsoleStoryStatusSelection,
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
+  hasLegacyConsoleStoryStatusSelection,
   isConsoleStoryDoneShown,
   isCurrentConsoleStoryStatusSelectionFormat,
   migrateLegacyConsoleStoryStatusSelection,
@@ -545,6 +546,44 @@ describe('consoleStoryStatusSelection', () => {
         localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY, format);
       }
       expect(isCurrentConsoleStoryStatusSelectionFormat()).toBe(expected);
+    });
+  });
+
+  describe('hasLegacyConsoleStoryStatusSelection', () => {
+    it.each([
+      {
+        label: 'nothing saved has no legacy selection',
+        raw: null,
+        format: null,
+        expected: false,
+      },
+      {
+        label: 'a saved selection without a format is legacy',
+        raw: '["Done"]',
+        format: null,
+        expected: true,
+      },
+      {
+        label: 'a saved legacy empty selection is legacy',
+        raw: '[]',
+        format: null,
+        expected: true,
+      },
+      {
+        label: 'a saved selection in the current format is not legacy',
+        raw: '[]',
+        format: '2',
+        expected: false,
+      },
+    ])('$label', ({ raw, format, expected }) => {
+      localStorage.clear();
+      if (raw !== null) {
+        localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_KEY, raw);
+      }
+      if (format !== null) {
+        localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY, format);
+      }
+      expect(hasLegacyConsoleStoryStatusSelection()).toBe(expected);
     });
   });
 
