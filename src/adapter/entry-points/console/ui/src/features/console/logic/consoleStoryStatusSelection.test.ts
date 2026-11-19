@@ -6,10 +6,12 @@ import {
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
   isConsoleStoryDoneShown,
+  isCurrentConsoleStoryStatusSelectionFormat,
   migrateLegacyConsoleStoryStatusSelection,
   normalizeConsoleStoryStatusSelection,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
+  removeConsoleStoryStatusSelectionFromSearch,
   resolveEffectiveConsoleStoryStatusSelection,
   writeConsoleStoryStatusSelection,
 } from './consoleStoryStatusSelection';
@@ -517,6 +519,59 @@ describe('consoleStoryStatusSelection', () => {
       expect(
         normalizeConsoleStoryStatusSelection(selected, optionNames),
       ).toEqual(expected);
+    });
+  });
+
+  describe('isCurrentConsoleStoryStatusSelectionFormat', () => {
+    it.each([
+      {
+        label: 'no format saved is a legacy format',
+        format: null,
+        expected: false,
+      },
+      {
+        label: 'an older format value is a legacy format',
+        format: '1',
+        expected: false,
+      },
+      {
+        label: 'the current format value is current',
+        format: '2',
+        expected: true,
+      },
+    ])('$label', ({ format, expected }) => {
+      localStorage.clear();
+      if (format !== null) {
+        localStorage.setItem(CONSOLE_STORY_STATUS_SELECTION_FORMAT_KEY, format);
+      }
+      expect(isCurrentConsoleStoryStatusSelectionFormat()).toBe(expected);
+    });
+  });
+
+  describe('removeConsoleStoryStatusSelectionFromSearch', () => {
+    it.each([
+      { label: 'an empty query stays empty', search: '', expected: '' },
+      {
+        label:
+          'an empty status marker is removed and other parameters are kept',
+        search: '?k=token&status=',
+        expected: '?k=token',
+      },
+      {
+        label: 'a query holding only status parameters becomes empty',
+        search: '?status=Done&status=',
+        expected: '',
+      },
+      {
+        label:
+          'a status name is removed and other parameters are kept in order',
+        search: '?k=token&status=Done&x=1',
+        expected: '?k=token&x=1',
+      },
+    ])('$label', ({ search, expected }) => {
+      expect(removeConsoleStoryStatusSelectionFromSearch(search)).toBe(
+        expected,
+      );
     });
   });
 
