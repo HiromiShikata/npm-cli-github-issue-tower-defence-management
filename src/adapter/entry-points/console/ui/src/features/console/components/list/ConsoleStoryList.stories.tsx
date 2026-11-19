@@ -163,7 +163,6 @@ const meta: Meta<typeof ConsoleStoryList> = {
     onAddStory: () => Promise.resolve(),
     onSelectColor: () => undefined,
     onToggleArchived: () => undefined,
-    onToggleDone: () => undefined,
     hideTriggered: false,
     hideEmptyStories: false,
     onToggleHideTriggered: () => undefined,

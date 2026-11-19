@@ -1689,7 +1689,9 @@ test('shows latest comment expanded and non-latest as preview in summary mode, e
 test('shows and hides task rows when Show tasks and Hide tasks are clicked on a story row', async ({
   page,
 }) => {
-  await page.goto(harness.appRootUrl);
+  await page.goto(
+    `${harness.appRootUrl}&shownStoryField=story&shownStoryField=status&shownStoryField=dependedIssueUrl&shownStoryField=nextActionDate&shownStoryField=nextActionHour&shownStoryField=agent`,
+  );
 
   await tabByLabel(page, 'Stories').click();
   await expect(activeTabLabel(page)).toHaveText('Stories');
@@ -2308,7 +2310,7 @@ test('phone viewport keeps each story tab task row inside the screen width with 
   }
 });
 
-test('phone viewport keeps the Archived, Done, Hide triggered and Hide empty switches and their labels inside the screen width', async ({
+test('phone viewport keeps the Archived, Hide triggered and Hide empty switches and their labels inside the screen width', async ({
   browser,
 }) => {
   const phoneWidth = 412;
@@ -2323,12 +2325,7 @@ test('phone viewport keeps the Archived, Done, Hide triggered and Hide empty swi
     await tabByLabel(page, 'Stories').click();
     await expect(activeTabLabel(page)).toHaveText('Stories');
 
-    const toggleLabels = [
-      'Archived',
-      'Done',
-      'Hide triggered',
-      'Hide empty',
-    ] as const;
+    const toggleLabels = ['Archived', 'Hide triggered', 'Hide empty'] as const;
 
     for (const label of toggleLabels) {
       const toggleSwitch = page.getByRole('switch', {
@@ -2389,6 +2386,32 @@ test('story tab task row shows the title on its own line, then trigger fields, a
     }
     expect(opsBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
 
+    const displayItems = page.getByRole('group', { name: 'Display items' });
+    await expect(displayItems.locator('label')).toHaveText([
+      'Story',
+      'Status',
+      'Depended Issue URL',
+      'Next Action Date',
+      'Next Action Hour',
+      'Agent',
+    ]);
+    for (const checkbox of ['Story', 'Status']) {
+      await expect(
+        displayItems.getByRole('checkbox', { name: checkbox }),
+      ).toBeChecked();
+    }
+    for (const checkbox of [
+      'Depended Issue URL',
+      'Next Action Date',
+      'Next Action Hour',
+      'Agent',
+    ]) {
+      await expect(
+        displayItems.getByRole('checkbox', { name: checkbox }),
+      ).not.toBeChecked();
+      await displayItems.getByRole('checkbox', { name: checkbox }).check();
+    }
+
     const controlLabels = await taskRow
       .locator('.console-story-task-ops')
       .locator('input, select')
@@ -2421,7 +2444,6 @@ test('story tab task row shows the title on its own line, then trigger fields, a
     await statusSelect.selectOption(nextStatus);
     await expect(statusSelect).toHaveValue(nextStatus);
 
-    const displayItems = page.getByRole('group', { name: 'Display items' });
     const hiddenFieldCases = [
       {
         checkbox: 'Agent',
@@ -2456,7 +2478,7 @@ test('story tab task row shows the title on its own line, then trigger fields, a
     ];
     for (const { checkbox, param, controls } of hiddenFieldCases) {
       await displayItems.getByRole('checkbox', { name: checkbox }).uncheck();
-      await expect(page).toHaveURL(new RegExp(`hiddenStoryField=${param}`));
+      await expect(page).not.toHaveURL(new RegExp(`shownStoryField=${param}`));
       for (const label of controls) {
         await expect(taskRow.locator(`[aria-label="${label}"]`)).toHaveCount(0);
       }
@@ -2466,7 +2488,7 @@ test('story tab task row shows the title on its own line, then trigger fields, a
       );
 
       await displayItems.getByRole('checkbox', { name: checkbox }).check();
-      await expect(page).not.toHaveURL(new RegExp(`hiddenStoryField=${param}`));
+      await expect(page).toHaveURL(new RegExp(`shownStoryField=${param}`));
       for (const label of controls) {
         await expect(taskRow.locator(`[aria-label="${label}"]`)).toHaveCount(1);
       }

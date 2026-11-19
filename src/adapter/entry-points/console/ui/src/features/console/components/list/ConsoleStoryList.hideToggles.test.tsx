@@ -96,7 +96,6 @@ const baseProps: ConsoleStoryListProps = {
   onAddStory: () => Promise.resolve(),
   onSelectColor: () => undefined,
   onToggleArchived: () => undefined,
-  onToggleDone: () => undefined,
   onToggleHideTriggered: () => undefined,
   onToggleHideEmptyStories: () => undefined,
   onReorderStory: () => Promise.resolve(),
@@ -153,21 +152,15 @@ const renderWithExpanded = (
 };
 
 describe('ConsoleStoryList hide toggles', () => {
-  it('renders Hide triggered and Hide empty after Archived and Done, both off by default', () => {
-    const { getAllByRole, getByRole } = render(
+  it('renders Hide triggered and Hide empty after Archived, both off by default, and renders no Done switch', () => {
+    const { getAllByRole, getByRole, queryByRole } = render(
       <ConsoleStoryList {...baseProps} />,
     );
     const labels = getAllByRole('switch').map((toggle) =>
       toggle.getAttribute('aria-label'),
     );
-    expect(labels.indexOf('Archived')).toBeGreaterThanOrEqual(0);
-    expect(labels.indexOf('Archived')).toBeLessThan(labels.indexOf('Done'));
-    expect(labels.indexOf('Done')).toBeLessThan(
-      labels.indexOf('Hide triggered'),
-    );
-    expect(labels.indexOf('Hide triggered')).toBeLessThan(
-      labels.indexOf('Hide empty'),
-    );
+    expect(labels).toEqual(['Archived', 'Hide triggered', 'Hide empty']);
+    expect(queryByRole('switch', { name: 'Done' })).toBeNull();
     expect(getByRole('switch', { name: 'Hide triggered' })).toHaveAttribute(
       'aria-checked',
       'false',

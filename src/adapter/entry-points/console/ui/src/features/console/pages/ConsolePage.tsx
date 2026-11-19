@@ -78,13 +78,16 @@ import {
 } from '../logic/consoleStoryPendingMoves';
 import {
   type ConsoleStoryRowField,
-  formatHiddenConsoleStoryRowFieldsIntoSearch,
-  parseHiddenConsoleStoryRowFieldsFromSearch,
+  formatShownConsoleStoryRowFieldsIntoSearch,
+  hiddenConsoleStoryRowFields,
+  parseShownConsoleStoryRowFieldsFromSearch,
   toggleConsoleStoryRowField,
 } from '../logic/consoleStoryRowFields';
 import {
+  displayedConsoleStoryStatusSelection,
   filterConsoleStoryEntriesByStatusSelection,
   formatConsoleStoryStatusSelectionIntoSearch,
+  isConsoleStoryDoneShown,
   parseConsoleStoryStatusSelectionFromSearch,
   readConsoleStoryStatusSelection,
   resolveEffectiveConsoleStoryStatusSelection,
@@ -300,14 +303,9 @@ export const createIssueWithAttachments = async (
   }
 };
 
-const resolveStoryStatusSelectionFromLocation = (): string[] => {
-  const statusesFromUrl = parseConsoleStoryStatusSelectionFromSearch(
-    window.location.search,
-  );
-  return statusesFromUrl.length > 0
-    ? statusesFromUrl
-    : readConsoleStoryStatusSelection();
-};
+const resolveStoryStatusSelectionFromLocation = (): string[] | null =>
+  parseConsoleStoryStatusSelectionFromSearch(window.location.search) ??
+  readConsoleStoryStatusSelection();
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
@@ -1012,18 +1010,6 @@ export const ConsolePage = () => {
     });
   }, []);
 
-  const [showDone, setShowDone] = useState(
-    () => localStorage.getItem('console-story-show-done') === 'true',
-  );
-
-  const handleToggleDone = useCallback((): void => {
-    setShowDone((prev) => {
-      const next = !prev;
-      localStorage.setItem('console-story-show-done', String(next));
-      return next;
-    });
-  }, []);
-
   const [hideTriggered, setHideTriggered] = useState(
     () => localStorage.getItem('console-story-hide-triggered') === 'true',
   );
@@ -1048,21 +1034,42 @@ export const ConsolePage = () => {
     });
   }, []);
 
-  const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<string[]>(
-    resolveStoryStatusSelectionFromLocation,
+  const storiesSnapshot = snapshots.stories;
+  const storyStatusOptionNames = useMemo(
+    () => (storiesSnapshot?.statusOptions ?? []).map((option) => option.name),
+    [storiesSnapshot],
   );
+  const [selectedStoryStatuses, setSelectedStoryStatuses] = useState<
+    string[] | null
+  >(resolveStoryStatusSelectionFromLocation);
+  const displayedStoryStatuses = useMemo(
+    () =>
+      displayedConsoleStoryStatusSelection(
+        selectedStoryStatuses,
+        storyStatusOptionNames,
+      ),
+    [selectedStoryStatuses, storyStatusOptionNames],
+  );
+  const showDone = isConsoleStoryDoneShown(selectedStoryStatuses);
   const statusesFromPopStateRef = useRef<string[] | null>(null);
 
-  const handleToggleStoryStatus = useCallback((status: string): void => {
-    statusesFromPopStateRef.current = null;
-    setSelectedStoryStatuses((prev) => {
-      const next = prev.includes(status)
-        ? prev.filter((name) => name !== status)
-        : [...prev, status];
-      writeConsoleStoryStatusSelection(next);
-      return next;
-    });
-  }, []);
+  const handleToggleStoryStatus = useCallback(
+    (status: string): void => {
+      statusesFromPopStateRef.current = null;
+      setSelectedStoryStatuses((prev) => {
+        const current = displayedConsoleStoryStatusSelection(
+          prev,
+          storyStatusOptionNames,
+        );
+        const next = current.includes(status)
+          ? current.filter((name) => name !== status)
+          : [...current, status];
+        writeConsoleStoryStatusSelection(next);
+        return next;
+      });
+    },
+    [storyStatusOptionNames],
+  );
 
   const handleClearStoryStatuses = useCallback((): void => {
     statusesFromPopStateRef.current = null;
@@ -1070,11 +1077,6 @@ export const ConsolePage = () => {
     setSelectedStoryStatuses([]);
   }, []);
 
-  const storiesSnapshot = snapshots.stories;
-  const storyStatusOptionNames = useMemo(
-    () => (storiesSnapshot?.statusOptions ?? []).map((option) => option.name),
-    [storiesSnapshot],
-  );
   const effectiveStoryStatuses = useMemo(
     () =>
       resolveEffectiveConsoleStoryStatusSelection(
@@ -1091,7 +1093,11 @@ export const ConsolePage = () => {
     ) {
       return;
     }
-    if (activeTab !== 'stories' || storyStatusOptionNames.length === 0) {
+    if (
+      selectedStoryStatuses === null ||
+      activeTab !== 'stories' ||
+      storyStatusOptionNames.length === 0
+    ) {
       return;
     }
     const effectiveStatuses = resolveEffectiveConsoleStoryStatusSelection(
@@ -1646,13 +1652,17 @@ export const ConsolePage = () => {
     [applyStoryTaskChange, operations],
   );
 
-  const [hiddenStoryRowFields, setHiddenStoryRowFields] = useState<
+  const [shownStoryRowFields, setShownStoryRowFields] = useState<
     ConsoleStoryRowField[]
-  >(() => parseHiddenConsoleStoryRowFieldsFromSearch(window.location.search));
+  >(() => parseShownConsoleStoryRowFieldsFromSearch(window.location.search));
+  const hiddenStoryRowFields = useMemo(
+    () => hiddenConsoleStoryRowFields(shownStoryRowFields),
+    [shownStoryRowFields],
+  );
 
   const handleToggleStoryRowField = useCallback(
     (field: ConsoleStoryRowField): void => {
-      setHiddenStoryRowFields((previous) =>
+      setShownStoryRowFields((previous) =>
         toggleConsoleStoryRowField(previous, field),
       );
     },
@@ -1663,9 +1673,9 @@ export const ConsolePage = () => {
     if (activeTab !== 'stories') {
       return;
     }
-    const search = formatHiddenConsoleStoryRowFieldsIntoSearch(
+    const search = formatShownConsoleStoryRowFieldsIntoSearch(
       window.location.search,
-      hiddenStoryRowFields,
+      shownStoryRowFields,
     );
     if (search !== window.location.search) {
       window.history.replaceState(
@@ -1674,7 +1684,7 @@ export const ConsolePage = () => {
         `${window.location.pathname}${search}${window.location.hash}`,
       );
     }
-  }, [activeTab, hiddenStoryRowFields]);
+  }, [activeTab, shownStoryRowFields]);
 
   const prsTabSummaries = useConsolePrsTabSummaries(
     pendingItems,
@@ -1911,13 +1921,13 @@ export const ConsolePage = () => {
             onAddStory={handleStoryAdd}
             onSelectColor={handleSelectColor}
             onToggleArchived={handleToggleArchived}
-            onToggleDone={handleToggleDone}
             hideTriggered={hideTriggered}
             hideEmptyStories={hideEmptyStories}
             onToggleHideTriggered={handleToggleHideTriggered}
             onToggleHideEmptyStories={handleToggleHideEmptyStories}
-            selectedStatuses={selectedStoryStatuses}
+            selectedStatuses={displayedStoryStatuses}
             statusOptionNames={storyStatusOptionNames}
+            isStatusSelectionDefault={selectedStoryStatuses === null}
             onToggleStatus={handleToggleStoryStatus}
             onClearStatuses={handleClearStoryStatuses}
             onReorderStory={handleReorderStory}

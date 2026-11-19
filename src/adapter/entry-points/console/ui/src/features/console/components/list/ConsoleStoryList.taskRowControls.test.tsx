@@ -77,7 +77,6 @@ const renderRowList = (overrides: Partial<ConsoleStoryListProps> = {}) => {
     onAddStory: () => Promise.resolve(),
     onSelectColor: () => undefined,
     onToggleArchived: () => undefined,
-    onToggleDone: () => undefined,
     hideTriggered: false,
     hideEmptyStories: false,
     onToggleHideTriggered: () => undefined,
@@ -422,18 +421,18 @@ describe('ConsoleStoryRowFieldToggles', () => {
       name: 'checks every field when none is hidden',
       hidden: [] as ConsoleStoryRowField[],
       expectedChecked: [
+        'Story',
+        'Status',
         'Depended Issue URL',
         'Next Action Date',
         'Next Action Hour',
         'Agent',
-        'Story',
-        'Status',
       ],
     },
     {
       name: 'unchecks only the hidden fields',
       hidden: ['agent', 'status', 'nextActionDate'] as ConsoleStoryRowField[],
-      expectedChecked: ['Depended Issue URL', 'Next Action Hour', 'Story'],
+      expectedChecked: ['Story', 'Depended Issue URL', 'Next Action Hour'],
     },
   ])('$name', ({ hidden, expectedChecked }) => {
     const { getAllByRole } = render(

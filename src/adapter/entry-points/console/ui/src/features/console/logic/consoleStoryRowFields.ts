@@ -1,39 +1,64 @@
 export const CONSOLE_STORY_ROW_FIELDS = [
+  'story',
+  'status',
   'dependedIssueUrl',
   'nextActionDate',
   'nextActionHour',
   'agent',
-  'story',
-  'status',
 ] as const;
 
 export type ConsoleStoryRowField = (typeof CONSOLE_STORY_ROW_FIELDS)[number];
 
+export const DEFAULT_SHOWN_CONSOLE_STORY_ROW_FIELDS: ConsoleStoryRowField[] = [
+  'story',
+  'status',
+];
+
+const CONSOLE_STORY_SHOWN_ROW_FIELD_PARAM = 'shownStoryField';
 const CONSOLE_STORY_HIDDEN_ROW_FIELD_PARAM = 'hiddenStoryField';
 
-export const parseHiddenConsoleStoryRowFieldsFromSearch = (
+const isSameFieldSet = (
+  left: ConsoleStoryRowField[],
+  right: ConsoleStoryRowField[],
+): boolean =>
+  left.length === right.length && left.every((field) => right.includes(field));
+
+export const parseShownConsoleStoryRowFieldsFromSearch = (
   search: string,
 ): ConsoleStoryRowField[] => {
-  const names = new URLSearchParams(search).getAll(
-    CONSOLE_STORY_HIDDEN_ROW_FIELD_PARAM,
-  );
+  const params = new URLSearchParams(search);
+  if (!params.has(CONSOLE_STORY_SHOWN_ROW_FIELD_PARAM)) {
+    return [...DEFAULT_SHOWN_CONSOLE_STORY_ROW_FIELDS];
+  }
+  const names = params.getAll(CONSOLE_STORY_SHOWN_ROW_FIELD_PARAM);
   return CONSOLE_STORY_ROW_FIELDS.filter((field) => names.includes(field));
 };
 
-export const formatHiddenConsoleStoryRowFieldsIntoSearch = (
+export const formatShownConsoleStoryRowFieldsIntoSearch = (
   search: string,
-  hiddenFields: ConsoleStoryRowField[],
+  shownFields: ConsoleStoryRowField[],
 ): string => {
   const params = new URLSearchParams(search);
+  params.delete(CONSOLE_STORY_SHOWN_ROW_FIELD_PARAM);
   params.delete(CONSOLE_STORY_HIDDEN_ROW_FIELD_PARAM);
-  for (const field of CONSOLE_STORY_ROW_FIELDS) {
-    if (hiddenFields.includes(field)) {
-      params.append(CONSOLE_STORY_HIDDEN_ROW_FIELD_PARAM, field);
+  if (!isSameFieldSet(shownFields, DEFAULT_SHOWN_CONSOLE_STORY_ROW_FIELDS)) {
+    if (shownFields.length === 0) {
+      params.append(CONSOLE_STORY_SHOWN_ROW_FIELD_PARAM, '');
+    }
+    for (const field of CONSOLE_STORY_ROW_FIELDS) {
+      if (shownFields.includes(field)) {
+        params.append(CONSOLE_STORY_SHOWN_ROW_FIELD_PARAM, field);
+      }
     }
   }
   const query = params.toString();
   return query.length > 0 ? `?${query}` : '';
 };
+
+export const hiddenConsoleStoryRowFields = (
+  shownFields: ConsoleStoryRowField[],
+): ConsoleStoryRowField[] =>
+  CONSOLE_STORY_ROW_FIELDS.filter((field) => !shownFields.includes(field));
 
 export const toggleConsoleStoryRowField = (
   hiddenFields: ConsoleStoryRowField[],
