@@ -2346,6 +2346,29 @@ describe('RevertOrphanedPreparationUseCase', () => {
       ]);
     });
 
+    it('should route an orphaned non-developer agent issue carrying both a labelsNotRequiringPullRequest label and a labelsAsLlmAgentName label to Awaiting Workspace when its last trusted report has no owner-confirmation request', async () => {
+      const stuckIssue = arrangeOrphanedPreparationIssue(
+        {
+          labels: ['story', 'example-agent-label'],
+          agent: 'example-agent',
+        },
+        '{}',
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['agent-bot'],
+        labelsAsLlmAgentName: ['example-agent-label'],
+        labelsNotRequiringPullRequest: ['story'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+        [mockProject, stuckIssue, '1'],
+      ]);
+    });
+
     it('should keep an orphaned non-developer agent issue with a labelsAsLlmAgentName label on the quality-check option when its last trusted report requests owner confirmation and the owner has not answered', async () => {
       const stuckIssue = arrangeOrphanedPreparationIssue(
         { labels: ['example-agent-label'], agent: 'example-agent' },
@@ -2378,17 +2401,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
         {
           name: 'non-developer agent with a labelsNotRequiringPullRequest label only',
           issue: { labels: ['story'], agent: 'example-agent' },
-          resultJson: '{}',
-          labelsAsLlmAgentName: ['example-agent-label'],
-          labelsNotRequiringPullRequest: ['story'],
-          expectedStatusId: '4',
-        },
-        {
-          name: 'non-developer agent with a labelsNotRequiringPullRequest label and a labelsAsLlmAgentName label',
-          issue: {
-            labels: ['story', 'example-agent-label'],
-            agent: 'example-agent',
-          },
           resultJson: '{}',
           labelsAsLlmAgentName: ['example-agent-label'],
           labelsNotRequiringPullRequest: ['story'],
