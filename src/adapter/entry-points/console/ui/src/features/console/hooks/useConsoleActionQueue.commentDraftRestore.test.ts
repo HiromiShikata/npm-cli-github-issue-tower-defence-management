@@ -605,6 +605,82 @@ describe('useConsoleActionQueue comment draft restore', () => {
     ).toHaveLength(0);
   });
 
+  it('keeps the persisted action with its Retry when the comment was posted and a later step failed', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          commitWithActionId: jest.fn(async () => {
+            throw new ConsoleActionPartiallySentError(
+              1,
+              new Error('status step failed'),
+            );
+          }),
+          offline: [{ ...triagePayloadWithComment, id: 'partial-keep-1' }],
+        }),
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('hands a persisted comment back on replay when the server answers HTTP 200 with commentPosted false', async () => {
+    const responseBody = {
+      ok: false,
+      commentPosted: false,
+      error: 'comment failed',
+    };
+    localStorage.setItem(
+      CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...triagePayloadWithComment,
+          id: 'replay-200-refused-1',
+          message: 'Move to Awaiting Workspace',
+          color: 'green',
+          enqueuedAt: Date.now(),
+        },
+      ]),
+    );
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(responseBody),
+      json: async () => responseBody,
+    })) as unknown as typeof fetch;
+    const restoreCommentDraft = jest.fn();
+    renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+
+    await flush();
+    await flush();
+
+    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+  });
+
   it('keeps a persisted comment with its replay when the server does not say whether it was posted', async () => {
     const rejection = { error: 'upstream failure' };
     localStorage.setItem(
