@@ -1,3 +1,10 @@
+## [2.201.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.3...v2.201.4) (2026-11-20)
+
+
+### Bug Fixes
+
+* **console:** keep each project overlay separate across project switches ([#3748](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3748)) ([d57a314](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d57a314433463b714bea1e1829c6e7b0ada0dc49))
+
 ## [2.201.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.2...v2.201.3) (2026-11-20)
 
 
