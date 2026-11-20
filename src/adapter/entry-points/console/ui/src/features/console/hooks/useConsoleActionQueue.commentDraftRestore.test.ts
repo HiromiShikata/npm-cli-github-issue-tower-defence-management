@@ -416,44 +416,40 @@ describe('useConsoleActionQueue comment draft restore', () => {
     expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
   });
 
-  it('releases the restored text from the draft when a Retry of the rejected comment succeeds', async () => {
-    const restoreCommentDraft = jest.fn();
-    const releaseCommentDraft = jest.fn();
-    const commitWithActionId = jest
-      .fn<Promise<void>, [number, string]>()
-      .mockRejectedValueOnce(new Error('gateway timeout'))
-      .mockResolvedValueOnce(undefined);
-    const { result } = renderHook(() =>
-      useConsoleActionQueue({
-        isAirplaneModeOn: false,
-        projectCode: 'acme',
-        restoreCommentDraft,
-        releaseCommentDraft,
-      }),
-    );
-    act(() => {
-      result.current.enqueue(
-        makeMoveAction({
-          commitWithActionId,
-          composerDraft: { projectItemId: ITEM_KEY, body: COMMENT_BODY },
+  it.each([
+    ['a rejection that is not a stale Status', new Error('gateway timeout')],
+    ['a stale Status rejection', new Error(STALE_STATUS_MESSAGE)],
+  ])(
+    'offers no Retry after %s when the comment text was restored to the composer, so the composer is its only owner',
+    async (_name, rejection) => {
+      const restoreCommentDraft = jest.fn();
+      const { result } = renderHook(() =>
+        useConsoleActionQueue({
+          isAirplaneModeOn: false,
+          projectCode: 'acme',
+          restoreCommentDraft,
         }),
       );
-    });
-    act(() => {
-      jest.advanceTimersByTime(5200);
-    });
-    await flush();
-    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
-    expect(releaseCommentDraft).not.toHaveBeenCalled();
+      act(() => {
+        result.current.enqueue(
+          makeMoveAction({
+            commitWithActionId: jest.fn(async () => {
+              throw rejection;
+            }),
+          }),
+        );
+      });
 
-    await act(async () => {
-      result.current.error[0]?.retry?.();
-    });
-    await flush();
+      act(() => {
+        jest.advanceTimersByTime(5200);
+      });
+      await flush();
 
-    expect(commitWithActionId).toHaveBeenCalledTimes(2);
-    expect(releaseCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
-  });
+      expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+      expect(result.current.error).toHaveLength(1);
+      expect(result.current.error[0]?.retry).toBeUndefined();
+    },
+  );
 
   it('hands back the comment of an offline action the server rejects when the owner confirms it', async () => {
     localStorage.setItem(
