@@ -658,9 +658,7 @@ describe('useConsoleTabData', () => {
 
     rerender({ pjcode: 'beta' });
     await waitFor(() =>
-      expect(result.current.snapshots.prs?.generatedAt).toBe(
-        BETA_GENERATED_AT,
-      ),
+      expect(result.current.snapshots.prs?.generatedAt).toBe(BETA_GENERATED_AT),
     );
     const betaSnapshots = result.current.snapshots;
 
