@@ -1,3 +1,10 @@
+## [2.201.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.6...v2.201.7) (2026-11-20)
+
+
+### Bug Fixes
+
+* **console:** hand rejected comments back to their item draft ([#3751](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3751)) ([f50a00d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f50a00dec75c25dcd4034a8685cf54a77aac1f04))
+
 ## [2.201.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.5...v2.201.6) (2026-11-20)
 
 
