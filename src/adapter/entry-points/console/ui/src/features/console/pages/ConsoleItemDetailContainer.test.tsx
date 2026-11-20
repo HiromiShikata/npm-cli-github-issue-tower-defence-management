@@ -607,7 +607,6 @@ describe('ConsoleItemDetailContainer', () => {
   it('passes a revertAdvance callback on the Comment & Awaiting Workspace queue action that restores the draft typed at click time via onCommentDraftChange', async () => {
     const operations = buildOperations();
     const onCommentDraftChange = jest.fn();
-    const onCommentDraftRestore = jest.fn();
     const onQueueAction = jest.fn();
     const { getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
@@ -626,7 +625,6 @@ describe('ConsoleItemDetailContainer', () => {
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
         onCommentDraftChange={onCommentDraftChange}
-        onCommentDraftRestore={onCommentDraftRestore}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -641,16 +639,16 @@ describe('ConsoleItemDetailContainer', () => {
     expect(typeof input.revertAdvance).toBe('function');
     input.revertAdvance();
 
-    expect(onCommentDraftRestore).toHaveBeenCalledWith(
-      issueItem.projectItemId,
-      'should survive undo',
-    );
+    expect(onCommentDraftChange).toHaveBeenCalledWith('should survive undo');
   });
 
-  it('undo hands the comment back through the storage restore for the acted item, not a stale draft', async () => {
+  it('undo merges the restored comment with newer text already persisted for the item', async () => {
+    localStorage.setItem(
+      'console-comment-drafts',
+      JSON.stringify([[issueItem.projectItemId, 'follow-up words']]),
+    );
     const operations = buildOperations();
     const onCommentDraftChange = jest.fn();
-    const onCommentDraftRestore = jest.fn();
     const onQueueAction = jest.fn();
     const { getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
@@ -668,26 +666,23 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
         onCommentDraftChange={onCommentDraftChange}
-        onCommentDraftRestore={onCommentDraftRestore}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'first text' },
     });
     fireEvent.click(getByText('Comment & Awaiting Workspace'));
-    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
-      target: { value: 'follow-up words' },
-    });
     const input = onQueueAction.mock.calls[0][0];
-    onCommentDraftRestore.mockClear();
+    onCommentDraftChange.mockClear();
 
     input.revertAdvance();
 
-    expect(onCommentDraftRestore).toHaveBeenCalledWith(
-      issueItem.projectItemId,
-      'first text',
+    expect(onCommentDraftChange).toHaveBeenCalledWith(
+      'first text\n\nfollow-up words',
     );
+    localStorage.removeItem('console-comment-drafts');
   });
 
   it('does not call addCommentAndMoveToAwaitingWorkspace merely from clicking Comment & Awaiting Workspace; only the queued commit triggers it', async () => {

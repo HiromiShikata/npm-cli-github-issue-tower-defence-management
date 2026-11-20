@@ -44,6 +44,10 @@ import {
   toggleMarkdownCheckboxAtIndex,
 } from '../lib/markdownCheckboxToggle';
 import { type ConsoleActionKind, itemToastLabel } from '../logic/actionToast';
+import {
+  loadCommentDrafts,
+  mergeRestoredCommentDraft,
+} from '../logic/commentDraftStorage';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
   AWAITING_WORKSPACE_NAME,
@@ -237,7 +241,7 @@ export type ConsoleItemDetailContainerProps = {
   now: number;
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
-  onCommentDraftRestore?: (projectItemId: string, body: string) => void;
+  onCommentDraftRestored?: (projectItemId: string) => void;
   commentDraftRevision?: number;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
   onCommentError?: ConsoleCommentErrorHandler;
@@ -277,7 +281,7 @@ export const ConsoleItemDetailContainer = ({
   now,
   initialCommentDraft,
   onCommentDraftChange,
-  onCommentDraftRestore,
+  onCommentDraftRestored,
   commentDraftRevision,
   onQueueAction,
   onCommentError,
@@ -782,8 +786,15 @@ export const ConsoleItemDetailContainer = ({
                         },
                       ]
                     : undefined,
-                revertAdvance: () =>
-                  onCommentDraftRestore?.(item.projectItemId, body),
+                revertAdvance: () => {
+                  onCommentDraftChange?.(
+                    mergeRestoredCommentDraft(
+                      loadCommentDrafts().get(item.projectItemId) ?? '',
+                      body,
+                    ),
+                  );
+                  onCommentDraftRestored?.(item.projectItemId);
+                },
                 overlayPatch: {
                   done: true,
                   status: {

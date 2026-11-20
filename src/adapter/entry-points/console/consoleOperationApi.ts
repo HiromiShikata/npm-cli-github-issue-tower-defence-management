@@ -377,6 +377,7 @@ const rejectWhenStatusChangedBeforePullRequestWrite = async (
   issueRepository: IssueRepository,
   prUrl: string,
   expectedStatusAtActionTime: ExpectedStatusAtActionTime,
+  targetStatusName?: string,
 ): Promise<ConsoleOperationResponse | null> => {
   if (!expectedStatusAtActionTime.present) {
     return null;
@@ -391,6 +392,12 @@ const rejectWhenStatusChangedBeforePullRequestWrite = async (
   if (
     liveStatusName?.toLowerCase() ===
     AWAITING_WORKSPACE_STATUS_NAME.toLowerCase()
+  ) {
+    return null;
+  }
+  if (
+    targetStatusName !== undefined &&
+    liveStatusName?.toLowerCase() === targetStatusName.toLowerCase()
   ) {
     return null;
   }
@@ -756,6 +763,7 @@ const handleTriageImpl = async (
           context.resolveIssueRepository(issueUrl),
           issueUrl,
           readExpectedStatusAtActionTime(body),
+          statusName,
         );
       if (staleBeforeComment !== null) {
         const staleBody =
