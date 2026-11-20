@@ -234,11 +234,15 @@ describe('useConsoleOverlay', () => {
   it('reloads the overlay of the new project and keeps the old project storage intact when the project switches', () => {
     localStorage.setItem(
       overlayStorageKey('acme'),
-      JSON.stringify({ 'o/r#1': { ts: 1, status: { name: 'Acme status', color: 'BLUE' } } }),
+      JSON.stringify({
+        'o/r#1': { ts: 1, status: { name: 'Acme status', color: 'BLUE' } },
+      }),
     );
     localStorage.setItem(
       overlayStorageKey('beta'),
-      JSON.stringify({ 'o/r#2': { ts: 2, status: { name: 'Beta status', color: 'BLUE' } } }),
+      JSON.stringify({
+        'o/r#2': { ts: 2, status: { name: 'Beta status', color: 'BLUE' } },
+      }),
     );
     const { result, rerender } = renderHook(
       ({ pjcode }: { pjcode: string }) => useConsoleOverlay(pjcode),
@@ -256,10 +260,14 @@ describe('useConsoleOverlay', () => {
       );
     });
     expect(
-      Object.keys(JSON.parse(localStorage.getItem(overlayStorageKey('beta')) ?? '{}')).sort(),
+      Object.keys(
+        JSON.parse(localStorage.getItem(overlayStorageKey('beta')) ?? '{}'),
+      ).sort(),
     ).toEqual(['o/r#2', 'o/r#3']);
     expect(
-      Object.keys(JSON.parse(localStorage.getItem(overlayStorageKey('acme')) ?? '{}')),
+      Object.keys(
+        JSON.parse(localStorage.getItem(overlayStorageKey('acme')) ?? '{}'),
+      ),
     ).toEqual(['o/r#1']);
   });
 });

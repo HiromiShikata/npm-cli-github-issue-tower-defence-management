@@ -2991,9 +2991,7 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
         ([url]) => String(url) === '/api/comment',
       );
       expect(commentCalls).toHaveLength(1);
-      expect(
-        JSON.parse(String(commentCalls[0][1]?.body)).pjcode,
-      ).toBe('acme');
+      expect(JSON.parse(String(commentCalls[0][1]?.body)).pjcode).toBe('acme');
       expect(readStoredOfflineQueue()).toHaveLength(0);
       expect(
         JSON.parse(localStorage.getItem(DELIVERY_QUEUE_STORAGE_KEY) ?? '[]'),
