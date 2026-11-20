@@ -82,31 +82,52 @@ export type ConsoleOverlayState = {
   revertOverlayEntry: (key: string) => void;
 };
 
+type ConsoleOverlayByProject = {
+  pjcode: string;
+  overlay: ConsoleOverlay;
+};
+
 export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
-  const [overlay, setOverlay] = useState<ConsoleOverlay>(() =>
-    readOverlay(pjcode),
+  const [stored, setStored] = useState<ConsoleOverlayByProject>(() => ({
+    pjcode,
+    overlay: readOverlay(pjcode),
+  }));
+  const overlay =
+    stored.pjcode === pjcode ? stored.overlay : readOverlay(pjcode);
+
+  const updateOverlay = useCallback(
+    (
+      update: (current: ConsoleOverlay) => ConsoleOverlay,
+      alwaysPersist: boolean,
+    ) => {
+      setStored((current) => {
+        const base =
+          current.pjcode === pjcode ? current.overlay : readOverlay(pjcode);
+        const next = update(base);
+        if (alwaysPersist || next !== base) {
+          persistOverlay(pjcode, next);
+        }
+        return { pjcode, overlay: next };
+      });
+    },
+    [pjcode],
   );
 
   const patchOverlay = useCallback(
     (key: string, patch: ConsoleOverlayPatch, mode: ConsoleTabName) => {
-      setOverlay((current) => {
-        const next = writeOverlayEntry(current, key, patch, mode, Date.now());
-        persistOverlay(pjcode, next);
-        return next;
-      });
+      updateOverlay(
+        (current) => writeOverlayEntry(current, key, patch, mode, Date.now()),
+        true,
+      );
     },
-    [pjcode],
+    [updateOverlay],
   );
 
   const revertOverlayEntry = useCallback(
     (key: string) => {
-      setOverlay((current) => {
-        const next = removeOverlayEntry(current, key);
-        persistOverlay(pjcode, next);
-        return next;
-      });
+      updateOverlay((current) => removeOverlayEntry(current, key), true);
     },
-    [pjcode],
+    [updateOverlay],
   );
 
   useEffect(() => {
@@ -114,23 +135,17 @@ export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
       if (success.pjcode !== pjcode) {
         return;
       }
-      setOverlay((current) => {
-        const next = overlayEntryClosedAtUpdate(
-          current,
-          success.key,
-          success.closedAtMs,
-        );
-        if (next !== current) {
-          persistOverlay(pjcode, next);
-        }
-        return next;
-      });
+      updateOverlay(
+        (current) =>
+          overlayEntryClosedAtUpdate(current, success.key, success.closedAtMs),
+        false,
+      );
     };
     overlayCloseSuccessListeners.add(listener);
     return () => {
       overlayCloseSuccessListeners.delete(listener);
     };
-  }, [pjcode]);
+  }, [pjcode, updateOverlay]);
 
   return {
     overlay,

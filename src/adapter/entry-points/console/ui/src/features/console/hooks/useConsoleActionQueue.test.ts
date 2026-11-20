@@ -2951,4 +2951,82 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
       attempt: 2,
     });
   });
+
+  describe('project switch while work is pending', () => {
+    const commentFetchCommit = (
+      payload: typeof commentOfflinePayload,
+    ): jest.Mock<Promise<void>, []> =>
+      jest.fn<Promise<void>, []>(async () => {
+        const response = await fetch('/api/comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload.requestBody),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      });
+
+    it('delivers a pending comment typed for the old project after the project switches', async () => {
+      const fetchMock = installCommentSuccessFetch();
+      const { result, rerender } = renderHook(
+        ({ projectCode }: { projectCode: string | null }) =>
+          useConsoleActionQueue({ isAirplaneModeOn: false, projectCode }),
+        { initialProps: { projectCode: 'acme' as string | null } },
+      );
+      const action = makeAction({
+        offline: [commentOfflinePayload],
+        commit: commentFetchCommit(commentOfflinePayload),
+      });
+
+      act(() => {
+        result.current.enqueue(action);
+      });
+      act(() => {
+        rerender({ projectCode: 'beta' });
+      });
+      await act(async () => {
+        await flushMicrotasks();
+      });
+
+      const commentCalls = fetchMock.mock.calls.filter(
+        ([url]) => String(url) === '/api/comment',
+      );
+      expect(commentCalls).toHaveLength(1);
+      expect(
+        JSON.parse(String(commentCalls[0][1]?.body)).pjcode,
+      ).toBe('acme');
+      expect(readStoredOfflineQueue()).toHaveLength(0);
+      expect(
+        JSON.parse(localStorage.getItem(DELIVERY_QUEUE_STORAGE_KEY) ?? '[]'),
+      ).toHaveLength(0);
+    });
+
+    it('keeps a comment that fails during the project switch held for retry instead of erasing it', async () => {
+      const fetchMock = jest.fn(async (_url: string, _init?: RequestInit) => {
+        throw new TypeError('Failed to fetch');
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+      const { result, rerender } = renderHook(
+        ({ projectCode }: { projectCode: string | null }) =>
+          useConsoleActionQueue({ isAirplaneModeOn: false, projectCode }),
+        { initialProps: { projectCode: 'acme' as string | null } },
+      );
+      const action = makeAction({
+        offline: [commentOfflinePayload],
+        commit: commentFetchCommit(commentOfflinePayload),
+      });
+
+      act(() => {
+        result.current.enqueue(action);
+      });
+      act(() => {
+        rerender({ projectCode: 'beta' });
+      });
+      await act(async () => {
+        await flushMicrotasks();
+      });
+
+      expect(readStoredOfflineQueue()).toHaveLength(1);
+      expect(result.current.offlineActions).toHaveLength(1);
+    });
+  });
 });
