@@ -10574,7 +10574,38 @@ describe('ConsolePage offline action queue', () => {
     },
   ];
 
-  it.each(commentThenSecondRequestActions)(
+  it('keeps a Comment & Awaiting Workspace refused with HTTP 500 in the persisted composer draft with no Retry, and sends its comment once', async () => {
+    const fetchMock = installOfflineQueueFetch(
+      respondWithPostedCommentsAndTriageRequestsInTurn(
+        respondWithHostRejection,
+        respondWithOperationSucceeded,
+      ),
+    );
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Moving after the outage.' },
+    });
+    fireEvent.click(view.getByText('Comment & Awaiting Workspace'));
+    await dismissUndoToast(view.container);
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(localStorage.getItem('console-comment-drafts') ?? '[]'),
+      ).toContainEqual([expect.any(String), 'Moving after the outage.']);
+    });
+    expect(
+      view.container.querySelector('.console-error-toast-retry'),
+    ).toBeNull();
+    expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(1);
+  });
+
+  it.each(
+    commentThenSecondRequestActions.filter(
+      (action) =>
+        action.actionName !== 'Comment & Awaiting Workspace from the detail',
+    ),
+  )(
     'retries $actionName without duplicating its comment when its request answered HTTP 500 online',
     async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
       const fetchMock = installOfflineQueueFetch(
@@ -10627,7 +10658,12 @@ describe('ConsolePage offline action queue', () => {
     },
   );
 
-  it.each(commentThenSecondRequestActions)(
+  it.each(
+    commentThenSecondRequestActions.filter(
+      (action) =>
+        action.actionName !== 'Comment & Awaiting Workspace from the detail',
+    ),
+  )(
     'holds the failed request of $actionName without an error toast and does not duplicate its comment when its retry fails because the network is unavailable',
     async ({
       startAction,
@@ -10751,7 +10787,12 @@ describe('ConsolePage offline action queue', () => {
     });
   };
 
-  it.each(commentThenSecondRequestActions)(
+  it.each(
+    commentThenSecondRequestActions.filter(
+      (action) =>
+        action.actionName !== 'Comment & Awaiting Workspace from the detail',
+    ),
+  )(
     'holds the failed request of $actionName without sending anything or showing an airplane mode error when airplane mode is turned on before the retry',
     async ({
       startAction,
