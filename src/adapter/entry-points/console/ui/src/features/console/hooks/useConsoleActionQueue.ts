@@ -182,10 +182,6 @@ const generateId = (): string => {
 export const isNetworkError = (error: unknown): boolean =>
   error instanceof TypeError;
 
-const commentWasPosted = (cause: unknown): boolean =>
-  cause instanceof ConsoleOperationRejectedError &&
-  cause.commentPosted === true;
-
 const notPostedByServer = (cause: unknown): boolean =>
   cause instanceof ConsoleOperationRejectedError &&
   cause.commentPosted === false;
@@ -468,9 +464,7 @@ export const useConsoleActionQueue = (
               notPostedByServer(unsentRequestFailure);
             const ambiguousForRetry =
               action.composerDraft !== undefined &&
-              sentStepCountAfterAttempt === 0 &&
               !refusedToComposer &&
-              !commentWasPosted(unsentRequestFailure) &&
               !isNetworkError(unsentRequestFailure);
             if (!ambiguousForRetry) {
               for (const payload of offlinePayloads) {
@@ -751,10 +745,16 @@ export const useConsoleActionQueue = (
             void deliverPersistedConsoleAction(action, true)
               .then(() => removeOfflineQueueAction(action.id))
               .catch((cause: unknown) => {
-                handBackDefinitiveRejection(action, cause);
+                const handedBack = handBackDefinitiveRejection(action, cause);
                 appendError({
                   message: entry.action.message,
                   reason: errorReason(cause),
+                  retry: handedBack
+                    ? undefined
+                    : () => {
+                        deliveredActionIdsRef.current.delete(action.id);
+                        replay();
+                      },
                 });
               });
           }

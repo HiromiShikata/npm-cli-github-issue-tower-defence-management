@@ -1,9 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
+import { ConsoleOperationRejectedError } from '../lib/consoleApi';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
-import { ConsoleOperationRejectedError } from '../lib/consoleApi';
 import { ConsoleActionPartiallySentError } from './useConsoleActionQueue';
 import { useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
