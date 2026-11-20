@@ -463,9 +463,7 @@ export const useConsoleActionQueue = (
               sentStepCountAfterAttempt === 0 &&
               notPostedByServer(unsentRequestFailure);
             const ambiguousForRetry =
-              action.composerDraft !== undefined &&
-              !refusedToComposer &&
-              !isNetworkError(unsentRequestFailure);
+              action.composerDraft !== undefined && !refusedToComposer;
             if (!ambiguousForRetry) {
               for (const payload of offlinePayloads) {
                 if (payload.id !== undefined) {
