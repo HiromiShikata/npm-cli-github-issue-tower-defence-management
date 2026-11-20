@@ -274,7 +274,13 @@ describe('useConsoleOverlay', () => {
   it('reads the overlay from storage again when the project switches back, including records written while another project was active', () => {
     localStorage.setItem(
       overlayStorageKey('acme'),
-      JSON.stringify({ 'o/r#1': { ts: 1, status: { name: 'Acme', color: 'BLUE' }, closedAtMs: 1 } }),
+      JSON.stringify({
+        'o/r#1': {
+          ts: 1,
+          status: { name: 'Acme', color: 'BLUE' },
+          closedAtMs: 1,
+        },
+      }),
     );
     const { result, rerender } = renderHook(
       ({ pjcode }: { pjcode: string }) => useConsoleOverlay(pjcode),
