@@ -738,12 +738,21 @@ export const useConsoleActionQueue = (
         setPending((prev) => prev.filter((pending) => pending.id !== entry.id));
         const offlinePayloads = entry.action.offline ?? [];
         if (offlinePayloads.length === 0) {
-          void entry.action.commit(0).catch((cause: unknown) =>
+          void entry.action.commit(0).catch((cause: unknown) => {
+            if (
+              entry.action.composerDraft !== undefined &&
+              notPostedByServer(cause)
+            ) {
+              restoreCommentDraftRef.current?.(
+                entry.action.composerDraft.projectItemId,
+                entry.action.composerDraft.body,
+              );
+            }
             appendError({
               message: entry.action.message,
               reason: errorReason(cause),
-            }),
-          );
+            });
+          });
         }
         for (const payload of offlinePayloads) {
           const action = loadPersistedConsoleActions().find(
