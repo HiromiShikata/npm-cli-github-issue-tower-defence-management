@@ -956,7 +956,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
-    it('routes a non-developer-agent issue to Awaiting Owner based on the issue-agent-matched report, not a later stray report from a different agent', async () => {
+    it('routes a non-developer-agent issue past the owner confirmation gate when a later stray report from a different agent is posted after the flagged report, because any later comment makes the request answered', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/12',
         status: 'Preparation',
@@ -999,7 +999,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
   });
 
