@@ -3063,7 +3063,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('treats the owner confirmation request as answered when any later comment from any author is posted after it, even a report from a non-matching agent identity carrying no flag (AC8, row 8)', async () => {
+    it('still treats the owner confirmation flag as unanswered when a non-matching agent identity report without the flag is posted before it (AC8, row 8)', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Owner',
         agent: 'developer',
@@ -3076,7 +3076,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         },
       ]);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
         {
           author: trustedAuthor,
           content:
@@ -3084,6 +3083,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           createdAt: new Date('2026-01-02T00:00:00Z'),
           updatedAt: new Date('2026-01-02T00:00:00Z'),
         },
+        ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
       ]);
 
       await useCase.run({
@@ -3093,8 +3093,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         developerAgentNames: ['developer'],
       });
 
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
     it('does not revert and does not comment when the issue has unresolved dependent issue URLs and the last trusted-agent report carries an unanswered owner confirmation flag with no reply after it (AC10, row 10)', async () => {

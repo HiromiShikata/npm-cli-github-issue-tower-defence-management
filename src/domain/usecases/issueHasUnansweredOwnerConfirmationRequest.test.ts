@@ -150,21 +150,21 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
       },
       {
         description:
-          'a report with the flag true followed by a machine-generated comment from a trusted author, which is no longer the latest comment',
+          'a machine-generated comment from a trusted author positioned before the flagged report, which does not make it answered',
         comments: [
-          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
-          machineGeneratedByTrustedAuthor(at('2026-09-25T09:00:00Z')),
+          machineGeneratedByTrustedAuthor(at('2026-09-25T08:00:00Z')),
+          reportWithFlagTrue(at('2026-09-25T09:00:00Z')),
         ],
-        expected: false,
+        expected: true,
       },
       {
         description:
-          'a reply stamped at exactly the same instant as the report but positioned after it makes the report no longer the latest comment',
+          'a reply updated at exactly the same instant as the report, positioned before the report, does not count as strictly later',
         comments: [
-          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
           humanReply('the-owner', at('2026-09-25T08:00:00Z')),
+          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
         ],
-        expected: false,
+        expected: true,
       },
       {
         description:
@@ -202,7 +202,7 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
     });
   });
 
-  it('judges by array position, not by timestamps, so a human comment edited after the report but positioned before it does not make the report answered', () => {
+  it('keeps judging a human comment edited after the report as a reply and a human comment older than an edited report as no reply', () => {
     const cases: {
       description: string;
       comments: Comment[];
@@ -210,16 +210,16 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
     }[] = [
       {
         description:
-          'a human comment positioned before the report, even when edited after it, does not count as a reply',
+          'a human comment created before the report but positioned after it, edited later, counts as a reply',
         comments: [
+          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
           editedHumanReply(
             'the-owner',
             at('2026-09-25T07:00:00Z'),
             at('2026-09-25T09:00:00Z'),
           ),
-          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
         ],
-        expected: true,
+        expected: false,
       },
       {
         description:
@@ -340,13 +340,13 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
       },
       {
         description:
-          'a later report from another agent without the flag follows the earlier matching flagged report, so the flagged report is no longer the latest comment',
+          'an earlier mismatching report without the flag does not hide the matching report that carries it',
         comments: [
-          reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
-          reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T09:00:00Z')),
+          reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T08:00:00Z')),
+          reportWithFlagTrueFromAgent('developer', at('2026-09-25T09:00:00Z')),
         ],
         agentFieldValue: 'developer',
-        expected: false,
+        expected: true,
       },
     ];
 
