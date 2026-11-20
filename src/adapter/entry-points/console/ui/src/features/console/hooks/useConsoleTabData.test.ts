@@ -697,6 +697,128 @@ describe('useConsoleTabData', () => {
     });
   });
 
+  it('keeps a single-tab result for project A out of project B once the switch to B has rendered', async () => {
+    const ACME_GENERATED_AT = '2026-06-19T00:00:00.000Z';
+    const BETA_GENERATED_AT = '2026-06-25T00:00:00.000Z';
+    const REFRESHED_GENERATED_AT = '2026-07-01T00:00:00.000Z';
+    let holdAcmeQueued = false;
+    let releaseAcmeQueued: (payload: unknown) => void = () => undefined;
+    const acmeQueuedRefresh = new Promise<unknown>((resolve) => {
+      releaseAcmeQueued = resolve;
+    });
+    global.fetch = jest.fn(async (url: string) => {
+      if (holdAcmeQueued && url.endsWith('/acme/queued/list.json')) {
+        return { ok: true, status: 200, json: () => acmeQueuedRefresh };
+      }
+      const generatedAt = url.includes('/beta/')
+        ? BETA_GENERATED_AT
+        : ACME_GENERATED_AT;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => makeTabPayload({ generatedAt }),
+      };
+    }) as unknown as typeof fetch;
+
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleTabData(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const acmeSnapshots = result.current.snapshots;
+
+    holdAcmeQueued = true;
+    let refreshDone: Promise<void> = Promise.resolve();
+    act(() => {
+      refreshDone = result.current.refreshSingleTab('queued');
+    });
+
+    await act(async () => {
+      rerender({ pjcode: 'beta' });
+      releaseAcmeQueued(
+        makeTabPayload({
+          generatedAt: REFRESHED_GENERATED_AT,
+          items: [
+            {
+              number: 999,
+              itemId: 'NEW_ITEM',
+              projectItemId: 'NEW_ITEM',
+              relatedOpenPullRequestUrls: [],
+            },
+          ],
+        }),
+      );
+      await refreshDone;
+    });
+    await waitFor(() =>
+      expect(result.current.snapshots.prs?.generatedAt).toBe(BETA_GENERATED_AT),
+    );
+
+    expect(
+      result.current.snapshots.queued?.items.map((item) => item.number),
+    ).not.toContain(999);
+    expect(result.current.snapshots.queued?.generatedAt).toBe(
+      BETA_GENERATED_AT,
+    );
+
+    rerender({ pjcode: 'acme' });
+    expect(
+      result.current.snapshots.queued?.items.map((item) => item.number),
+    ).toEqual([999]);
+    expect(result.current.snapshots.queued?.generatedAt).toBe(
+      REFRESHED_GENERATED_AT,
+    );
+    expect({ ...result.current.snapshots, queued: null }).toEqual({
+      ...acmeSnapshots,
+      queued: null,
+    });
+  });
+
+  it('does not give project A a loaded state from a single-tab result when A has no registry entry', async () => {
+    let holdAcme = true;
+    const acmeReleases: Array<() => void> = [];
+    global.fetch = jest.fn(async (url: string) => {
+      const response = {
+        ok: true,
+        status: 200,
+        json: async () => makeTabPayload({ generatedAt: url }),
+      };
+      if (holdAcme && url.includes('/acme/')) {
+        return new Promise((resolve) => {
+          acmeReleases.push(() => resolve(response));
+        });
+      }
+      return response;
+    }) as unknown as typeof fetch;
+
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleTabData(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+    expect(result.current.isLoading).toBe(true);
+    const refreshAcmeQueued = result.current.refreshSingleTab;
+    let refreshDone: Promise<void> = Promise.resolve();
+    act(() => {
+      refreshDone = refreshAcmeQueued('queued');
+    });
+
+    rerender({ pjcode: 'beta' });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      for (const release of acmeReleases) {
+        release();
+      }
+      await refreshDone;
+    });
+
+    rerender({ pjcode: 'acme' });
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.snapshots.prs).toBeNull();
+    expect(result.current.snapshots.queued).toBeNull();
+    holdAcme = false;
+  });
+
   it('clears stale timer data from the previous project after switching when no cache exists for the new project', async () => {
     const fetchMock = jest.fn(async (url: string) => {
       if (url.includes('/acme/')) {
