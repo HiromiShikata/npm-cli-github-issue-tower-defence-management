@@ -1,3 +1,10 @@
+## [2.201.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.2...v2.201.3) (2026-11-20)
+
+
+### Bug Fixes
+
+* **owner-confirmation:** treat owner request as unanswered only while it is the latest comment ([#3747](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3747)) ([b7d6486](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b7d6486764707d9002ec0a0d3bfd6f3407a50432))
+
 ## [2.201.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.1...v2.201.2) (2026-11-19)
 
 
