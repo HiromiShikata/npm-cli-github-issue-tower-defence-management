@@ -620,6 +620,83 @@ describe('useConsoleTabData', () => {
     expect(result.current.snapshots.prs).toBe(snapshotBefore);
   });
 
+  it('keeps a single-tab refresh started for project A out of project B and merges it into A entry', async () => {
+    const ACME_GENERATED_AT = '2026-06-19T00:00:00.000Z';
+    const BETA_GENERATED_AT = '2026-06-25T00:00:00.000Z';
+    const REFRESHED_GENERATED_AT = '2026-07-01T00:00:00.000Z';
+    let holdAcmeQueued = false;
+    let releaseAcmeQueued: (payload: unknown) => void = () => undefined;
+    const acmeQueuedRefresh = new Promise<unknown>((resolve) => {
+      releaseAcmeQueued = resolve;
+    });
+    global.fetch = jest.fn(async (url: string) => {
+      if (holdAcmeQueued && url.endsWith('/acme/queued/list.json')) {
+        return { ok: true, status: 200, json: () => acmeQueuedRefresh };
+      }
+      const generatedAt = url.includes('/beta/')
+        ? BETA_GENERATED_AT
+        : ACME_GENERATED_AT;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => makeTabPayload({ generatedAt }),
+      };
+    }) as unknown as typeof fetch;
+
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleTabData(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const acmeSnapshots = result.current.snapshots;
+
+    holdAcmeQueued = true;
+    let refreshDone: Promise<void> = Promise.resolve();
+    act(() => {
+      refreshDone = result.current.refreshSingleTab('queued');
+    });
+
+    rerender({ pjcode: 'beta' });
+    await waitFor(() =>
+      expect(result.current.snapshots.prs?.generatedAt).toBe(BETA_GENERATED_AT),
+    );
+    const betaSnapshots = result.current.snapshots;
+
+    await act(async () => {
+      releaseAcmeQueued(
+        makeTabPayload({
+          generatedAt: REFRESHED_GENERATED_AT,
+          items: [
+            {
+              number: 999,
+              itemId: 'NEW_ITEM',
+              projectItemId: 'NEW_ITEM',
+              relatedOpenPullRequestUrls: [],
+            },
+          ],
+        }),
+      );
+      await refreshDone;
+    });
+
+    expect(
+      result.current.snapshots.queued?.items.map((item) => item.number),
+    ).not.toContain(999);
+    expect(result.current.snapshots).toEqual(betaSnapshots);
+
+    rerender({ pjcode: 'acme' });
+    expect(
+      result.current.snapshots.queued?.items.map((item) => item.number),
+    ).toEqual([999]);
+    expect(result.current.snapshots.queued?.generatedAt).toBe(
+      REFRESHED_GENERATED_AT,
+    );
+    expect({ ...result.current.snapshots, queued: null }).toEqual({
+      ...acmeSnapshots,
+      queued: null,
+    });
+  });
+
   it('clears stale timer data from the previous project after switching when no cache exists for the new project', async () => {
     const fetchMock = jest.fn(async (url: string) => {
       if (url.includes('/acme/')) {
