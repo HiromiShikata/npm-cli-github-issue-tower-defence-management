@@ -12,34 +12,34 @@ import type {
   PullRequestReviewCommentSide,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
-import {
-  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
-  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
-  recordDoneProjectItemIdAcrossTabs,
-  recordDoneProjectItemIdForTabs,
-} from './consoleDoneStore';
-import { appendCloseEvent } from './consoleCloseEventStore';
+import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
+import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueCloseOutcomeConfirmUseCase';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
-import { extractProjectOwner } from './consoleGithubTokenResolver';
-import {
-  deleteProjectTimer,
-  writeProjectTimer,
-} from './consoleProjectTimerStore';
 import {
   fetchProjectReadme,
   setProjectReadmeMaxPreparingIssuesCount,
   updateProjectV2Readme,
 } from '../cli/projectConfig';
 import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRepository';
-import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
-import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
-import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueCloseOutcomeConfirmUseCase';
 import {
-  type ConsoleActionRecord,
   ACTION_RESULT_LIMIT,
+  type ConsoleActionRecord,
   readConsoleActionRecords,
   writeConsoleActionRecord,
 } from './consoleActionResultStore';
+import { appendCloseEvent } from './consoleCloseEventStore';
+import {
+  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
+  recordDoneProjectItemIdAcrossTabs,
+  recordDoneProjectItemIdForTabs,
+} from './consoleDoneStore';
+import { extractProjectOwner } from './consoleGithubTokenResolver';
+import {
+  deleteProjectTimer,
+  writeProjectTimer,
+} from './consoleProjectTimerStore';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -347,7 +347,7 @@ type ExpectedStatusAtActionTime =
 const readExpectedStatusAtActionTime = (
   body: Record<string, unknown>,
 ): ExpectedStatusAtActionTime => {
-  if (!Object.prototype.hasOwnProperty.call(body, EXPECTED_STATUS_NAME_KEY)) {
+  if (!Object.hasOwn(body, EXPECTED_STATUS_NAME_KEY)) {
     return { present: false };
   }
   const rawValue = body[EXPECTED_STATUS_NAME_KEY];
@@ -390,8 +390,9 @@ const rejectWhenStatusChangedBeforePullRequestWrite = async (
   }
   const liveStatusName = liveIssue.status;
   if (
+    targetStatusName === undefined &&
     liveStatusName?.toLowerCase() ===
-    AWAITING_WORKSPACE_STATUS_NAME.toLowerCase()
+      AWAITING_WORKSPACE_STATUS_NAME.toLowerCase()
   ) {
     return null;
   }

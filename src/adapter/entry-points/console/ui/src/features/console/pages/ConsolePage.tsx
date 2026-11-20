@@ -67,6 +67,7 @@ import {
 } from '../logic/actionToast';
 import {
   loadCommentDrafts,
+  releaseRestoredCommentDraftInStorage,
   restoreCommentDraftInStorage,
   saveCommentDrafts,
 } from '../logic/commentDraftStorage';
@@ -486,6 +487,16 @@ export const ConsolePage = () => {
     },
     [commentDraftRestored],
   );
+  const releaseCommentDraft = useCallback(
+    (itemKey: string, body: string) => {
+      commentDrafts.current = releaseRestoredCommentDraftInStorage(
+        itemKey,
+        body,
+      );
+      commentDraftRestored(itemKey);
+    },
+    [commentDraftRestored],
+  );
 
   const caches = useConsoleCaches(airplaneSnapshot);
   const refreshQueuedTab = useCallback(
@@ -497,6 +508,7 @@ export const ConsolePage = () => {
     isAirplaneModeOn: airplaneMode.status === 'on',
     projectCode: pjcode,
     restoreCommentDraft,
+    releaseCommentDraft,
   });
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
