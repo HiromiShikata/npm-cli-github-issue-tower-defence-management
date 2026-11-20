@@ -1,3 +1,10 @@
+## [2.201.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.5...v2.201.6) (2026-11-20)
+
+
+### Bug Fixes
+
+* **console:** keep single-tab refresh results with their project across switches ([#3750](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3750)) ([2db6df6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2db6df6c41bd410f566accb1825b2651cba2079a))
+
 ## [2.201.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.4...v2.201.5) (2026-11-20)
 
 
