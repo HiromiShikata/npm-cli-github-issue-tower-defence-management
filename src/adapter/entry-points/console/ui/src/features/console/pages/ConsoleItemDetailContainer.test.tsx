@@ -3765,7 +3765,16 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       addCommentResult: 'posted' as const,
       expectedAddCommentCalls: [],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
+        [
+          {
+            ...commentOfflinePayloadFor(
+              issueItem,
+              commentBodyWrittenOffline,
+              true,
+            ),
+            composerDraftBody: commentBodyWrittenOffline,
+          },
+        ],
       ],
     },
     {
@@ -3776,7 +3785,16 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         [issueItem, commentBodyWrittenOffline, expect.any(String)],
       ],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
+        [
+          {
+            ...commentOfflinePayloadFor(
+              issueItem,
+              commentBodyWrittenOffline,
+              true,
+            ),
+            composerDraftBody: commentBodyWrittenOffline,
+          },
+        ],
       ],
     },
     {
@@ -3888,7 +3906,14 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'Comment & Close',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing, true),
+        {
+          ...commentOfflinePayloadFor(
+            issueItem,
+            draftWrittenBeforeClosing,
+            true,
+          ),
+          composerDraftBody: draftWrittenBeforeClosing,
+        },
         triageOfflinePayloadFor(issueItem, 'close', undefined, true),
       ],
     },

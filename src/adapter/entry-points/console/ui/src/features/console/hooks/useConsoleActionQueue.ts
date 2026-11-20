@@ -296,6 +296,21 @@ export const useConsoleActionQueue = (
     },
     [],
   );
+  const handBackDefinitiveRejection = useCallback(
+    (action: ConsoleOfflineQueuedAction, cause: unknown): void => {
+      if (
+        action.composerDraftBody === undefined ||
+        isNetworkError(cause) ||
+        commentWasPosted(cause)
+      ) {
+        return;
+      }
+      removePersistedConsoleAction(action.id);
+      removeOfflineQueueAction(action.id);
+      handBackComments([action]);
+    },
+    [handBackComments],
+  );
   const runCommitRef = useRef<
     (
       action: ConsoleQueuedAction,
@@ -677,9 +692,7 @@ export const useConsoleActionQueue = (
         void deliverPersistedConsoleAction(action)
           .then(() => removeOfflineQueueAction(action.id))
           .catch((cause: unknown) => {
-            if (!commentWasPosted(cause)) {
-              handBackComments([action]);
-            }
+            handBackDefinitiveRejection(action, cause);
             appendError({
               message: action.message,
               reason: errorReason(cause),
@@ -715,9 +728,7 @@ export const useConsoleActionQueue = (
             void deliverPersistedConsoleAction(action, true)
               .then(() => removeOfflineQueueAction(action.id))
               .catch((cause: unknown) => {
-                if (!commentWasPosted(cause)) {
-                  handBackComments([action]);
-                }
+                handBackDefinitiveRejection(action, cause);
                 appendError({
                   message: entry.action.message,
                   reason: errorReason(cause),
@@ -738,7 +749,7 @@ export const useConsoleActionQueue = (
       document.removeEventListener('visibilitychange', onVisibilityChange);
       deliverPending();
     };
-  }, [appendError, handBackComments]);
+  }, [appendError, handBackDefinitiveRejection]);
 
   return {
     pending,

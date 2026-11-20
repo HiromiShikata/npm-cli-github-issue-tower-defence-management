@@ -333,7 +333,10 @@ export const ConsoleItemDetailContainer = ({
       ): ConsoleCommentSubmitResult => {
         onOfflineActionsCreate({
           payloads: [
-            commentOfflinePayloadBuild(projectCode, item, body, actionId),
+            {
+              ...commentOfflinePayloadBuild(projectCode, item, body, actionId),
+              composerDraftBody: body,
+            },
           ],
           message: commentHeldOfflineToastMessage(item),
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
@@ -351,6 +354,7 @@ export const ConsoleItemDetailContainer = ({
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
           enqueuedAt: Date.now(),
           ...commentOfflinePayloadBuild(pjcode, item, body, actionId),
+          composerDraftBody: body,
         };
         persistConsoleAction(descriptor);
       }
@@ -845,7 +849,10 @@ export const ConsoleItemDetailContainer = ({
           sentStepCount,
         ),
       offline: [
-        commentOfflinePayloadBuild(pjcode, item, body, commentActionId),
+        {
+          ...commentOfflinePayloadBuild(pjcode, item, body, commentActionId),
+          composerDraftBody: body,
+        },
         buildTriageOfflinePayload(pjcode, item, 'close', {
           actionId: closeActionId,
         }),
