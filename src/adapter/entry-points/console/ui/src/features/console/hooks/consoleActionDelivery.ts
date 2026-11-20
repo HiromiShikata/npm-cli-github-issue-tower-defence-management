@@ -78,6 +78,7 @@ export const deliverConsoleAction = async (
         payload !== null &&
         'commentPosted' in payload &&
         (payload as { commentPosted: unknown }).commentPosted === true,
+      response.status,
     );
   }
   if (

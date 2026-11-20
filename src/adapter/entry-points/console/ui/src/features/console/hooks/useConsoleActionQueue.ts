@@ -185,6 +185,11 @@ export const isNetworkError = (error: unknown): boolean =>
 const commentWasPosted = (cause: unknown): boolean =>
   cause instanceof ConsoleOperationRejectedError && cause.commentPosted;
 
+const isRefusedByServer = (cause: unknown): boolean =>
+  cause instanceof ConsoleOperationRejectedError &&
+  cause.status >= 400 &&
+  cause.status < 500;
+
 export class ConsoleActionPartiallySentError extends Error {
   readonly sentStepCount: number;
   declare readonly cause: unknown;
@@ -466,11 +471,11 @@ export const useConsoleActionQueue = (
                 removeOfflineQueueAction(payload.id);
               }
             }
-            if (
+            const restoredToComposer =
               action.composerDraft !== undefined &&
               sentStepCountAfterAttempt === 0 &&
-              !commentWasPosted(unsentRequestFailure)
-            ) {
+              !commentWasPosted(unsentRequestFailure);
+            if (restoredToComposer && action.composerDraft !== undefined) {
               restoreCommentDraftRef.current?.(
                 action.composerDraft.projectItemId,
                 action.composerDraft.body,
@@ -479,12 +484,15 @@ export const useConsoleActionQueue = (
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
-              retry: () =>
-                runCommitRef.current(
-                  action,
-                  sentStepCountAfterAttempt,
-                  errorId,
-                ),
+              retry:
+                restoredToComposer && isRefusedByServer(unsentRequestFailure)
+                  ? undefined
+                  : () =>
+                      runCommitRef.current(
+                        action,
+                        sentStepCountAfterAttempt,
+                        errorId,
+                      ),
             });
             setWriteState({ status: 'failed', attempt });
           }
