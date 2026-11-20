@@ -596,6 +596,18 @@ export const useConsoleActionQueue = (
             result.rateLimitResetAt !== null
               ? ` Rate limit resets at ${result.rateLimitResetAt}.`
               : '';
+          if (
+            result.commentPosted === false &&
+            action.composerDraftBody !== undefined
+          ) {
+            handBackComments([action]);
+            discardOfflineAction(id);
+            appendError({
+              message: action.message,
+              reason: `${result.error}.${resetInfo}`,
+            });
+            return;
+          }
           appendError({
             message: action.message,
             reason: `${result.error}.${resetInfo}`,

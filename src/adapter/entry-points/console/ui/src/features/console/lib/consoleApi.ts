@@ -381,7 +381,12 @@ export type ConsoleCommentRequest = {
 
 export type ConsoleCommentResult =
   | { posted: true; comment: ConsoleComment }
-  | { posted: false; error: string; rateLimitResetAt: string | null };
+  | {
+      posted: false;
+      error: string;
+      rateLimitResetAt: string | null;
+      commentPosted?: false;
+    };
 
 const parseCommentRecord = (
   commentRecord: Record<string, unknown>,
@@ -401,10 +406,14 @@ export const postConsoleComment = async (
     body: JSON.stringify(request),
   });
   if (!response.ok) {
+    const raw = await readOperationRawBody(response);
     return {
       posted: false,
-      error: await readOperationErrorReason(response),
+      error: operationErrorReasonFrom(raw, response.status),
       rateLimitResetAt: null,
+      ...(parseJsonRecord(raw)?.commentPosted === false
+        ? { commentPosted: false as const }
+        : {}),
     };
   }
   const payload: unknown = await response.json();

@@ -10638,9 +10638,8 @@ describe('ConsolePage offline action queue', () => {
         expectedSecondRequestBody,
         expectedSecondRequestBody,
       ]);
-      await waitFor(() => {
-        expect(readStoredOfflineQueue()).toEqual([]);
-      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(readStoredOfflineQueue()).toEqual([]);
       expect(view.container.querySelector('.console-error-toast')).toBeNull();
     },
   );
