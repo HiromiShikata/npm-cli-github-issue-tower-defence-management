@@ -470,7 +470,7 @@ export const useConsoleActionQueue = (
           }
         });
     },
-    [offlineActionsCreate, handBackComments],
+    [offlineActionsCreate],
   );
   runCommitRef.current = runCommit;
 
