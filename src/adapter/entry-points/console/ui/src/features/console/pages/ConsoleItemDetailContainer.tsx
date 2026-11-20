@@ -864,6 +864,7 @@ export const ConsoleItemDetailContainer = ({
         }),
       ],
       overlayPatch: { done: true, closed: true },
+      composerDraft: { projectItemId: item.projectItemId, body },
     });
   };
 

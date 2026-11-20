@@ -3982,6 +3982,24 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     return onQueueAction.mock.calls[0][0].commit;
   };
 
+  it('queues Comment & Close with the composer text so a failed delivery hands it back', async () => {
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } =
+      renderIssueDetailForCommentDelivery({ onQueueAction });
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: draftWrittenBeforeClosing },
+    });
+    fireEvent.click(getByText('Comment & Close'));
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    expect(onQueueAction.mock.calls[0][0].composerDraft).toEqual({
+      projectItemId: issueItem.projectItemId,
+      body: draftWrittenBeforeClosing,
+    });
+  });
+
   it.each(commentThenCloseActions)(
     'commits $buttonLabel by posting the comment once and then closing the item once when both requests succeed',
     async ({ buttonLabel, expectedCommentBody }) => {
