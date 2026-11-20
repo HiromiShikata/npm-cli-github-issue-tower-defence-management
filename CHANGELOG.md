@@ -1,3 +1,10 @@
+## [2.201.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.7...v2.201.8) (2026-11-20)
+
+
+### Bug Fixes
+
+* **console:** apply the stale Status rule to the comment pre-check and restore a refused comment only ([#3752](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3752)) ([04d99de](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/04d99deda551e046f8225c9e1f81120dc2f07e51))
+
 ## [2.201.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.6...v2.201.7) (2026-11-20)
 
 
