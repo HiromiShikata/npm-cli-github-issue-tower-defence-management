@@ -1343,6 +1343,78 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleTriage', () => {
+    it('rejects a stale set_status with commentBody before creating the comment and reports no comment', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        status: 'Done',
+      });
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId: 'triage-stale-before-comment-1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_stale_before_comment',
+        expectedStatusName: 'Todo',
+        statusName: 'Awaiting workspace',
+        commentBody: 'handoff details',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toMatchObject({ commentPosted: false });
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('posts the comment when the Status is already the target status even though the expected status differs', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        status: 'Todo',
+      });
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId: 'triage-already-target-1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_already_target',
+        expectedStatusName: 'In Tmux by human',
+        statusName: 'Todo',
+        commentBody: 'handoff details',
+      });
+
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toMatchObject({ ok: true, commentPosted: true });
+    });
+
+    it('reports the comment as posted when the status step fails after the comment was created', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        status: 'Todo',
+      });
+      issueRepository.updateStatus.mockRejectedValue(
+        new Error('GraphQL rate limit exceeded'),
+      );
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId: 'triage-status-fails-after-comment-1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_status_fails',
+        expectedStatusName: 'Todo',
+        statusName: 'Awaiting workspace',
+        commentBody: 'handoff details',
+      });
+
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toMatchObject({
+        commentPosted: true,
+        statusSet: false,
+      });
+    });
+
     it('handles set_status with commentBody as one request and reports both completed steps', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,

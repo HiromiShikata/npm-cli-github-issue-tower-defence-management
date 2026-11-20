@@ -67,6 +67,7 @@ import {
 } from '../logic/actionToast';
 import {
   loadCommentDrafts,
+  restoreCommentDraftInStorage,
   saveCommentDrafts,
 } from '../logic/commentDraftStorage';
 import { consoleStoryEntriesWithClosedOverlay } from '../logic/consoleStoryClosedOverlay';
@@ -470,6 +471,22 @@ export const ConsolePage = () => {
     [selectedItemKey],
   );
 
+  const [commentDraftRevision, setCommentDraftRevision] = useState(0);
+  const selectedItemKeyRef = useRef<string | null>(selectedItemKey);
+  selectedItemKeyRef.current = selectedItemKey;
+  const commentDraftRestored = useCallback((itemKey: string) => {
+    if (itemKey === selectedItemKeyRef.current) {
+      setCommentDraftRevision((previous) => previous + 1);
+    }
+  }, []);
+  const restoreCommentDraft = useCallback(
+    (itemKey: string, body: string) => {
+      commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
+      commentDraftRestored(itemKey);
+    },
+    [commentDraftRestored],
+  );
+
   const caches = useConsoleCaches(airplaneSnapshot);
   const refreshQueuedTab = useCallback(
     () => refreshSingleTab('queued'),
@@ -479,6 +496,7 @@ export const ConsolePage = () => {
   const actionQueue = useConsoleActionQueue({
     isAirplaneModeOn: airplaneMode.status === 'on',
     projectCode: pjcode,
+    restoreCommentDraft,
   });
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -957,6 +975,7 @@ export const ConsolePage = () => {
             : (sentStepCount, actionId) =>
                 commitWithActionId(sentStepCount, actionId),
         offline: input.offline,
+        composerDraft: input.composerDraft,
         revertAdvance:
           dependedIssueSubmission === null
             ? input.revertAdvance
@@ -2063,6 +2082,8 @@ export const ConsolePage = () => {
             initialCommentDraft={
               commentDrafts.current.get(selectedItem.projectItemId) ?? ''
             }
+            commentDraftRevision={commentDraftRevision}
+            onCommentDraftRestored={commentDraftRestored}
             onCommentDraftChange={handleCommentDraftChange}
             onQueueAction={handleQueueAction}
             onCommentError={(message, reason) =>

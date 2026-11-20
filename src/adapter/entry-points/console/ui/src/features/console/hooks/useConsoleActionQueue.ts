@@ -8,6 +8,7 @@ import {
 import {
   COMMENT_OPERATION_PATH,
   type ConsoleCommentRequest,
+  ConsoleOperationRejectedError,
   postConsoleComment,
   postConsoleOperation,
 } from '../lib/consoleApi';
@@ -25,6 +26,7 @@ import {
 import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 
 export type ConsoleOfflinePayload = {
+  composerDraftBody?: string;
   itemUrl: string;
   projectItemId: string;
   itemNumber: number;
@@ -57,6 +59,7 @@ export type ConsoleQueuedAction = {
   optimistic?: () => void;
   revertOptimistic?: () => void;
   offline?: ConsoleOfflinePayload[];
+  composerDraft?: { projectItemId: string; body: string };
 };
 
 export type ConsoleOfflineActionsCreateRequest = {
@@ -68,6 +71,7 @@ export type ConsoleOfflineActionsCreateRequest = {
 export type ConsoleActionQueueOptions = {
   isAirplaneModeOn: boolean;
   projectCode?: string | null;
+  restoreCommentDraft?: (projectItemId: string, body: string) => void;
 };
 
 export type ConsolePendingActionView = {
@@ -178,6 +182,9 @@ const generateId = (): string => {
 export const isNetworkError = (error: unknown): boolean =>
   error instanceof TypeError;
 
+const commentWasPosted = (cause: unknown): boolean =>
+  cause instanceof ConsoleOperationRejectedError && cause.commentPosted;
+
 export class ConsoleActionPartiallySentError extends Error {
   readonly sentStepCount: number;
   declare readonly cause: unknown;
@@ -276,6 +283,33 @@ export const useConsoleActionQueue = (
 
   const pendingEntriesRef = useRef<Map<string, ConsolePendingEntryState>>(
     new Map(),
+  );
+  const restoreCommentDraftRef = useRef(options.restoreCommentDraft);
+  restoreCommentDraftRef.current = options.restoreCommentDraft;
+  const handBackComments = useCallback(
+    (payloads: ConsoleOfflinePayload[]): void => {
+      for (const payload of payloads) {
+        const body = payload.composerDraftBody;
+        if (body === undefined || body.trim().length === 0) continue;
+        restoreCommentDraftRef.current?.(payload.projectItemId, body);
+      }
+    },
+    [],
+  );
+  const handBackDefinitiveRejection = useCallback(
+    (action: ConsoleOfflineQueuedAction, cause: unknown): void => {
+      if (
+        action.composerDraftBody === undefined ||
+        isNetworkError(cause) ||
+        commentWasPosted(cause)
+      ) {
+        return;
+      }
+      removePersistedConsoleAction(action.id);
+      removeOfflineQueueAction(action.id);
+      handBackComments([action]);
+    },
+    [handBackComments],
   );
   const runCommitRef = useRef<
     (
@@ -432,6 +466,16 @@ export const useConsoleActionQueue = (
                 removeOfflineQueueAction(payload.id);
               }
             }
+            if (
+              action.composerDraft !== undefined &&
+              sentStepCountAfterAttempt === 0 &&
+              !commentWasPosted(unsentRequestFailure)
+            ) {
+              restoreCommentDraftRef.current?.(
+                action.composerDraft.projectItemId,
+                action.composerDraft.body,
+              );
+            }
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
@@ -546,6 +590,15 @@ export const useConsoleActionQueue = (
             result.rateLimitResetAt !== null
               ? ` Rate limit resets at ${result.rateLimitResetAt}.`
               : '';
+          if (action.composerDraftBody !== undefined) {
+            handBackComments([action]);
+            discardOfflineAction(id);
+            appendError({
+              message: action.message,
+              reason: `${result.error}.${resetInfo}`,
+            });
+            return;
+          }
           appendError({
             message: action.message,
             reason: `${result.error}.${resetInfo}`,
@@ -566,12 +619,15 @@ export const useConsoleActionQueue = (
             reason: 'Still offline — action is still held in the queue',
           });
         } else {
+          if (!commentWasPosted(cause)) {
+            handBackComments([action]);
+          }
           appendError({ message: action.message, reason: errorReason(cause) });
           discardOfflineAction(id);
         }
       }
     },
-    [appendError, discardOfflineAction],
+    [appendError, discardOfflineAction, handBackComments],
   );
 
   const enqueue = useCallback(
@@ -644,6 +700,7 @@ export const useConsoleActionQueue = (
         void deliverPersistedConsoleAction(action)
           .then(() => removeOfflineQueueAction(action.id))
           .catch((cause: unknown) => {
+            handBackDefinitiveRejection(action, cause);
             appendError({
               message: action.message,
               reason: errorReason(cause),
@@ -678,12 +735,13 @@ export const useConsoleActionQueue = (
             deliveredActionIdsRef.current.add(action.id);
             void deliverPersistedConsoleAction(action, true)
               .then(() => removeOfflineQueueAction(action.id))
-              .catch((cause: unknown) =>
+              .catch((cause: unknown) => {
+                handBackDefinitiveRejection(action, cause);
                 appendError({
                   message: entry.action.message,
                   reason: errorReason(cause),
-                }),
-              );
+                });
+              });
           }
         }
       }
@@ -699,7 +757,7 @@ export const useConsoleActionQueue = (
       document.removeEventListener('visibilitychange', onVisibilityChange);
       deliverPending();
     };
-  }, [appendError]);
+  }, [appendError, handBackDefinitiveRejection]);
 
   return {
     pending,

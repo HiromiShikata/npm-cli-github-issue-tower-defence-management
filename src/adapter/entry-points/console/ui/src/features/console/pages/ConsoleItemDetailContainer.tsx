@@ -44,6 +44,10 @@ import {
   toggleMarkdownCheckboxAtIndex,
 } from '../lib/markdownCheckboxToggle';
 import { type ConsoleActionKind, itemToastLabel } from '../logic/actionToast';
+import {
+  loadCommentDrafts,
+  mergeRestoredCommentDraft,
+} from '../logic/commentDraftStorage';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
   AWAITING_WORKSPACE_NAME,
@@ -75,6 +79,7 @@ export type ConsoleCommentErrorHandler = (
 export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
+  composerDraft?: { projectItemId: string; body: string };
   commit: (sentStepCount: number) => Promise<void>;
   commitWithActionId?: (
     sentStepCount: number,
@@ -236,6 +241,8 @@ export type ConsoleItemDetailContainerProps = {
   now: number;
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
+  onCommentDraftRestored?: (projectItemId: string) => void;
+  commentDraftRevision?: number;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
   onCommentError?: ConsoleCommentErrorHandler;
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
@@ -274,6 +281,8 @@ export const ConsoleItemDetailContainer = ({
   now,
   initialCommentDraft,
   onCommentDraftChange,
+  onCommentDraftRestored,
+  commentDraftRevision,
   onQueueAction,
   onCommentError,
   onDeleteStory,
@@ -327,7 +336,10 @@ export const ConsoleItemDetailContainer = ({
       ): ConsoleCommentSubmitResult => {
         onOfflineActionsCreate({
           payloads: [
-            commentOfflinePayloadBuild(projectCode, item, body, actionId),
+            {
+              ...commentOfflinePayloadBuild(projectCode, item, body, actionId),
+              composerDraftBody: body,
+            },
           ],
           message: commentHeldOfflineToastMessage(item),
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
@@ -345,6 +357,7 @@ export const ConsoleItemDetailContainer = ({
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
           enqueuedAt: Date.now(),
           ...commentOfflinePayloadBuild(pjcode, item, body, actionId),
+          composerDraftBody: body,
         };
         persistConsoleAction(descriptor);
       }
@@ -759,13 +772,29 @@ export const ConsoleItemDetailContainer = ({
                 offline:
                   pjcode != null
                     ? [
-                        buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                          statusName: awaitingWorkspaceOption.name,
-                          commentBody: body,
-                        }),
+                        {
+                          ...buildTriageOfflinePayload(
+                            pjcode,
+                            item,
+                            'set_status',
+                            {
+                              statusName: awaitingWorkspaceOption.name,
+                              commentBody: body,
+                            },
+                          ),
+                          composerDraftBody: body,
+                        },
                       ]
                     : undefined,
-                revertAdvance: () => onCommentDraftChange?.(body),
+                revertAdvance: () => {
+                  onCommentDraftChange?.(
+                    mergeRestoredCommentDraft(
+                      loadCommentDrafts().get(item.projectItemId) ?? '',
+                      body,
+                    ),
+                  );
+                  onCommentDraftRestored?.(item.projectItemId);
+                },
                 overlayPatch: {
                   done: true,
                   status: {
@@ -773,6 +802,7 @@ export const ConsoleItemDetailContainer = ({
                     color: awaitingWorkspaceOption.color,
                   },
                 },
+                composerDraft: { projectItemId: item.projectItemId, body },
               });
               if (isAirplaneModeOn && pjcode != null) {
                 resolve('held_offline');
@@ -825,12 +855,16 @@ export const ConsoleItemDetailContainer = ({
           sentStepCount,
         ),
       offline: [
-        commentOfflinePayloadBuild(pjcode, item, body, commentActionId),
+        {
+          ...commentOfflinePayloadBuild(pjcode, item, body, commentActionId),
+          composerDraftBody: body,
+        },
         buildTriageOfflinePayload(pjcode, item, 'close', {
           actionId: closeActionId,
         }),
       ],
       overlayPatch: { done: true, closed: true },
+      composerDraft: { projectItemId: item.projectItemId, body },
     });
   };
 
@@ -933,6 +967,7 @@ export const ConsoleItemDetailContainer = ({
       onCreateIssueFromComment={onCreateIssueFromComment}
       commentComposer={
         <ConsoleCommentComposer
+          key={commentDraftRevision}
           initiallyOpen
           initialDraft={initialCommentDraft}
           onSubmit={addComment}

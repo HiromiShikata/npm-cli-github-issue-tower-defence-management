@@ -642,6 +642,49 @@ describe('ConsoleItemDetailContainer', () => {
     expect(onCommentDraftChange).toHaveBeenCalledWith('should survive undo');
   });
 
+  it('undo merges the restored comment with newer text already persisted for the item', async () => {
+    localStorage.setItem(
+      'console-comment-drafts',
+      JSON.stringify([[issueItem.projectItemId, 'follow-up words']]),
+    );
+    const operations = buildOperations();
+    const onCommentDraftChange = jest.fn();
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+        onCommentDraftChange={onCommentDraftChange}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'first text' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    const input = onQueueAction.mock.calls[0][0];
+    onCommentDraftChange.mockClear();
+
+    input.revertAdvance();
+
+    expect(onCommentDraftChange).toHaveBeenCalledWith(
+      'first text\n\nfollow-up words',
+    );
+    localStorage.removeItem('console-comment-drafts');
+  });
+
   it('does not call addCommentAndMoveToAwaitingWorkspace merely from clicking Comment & Awaiting Workspace; only the queued commit triggers it', async () => {
     let resolveAddCommentAndMoveToAwaitingWorkspace: (() => void) | undefined;
     const addCommentAndMoveToAwaitingWorkspace = jest.fn(
@@ -3725,7 +3768,16 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       addCommentResult: 'posted' as const,
       expectedAddCommentCalls: [],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
+        [
+          {
+            ...commentOfflinePayloadFor(
+              issueItem,
+              commentBodyWrittenOffline,
+              true,
+            ),
+            composerDraftBody: commentBodyWrittenOffline,
+          },
+        ],
       ],
     },
     {
@@ -3736,7 +3788,16 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         [issueItem, commentBodyWrittenOffline, expect.any(String)],
       ],
       expectedHeldPayloadsPerCall: [
-        [commentOfflinePayloadFor(issueItem, commentBodyWrittenOffline, true)],
+        [
+          {
+            ...commentOfflinePayloadFor(
+              issueItem,
+              commentBodyWrittenOffline,
+              true,
+            ),
+            composerDraftBody: commentBodyWrittenOffline,
+          },
+        ],
       ],
     },
     {
@@ -3848,17 +3909,27 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'Comment & Close',
       expectedOffline: [
-        commentOfflinePayloadFor(issueItem, draftWrittenBeforeClosing, true),
+        {
+          ...commentOfflinePayloadFor(
+            issueItem,
+            draftWrittenBeforeClosing,
+            true,
+          ),
+          composerDraftBody: draftWrittenBeforeClosing,
+        },
         triageOfflinePayloadFor(issueItem, 'close', undefined, true),
       ],
     },
     {
       buttonLabel: 'Comment & Awaiting Workspace',
       expectedOffline: [
-        triageOfflinePayloadFor(issueItem, 'set_status', {
-          statusName: AWAITING_WORKSPACE_NAME,
-          commentBody: draftWrittenBeforeClosing,
-        }),
+        {
+          ...triageOfflinePayloadFor(issueItem, 'set_status', {
+            statusName: AWAITING_WORKSPACE_NAME,
+            commentBody: draftWrittenBeforeClosing,
+          }),
+          composerDraftBody: draftWrittenBeforeClosing,
+        },
       ],
     },
   ])(
@@ -3910,6 +3981,24 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     });
     return onQueueAction.mock.calls[0][0].commit;
   };
+
+  it('queues Comment & Close with the composer text so a failed delivery hands it back', async () => {
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } =
+      renderIssueDetailForCommentDelivery({ onQueueAction });
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: draftWrittenBeforeClosing },
+    });
+    fireEvent.click(getByText('Comment & Close'));
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    expect(onQueueAction.mock.calls[0][0].composerDraft).toEqual({
+      projectItemId: issueItem.projectItemId,
+      body: draftWrittenBeforeClosing,
+    });
+  });
 
   it.each(commentThenCloseActions)(
     'commits $buttonLabel by posting the comment once and then closing the item once when both requests succeed',

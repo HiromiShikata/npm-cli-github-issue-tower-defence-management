@@ -377,6 +377,7 @@ const rejectWhenStatusChangedBeforePullRequestWrite = async (
   issueRepository: IssueRepository,
   prUrl: string,
   expectedStatusAtActionTime: ExpectedStatusAtActionTime,
+  targetStatusName?: string,
 ): Promise<ConsoleOperationResponse | null> => {
   if (!expectedStatusAtActionTime.present) {
     return null;
@@ -391,6 +392,12 @@ const rejectWhenStatusChangedBeforePullRequestWrite = async (
   if (
     liveStatusName?.toLowerCase() ===
     AWAITING_WORKSPACE_STATUS_NAME.toLowerCase()
+  ) {
+    return null;
+  }
+  if (
+    targetStatusName !== undefined &&
+    liveStatusName?.toLowerCase() === targetStatusName.toLowerCase()
   ) {
     return null;
   }
@@ -751,6 +758,24 @@ const handleTriageImpl = async (
       isNonEmptyString(commentBody) &&
       previousResult?.commentPosted !== true
     ) {
+      const staleBeforeComment =
+        await rejectWhenStatusChangedBeforePullRequestWrite(
+          context.resolveIssueRepository(issueUrl),
+          issueUrl,
+          readExpectedStatusAtActionTime(body),
+          statusName,
+        );
+      if (staleBeforeComment !== null) {
+        const staleBody =
+          typeof staleBeforeComment.body === 'object' &&
+          staleBeforeComment.body !== null
+            ? staleBeforeComment.body
+            : {};
+        return {
+          ...staleBeforeComment,
+          body: { ...staleBody, commentPosted: false, statusSet: false },
+        };
+      }
       try {
         await context
           .resolveIssueRepository(issueUrl)
@@ -787,10 +812,23 @@ const handleTriageImpl = async (
         readExpectedStatusAtActionTime(body),
       );
     } catch (error) {
-      if (!(error instanceof StaleProjectItemError)) throw error;
-      failure = badRequest(
-        `project item "${projectItemId}" no longer exists in GitHub`,
-      );
+      if (error instanceof StaleProjectItemError) {
+        failure = badRequest(
+          `project item "${projectItemId}" no longer exists in GitHub`,
+        );
+      } else if (commentPosted) {
+        return {
+          statusCode: 502,
+          body: {
+            ok: false,
+            commentPosted: true,
+            statusSet: false,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        };
+      } else {
+        throw error;
+      }
     }
     if (failure !== null) {
       const failureBody =

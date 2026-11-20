@@ -306,28 +306,48 @@ export const createConsoleApiClient = (): ConsoleApiClient => ({
     parsePullRequestStatus(await requestJson('/api/pullrequeststatus', url)),
 });
 
-const readOperationErrorReason = async (
-  response: Response,
-): Promise<string> => {
-  const raw =
-    typeof response.text === 'function'
-      ? await response.text().catch(() => '')
-      : typeof response.json === 'function'
-        ? JSON.stringify(await response.json().catch(() => ({})))
-        : '';
-  if (raw.length === 0) {
-    return `HTTP ${response.status}`;
+export class ConsoleOperationRejectedError extends Error {
+  readonly commentPosted: boolean;
+
+  constructor(message: string, commentPosted: boolean) {
+    super(message);
+    this.name = 'ConsoleOperationRejectedError';
+    this.commentPosted = commentPosted;
   }
+}
+
+const readOperationRawBody = async (response: Response): Promise<string> =>
+  typeof response.text === 'function'
+    ? await response.text().catch(() => '')
+    : typeof response.json === 'function'
+      ? JSON.stringify(await response.json().catch(() => ({})))
+      : '';
+
+const parseJsonRecord = (raw: string): Record<string, unknown> | null => {
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (isRecord(parsed) && typeof parsed.error === 'string') {
-      return parsed.error;
-    }
+    return isRecord(parsed) ? parsed : null;
   } catch {
-    return raw;
+    return null;
+  }
+};
+
+const operationErrorReasonFrom = (raw: string, status: number): string => {
+  if (raw.length === 0) {
+    return `HTTP ${status}`;
+  }
+  const record = parseJsonRecord(raw);
+  if (record !== null && typeof record.error === 'string') {
+    return record.error;
   }
   return raw;
 };
+
+const readOperationErrorReason = async (response: Response): Promise<string> =>
+  operationErrorReasonFrom(
+    await readOperationRawBody(response),
+    response.status,
+  );
 
 export const postConsoleOperation = async <T extends Record<string, unknown>>(
   apiPath: string,
@@ -339,7 +359,11 @@ export const postConsoleOperation = async <T extends Record<string, unknown>>(
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await readOperationErrorReason(response));
+    const raw = await readOperationRawBody(response);
+    throw new ConsoleOperationRejectedError(
+      operationErrorReasonFrom(raw, response.status),
+      parseJsonRecord(raw)?.commentPosted === true,
+    );
   }
   return await response.json();
 };
