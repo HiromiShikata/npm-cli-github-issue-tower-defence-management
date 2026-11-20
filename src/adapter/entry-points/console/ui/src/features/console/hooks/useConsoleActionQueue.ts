@@ -8,6 +8,7 @@ import {
 import {
   COMMENT_OPERATION_PATH,
   type ConsoleCommentRequest,
+  ConsoleOperationRejectedError,
   postConsoleComment,
   postConsoleOperation,
 } from '../lib/consoleApi';
@@ -180,6 +181,9 @@ const generateId = (): string => {
 
 export const isNetworkError = (error: unknown): boolean =>
   error instanceof TypeError;
+
+const commentWasPosted = (cause: unknown): boolean =>
+  cause instanceof ConsoleOperationRejectedError && cause.commentPosted;
 
 export class ConsoleActionPartiallySentError extends Error {
   readonly sentStepCount: number;
@@ -449,7 +453,8 @@ export const useConsoleActionQueue = (
             }
             if (
               action.composerDraft !== undefined &&
-              sentStepCountAfterAttempt === 0
+              sentStepCountAfterAttempt === 0 &&
+              !commentWasPosted(unsentRequestFailure)
             ) {
               restoreCommentDraftRef.current?.(
                 action.composerDraft.projectItemId,
@@ -591,7 +596,9 @@ export const useConsoleActionQueue = (
             reason: 'Still offline — action is still held in the queue',
           });
         } else {
-          handBackComments([action]);
+          if (!commentWasPosted(cause)) {
+            handBackComments([action]);
+          }
           appendError({ message: action.message, reason: errorReason(cause) });
           discardOfflineAction(id);
         }
@@ -670,6 +677,9 @@ export const useConsoleActionQueue = (
         void deliverPersistedConsoleAction(action)
           .then(() => removeOfflineQueueAction(action.id))
           .catch((cause: unknown) => {
+            if (!commentWasPosted(cause)) {
+              handBackComments([action]);
+            }
             appendError({
               message: action.message,
               reason: errorReason(cause),
@@ -704,12 +714,15 @@ export const useConsoleActionQueue = (
             deliveredActionIdsRef.current.add(action.id);
             void deliverPersistedConsoleAction(action, true)
               .then(() => removeOfflineQueueAction(action.id))
-              .catch((cause: unknown) =>
+              .catch((cause: unknown) => {
+                if (!commentWasPosted(cause)) {
+                  handBackComments([action]);
+                }
                 appendError({
                   message: entry.action.message,
                   reason: errorReason(cause),
-                }),
-              );
+                });
+              });
           }
         }
       }
@@ -725,7 +738,7 @@ export const useConsoleActionQueue = (
       document.removeEventListener('visibilitychange', onVisibilityChange);
       deliverPending();
     };
-  }, [appendError]);
+  }, [appendError, handBackComments]);
 
   return {
     pending,

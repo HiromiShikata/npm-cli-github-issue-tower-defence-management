@@ -3,6 +3,7 @@ import {
   type ConsoleCommentRequest,
   type ConsoleDeleteAllCommentsRequest,
   type ConsoleIntmuxRequest,
+  ConsoleOperationRejectedError,
   type ConsoleReviewCommentSide,
   type ConsoleReviewRequest,
   type ConsoleTriageRequest,
@@ -600,7 +601,15 @@ export const useConsoleOperations = (
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
         request,
-      );
+      ).catch((cause: unknown) => {
+        if (
+          cause instanceof ConsoleOperationRejectedError &&
+          cause.commentPosted
+        ) {
+          throw new ConsoleActionPartiallySentError(1, cause);
+        }
+        throw cause;
+      });
       if (
         !hasAttemptedAction &&
         isRecord(response) &&

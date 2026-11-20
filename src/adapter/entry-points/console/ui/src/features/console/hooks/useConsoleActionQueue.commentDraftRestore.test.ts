@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from './consoleActionDelivery';
 import {
   ConsoleActionPartiallySentError,
   useConsoleActionQueue,
@@ -256,6 +257,50 @@ describe('useConsoleActionQueue comment draft restore', () => {
     expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
     expect(result.current.error).toHaveLength(1);
   });
+
+  it.each([
+    ['not posted', false, 1],
+    ['posted before the status change was refused', true, 0],
+  ])(
+    'hands a persisted comment back on replay when the comment was %s',
+    async (_name, commentPosted, expectedRestores) => {
+      const rejection = {
+        error: STALE_STATUS_MESSAGE,
+        commentPosted,
+      };
+      localStorage.setItem(
+        CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+        JSON.stringify([
+          {
+            ...triagePayloadWithComment,
+            id: `replay-${String(commentPosted)}`,
+            message: 'Move to Awaiting Workspace',
+            color: 'green',
+            enqueuedAt: Date.now(),
+          },
+        ]),
+      );
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify(rejection),
+        json: async () => rejection,
+      })) as unknown as typeof fetch;
+      const restoreCommentDraft = jest.fn();
+      renderHook(() =>
+        useConsoleActionQueue({
+          isAirplaneModeOn: false,
+          projectCode: 'acme',
+          restoreCommentDraft,
+        }),
+      );
+
+      await flush();
+      await flush();
+
+      expect(restoreCommentDraft).toHaveBeenCalledTimes(expectedRestores);
+    },
+  );
 
   it('hands back the comment of an offline action the server rejects when the owner confirms it', async () => {
     localStorage.setItem(

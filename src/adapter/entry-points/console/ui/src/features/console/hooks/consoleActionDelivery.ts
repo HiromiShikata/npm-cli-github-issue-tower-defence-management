@@ -1,3 +1,4 @@
+import { ConsoleOperationRejectedError } from '../lib/consoleApi';
 import type {
   ConsoleOfflinePayload,
   ConsoleOfflineQueuedAction,
@@ -71,7 +72,13 @@ export const deliverConsoleAction = async (
         : typeof payload === 'string' && payload.length > 0
           ? payload
           : `HTTP ${response.status}`;
-    throw new Error(reason);
+    throw new ConsoleOperationRejectedError(
+      reason,
+      typeof payload === 'object' &&
+        payload !== null &&
+        'commentPosted' in payload &&
+        (payload as { commentPosted: unknown }).commentPosted === true,
+    );
   }
   if (
     typeof payload === 'object' &&
