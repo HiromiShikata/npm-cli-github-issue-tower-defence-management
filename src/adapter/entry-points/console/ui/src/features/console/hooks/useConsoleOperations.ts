@@ -588,7 +588,12 @@ export const useConsoleOperations = (
       option: ConsoleFieldOption,
       actionId?: string,
     ) => {
-      if (pjcode === null) throw missingPjcodeError();
+      if (pjcode === null) {
+        throw new ConsoleOperationRejectedError(
+          missingPjcodeError().message,
+          false,
+        );
+      }
       const resolvedActionId = actionId ?? generateActionId();
       const hasAttemptedAction =
         combinedActionIdsRef.current.has(resolvedActionId);
