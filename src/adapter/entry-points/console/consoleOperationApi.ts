@@ -12,34 +12,34 @@ import type {
   PullRequestReviewCommentSide,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
-import {
-  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
-  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
-  recordDoneProjectItemIdAcrossTabs,
-  recordDoneProjectItemIdForTabs,
-} from './consoleDoneStore';
-import { appendCloseEvent } from './consoleCloseEventStore';
+import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
+import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueCloseOutcomeConfirmUseCase';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
-import { extractProjectOwner } from './consoleGithubTokenResolver';
-import {
-  deleteProjectTimer,
-  writeProjectTimer,
-} from './consoleProjectTimerStore';
 import {
   fetchProjectReadme,
   setProjectReadmeMaxPreparingIssuesCount,
   updateProjectV2Readme,
 } from '../cli/projectConfig';
 import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRepository';
-import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
-import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
-import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueCloseOutcomeConfirmUseCase';
 import {
-  type ConsoleActionRecord,
   ACTION_RESULT_LIMIT,
+  type ConsoleActionRecord,
   readConsoleActionRecords,
   writeConsoleActionRecord,
 } from './consoleActionResultStore';
+import { appendCloseEvent } from './consoleCloseEventStore';
+import {
+  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
+  recordDoneProjectItemIdAcrossTabs,
+  recordDoneProjectItemIdForTabs,
+} from './consoleDoneStore';
+import { extractProjectOwner } from './consoleGithubTokenResolver';
+import {
+  deleteProjectTimer,
+  writeProjectTimer,
+} from './consoleProjectTimerStore';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -347,7 +347,7 @@ type ExpectedStatusAtActionTime =
 const readExpectedStatusAtActionTime = (
   body: Record<string, unknown>,
 ): ExpectedStatusAtActionTime => {
-  if (!Object.prototype.hasOwnProperty.call(body, EXPECTED_STATUS_NAME_KEY)) {
+  if (!Object.hasOwn(body, EXPECTED_STATUS_NAME_KEY)) {
     return { present: false };
   }
   const rawValue = body[EXPECTED_STATUS_NAME_KEY];
@@ -751,6 +751,23 @@ const handleTriageImpl = async (
       isNonEmptyString(commentBody) &&
       previousResult?.commentPosted !== true
     ) {
+      const staleBeforeComment =
+        await rejectWhenStatusChangedBeforePullRequestWrite(
+          context.resolveIssueRepository(issueUrl),
+          issueUrl,
+          readExpectedStatusAtActionTime(body),
+        );
+      if (staleBeforeComment !== null) {
+        const staleBody =
+          typeof staleBeforeComment.body === 'object' &&
+          staleBeforeComment.body !== null
+            ? staleBeforeComment.body
+            : {};
+        return {
+          ...staleBeforeComment,
+          body: { ...staleBody, commentPosted: false, statusSet: false },
+        };
+      }
       try {
         await context
           .resolveIssueRepository(issueUrl)
@@ -787,10 +804,23 @@ const handleTriageImpl = async (
         readExpectedStatusAtActionTime(body),
       );
     } catch (error) {
-      if (!(error instanceof StaleProjectItemError)) throw error;
-      failure = badRequest(
-        `project item "${projectItemId}" no longer exists in GitHub`,
-      );
+      if (error instanceof StaleProjectItemError) {
+        failure = badRequest(
+          `project item "${projectItemId}" no longer exists in GitHub`,
+        );
+      } else if (commentPosted) {
+        return {
+          statusCode: 502,
+          body: {
+            ok: false,
+            commentPosted: true,
+            statusSet: false,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        };
+      } else {
+        throw error;
+      }
     }
     if (failure !== null) {
       const failureBody =
