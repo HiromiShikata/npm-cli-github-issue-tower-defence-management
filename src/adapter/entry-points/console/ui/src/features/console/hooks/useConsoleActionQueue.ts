@@ -302,17 +302,18 @@ export const useConsoleActionQueue = (
     [],
   );
   const handBackDefinitiveRejection = useCallback(
-    (action: ConsoleOfflineQueuedAction, cause: unknown): void => {
+    (action: ConsoleOfflineQueuedAction, cause: unknown): boolean => {
       if (
         action.composerDraftBody === undefined ||
-        isNetworkError(cause) ||
+        !isRefusedByServer(cause) ||
         commentWasPosted(cause)
       ) {
-        return;
+        return false;
       }
       removePersistedConsoleAction(action.id);
       removeOfflineQueueAction(action.id);
       handBackComments([action]);
+      return true;
     },
     [handBackComments],
   );
@@ -471,11 +472,12 @@ export const useConsoleActionQueue = (
                 removeOfflineQueueAction(payload.id);
               }
             }
-            const restoredToComposer =
+            const refusedToComposer =
               action.composerDraft !== undefined &&
               sentStepCountAfterAttempt === 0 &&
-              !commentWasPosted(unsentRequestFailure);
-            if (restoredToComposer && action.composerDraft !== undefined) {
+              !commentWasPosted(unsentRequestFailure) &&
+              isRefusedByServer(unsentRequestFailure);
+            if (refusedToComposer && action.composerDraft !== undefined) {
               restoreCommentDraftRef.current?.(
                 action.composerDraft.projectItemId,
                 action.composerDraft.body,
@@ -484,15 +486,14 @@ export const useConsoleActionQueue = (
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
-              retry:
-                restoredToComposer && isRefusedByServer(unsentRequestFailure)
-                  ? undefined
-                  : () =>
-                      runCommitRef.current(
-                        action,
-                        sentStepCountAfterAttempt,
-                        errorId,
-                      ),
+              retry: refusedToComposer
+                ? undefined
+                : () =>
+                    runCommitRef.current(
+                      action,
+                      sentStepCountAfterAttempt,
+                      errorId,
+                    ),
             });
             setWriteState({ status: 'failed', attempt });
           }
@@ -708,11 +709,11 @@ export const useConsoleActionQueue = (
         void deliverPersistedConsoleAction(action)
           .then(() => removeOfflineQueueAction(action.id))
           .catch((cause: unknown) => {
-            handBackDefinitiveRejection(action, cause);
+            const handedBack = handBackDefinitiveRejection(action, cause);
             appendError({
               message: action.message,
               reason: errorReason(cause),
-              retry: () => void replay(),
+              retry: handedBack ? undefined : () => void replay(),
             });
           });
       }
