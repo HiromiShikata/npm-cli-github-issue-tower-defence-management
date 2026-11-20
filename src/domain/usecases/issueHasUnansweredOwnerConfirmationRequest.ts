@@ -1,7 +1,6 @@
 import { Comment } from '../entities/Comment';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { findLastAgentReport } from './findLastAgentReport';
-import { isHumanComment } from './isHumanComment';
 
 export const issueHasUnansweredOwnerConfirmationRequest = (
   comments: Comment[],
@@ -19,10 +18,5 @@ export const issueHasUnansweredOwnerConfirmationRequest = (
   if (!extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)) {
     return false;
   }
-  const hasReplyAfterReport = comments.some(
-    (comment) =>
-      comment.updatedAt.getTime() > lastAgentReport.createdAt.getTime() &&
-      isHumanComment(comment, isTrustedAuthor),
-  );
-  return !hasReplyAfterReport;
+  return comments[comments.length - 1] === lastAgentReport;
 };

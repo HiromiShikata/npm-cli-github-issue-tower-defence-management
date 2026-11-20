@@ -150,19 +150,19 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
       },
       {
         description:
-          'a report with the flag true followed by a machine-generated comment from a trusted author, which does not count as a human reply',
+          'a machine-generated comment from a trusted author positioned before the flagged report, which does not make it answered',
         comments: [
-          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
-          machineGeneratedByTrustedAuthor(at('2026-09-25T09:00:00Z')),
+          machineGeneratedByTrustedAuthor(at('2026-09-25T08:00:00Z')),
+          reportWithFlagTrue(at('2026-09-25T09:00:00Z')),
         ],
         expected: true,
       },
       {
         description:
-          'a reply updated at exactly the same instant as the report does not count as strictly later',
+          'a reply updated at exactly the same instant as the report, positioned before the report, does not count as strictly later',
         comments: [
-          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
           humanReply('the-owner', at('2026-09-25T08:00:00Z')),
+          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
         ],
         expected: true,
       },
@@ -210,14 +210,14 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
     }[] = [
       {
         description:
-          'a human comment created before the report and edited after it counts as a reply',
+          'a human comment created before the report but positioned after it, edited later, counts as a reply',
         comments: [
+          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
           editedHumanReply(
             'the-owner',
             at('2026-09-25T07:00:00Z'),
             at('2026-09-25T09:00:00Z'),
           ),
-          reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
         ],
         expected: false,
       },
@@ -340,10 +340,10 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
       },
       {
         description:
-          'a later mismatching report without the flag does not hide an earlier matching report that carries it',
+          'an earlier mismatching report without the flag does not hide the matching report that carries it',
         comments: [
-          reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
-          reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T09:00:00Z')),
+          reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T08:00:00Z')),
+          reportWithFlagTrueFromAgent('developer', at('2026-09-25T09:00:00Z')),
         ],
         agentFieldValue: 'developer',
         expected: true,
@@ -359,5 +359,65 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
         ),
       ).toBe(expected);
     });
+  });
+
+  it('returns true when the flagged agent report is the last comment in the array', () => {
+    const comments: Comment[] = [
+      reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T07:00:00Z')),
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns false when a later ordinary report from another trusted agent follows the flagged report', () => {
+    const comments: Comment[] = [
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+      reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T09:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when a later machine-generated comment from a trusted author follows the flagged report', () => {
+    const comments: Comment[] = [
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+      machineGeneratedByTrustedAuthor(at('2026-09-25T09:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when a later human reply follows the flagged report', () => {
+    const comments: Comment[] = [
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+      humanReply('the-owner', at('2026-09-25T09:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(false);
   });
 });

@@ -2164,7 +2164,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
-    it('detects the unanswered owner confirmation request from the issue-agent-matched report even when a later report from a different agent carries no flag (identity regression guard)', async () => {
+    it('detects the unanswered owner confirmation request from the issue-agent-matched report even when a report from a different agent carries no flag and is posted before it', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/32',
         status: AWAITING_OWNER_STATUS_NAME,
@@ -2193,16 +2193,16 @@ describe('ConflictedIssueRevertUseCase', () => {
         {
           author: trustedAuthor,
           content:
-            'From: :robot: developer (model-id)\n\n## Summary\n```json\n{ "needOwnerConfirmationOrApproval": true }\n```',
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          updatedAt: new Date('2026-01-01T00:00:00Z'),
+            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
+          createdAt: new Date('2025-12-31T00:00:00Z'),
+          updatedAt: new Date('2025-12-31T00:00:00Z'),
         },
         {
           author: trustedAuthor,
           content:
-            'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
-          createdAt: new Date('2026-01-02T00:00:00Z'),
-          updatedAt: new Date('2026-01-02T00:00:00Z'),
+            'From: :robot: developer (model-id)\n\n## Summary\n```json\n{ "needOwnerConfirmationOrApproval": true }\n```',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          updatedAt: new Date('2026-01-01T00:00:00Z'),
         },
       ]);
 

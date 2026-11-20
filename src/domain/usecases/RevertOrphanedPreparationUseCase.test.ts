@@ -956,7 +956,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     });
 
-    it('routes a non-developer-agent issue to Awaiting Owner based on the issue-agent-matched report, not a later stray report from a different agent', async () => {
+    it('routes a non-developer-agent issue to Awaiting Owner based on the issue-agent-matched report, not an earlier stray report from a different agent', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/12',
         status: 'Preparation',
@@ -977,16 +977,16 @@ describe('RevertOrphanedPreparationUseCase', () => {
         {
           author: 'agent-bot',
           content:
-            'From: :robot: pr-reviewer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
-          createdAt: new Date('2024-01-02T00:00:00Z'),
-          updatedAt: new Date('2024-01-02T00:00:00Z'),
+            'From: :robot: some-other-agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-01T23:00:00Z'),
+          updatedAt: new Date('2024-01-01T23:00:00Z'),
         },
         {
           author: 'agent-bot',
           content:
-            'From: :robot: some-other-agent (model)\n```json\n{"nextStep": null}\n```',
-          createdAt: new Date('2024-01-02T01:00:00Z'),
-          updatedAt: new Date('2024-01-02T01:00:00Z'),
+            'From: :robot: pr-reviewer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+          updatedAt: new Date('2024-01-02T00:00:00Z'),
         },
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
