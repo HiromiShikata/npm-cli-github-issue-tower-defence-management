@@ -72,7 +72,6 @@ export type ConsoleActionQueueOptions = {
   isAirplaneModeOn: boolean;
   projectCode?: string | null;
   restoreCommentDraft?: (projectItemId: string, body: string) => void;
-  releaseCommentDraft?: (projectItemId: string, body: string) => void;
 };
 
 export type ConsolePendingActionView = {
@@ -287,8 +286,6 @@ export const useConsoleActionQueue = (
   );
   const restoreCommentDraftRef = useRef(options.restoreCommentDraft);
   restoreCommentDraftRef.current = options.restoreCommentDraft;
-  const releaseCommentDraftRef = useRef(options.releaseCommentDraft);
-  releaseCommentDraftRef.current = options.releaseCommentDraft;
   const handBackComments = useCallback(
     (payloads: ConsoleOfflinePayload[]): void => {
       for (const payload of payloads) {
@@ -444,15 +441,6 @@ export const useConsoleActionQueue = (
             const id = payload.id ?? '';
             removePersistedConsoleAction(id);
             removeOfflineQueueAction(id);
-          }
-          if (
-            retryOfErrorId !== undefined &&
-            action.composerDraft !== undefined
-          ) {
-            releaseCommentDraftRef.current?.(
-              action.composerDraft.projectItemId,
-              action.composerDraft.body,
-            );
           }
           setWriteState({ status: 'succeeded', attempt });
         })

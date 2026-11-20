@@ -54,26 +54,3 @@ export const restoreCommentDraftInStorage = (
   saveCommentDrafts(drafts);
   return drafts;
 };
-
-const removeRestoredCommentBody = (current: string, body: string): string => {
-  if (current === body) {
-    return '';
-  }
-  const prefix = `${body}\n\n`;
-  return current.startsWith(prefix) ? current.slice(prefix.length) : current;
-};
-
-export const releaseRestoredCommentDraftInStorage = (
-  itemKey: string,
-  body: string,
-): Map<string, string> => {
-  const drafts = loadCommentDrafts();
-  const remaining = removeRestoredCommentBody(drafts.get(itemKey) ?? '', body);
-  if (remaining.trim().length === 0) {
-    drafts.delete(itemKey);
-  } else {
-    drafts.set(itemKey, remaining);
-  }
-  saveCommentDrafts(drafts);
-  return drafts;
-};
