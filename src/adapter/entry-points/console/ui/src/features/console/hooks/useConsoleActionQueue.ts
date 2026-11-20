@@ -25,6 +25,7 @@ import {
 import { overlayCloseSuccessRecord } from './useConsoleOverlay';
 
 export type ConsoleOfflinePayload = {
+  composerDraftBody?: string;
   itemUrl: string;
   projectItemId: string;
   itemNumber: number;
@@ -68,6 +69,7 @@ export type ConsoleOfflineActionsCreateRequest = {
 export type ConsoleActionQueueOptions = {
   isAirplaneModeOn: boolean;
   projectCode?: string | null;
+  restoreCommentDraft?: (projectItemId: string, body: string) => void;
 };
 
 export type ConsolePendingActionView = {
@@ -277,6 +279,18 @@ export const useConsoleActionQueue = (
   const pendingEntriesRef = useRef<Map<string, ConsolePendingEntryState>>(
     new Map(),
   );
+  const restoreCommentDraftRef = useRef(options.restoreCommentDraft);
+  restoreCommentDraftRef.current = options.restoreCommentDraft;
+  const handBackComments = useCallback(
+    (payloads: ConsoleOfflinePayload[]): void => {
+      for (const payload of payloads) {
+        const body = payload.composerDraftBody;
+        if (body === undefined || body.trim().length === 0) continue;
+        restoreCommentDraftRef.current?.(payload.projectItemId, body);
+      }
+    },
+    [],
+  );
   const runCommitRef = useRef<
     (
       action: ConsoleQueuedAction,
@@ -432,6 +446,7 @@ export const useConsoleActionQueue = (
                 removeOfflineQueueAction(payload.id);
               }
             }
+            handBackComments(unsentOfflinePayloads);
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
@@ -446,7 +461,7 @@ export const useConsoleActionQueue = (
           }
         });
     },
-    [offlineActionsCreate],
+    [offlineActionsCreate, handBackComments],
   );
   runCommitRef.current = runCommit;
 
@@ -498,9 +513,10 @@ export const useConsoleActionQueue = (
       removePersistedConsoleAction(payloadId);
       removeOfflineQueueAction(payloadId);
     }
+    handBackComments(entry.action.offline ?? []);
     entry.action.revertAdvance?.();
     entry.action.revertOptimistic?.();
-  }, []);
+  }, [handBackComments]);
 
   const dismiss = useCallback(
     (id: string): void => {
@@ -566,12 +582,13 @@ export const useConsoleActionQueue = (
             reason: 'Still offline — action is still held in the queue',
           });
         } else {
+          handBackComments([action]);
           appendError({ message: action.message, reason: errorReason(cause) });
           discardOfflineAction(id);
         }
       }
     },
-    [appendError, discardOfflineAction],
+    [appendError, discardOfflineAction, handBackComments],
   );
 
   const enqueue = useCallback(

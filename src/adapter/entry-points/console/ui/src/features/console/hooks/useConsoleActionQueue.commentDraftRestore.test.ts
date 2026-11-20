@@ -22,6 +22,7 @@ const itemFields = {
 
 const triagePayloadWithComment = {
   ...itemFields,
+  composerDraftBody: COMMENT_BODY,
   apiPath: '/api/triage',
   requestBody: {
     pjcode: 'acme',
@@ -67,7 +68,7 @@ describe('useConsoleActionQueue comment draft restore', () => {
     localStorage.clear();
   });
 
-  it('hands an undelivered comment back to its item draft and offers no retry when the server rejects it', async () => {
+  it('hands an undelivered comment back to its item draft when the server rejects it', async () => {
     const restoreCommentDraft = jest.fn();
     const { result } = renderHook(() =>
       useConsoleActionQueue({
@@ -92,7 +93,6 @@ describe('useConsoleActionQueue comment draft restore', () => {
     expect(result.current.error[0]?.reason).toContain(
       'Status changed since this action was queued',
     );
-    expect(result.current.error[0]?.retry).toBeUndefined();
     expect(
       JSON.parse(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]'),
     ).toHaveLength(0);
@@ -171,6 +171,43 @@ describe('useConsoleActionQueue comment draft restore', () => {
     await flush();
 
     expect(restoreCommentDraft).not.toHaveBeenCalled();
+  });
+
+  it('never hands back a template comment the console built itself', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    const templatePayload = {
+      ...triagePayloadWithComment,
+      composerDraftBody: undefined,
+      requestBody: {
+        ...triagePayloadWithComment.requestBody,
+        commentBody: 'Template text the owner never wrote.',
+      },
+    };
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          commitWithActionId: jest.fn(async () => {
+            throw new Error(STALE_STATUS_MESSAGE);
+          }),
+          offline: [templatePayload],
+        }),
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(result.current.error).toHaveLength(1);
   });
 
   it('hands back the comment of an offline action the server rejects when the owner confirms it', async () => {

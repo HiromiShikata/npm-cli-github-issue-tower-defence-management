@@ -604,16 +604,14 @@ describe('ConsoleItemDetailContainer', () => {
     });
   });
 
-  it('passes a revertAdvance callback on the Comment & Awaiting Workspace queue action that restores the draft typed at click time via onCommentDraftChange', async () => {
-    const operations = buildOperations();
-    const onCommentDraftChange = jest.fn();
+  it('marks the Comment & Awaiting Workspace payload with the owner-written text so undo and a failed delivery hand it back to the draft without overwriting newer text', async () => {
     const onQueueAction = jest.fn();
     const { getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
-        operations={operations}
+        operations={buildOperations()}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={[]}
         agentOptions={[]}
@@ -624,7 +622,8 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
-        onCommentDraftChange={onCommentDraftChange}
+        pjcode="acme"
+        onCommentDraftChange={jest.fn()}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -634,12 +633,9 @@ describe('ConsoleItemDetailContainer', () => {
 
     expect(onQueueAction).toHaveBeenCalledTimes(1);
     const input = onQueueAction.mock.calls[0][0];
-    onCommentDraftChange.mockClear();
 
-    expect(typeof input.revertAdvance).toBe('function');
-    input.revertAdvance();
-
-    expect(onCommentDraftChange).toHaveBeenCalledWith('should survive undo');
+    expect(input.revertAdvance).toBeUndefined();
+    expect(input.offline[0].composerDraftBody).toBe('should survive undo');
   });
 
   it('does not call addCommentAndMoveToAwaitingWorkspace merely from clicking Comment & Awaiting Workspace; only the queued commit triggers it', async () => {
@@ -3855,10 +3851,13 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'Comment & Awaiting Workspace',
       expectedOffline: [
-        triageOfflinePayloadFor(issueItem, 'set_status', {
-          statusName: AWAITING_WORKSPACE_NAME,
-          commentBody: draftWrittenBeforeClosing,
-        }),
+        {
+          ...triageOfflinePayloadFor(issueItem, 'set_status', {
+            statusName: AWAITING_WORKSPACE_NAME,
+            commentBody: draftWrittenBeforeClosing,
+          }),
+          composerDraftBody: draftWrittenBeforeClosing,
+        },
       ],
     },
   ])(

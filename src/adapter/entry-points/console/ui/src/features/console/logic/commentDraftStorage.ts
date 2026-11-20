@@ -28,3 +28,26 @@ export const saveCommentDrafts = (drafts: Map<string, string>): void => {
     console.error('Failed to save comment drafts to storage:', e);
   }
 };
+
+export const mergeRestoredCommentDraft = (
+  current: string,
+  restored: string,
+): string => {
+  if (current.trim().length === 0) {
+    return restored;
+  }
+  if (current.includes(restored)) {
+    return current;
+  }
+  return `${restored}\n\n${current}`;
+};
+
+export const restoreCommentDraftInStorage = (
+  itemKey: string,
+  body: string,
+): Map<string, string> => {
+  const drafts = loadCommentDrafts();
+  drafts.set(itemKey, mergeRestoredCommentDraft(drafts.get(itemKey) ?? '', body));
+  saveCommentDrafts(drafts);
+  return drafts;
+};

@@ -759,13 +759,20 @@ export const ConsoleItemDetailContainer = ({
                 offline:
                   pjcode != null
                     ? [
-                        buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                          statusName: awaitingWorkspaceOption.name,
-                          commentBody: body,
-                        }),
+                        {
+                          ...buildTriageOfflinePayload(
+                            pjcode,
+                            item,
+                            'set_status',
+                            {
+                              statusName: awaitingWorkspaceOption.name,
+                              commentBody: body,
+                            },
+                          ),
+                          composerDraftBody: body,
+                        },
                       ]
                     : undefined,
-                revertAdvance: () => onCommentDraftChange?.(body),
                 overlayPatch: {
                   done: true,
                   status: {
