@@ -278,6 +278,11 @@ export const useConsoleTabData = (
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [trackedPjcode, setTrackedPjcode] = useState<string | null>(pjcode);
+  const currentPjcodeRef = useRef<string | null>(pjcode);
+
+  useEffect(() => {
+    currentPjcodeRef.current = pjcode;
+  }, [pjcode]);
 
   if (trackedPjcode !== pjcode) {
     setTrackedPjcode(pjcode);
@@ -372,13 +377,23 @@ export const useConsoleTabData = (
         return;
       }
       const { snapshot } = await fetchSingleSnapshot(pjcode, tabName);
-      if (snapshot !== null) {
+      if (snapshot === null) {
+        return;
+      }
+      if (currentPjcodeRef.current === pjcode) {
         setSnapshots((prev) => {
           const next = { ...prev, [tabName]: snapshot };
           snapshotRegistry.current.set(pjcode, next);
           return next;
         });
+        return;
       }
+      const registryEntry =
+        snapshotRegistry.current.get(pjcode) ?? emptySnapshots();
+      snapshotRegistry.current.set(pjcode, {
+        ...registryEntry,
+        [tabName]: snapshot,
+      });
     },
     [pjcode],
   );
