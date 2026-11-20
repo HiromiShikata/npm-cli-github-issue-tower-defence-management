@@ -3,6 +3,7 @@ import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
 } from '../testing/fixtures';
+import { ConsoleOperationRejectedError } from '../lib/consoleApi';
 import { ConsoleActionPartiallySentError } from './useConsoleActionQueue';
 import { useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
@@ -22,6 +23,41 @@ const rejectTriageWith = (responseBody: Record<string, unknown>): jest.Mock => {
 };
 
 describe('useConsoleOperations move to Awaiting Workspace rejection', () => {
+  it('surfaces an HTTP 200 that reports commentPosted false as a typed refusal', async () => {
+    const responseBody = {
+      ok: false,
+      commentPosted: false,
+      statusSet: true,
+      error: 'comment failed',
+    };
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(responseBody),
+      json: async () => responseBody,
+    })) as unknown as typeof fetch;
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations('acme');
+      return { overlay, operations };
+    });
+    const [item] = consoleListItemsFixture;
+    const [option] = consoleStatusOptionsFixture.filter(
+      (candidate) => candidate.name.toLowerCase() === 'awaiting workspace',
+    );
+
+    const error: unknown = await act(async () =>
+      result.current.operations
+        .addCommentAndMoveToAwaitingWorkspace(item, 'handoff details', option)
+        .then(
+          () => undefined,
+          (cause: unknown) => cause,
+        ),
+    );
+
+    expect(error).toBeInstanceOf(ConsoleOperationRejectedError);
+    expect((error as ConsoleOperationRejectedError).commentPosted).toBe(false);
+  });
   beforeEach(() => {
     localStorage.clear();
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');

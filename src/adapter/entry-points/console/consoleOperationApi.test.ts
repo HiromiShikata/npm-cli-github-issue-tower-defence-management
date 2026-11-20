@@ -1409,6 +1409,37 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     });
 
+    it('reports the comment as posted when bookkeeping after the comment write fails', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        status: 'Todo',
+      });
+      const failingContext: ConsoleOperationContext = {
+        ...context,
+        patchItemIntoQueuedTab: jest.fn(() => {
+          throw new Error('local tab file write failed');
+        }),
+      };
+
+      const response = await handleTriage(failingContext, {
+        pjcode: 'acme',
+        action: 'set_status',
+        actionId: 'triage-bookkeeping-fails-1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_bookkeeping_fails',
+        expectedStatusName: 'Todo',
+        statusName: 'Awaiting workspace',
+        commentBody: 'handoff details',
+      });
+
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toMatchObject({
+        commentPosted: true,
+        statusSet: true,
+      });
+    });
+
     it('reports the comment as posted when the status step fails after the comment was created', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,

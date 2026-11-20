@@ -547,6 +547,64 @@ describe('useConsoleActionQueue comment draft restore', () => {
     expect(restoreCommentDraft).not.toHaveBeenCalled();
   });
 
+  it('sends a persisted comment again when its Retry is pressed after an unknown failure', async () => {
+    localStorage.setItem(
+      CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...itemFields,
+          composerDraftBody: COMMENT_BODY,
+          apiPath: '/api/comment',
+          requestBody: { pjcode: 'acme', url: ITEM_URL, body: COMMENT_BODY },
+          id: 'replay-retry-1',
+          message: 'Add comment',
+          color: 'green',
+          enqueuedAt: Date.now(),
+        },
+      ]),
+    );
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => '{"error":"upstream failure"}',
+        json: async () => ({ error: 'upstream failure' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => '{"posted":true}',
+        json: async () => ({ posted: true, comment: {} }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    await flush();
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      result.current.error[0]?.retry?.();
+    });
+    await flush();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(0);
+  });
+
   it('keeps a persisted comment with its replay when the server does not say whether it was posted', async () => {
     const rejection = { error: 'upstream failure' };
     localStorage.setItem(
