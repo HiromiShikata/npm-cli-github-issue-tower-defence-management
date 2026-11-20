@@ -150,21 +150,21 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
       },
       {
         description:
-          'a report with the flag true followed by a machine-generated comment from a trusted author, which does not count as a human reply',
+          'a report with the flag true followed by a machine-generated comment from a trusted author, which is no longer the latest comment',
         comments: [
           reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
           machineGeneratedByTrustedAuthor(at('2026-09-25T09:00:00Z')),
         ],
-        expected: true,
+        expected: false,
       },
       {
         description:
-          'a reply updated at exactly the same instant as the report does not count as strictly later',
+          'a reply stamped at exactly the same instant as the report but positioned after it makes the report no longer the latest comment',
         comments: [
           reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
           humanReply('the-owner', at('2026-09-25T08:00:00Z')),
         ],
-        expected: true,
+        expected: false,
       },
       {
         description:
@@ -202,7 +202,7 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
     });
   });
 
-  it('keeps judging a human comment edited after the report as a reply and a human comment older than an edited report as no reply', () => {
+  it('judges by array position, not by timestamps, so a human comment edited after the report but positioned before it does not make the report answered', () => {
     const cases: {
       description: string;
       comments: Comment[];
@@ -210,7 +210,7 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
     }[] = [
       {
         description:
-          'a human comment created before the report and edited after it counts as a reply',
+          'a human comment positioned before the report, even when edited after it, does not count as a reply',
         comments: [
           editedHumanReply(
             'the-owner',
@@ -219,7 +219,7 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
           ),
           reportWithFlagTrue(at('2026-09-25T08:00:00Z')),
         ],
-        expected: false,
+        expected: true,
       },
       {
         description:
@@ -340,13 +340,13 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
       },
       {
         description:
-          'a later mismatching report without the flag does not hide an earlier matching report that carries it',
+          'a later report from another agent without the flag follows the earlier matching flagged report, so the flagged report is no longer the latest comment',
         comments: [
           reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
           reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T09:00:00Z')),
         ],
         agentFieldValue: 'developer',
-        expected: true,
+        expected: false,
       },
     ];
 
@@ -359,5 +359,65 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
         ),
       ).toBe(expected);
     });
+  });
+
+  it('returns true when the flagged agent report is the last comment in the array', () => {
+    const comments: Comment[] = [
+      reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T07:00:00Z')),
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns false when a later ordinary report from another trusted agent follows the flagged report', () => {
+    const comments: Comment[] = [
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+      reportWithoutFlagFromAgent('pr-reviewer', at('2026-09-25T09:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when a later machine-generated comment from a trusted author follows the flagged report', () => {
+    const comments: Comment[] = [
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+      machineGeneratedByTrustedAuthor(at('2026-09-25T09:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when a later human reply follows the flagged report', () => {
+    const comments: Comment[] = [
+      reportWithFlagTrueFromAgent('developer', at('2026-09-25T08:00:00Z')),
+      humanReply('the-owner', at('2026-09-25T09:00:00Z')),
+    ];
+
+    expect(
+      issueHasUnansweredOwnerConfirmationRequest(
+        comments,
+        trustTestUser,
+        'developer',
+      ),
+    ).toBe(false);
   });
 });
