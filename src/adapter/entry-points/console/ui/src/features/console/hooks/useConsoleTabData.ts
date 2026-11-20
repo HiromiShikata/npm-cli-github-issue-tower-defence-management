@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
 import type {
   ConsoleFieldOption,
@@ -279,7 +279,9 @@ export const useConsoleTabData = (
   const [error, setError] = useState<string | null>(null);
   const [trackedPjcode, setTrackedPjcode] = useState<string | null>(pjcode);
   const currentPjcodeRef = useRef<string | null>(pjcode);
-  currentPjcodeRef.current = pjcode;
+  useLayoutEffect(() => {
+    currentPjcodeRef.current = pjcode;
+  }, [pjcode]);
 
   if (trackedPjcode !== pjcode) {
     setTrackedPjcode(pjcode);
