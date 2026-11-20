@@ -230,4 +230,72 @@ describe('useConsoleOverlay', () => {
       jest.useRealTimers();
     }
   });
+
+  it('reloads the overlay of the new project and keeps the old project storage intact when the project switches', () => {
+    localStorage.setItem(
+      overlayStorageKey('acme'),
+      JSON.stringify({
+        'o/r#1': { ts: 1, status: { name: 'Acme status', color: 'BLUE' } },
+      }),
+    );
+    localStorage.setItem(
+      overlayStorageKey('beta'),
+      JSON.stringify({
+        'o/r#2': { ts: 2, status: { name: 'Beta status', color: 'BLUE' } },
+      }),
+    );
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleOverlay(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+
+    rerender({ pjcode: 'beta' });
+    expect(Object.keys(result.current.overlay)).toEqual(['o/r#2']);
+
+    act(() => {
+      result.current.patchOverlay(
+        'o/r#3',
+        { status: { name: 'Beta new', color: 'BLUE' } },
+        'todo-by-human',
+      );
+    });
+    expect(
+      Object.keys(
+        JSON.parse(localStorage.getItem(overlayStorageKey('beta')) ?? '{}'),
+      ).sort(),
+    ).toEqual(['o/r#2', 'o/r#3']);
+    expect(
+      Object.keys(
+        JSON.parse(localStorage.getItem(overlayStorageKey('acme')) ?? '{}'),
+      ),
+    ).toEqual(['o/r#1']);
+  });
+
+  it('reads the overlay from storage again when the project switches back, including records written while another project was active', () => {
+    localStorage.setItem(
+      overlayStorageKey('acme'),
+      JSON.stringify({
+        'o/r#1': {
+          ts: 1,
+          status: { name: 'Acme', color: 'BLUE' },
+          closedAtMs: 1,
+        },
+      }),
+    );
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleOverlay(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+
+    rerender({ pjcode: 'beta' });
+    act(() => {
+      overlayCloseSuccessRecord(closeRequest('acme', 'o/r#1'), {
+        ok: true,
+        closedAtMs: 999,
+      });
+    });
+    rerender({ pjcode: 'acme' });
+
+    expect(result.current.overlay['o/r#1']?.closedAtMs).toBe(999);
+  });
 });
