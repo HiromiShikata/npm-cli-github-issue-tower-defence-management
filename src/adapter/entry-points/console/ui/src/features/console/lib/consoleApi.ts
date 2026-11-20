@@ -307,9 +307,9 @@ export const createConsoleApiClient = (): ConsoleApiClient => ({
 });
 
 export class ConsoleOperationRejectedError extends Error {
-  readonly commentPosted: boolean;
+  readonly commentPosted: boolean | null;
 
-  constructor(message: string, commentPosted: boolean) {
+  constructor(message: string, commentPosted: boolean | null) {
     super(message);
     this.name = 'ConsoleOperationRejectedError';
     this.commentPosted = commentPosted;
@@ -362,7 +362,9 @@ export const postConsoleOperation = async <T extends Record<string, unknown>>(
     const raw = await readOperationRawBody(response);
     throw new ConsoleOperationRejectedError(
       operationErrorReasonFrom(raw, response.status),
-      parseJsonRecord(raw)?.commentPosted === true,
+      typeof parseJsonRecord(raw)?.commentPosted === 'boolean'
+        ? (parseJsonRecord(raw)?.commentPosted as boolean)
+        : null,
     );
   }
   return await response.json();

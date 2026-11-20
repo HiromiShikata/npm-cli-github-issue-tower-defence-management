@@ -183,7 +183,12 @@ export const isNetworkError = (error: unknown): boolean =>
   error instanceof TypeError;
 
 const commentWasPosted = (cause: unknown): boolean =>
-  cause instanceof ConsoleOperationRejectedError && cause.commentPosted;
+  cause instanceof ConsoleOperationRejectedError &&
+  cause.commentPosted === true;
+
+const notPostedByServer = (cause: unknown): boolean =>
+  cause instanceof ConsoleOperationRejectedError &&
+  cause.commentPosted === false;
 
 export class ConsoleActionPartiallySentError extends Error {
   readonly sentStepCount: number;
@@ -298,11 +303,7 @@ export const useConsoleActionQueue = (
   );
   const handBackDefinitiveRejection = useCallback(
     (action: ConsoleOfflineQueuedAction, cause: unknown): boolean => {
-      if (
-        action.composerDraftBody === undefined ||
-        isNetworkError(cause) ||
-        commentWasPosted(cause)
-      ) {
+      if (action.composerDraftBody === undefined || !notPostedByServer(cause)) {
         return false;
       }
       removePersistedConsoleAction(action.id);
@@ -461,17 +462,24 @@ export const useConsoleActionQueue = (
           ) {
             actionHoldOffline(unsentOfflinePayloads);
           } else {
-            for (const payload of offlinePayloads) {
-              if (payload.id !== undefined) {
-                removePersistedConsoleAction(payload.id);
-                removeOfflineQueueAction(payload.id);
-              }
-            }
             const refusedToComposer =
               action.composerDraft !== undefined &&
               sentStepCountAfterAttempt === 0 &&
+              notPostedByServer(unsentRequestFailure);
+            const ambiguousForRetry =
+              action.composerDraft !== undefined &&
+              sentStepCountAfterAttempt === 0 &&
+              !refusedToComposer &&
               !commentWasPosted(unsentRequestFailure) &&
               !isNetworkError(unsentRequestFailure);
+            if (!ambiguousForRetry) {
+              for (const payload of offlinePayloads) {
+                if (payload.id !== undefined) {
+                  removePersistedConsoleAction(payload.id);
+                  removeOfflineQueueAction(payload.id);
+                }
+              }
+            }
             if (refusedToComposer && action.composerDraft !== undefined) {
               restoreCommentDraftRef.current?.(
                 action.composerDraft.projectItemId,
@@ -594,15 +602,6 @@ export const useConsoleActionQueue = (
             result.rateLimitResetAt !== null
               ? ` Rate limit resets at ${result.rateLimitResetAt}.`
               : '';
-          if (action.composerDraftBody !== undefined) {
-            handBackComments([action]);
-            discardOfflineAction(id);
-            appendError({
-              message: action.message,
-              reason: `${result.error}.${resetInfo}`,
-            });
-            return;
-          }
           appendError({
             message: action.message,
             reason: `${result.error}.${resetInfo}`,
@@ -622,12 +621,19 @@ export const useConsoleActionQueue = (
             message: action.message,
             reason: 'Still offline — action is still held in the queue',
           });
-        } else {
-          if (!commentWasPosted(cause)) {
-            handBackComments([action]);
-          }
+        } else if (action.composerDraftBody === undefined) {
           appendError({ message: action.message, reason: errorReason(cause) });
           discardOfflineAction(id);
+        } else if (notPostedByServer(cause)) {
+          handBackComments([action]);
+          appendError({ message: action.message, reason: errorReason(cause) });
+          discardOfflineAction(id);
+        } else {
+          appendError({
+            message: action.message,
+            reason: errorReason(cause),
+            retry: () => void confirmOfflineAction(id),
+          });
         }
       }
     },

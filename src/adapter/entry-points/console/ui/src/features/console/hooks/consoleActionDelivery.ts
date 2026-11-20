@@ -76,8 +76,10 @@ export const deliverConsoleAction = async (
       reason,
       typeof payload === 'object' &&
         payload !== null &&
-        'commentPosted' in payload &&
-        (payload as { commentPosted: unknown }).commentPosted === true,
+        typeof (payload as { commentPosted?: unknown }).commentPosted ===
+          'boolean'
+        ? (payload as { commentPosted: boolean }).commentPosted
+        : null,
     );
   }
   if (
