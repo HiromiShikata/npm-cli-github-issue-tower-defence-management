@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { ConsoleOperationRejectedError } from '../lib/consoleApi';
 import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from './consoleActionDelivery';
 import {
   ConsoleActionPartiallySentError,
@@ -417,11 +418,11 @@ describe('useConsoleActionQueue comment draft restore', () => {
   });
 
   it.each([
-    ['a rejection that is not a stale Status', new Error('gateway timeout')],
-    ['a stale Status rejection', new Error(STALE_STATUS_MESSAGE)],
+    ['the server refused it with HTTP 400', 400, false],
+    ['the server failed with HTTP 500', 500, true],
   ])(
-    'offers no Retry after %s when the comment text was restored to the composer, so the composer is its only owner',
-    async (_name, rejection) => {
+    'offers Retry after a rejection only when %s is not a refusal of the restored comment',
+    async (_name, status, expectRetry) => {
       const restoreCommentDraft = jest.fn();
       const { result } = renderHook(() =>
         useConsoleActionQueue({
@@ -434,7 +435,11 @@ describe('useConsoleActionQueue comment draft restore', () => {
         result.current.enqueue(
           makeMoveAction({
             commitWithActionId: jest.fn(async () => {
-              throw rejection;
+              throw new ConsoleOperationRejectedError(
+                STALE_STATUS_MESSAGE,
+                false,
+                status,
+              );
             }),
           }),
         );
@@ -447,7 +452,7 @@ describe('useConsoleActionQueue comment draft restore', () => {
 
       expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
       expect(result.current.error).toHaveLength(1);
-      expect(result.current.error[0]?.retry).toBeUndefined();
+      expect(result.current.error[0]?.retry === undefined).toBe(!expectRetry);
     },
   );
 
