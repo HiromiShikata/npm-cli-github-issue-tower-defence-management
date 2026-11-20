@@ -607,6 +607,7 @@ describe('ConsoleItemDetailContainer', () => {
   it('passes a revertAdvance callback on the Comment & Awaiting Workspace queue action that restores the draft typed at click time via onCommentDraftChange', async () => {
     const operations = buildOperations();
     const onCommentDraftChange = jest.fn();
+    const onCommentDraftRestore = jest.fn();
     const onQueueAction = jest.fn();
     const { getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
@@ -625,6 +626,7 @@ describe('ConsoleItemDetailContainer', () => {
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
         onCommentDraftChange={onCommentDraftChange}
+        onCommentDraftRestore={onCommentDraftRestore}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -639,12 +641,16 @@ describe('ConsoleItemDetailContainer', () => {
     expect(typeof input.revertAdvance).toBe('function');
     input.revertAdvance();
 
-    expect(onCommentDraftChange).toHaveBeenCalledWith('should survive undo');
+    expect(onCommentDraftRestore).toHaveBeenCalledWith(
+      issueItem.projectItemId,
+      'should survive undo',
+    );
   });
 
-  it('undo merges the restored comment into the draft without overwriting text the owner typed after pressing', async () => {
+  it('undo hands the comment back through the storage restore for the acted item, not a stale draft', async () => {
     const operations = buildOperations();
     const onCommentDraftChange = jest.fn();
+    const onCommentDraftRestore = jest.fn();
     const onQueueAction = jest.fn();
     const { getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
@@ -663,6 +669,7 @@ describe('ConsoleItemDetailContainer', () => {
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
         onCommentDraftChange={onCommentDraftChange}
+        onCommentDraftRestore={onCommentDraftRestore}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -673,12 +680,13 @@ describe('ConsoleItemDetailContainer', () => {
       target: { value: 'follow-up words' },
     });
     const input = onQueueAction.mock.calls[0][0];
-    onCommentDraftChange.mockClear();
+    onCommentDraftRestore.mockClear();
 
     input.revertAdvance();
 
-    expect(onCommentDraftChange).toHaveBeenCalledWith(
-      'first text\n\nfollow-up words',
+    expect(onCommentDraftRestore).toHaveBeenCalledWith(
+      issueItem.projectItemId,
+      'first text',
     );
   });
 

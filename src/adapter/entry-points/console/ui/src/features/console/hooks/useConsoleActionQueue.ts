@@ -586,11 +586,19 @@ export const useConsoleActionQueue = (
             discardOfflineAction(id);
             return;
           }
-          handBackComments([action]);
           const resetInfo =
             result.rateLimitResetAt !== null
               ? ` Rate limit resets at ${result.rateLimitResetAt}.`
               : '';
+          if (action.composerDraftBody !== undefined) {
+            handBackComments([action]);
+            discardOfflineAction(id);
+            appendError({
+              message: action.message,
+              reason: `${result.error}.${resetInfo}`,
+            });
+            return;
+          }
           appendError({
             message: action.message,
             reason: `${result.error}.${resetInfo}`,

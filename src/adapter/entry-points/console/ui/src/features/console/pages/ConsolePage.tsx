@@ -2083,7 +2083,7 @@ export const ConsolePage = () => {
               commentDrafts.current.get(selectedItem.projectItemId) ?? ''
             }
             commentDraftRevision={commentDraftRevision}
-            onCommentDraftRestored={commentDraftRestored}
+            onCommentDraftRestore={restoreCommentDraft}
             onCommentDraftChange={handleCommentDraftChange}
             onQueueAction={handleQueueAction}
             onCommentError={(message, reason) =>

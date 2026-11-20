@@ -188,7 +188,7 @@ describe('useConsoleActionQueue comment draft restore', () => {
     expect(result.current.error).toHaveLength(1);
   });
 
-  it('hands a confirmed offline comment back to its item draft when the server answers with a non-2xx status, and keeps the queued entry', async () => {
+  it('hands a confirmed offline comment back to its item draft when the server answers with a non-2xx status, and discards the queued entry', async () => {
     localStorage.setItem(
       OFFLINE_QUEUE_STORAGE_KEY,
       JSON.stringify([
@@ -227,8 +227,8 @@ describe('useConsoleActionQueue comment draft restore', () => {
     });
 
     expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
-    expect(result.current.offlineActions).toHaveLength(1);
-    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+    expect(result.current.offlineActions).toHaveLength(0);
+    expect(result.current.error[0]?.retry).toBeUndefined();
   });
 
   it('hands the comment back on a rejection even when the action has no offline payload', async () => {
