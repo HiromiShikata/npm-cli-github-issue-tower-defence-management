@@ -270,4 +270,26 @@ describe('useConsoleOverlay', () => {
       ),
     ).toEqual(['o/r#1']);
   });
+
+  it('reads the overlay from storage again when the project switches back, including records written while another project was active', () => {
+    localStorage.setItem(
+      overlayStorageKey('acme'),
+      JSON.stringify({ 'o/r#1': { ts: 1, status: { name: 'Acme', color: 'BLUE' }, closedAtMs: 1 } }),
+    );
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleOverlay(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+
+    rerender({ pjcode: 'beta' });
+    act(() => {
+      overlayCloseSuccessRecord(closeRequest('acme', 'o/r#1'), {
+        ok: true,
+        closedAtMs: 999,
+      });
+    });
+    rerender({ pjcode: 'acme' });
+
+    expect(result.current.overlay['o/r#1']?.closedAtMs).toBe(999);
+  });
 });

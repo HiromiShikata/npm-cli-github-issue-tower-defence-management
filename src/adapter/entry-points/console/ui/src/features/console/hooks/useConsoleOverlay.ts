@@ -95,6 +95,14 @@ export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
   const overlay =
     stored.pjcode === pjcode ? stored.overlay : readOverlay(pjcode);
 
+  useEffect(() => {
+    setStored((current) =>
+      current.pjcode === pjcode
+        ? current
+        : { pjcode, overlay: readOverlay(pjcode) },
+    );
+  }, [pjcode]);
+
   const updateOverlay = useCallback(
     (
       update: (current: ConsoleOverlay) => ConsoleOverlay,
