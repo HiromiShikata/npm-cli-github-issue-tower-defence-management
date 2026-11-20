@@ -625,6 +625,16 @@ export const useConsoleOperations = (
         return commentResult.comment;
       }
       if (
+        isRecord(response) &&
+        response.ok !== true &&
+        response.commentPosted === false
+      ) {
+        throw new ConsoleOperationRejectedError(
+          String(response.error ?? 'Comment was not posted'),
+          false,
+        );
+      }
+      if (
         !isRecord(response) ||
         response.ok !== true ||
         response.commentPosted === false

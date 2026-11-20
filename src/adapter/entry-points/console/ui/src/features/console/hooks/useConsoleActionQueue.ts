@@ -714,7 +714,12 @@ export const useConsoleActionQueue = (
             appendError({
               message: action.message,
               reason: errorReason(cause),
-              retry: handedBack ? undefined : () => void replay(),
+              retry: handedBack
+                ? undefined
+                : () => {
+                    deliveredActionIdsRef.current.delete(action.id);
+                    replay();
+                  },
             });
           });
       }
