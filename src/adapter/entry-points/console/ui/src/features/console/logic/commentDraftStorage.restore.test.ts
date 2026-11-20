@@ -1,6 +1,7 @@
 import {
   loadCommentDrafts,
   mergeRestoredCommentDraft,
+  releaseRestoredCommentDraftInStorage,
   restoreCommentDraftInStorage,
 } from './commentDraftStorage';
 
@@ -79,4 +80,43 @@ describe('restoreCommentDraftInStorage', () => {
       'Checked during the flight.\n\nFollow up later',
     );
   });
+});
+
+describe('releaseRestoredCommentDraftInStorage', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it.each([
+    ['only the restored body', 'Checked during the flight.', ''],
+    [
+      'the restored body with newer text after it',
+      'Checked during the flight.\n\nFollow up later',
+      'Follow up later',
+    ],
+    ['newer text only', 'Follow up later', 'Follow up later'],
+  ])(
+    'removes exactly the restored body when the draft holds %s',
+    (_name, draft, expected) => {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify([
+          ['PVTI_2', draft],
+          ['PVTI_9', 'draft for another item'],
+        ]),
+      );
+
+      releaseRestoredCommentDraftInStorage(
+        'PVTI_2',
+        'Checked during the flight.',
+      );
+
+      expect(loadCommentDrafts().get('PVTI_2') ?? '').toBe(expected);
+      expect(loadCommentDrafts().get('PVTI_9')).toBe('draft for another item');
+    },
+  );
 });
