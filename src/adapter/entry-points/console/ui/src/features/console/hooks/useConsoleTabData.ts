@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
 import type {
   ConsoleFieldOption,
@@ -36,6 +30,21 @@ export type ConsoleTabDataState = {
   error: string | null;
   refreshSingleTab: (tabName: ConsoleTabName) => Promise<void>;
 };
+
+export type ConsoleTabDataVisibleState = {
+  pjcode: string | null;
+  snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
+};
+
+export const applyTabSnapshotToVisibleState = (
+  state: ConsoleTabDataVisibleState,
+  pjcode: string,
+  tabName: ConsoleTabName,
+  snapshot: ConsoleTabSnapshot,
+): ConsoleTabDataVisibleState =>
+  state.pjcode !== pjcode
+    ? state
+    : { pjcode, snapshots: { ...state.snapshots, [tabName]: snapshot } };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -279,21 +288,20 @@ export const useConsoleTabData = (
   const snapshotRegistry = useRef<
     Map<string, Record<ConsoleTabName, ConsoleTabSnapshot | null>>
   >(new Map());
-  const [snapshots, setSnapshots] =
-    useState<Record<ConsoleTabName, ConsoleTabSnapshot | null>>(emptySnapshots);
+  const [visible, setVisible] = useState<ConsoleTabDataVisibleState>(() => ({
+    pjcode,
+    snapshots: emptySnapshots(),
+  }));
+  const snapshots = visible.snapshots;
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [trackedPjcode, setTrackedPjcode] = useState<string | null>(pjcode);
-  const currentPjcodeRef = useRef<string | null>(pjcode);
-  useLayoutEffect(() => {
-    currentPjcodeRef.current = pjcode;
-  }, [pjcode]);
 
   if (trackedPjcode !== pjcode) {
     setTrackedPjcode(pjcode);
     const registryEntry =
       pjcode !== null ? (snapshotRegistry.current.get(pjcode) ?? null) : null;
-    setSnapshots(registryEntry ?? emptySnapshots());
+    setVisible({ pjcode, snapshots: registryEntry ?? emptySnapshots() });
     if (registryEntry !== null) {
       setIsLoading(false);
     }
@@ -310,7 +318,7 @@ export const useConsoleTabData = (
             next[tab.name] = { ...stored };
           }
         }
-        setSnapshots(next);
+        setVisible({ pjcode, snapshots: next });
         setIsLoading(false);
         setError(null);
         return;
@@ -322,7 +330,7 @@ export const useConsoleTabData = (
     setError(null);
 
     if (pjcode === null) {
-      setSnapshots(emptySnapshots());
+      setVisible({ pjcode: null, snapshots: emptySnapshots() });
       setIsLoading(false);
       setError('No project specified in the URL path.');
       return () => {
@@ -337,11 +345,11 @@ export const useConsoleTabData = (
       const hasAny = Object.values(cached).some((s) => s !== null);
       if (hasAny && !freshDataReceived) {
         snapshotRegistry.current.set(pjcode, cached);
-        setSnapshots(cached);
+        setVisible({ pjcode, snapshots: cached });
         setIsLoading(false);
       } else if (!hasAny && !freshDataReceived && !hasRegistryData) {
         setIsLoading(true);
-        setSnapshots(emptySnapshots());
+        setVisible({ pjcode, snapshots: emptySnapshots() });
       }
     });
 
@@ -353,7 +361,7 @@ export const useConsoleTabData = (
           }
           freshDataReceived = true;
           snapshotRegistry.current.set(pjcode, next);
-          setSnapshots(next);
+          setVisible({ pjcode, snapshots: next });
           setError(firstError !== null ? firstError.message : null);
           setIsLoading(false);
         })
@@ -385,20 +393,16 @@ export const useConsoleTabData = (
       if (snapshot === null) {
         return;
       }
-      if (currentPjcodeRef.current === pjcode) {
-        setSnapshots((prev) => {
-          const next = { ...prev, [tabName]: snapshot };
-          snapshotRegistry.current.set(pjcode, next);
-          return next;
+      const registryEntry = snapshotRegistry.current.get(pjcode);
+      if (registryEntry !== undefined) {
+        snapshotRegistry.current.set(pjcode, {
+          ...registryEntry,
+          [tabName]: snapshot,
         });
-        return;
       }
-      const registryEntry =
-        snapshotRegistry.current.get(pjcode) ?? emptySnapshots();
-      snapshotRegistry.current.set(pjcode, {
-        ...registryEntry,
-        [tabName]: snapshot,
-      });
+      setVisible((prev) =>
+        applyTabSnapshotToVisibleState(prev, pjcode, tabName, snapshot),
+      );
     },
     [pjcode],
   );

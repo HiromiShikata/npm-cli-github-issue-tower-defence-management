@@ -813,7 +813,7 @@ describe('useConsoleTabData', () => {
     });
 
     rerender({ pjcode: 'acme' });
-    expect(result.current.isLoading).toBe(true);
+    await waitFor(() => expect(result.current.isLoading).toBe(true));
     expect(result.current.snapshots.prs).toBeNull();
     expect(result.current.snapshots.queued).toBeNull();
     holdAcme = false;
