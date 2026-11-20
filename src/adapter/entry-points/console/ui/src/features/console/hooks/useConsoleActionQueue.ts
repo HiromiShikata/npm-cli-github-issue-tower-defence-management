@@ -185,11 +185,6 @@ export const isNetworkError = (error: unknown): boolean =>
 const commentWasPosted = (cause: unknown): boolean =>
   cause instanceof ConsoleOperationRejectedError && cause.commentPosted;
 
-const isRefusedByServer = (cause: unknown): boolean =>
-  cause instanceof ConsoleOperationRejectedError &&
-  cause.status >= 400 &&
-  cause.status < 500;
-
 export class ConsoleActionPartiallySentError extends Error {
   readonly sentStepCount: number;
   declare readonly cause: unknown;
@@ -305,7 +300,7 @@ export const useConsoleActionQueue = (
     (action: ConsoleOfflineQueuedAction, cause: unknown): boolean => {
       if (
         action.composerDraftBody === undefined ||
-        !isRefusedByServer(cause) ||
+        isNetworkError(cause) ||
         commentWasPosted(cause)
       ) {
         return false;
@@ -476,7 +471,7 @@ export const useConsoleActionQueue = (
               action.composerDraft !== undefined &&
               sentStepCountAfterAttempt === 0 &&
               !commentWasPosted(unsentRequestFailure) &&
-              isRefusedByServer(unsentRequestFailure);
+              !isNetworkError(unsentRequestFailure);
             if (refusedToComposer && action.composerDraft !== undefined) {
               restoreCommentDraftRef.current?.(
                 action.composerDraft.projectItemId,

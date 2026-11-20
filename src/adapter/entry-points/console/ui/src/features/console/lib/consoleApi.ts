@@ -308,13 +308,11 @@ export const createConsoleApiClient = (): ConsoleApiClient => ({
 
 export class ConsoleOperationRejectedError extends Error {
   readonly commentPosted: boolean;
-  readonly status: number;
 
-  constructor(message: string, commentPosted: boolean, status: number) {
+  constructor(message: string, commentPosted: boolean) {
     super(message);
     this.name = 'ConsoleOperationRejectedError';
     this.commentPosted = commentPosted;
-    this.status = status;
   }
 }
 
@@ -365,7 +363,6 @@ export const postConsoleOperation = async <T extends Record<string, unknown>>(
     throw new ConsoleOperationRejectedError(
       operationErrorReasonFrom(raw, response.status),
       parseJsonRecord(raw)?.commentPosted === true,
-      response.status,
     );
   }
   return await response.json();
