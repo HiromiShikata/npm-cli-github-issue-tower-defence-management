@@ -686,6 +686,38 @@ describe('useConsoleActionQueue comment draft restore', () => {
     ).toHaveLength(1);
   });
 
+  it('hands back a composer comment refused before any request when the page is hidden during the countdown', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          offline: undefined,
+          commit: jest.fn(async () => {
+            throw new ConsoleOperationRejectedError(
+              'project is missing',
+              false,
+            );
+          }),
+          composerDraft: { projectItemId: ITEM_KEY, body: COMMENT_BODY },
+        }),
+      );
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    await flush();
+
+    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+  });
+
   it('keeps the persisted action with its Retry when the comment was posted and a later step failed', async () => {
     const restoreCommentDraft = jest.fn();
     const { result } = renderHook(() =>
