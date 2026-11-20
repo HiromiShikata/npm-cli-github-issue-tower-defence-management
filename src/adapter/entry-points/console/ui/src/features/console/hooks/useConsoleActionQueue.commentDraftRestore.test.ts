@@ -418,11 +418,11 @@ describe('useConsoleActionQueue comment draft restore', () => {
   });
 
   it.each([
-    ['the server refused it with HTTP 400', 400, false],
-    ['the server failed with HTTP 500', 500, true],
+    ['the server refused it with HTTP 400', 400, true],
+    ['the server failed with HTTP 500', 500, false],
   ])(
-    'offers Retry after a rejection only when %s is not a refusal of the restored comment',
-    async (_name, status, expectRetry) => {
+    'hands the comment back to the composer and offers no Retry only when %s',
+    async (_name, status, isRefused) => {
       const restoreCommentDraft = jest.fn();
       const { result } = renderHook(() =>
         useConsoleActionQueue({
@@ -450,9 +450,59 @@ describe('useConsoleActionQueue comment draft restore', () => {
       });
       await flush();
 
-      expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+      expect(restoreCommentDraft).toHaveBeenCalledTimes(isRefused ? 1 : 0);
       expect(result.current.error).toHaveLength(1);
-      expect(result.current.error[0]?.retry === undefined).toBe(!expectRetry);
+      expect(result.current.error[0]?.retry === undefined).toBe(isRefused);
+    },
+  );
+
+  it.each([
+    ['refused it with HTTP 422', 422, true],
+    ['failed with HTTP 500', 500, false],
+  ])(
+    'a persisted comment the server %s on replay is handed back and dropped only when refused',
+    async (_name, status, isRefused) => {
+      const rejection = { error: 'comment rejected', commentPosted: false };
+      localStorage.setItem(
+        CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+        JSON.stringify([
+          {
+            ...itemFields,
+            composerDraftBody: COMMENT_BODY,
+            apiPath: '/api/comment',
+            requestBody: { pjcode: 'acme', url: ITEM_URL, body: COMMENT_BODY },
+            id: `replay-status-${status}`,
+            message: 'Add comment',
+            color: 'green',
+            enqueuedAt: Date.now(),
+          },
+        ]),
+      );
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status,
+        text: async () => JSON.stringify(rejection),
+        json: async () => rejection,
+      })) as unknown as typeof fetch;
+      const restoreCommentDraft = jest.fn();
+      const { result } = renderHook(() =>
+        useConsoleActionQueue({
+          isAirplaneModeOn: false,
+          projectCode: 'acme',
+          restoreCommentDraft,
+        }),
+      );
+
+      await flush();
+      await flush();
+
+      expect(restoreCommentDraft).toHaveBeenCalledTimes(isRefused ? 1 : 0);
+      expect(
+        JSON.parse(
+          localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+        ),
+      ).toHaveLength(isRefused ? 0 : 1);
+      expect(result.current.error[0]?.retry === undefined).toBe(isRefused);
     },
   );
 
