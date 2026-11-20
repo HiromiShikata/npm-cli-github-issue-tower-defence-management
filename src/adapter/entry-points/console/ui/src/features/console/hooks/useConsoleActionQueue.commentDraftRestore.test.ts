@@ -96,29 +96,6 @@ describe('useConsoleActionQueue comment draft restore', () => {
     ).toHaveLength(0);
   });
 
-  it('hands the comment back when the owner undoes the action inside the window', () => {
-    const restoreCommentDraft = jest.fn();
-    const { result } = renderHook(() =>
-      useConsoleActionQueue({
-        isAirplaneModeOn: false,
-        projectCode: 'acme',
-        restoreCommentDraft,
-      }),
-    );
-    const action = makeMoveAction();
-    act(() => {
-      result.current.enqueue(action);
-    });
-    const pendingId = result.current.pending[0]?.id ?? '';
-
-    act(() => {
-      result.current.undo(pendingId);
-    });
-
-    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
-    expect(action.commitWithActionId).not.toHaveBeenCalled();
-  });
-
   it('does not hand back a comment that an earlier step already posted', async () => {
     const restoreCommentDraft = jest.fn();
     const commentStep = {

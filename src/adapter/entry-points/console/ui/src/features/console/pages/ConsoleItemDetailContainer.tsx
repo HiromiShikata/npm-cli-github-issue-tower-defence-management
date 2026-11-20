@@ -44,6 +44,7 @@ import {
   toggleMarkdownCheckboxAtIndex,
 } from '../lib/markdownCheckboxToggle';
 import { type ConsoleActionKind, itemToastLabel } from '../logic/actionToast';
+import { mergeRestoredCommentDraft } from '../logic/commentDraftStorage';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
   AWAITING_WORKSPACE_NAME,
@@ -236,6 +237,7 @@ export type ConsoleItemDetailContainerProps = {
   now: number;
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
+  commentDraftRevision?: number;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
   onCommentError?: ConsoleCommentErrorHandler;
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
@@ -274,6 +276,7 @@ export const ConsoleItemDetailContainer = ({
   now,
   initialCommentDraft,
   onCommentDraftChange,
+  commentDraftRevision,
   onQueueAction,
   onCommentError,
   onDeleteStory,
@@ -773,6 +776,10 @@ export const ConsoleItemDetailContainer = ({
                         },
                       ]
                     : undefined,
+                revertAdvance: () =>
+                  onCommentDraftChange?.(
+                    mergeRestoredCommentDraft(commentDraftRef.current, body),
+                  ),
                 overlayPatch: {
                   done: true,
                   status: {
@@ -940,6 +947,7 @@ export const ConsoleItemDetailContainer = ({
       onCreateIssueFromComment={onCreateIssueFromComment}
       commentComposer={
         <ConsoleCommentComposer
+          key={commentDraftRevision}
           initiallyOpen
           initialDraft={initialCommentDraft}
           onSubmit={addComment}

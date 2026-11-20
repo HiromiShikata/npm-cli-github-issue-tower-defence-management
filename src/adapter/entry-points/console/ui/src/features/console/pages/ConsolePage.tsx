@@ -471,8 +471,10 @@ export const ConsolePage = () => {
     [selectedItemKey],
   );
 
+  const [commentDraftRevision, setCommentDraftRevision] = useState(0);
   const restoreCommentDraft = useCallback((itemKey: string, body: string) => {
     commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
+    setCommentDraftRevision((previous) => previous + 1);
   }, []);
 
   const caches = useConsoleCaches(airplaneSnapshot);
@@ -2069,6 +2071,7 @@ export const ConsolePage = () => {
             initialCommentDraft={
               commentDrafts.current.get(selectedItem.projectItemId) ?? ''
             }
+            commentDraftRevision={commentDraftRevision}
             onCommentDraftChange={handleCommentDraftChange}
             onQueueAction={handleQueueAction}
             onCommentError={(message, reason) =>

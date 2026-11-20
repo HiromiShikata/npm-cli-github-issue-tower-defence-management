@@ -604,14 +604,16 @@ describe('ConsoleItemDetailContainer', () => {
     });
   });
 
-  it('marks the Comment & Awaiting Workspace payload with the owner-written text so undo and a failed delivery hand it back to the draft without overwriting newer text', async () => {
+  it('passes a revertAdvance callback on the Comment & Awaiting Workspace queue action that restores the draft typed at click time via onCommentDraftChange', async () => {
+    const operations = buildOperations();
+    const onCommentDraftChange = jest.fn();
     const onQueueAction = jest.fn();
     const { getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
-        operations={buildOperations()}
+        operations={operations}
         statusOptions={consoleStatusOptionsFixture}
         storyOptions={[]}
         agentOptions={[]}
@@ -622,8 +624,7 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
-        pjcode="acme"
-        onCommentDraftChange={jest.fn()}
+        onCommentDraftChange={onCommentDraftChange}
       />,
     );
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
@@ -633,9 +634,52 @@ describe('ConsoleItemDetailContainer', () => {
 
     expect(onQueueAction).toHaveBeenCalledTimes(1);
     const input = onQueueAction.mock.calls[0][0];
+    onCommentDraftChange.mockClear();
 
-    expect(input.revertAdvance).toBeUndefined();
-    expect(input.offline[0].composerDraftBody).toBe('should survive undo');
+    expect(typeof input.revertAdvance).toBe('function');
+    input.revertAdvance();
+
+    expect(onCommentDraftChange).toHaveBeenCalledWith('should survive undo');
+  });
+
+  it('undo merges the restored comment into the draft without overwriting text the owner typed after pressing', async () => {
+    const operations = buildOperations();
+    const onCommentDraftChange = jest.fn();
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        onCommentDraftChange={onCommentDraftChange}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'first text' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'follow-up words' },
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    onCommentDraftChange.mockClear();
+
+    input.revertAdvance();
+
+    expect(onCommentDraftChange).toHaveBeenCalledWith(
+      'first text\n\nfollow-up words',
+    );
   });
 
   it('does not call addCommentAndMoveToAwaitingWorkspace merely from clicking Comment & Awaiting Workspace; only the queued commit triggers it', async () => {
