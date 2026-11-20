@@ -23,6 +23,32 @@ const rejectTriageWith = (responseBody: Record<string, unknown>): jest.Mock => {
 };
 
 describe('useConsoleOperations move to Awaiting Workspace rejection', () => {
+  it('reports a move without a project as a typed refusal that nothing was sent', async () => {
+    global.fetch = jest.fn() as unknown as typeof fetch;
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations(null);
+      return { overlay, operations };
+    });
+    const [item] = consoleListItemsFixture;
+    const [option] = consoleStatusOptionsFixture.filter(
+      (candidate) => candidate.name.toLowerCase() === 'awaiting workspace',
+    );
+
+    const error: unknown = await act(async () =>
+      result.current.operations
+        .addCommentAndMoveToAwaitingWorkspace(item, 'handoff details', option)
+        .then(
+          () => undefined,
+          (cause: unknown) => cause,
+        ),
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(error).toBeInstanceOf(ConsoleOperationRejectedError);
+    expect((error as ConsoleOperationRejectedError).commentPosted).toBe(false);
+  });
+
   it('surfaces an HTTP 200 that reports commentPosted false as a typed refusal', async () => {
     const responseBody = {
       ok: false,
