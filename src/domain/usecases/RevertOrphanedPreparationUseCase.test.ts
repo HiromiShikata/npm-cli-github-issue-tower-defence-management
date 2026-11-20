@@ -978,8 +978,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
           author: 'agent-bot',
           content:
             'From: :robot: some-other-agent (model)\n```json\n{"nextStep": null}\n```',
-          createdAt: new Date('2024-01-02T01:00:00Z'),
-          updatedAt: new Date('2024-01-02T01:00:00Z'),
+          createdAt: new Date('2024-01-01T23:00:00Z'),
+          updatedAt: new Date('2024-01-01T23:00:00Z'),
         },
         {
           author: 'agent-bot',

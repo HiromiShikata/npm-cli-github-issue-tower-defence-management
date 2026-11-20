@@ -3080,7 +3080,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           author: trustedAuthor,
           content:
             'From: :robot: triager (model-id)\n\n## Summary\n```json\n{ "nextStep": null }\n```',
-          createdAt: new Date('2026-01-02T00:00:00Z'),
+          createdAt: new Date('2025-12-31T00:00:00Z'),
           updatedAt: new Date('2026-01-02T00:00:00Z'),
         },
         ownerConfirmationReport(new Date('2026-01-01T00:00:00Z')),
