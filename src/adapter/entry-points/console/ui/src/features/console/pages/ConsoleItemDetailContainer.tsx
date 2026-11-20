@@ -76,6 +76,7 @@ export type ConsoleCommentErrorHandler = (
 export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
+  composerDraft?: { projectItemId: string; body: string };
   commit: (sentStepCount: number) => Promise<void>;
   commitWithActionId?: (
     sentStepCount: number,
@@ -237,6 +238,7 @@ export type ConsoleItemDetailContainerProps = {
   now: number;
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
+  onCommentDraftRestored?: (projectItemId: string) => void;
   commentDraftRevision?: number;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
   onCommentError?: ConsoleCommentErrorHandler;
@@ -276,6 +278,7 @@ export const ConsoleItemDetailContainer = ({
   now,
   initialCommentDraft,
   onCommentDraftChange,
+  onCommentDraftRestored,
   commentDraftRevision,
   onQueueAction,
   onCommentError,
@@ -776,10 +779,12 @@ export const ConsoleItemDetailContainer = ({
                         },
                       ]
                     : undefined,
-                revertAdvance: () =>
+                revertAdvance: () => {
                   onCommentDraftChange?.(
                     mergeRestoredCommentDraft(commentDraftRef.current, body),
-                  ),
+                  );
+                  onCommentDraftRestored?.(item.projectItemId);
+                },
                 overlayPatch: {
                   done: true,
                   status: {
@@ -787,6 +792,7 @@ export const ConsoleItemDetailContainer = ({
                     color: awaitingWorkspaceOption.color,
                   },
                 },
+                composerDraft: { projectItemId: item.projectItemId, body },
               });
               if (isAirplaneModeOn && pjcode != null) {
                 resolve('held_offline');

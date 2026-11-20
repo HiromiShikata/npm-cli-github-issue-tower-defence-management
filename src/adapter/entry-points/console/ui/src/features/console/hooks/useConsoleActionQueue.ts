@@ -58,6 +58,7 @@ export type ConsoleQueuedAction = {
   optimistic?: () => void;
   revertOptimistic?: () => void;
   offline?: ConsoleOfflinePayload[];
+  composerDraft?: { projectItemId: string; body: string };
 };
 
 export type ConsoleOfflineActionsCreateRequest = {
@@ -446,7 +447,15 @@ export const useConsoleActionQueue = (
                 removeOfflineQueueAction(payload.id);
               }
             }
-            handBackComments(unsentOfflinePayloads);
+            if (
+              action.composerDraft !== undefined &&
+              sentStepCountAfterAttempt === 0
+            ) {
+              restoreCommentDraftRef.current?.(
+                action.composerDraft.projectItemId,
+                action.composerDraft.body,
+              );
+            }
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
@@ -557,6 +566,7 @@ export const useConsoleActionQueue = (
             discardOfflineAction(id);
             return;
           }
+          handBackComments([action]);
           const resetInfo =
             result.rateLimitResetAt !== null
               ? ` Rate limit resets at ${result.rateLimitResetAt}.`

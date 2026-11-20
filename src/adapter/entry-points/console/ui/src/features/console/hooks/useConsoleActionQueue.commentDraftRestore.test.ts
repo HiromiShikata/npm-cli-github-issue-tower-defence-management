@@ -46,6 +46,7 @@ const makeMoveAction = (
   }),
   advance: jest.fn(),
   offline: [triagePayloadWithComment],
+  composerDraft: { projectItemId: ITEM_KEY, body: COMMENT_BODY },
   ...overrides,
 });
 
@@ -172,6 +173,7 @@ describe('useConsoleActionQueue comment draft restore', () => {
             throw new Error(STALE_STATUS_MESSAGE);
           }),
           offline: [templatePayload],
+          composerDraft: undefined,
         }),
       );
     });
@@ -182,6 +184,76 @@ describe('useConsoleActionQueue comment draft restore', () => {
     await flush();
 
     expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(result.current.error).toHaveLength(1);
+  });
+
+  it('hands a confirmed offline comment back to its item draft when the server answers with a non-2xx status, and keeps the queued entry', async () => {
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...itemFields,
+          composerDraftBody: COMMENT_BODY,
+          apiPath: '/api/comment',
+          requestBody: {
+            pjcode: 'acme',
+            url: ITEM_URL,
+            body: COMMENT_BODY,
+          },
+          id: 'comment-422-1',
+          message: 'Add comment',
+          color: 'green',
+          enqueuedAt: Date.now(),
+        },
+      ]),
+    );
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 422,
+      text: async () => 'comment rejected',
+    })) as unknown as typeof fetch;
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.confirmOfflineAction('comment-422-1');
+    });
+
+    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+    expect(result.current.offlineActions).toHaveLength(1);
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+  });
+
+  it('hands the comment back on a rejection even when the action has no offline payload', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: null,
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          offline: undefined,
+          composerDraft: { projectItemId: ITEM_KEY, body: COMMENT_BODY },
+        }),
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+
+    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
     expect(result.current.error).toHaveLength(1);
   });
 

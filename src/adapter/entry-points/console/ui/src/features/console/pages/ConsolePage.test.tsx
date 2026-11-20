@@ -3495,6 +3495,47 @@ describe('ConsolePage comment draft reload persistence', () => {
       jest.useRealTimers();
     }
   });
+
+  it('shows the undone comment in the composer when the owner is back on the acted item and presses Undo', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText, getByPlaceholderText } = render(
+        <ConsolePage />,
+      );
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+      fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+        target: { value: 'undone text' },
+      });
+      fireEvent.click(getByText('Comment & Awaiting Workspace'));
+      await waitFor(() => {
+        expect(window.location.hash).toBe('#item/PVTI_2');
+      });
+
+      await act(async () => {
+        window.location.hash = '#item/PVTI_1';
+        window.dispatchEvent(new Event('hashchange'));
+      });
+      await waitFor(() => {
+        expect(getByPlaceholderText('Leave a comment…')).toHaveValue('');
+      });
+
+      fireEvent.click(getByText('Undo'));
+
+      await waitFor(() => {
+        expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+          'undone text',
+        );
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
   it('shows the same unsent draft text for the task that held it after the page is unmounted and remounted (simulated reload)', async () => {
     const { getByText, findByText, getByPlaceholderText, unmount } = render(
       <ConsolePage />,

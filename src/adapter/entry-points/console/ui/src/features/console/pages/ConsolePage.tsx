@@ -472,10 +472,20 @@ export const ConsolePage = () => {
   );
 
   const [commentDraftRevision, setCommentDraftRevision] = useState(0);
-  const restoreCommentDraft = useCallback((itemKey: string, body: string) => {
-    commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
-    setCommentDraftRevision((previous) => previous + 1);
+  const selectedItemKeyRef = useRef<string | null>(selectedItemKey);
+  selectedItemKeyRef.current = selectedItemKey;
+  const commentDraftRestored = useCallback((itemKey: string) => {
+    if (itemKey === selectedItemKeyRef.current) {
+      setCommentDraftRevision((previous) => previous + 1);
+    }
   }, []);
+  const restoreCommentDraft = useCallback(
+    (itemKey: string, body: string) => {
+      commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
+      commentDraftRestored(itemKey);
+    },
+    [commentDraftRestored],
+  );
 
   const caches = useConsoleCaches(airplaneSnapshot);
   const refreshQueuedTab = useCallback(
@@ -965,6 +975,7 @@ export const ConsolePage = () => {
             : (sentStepCount, actionId) =>
                 commitWithActionId(sentStepCount, actionId),
         offline: input.offline,
+        composerDraft: input.composerDraft,
         revertAdvance:
           dependedIssueSubmission === null
             ? input.revertAdvance
@@ -2072,6 +2083,7 @@ export const ConsolePage = () => {
               commentDrafts.current.get(selectedItem.projectItemId) ?? ''
             }
             commentDraftRevision={commentDraftRevision}
+            onCommentDraftRestored={commentDraftRestored}
             onCommentDraftChange={handleCommentDraftChange}
             onQueueAction={handleQueueAction}
             onCommentError={(message, reason) =>
