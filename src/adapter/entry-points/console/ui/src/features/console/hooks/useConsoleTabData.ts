@@ -279,10 +279,7 @@ export const useConsoleTabData = (
   const [error, setError] = useState<string | null>(null);
   const [trackedPjcode, setTrackedPjcode] = useState<string | null>(pjcode);
   const currentPjcodeRef = useRef<string | null>(pjcode);
-
-  useEffect(() => {
-    currentPjcodeRef.current = pjcode;
-  }, [pjcode]);
+  currentPjcodeRef.current = pjcode;
 
   if (trackedPjcode !== pjcode) {
     setTrackedPjcode(pjcode);
