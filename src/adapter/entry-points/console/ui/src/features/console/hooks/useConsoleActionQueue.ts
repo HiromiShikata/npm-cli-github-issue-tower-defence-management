@@ -500,23 +500,26 @@ export const useConsoleActionQueue = (
     [runCommit],
   );
 
-  const undo = useCallback((id: string): void => {
-    const entry = pendingEntriesRef.current.get(id);
-    if (entry === undefined) return;
-    if (entry.timer !== null) {
-      clearInterval(entry.timer);
-    }
-    pendingEntriesRef.current.delete(id);
-    setPending((prev) => prev.filter((p) => p.id !== id));
-    for (const payload of entry.action.offline ?? []) {
-      const payloadId = payload.id ?? '';
-      removePersistedConsoleAction(payloadId);
-      removeOfflineQueueAction(payloadId);
-    }
-    handBackComments(entry.action.offline ?? []);
-    entry.action.revertAdvance?.();
-    entry.action.revertOptimistic?.();
-  }, [handBackComments]);
+  const undo = useCallback(
+    (id: string): void => {
+      const entry = pendingEntriesRef.current.get(id);
+      if (entry === undefined) return;
+      if (entry.timer !== null) {
+        clearInterval(entry.timer);
+      }
+      pendingEntriesRef.current.delete(id);
+      setPending((prev) => prev.filter((p) => p.id !== id));
+      for (const payload of entry.action.offline ?? []) {
+        const payloadId = payload.id ?? '';
+        removePersistedConsoleAction(payloadId);
+        removeOfflineQueueAction(payloadId);
+      }
+      handBackComments(entry.action.offline ?? []);
+      entry.action.revertAdvance?.();
+      entry.action.revertOptimistic?.();
+    },
+    [handBackComments],
+  );
 
   const dismiss = useCallback(
     (id: string): void => {

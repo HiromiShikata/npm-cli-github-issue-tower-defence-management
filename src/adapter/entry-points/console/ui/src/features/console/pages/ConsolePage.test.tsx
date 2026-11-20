@@ -3321,7 +3321,6 @@ describe('ConsolePage comment draft reload persistence', () => {
     installDraftReloadFetch();
   });
 
-
   it('keeps the comment of a rejected Comment & Awaiting Workspace in the item draft in storage when the rejection arrives after the owner has moved to another item', async () => {
     const triage: { answer?: () => void } = {};
     const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {

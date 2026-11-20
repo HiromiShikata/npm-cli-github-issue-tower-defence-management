@@ -471,12 +471,9 @@ export const ConsolePage = () => {
     [selectedItemKey],
   );
 
-  const restoreCommentDraft = useCallback(
-    (itemKey: string, body: string) => {
-      commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
-    },
-    [],
-  );
+  const restoreCommentDraft = useCallback((itemKey: string, body: string) => {
+    commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
+  }, []);
 
   const caches = useConsoleCaches(airplaneSnapshot);
   const refreshQueuedTab = useCallback(

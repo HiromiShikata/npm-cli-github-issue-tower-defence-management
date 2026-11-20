@@ -37,9 +37,7 @@ const triagePayloadWithComment = {
 
 const makeMoveAction = (
   overrides: Record<string, unknown> = {},
-): Parameters<
-  ReturnType<typeof useConsoleActionQueue>['enqueue']
->[0] => ({
+): Parameters<ReturnType<typeof useConsoleActionQueue>['enqueue']>[0] => ({
   message: 'Move to Awaiting Workspace',
   color: 'green',
   commit: jest.fn(async () => undefined),

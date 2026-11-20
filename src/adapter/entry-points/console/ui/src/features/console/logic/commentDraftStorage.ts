@@ -47,7 +47,10 @@ export const restoreCommentDraftInStorage = (
   body: string,
 ): Map<string, string> => {
   const drafts = loadCommentDrafts();
-  drafts.set(itemKey, mergeRestoredCommentDraft(drafts.get(itemKey) ?? '', body));
+  drafts.set(
+    itemKey,
+    mergeRestoredCommentDraft(drafts.get(itemKey) ?? '', body),
+  );
   saveCommentDrafts(drafts);
   return drafts;
 };

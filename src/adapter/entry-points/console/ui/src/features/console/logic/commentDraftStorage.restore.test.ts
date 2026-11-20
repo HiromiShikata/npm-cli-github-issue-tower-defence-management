@@ -8,8 +8,18 @@ const STORAGE_KEY = 'console-comment-drafts';
 
 describe('mergeRestoredCommentDraft', () => {
   it.each([
-    ['no newer draft', '', 'Checked during the flight.', 'Checked during the flight.'],
-    ['whitespace-only draft', ' \n ', 'Checked during the flight.', 'Checked during the flight.'],
+    [
+      'no newer draft',
+      '',
+      'Checked during the flight.',
+      'Checked during the flight.',
+    ],
+    [
+      'whitespace-only draft',
+      ' \n ',
+      'Checked during the flight.',
+      'Checked during the flight.',
+    ],
     [
       'newer text not containing the body',
       'Follow up later',
@@ -45,10 +55,15 @@ describe('restoreCommentDraftInStorage', () => {
       JSON.stringify([['PVTI_9', 'draft for another item']]),
     );
 
-    const drafts = restoreCommentDraftInStorage('PVTI_2', 'Checked during the flight.');
+    const drafts = restoreCommentDraftInStorage(
+      'PVTI_2',
+      'Checked during the flight.',
+    );
 
     expect(drafts.get('PVTI_2')).toBe('Checked during the flight.');
-    expect(loadCommentDrafts().get('PVTI_2')).toBe('Checked during the flight.');
+    expect(loadCommentDrafts().get('PVTI_2')).toBe(
+      'Checked during the flight.',
+    );
     expect(loadCommentDrafts().get('PVTI_9')).toBe('draft for another item');
   });
 
