@@ -649,6 +649,43 @@ describe('useConsoleActionQueue comment draft restore', () => {
     ).toHaveLength(0);
   });
 
+  it('keeps the persisted action with its Retry when a network error follows a partially sent comment', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          commitWithActionId: jest.fn(async () => {
+            throw new ConsoleActionPartiallySentError(
+              1,
+              new TypeError('Failed to fetch'),
+            );
+          }),
+          offline: [{ ...triagePayloadWithComment, id: 'partial-network-1' }],
+        }),
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(1);
+  });
+
   it('keeps the persisted action with its Retry when the comment was posted and a later step failed', async () => {
     const restoreCommentDraft = jest.fn();
     const { result } = renderHook(() =>
