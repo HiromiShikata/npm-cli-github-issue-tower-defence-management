@@ -76,8 +76,10 @@ export const deliverConsoleAction = async (
       reason,
       typeof payload === 'object' &&
         payload !== null &&
-        'commentPosted' in payload &&
-        (payload as { commentPosted: unknown }).commentPosted === true,
+        typeof (payload as { commentPosted?: unknown }).commentPosted ===
+          'boolean'
+        ? (payload as { commentPosted: boolean }).commentPosted
+        : null,
     );
   }
   if (
@@ -86,10 +88,13 @@ export const deliverConsoleAction = async (
     'ok' in payload &&
     (payload as { ok: unknown }).ok === false
   ) {
-    throw new Error(
+    throw new ConsoleOperationRejectedError(
       'error' in payload
         ? String((payload as { error: unknown }).error)
         : 'Action failed',
+      (payload as { commentPosted?: unknown }).commentPosted === false
+        ? false
+        : null,
     );
   }
   overlayCloseSuccessRecord(action.requestBody, payload);

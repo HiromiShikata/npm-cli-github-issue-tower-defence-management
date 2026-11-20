@@ -26,7 +26,7 @@ describe('postConsoleOperation rejection', () => {
       { commentPosted: false },
       false,
     ],
-    ['reports no comment state', {}, false],
+    ['reports no comment state', {}, null],
   ])(
     'throws a typed rejection that %s',
     async (_name, extraBody, expectedCommentPosted) => {

@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { ConsoleOperationRejectedError } from '../lib/consoleApi';
 import { CONSOLE_ACTION_DELIVERY_STORAGE_KEY } from './consoleActionDelivery';
 import {
   ConsoleActionPartiallySentError,
@@ -43,7 +44,7 @@ const makeMoveAction = (
   color: 'green',
   commit: jest.fn(async () => undefined),
   commitWithActionId: jest.fn(async () => {
-    throw new Error(STALE_STATUS_MESSAGE);
+    throw new ConsoleOperationRejectedError(STALE_STATUS_MESSAGE, false);
   }),
   advance: jest.fn(),
   offline: [triagePayloadWithComment],
@@ -211,7 +212,8 @@ describe('useConsoleActionQueue comment draft restore', () => {
     global.fetch = jest.fn(async () => ({
       ok: false,
       status: 422,
-      text: async () => 'comment rejected',
+      text: async () =>
+        JSON.stringify({ error: 'comment rejected', commentPosted: false }),
     })) as unknown as typeof fetch;
     const restoreCommentDraft = jest.fn();
     const { result } = renderHook(() =>
@@ -229,6 +231,49 @@ describe('useConsoleActionQueue comment draft restore', () => {
     expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
     expect(result.current.offlineActions).toHaveLength(0);
     expect(result.current.error[0]?.retry).toBeUndefined();
+  });
+
+  it('keeps a confirmed offline comment queued with its Retry when the server does not say it was not posted (no JSON body)', async () => {
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...itemFields,
+          composerDraftBody: COMMENT_BODY,
+          apiPath: '/api/comment',
+          requestBody: {
+            pjcode: 'acme',
+            url: ITEM_URL,
+            body: COMMENT_BODY,
+          },
+          id: 'comment-422-1',
+          message: 'Add comment',
+          color: 'green',
+          enqueuedAt: Date.now(),
+        },
+      ]),
+    );
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 422,
+      text: async () => 'comment rejected',
+    })) as unknown as typeof fetch;
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.confirmOfflineAction('comment-422-1');
+    });
+
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(result.current.offlineActions).toHaveLength(1);
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
   });
 
   it('hands the comment back on a rejection even when the action has no offline payload', async () => {
@@ -416,6 +461,383 @@ describe('useConsoleActionQueue comment draft restore', () => {
     expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
   });
 
+  it('hands the comment back to the composer and offers no Retry when the server did not post it', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          commitWithActionId: jest.fn(async () => {
+            throw new ConsoleOperationRejectedError('upstream failure', false);
+          }),
+        }),
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+
+    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+    expect(result.current.error).toHaveLength(1);
+    expect(result.current.error[0]?.retry).toBeUndefined();
+  });
+
+  it.each([
+    ['the server refused it', 'comment rejected', 422],
+    ['the server failed', 'upstream failure', 500],
+  ])(
+    'a persisted comment that %s on replay is handed back to the composer and dropped',
+    async (_name, reason, status) => {
+      const rejection = { error: reason, commentPosted: false };
+      localStorage.setItem(
+        CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+        JSON.stringify([
+          {
+            ...itemFields,
+            composerDraftBody: COMMENT_BODY,
+            apiPath: '/api/comment',
+            requestBody: { pjcode: 'acme', url: ITEM_URL, body: COMMENT_BODY },
+            id: `replay-status-${status}`,
+            message: 'Add comment',
+            color: 'green',
+            enqueuedAt: Date.now(),
+          },
+        ]),
+      );
+      global.fetch = jest.fn(async () => ({
+        ok: false,
+        status,
+        text: async () => JSON.stringify(rejection),
+        json: async () => rejection,
+      })) as unknown as typeof fetch;
+      const restoreCommentDraft = jest.fn();
+      const { result } = renderHook(() =>
+        useConsoleActionQueue({
+          isAirplaneModeOn: false,
+          projectCode: 'acme',
+          restoreCommentDraft,
+        }),
+      );
+
+      await flush();
+      await flush();
+
+      expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+      expect(
+        JSON.parse(
+          localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+        ),
+      ).toHaveLength(0);
+      expect(result.current.error[0]?.retry).toBeUndefined();
+    },
+  );
+
+  it('clears the persisted entry when a Retry of an ambiguous failure succeeds', async () => {
+    const commitWithActionId = jest
+      .fn<Promise<void>, [number, string]>()
+      .mockRejectedValueOnce(
+        new ConsoleOperationRejectedError('upstream failure', null),
+      )
+      .mockResolvedValueOnce(undefined);
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          commitWithActionId,
+          offline: [{ ...triagePayloadWithComment, id: 'ambiguous-retry-1' }],
+        }),
+      );
+    });
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(1);
+
+    await act(async () => {
+      result.current.error[0]?.retry?.();
+    });
+    await flush();
+
+    expect(commitWithActionId).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(0);
+    expect(
+      JSON.parse(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]'),
+    ).toHaveLength(0);
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+  });
+
+  it('sends a persisted comment again when its Retry is pressed after an unknown failure', async () => {
+    localStorage.setItem(
+      CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...itemFields,
+          composerDraftBody: COMMENT_BODY,
+          apiPath: '/api/comment',
+          requestBody: { pjcode: 'acme', url: ITEM_URL, body: COMMENT_BODY },
+          id: 'replay-retry-1',
+          message: 'Add comment',
+          color: 'green',
+          enqueuedAt: Date.now(),
+        },
+      ]),
+    );
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => '{"error":"upstream failure"}',
+        json: async () => ({ error: 'upstream failure' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => '{"posted":true}',
+        json: async () => ({ posted: true, comment: {} }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    await flush();
+    await flush();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      result.current.error[0]?.retry?.();
+    });
+    await flush();
+    await flush();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('keeps the persisted action with its Retry when a network error follows a partially sent comment', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          commitWithActionId: jest.fn(async () => {
+            throw new ConsoleActionPartiallySentError(
+              1,
+              new TypeError('Failed to fetch'),
+            );
+          }),
+          offline: [{ ...triagePayloadWithComment, id: 'partial-network-1' }],
+        }),
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('hands back a composer comment refused before any request when the page is hidden during the countdown', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          offline: undefined,
+          commit: jest.fn(async () => {
+            throw new ConsoleOperationRejectedError(
+              'project is missing',
+              false,
+            );
+          }),
+          composerDraft: { projectItemId: ITEM_KEY, body: COMMENT_BODY },
+        }),
+      );
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    await flush();
+
+    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+  });
+
+  it('keeps the persisted action with its Retry when the comment was posted and a later step failed', async () => {
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+    act(() => {
+      result.current.enqueue(
+        makeMoveAction({
+          commitWithActionId: jest.fn(async () => {
+            throw new ConsoleActionPartiallySentError(
+              1,
+              new Error('status step failed'),
+            );
+          }),
+          offline: [{ ...triagePayloadWithComment, id: 'partial-keep-1' }],
+        }),
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(5200);
+    });
+    await flush();
+
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('hands a persisted comment back on replay when the server answers HTTP 200 with commentPosted false', async () => {
+    const responseBody = {
+      ok: false,
+      commentPosted: false,
+      error: 'comment failed',
+    };
+    localStorage.setItem(
+      CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...triagePayloadWithComment,
+          id: 'replay-200-refused-1',
+          message: 'Move to Awaiting Workspace',
+          color: 'green',
+          enqueuedAt: Date.now(),
+        },
+      ]),
+    );
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(responseBody),
+      json: async () => responseBody,
+    })) as unknown as typeof fetch;
+    const restoreCommentDraft = jest.fn();
+    renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+
+    await flush();
+    await flush();
+
+    expect(restoreCommentDraft).toHaveBeenCalledWith(ITEM_KEY, COMMENT_BODY);
+  });
+
+  it('keeps a persisted comment with its replay when the server does not say whether it was posted', async () => {
+    const rejection = { error: 'upstream failure' };
+    localStorage.setItem(
+      CONSOLE_ACTION_DELIVERY_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...itemFields,
+          composerDraftBody: COMMENT_BODY,
+          apiPath: '/api/comment',
+          requestBody: { pjcode: 'acme', url: ITEM_URL, body: COMMENT_BODY },
+          id: 'replay-ambiguous-1',
+          message: 'Add comment',
+          color: 'green',
+          enqueuedAt: Date.now(),
+        },
+      ]),
+    );
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 500,
+      text: async () => JSON.stringify(rejection),
+      json: async () => rejection,
+    })) as unknown as typeof fetch;
+    const restoreCommentDraft = jest.fn();
+    const { result } = renderHook(() =>
+      useConsoleActionQueue({
+        isAirplaneModeOn: false,
+        projectCode: 'acme',
+        restoreCommentDraft,
+      }),
+    );
+
+    await flush();
+    await flush();
+
+    expect(restoreCommentDraft).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(
+        localStorage.getItem(CONSOLE_ACTION_DELIVERY_STORAGE_KEY) ?? '[]',
+      ),
+    ).toHaveLength(1);
+    expect(result.current.error[0]?.retry).toEqual(expect.any(Function));
+  });
+
   it('hands back the comment of an offline action the server rejects when the owner confirms it', async () => {
     localStorage.setItem(
       OFFLINE_QUEUE_STORAGE_KEY,
@@ -432,7 +854,8 @@ describe('useConsoleActionQueue comment draft restore', () => {
     global.fetch = jest.fn(async () => ({
       ok: false,
       status: 400,
-      text: async () => STALE_STATUS_MESSAGE,
+      text: async () =>
+        JSON.stringify({ error: STALE_STATUS_MESSAGE, commentPosted: false }),
     })) as unknown as typeof fetch;
     const restoreCommentDraft = jest.fn();
     const { result } = renderHook(() =>

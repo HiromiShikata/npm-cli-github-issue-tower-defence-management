@@ -390,8 +390,9 @@ const rejectWhenStatusChangedBeforePullRequestWrite = async (
   }
   const liveStatusName = liveIssue.status;
   if (
+    targetStatusName === undefined &&
     liveStatusName?.toLowerCase() ===
-    AWAITING_WORKSPACE_STATUS_NAME.toLowerCase()
+      AWAITING_WORKSPACE_STATUS_NAME.toLowerCase()
   ) {
     return null;
   }
@@ -842,21 +843,34 @@ const handleTriageImpl = async (
       };
       return { ...failure, body: resultBody };
     }
-    recordDoneForStatusChange(context, pjcode, projectItemId);
-    const lowerStatus = statusName.toLowerCase();
-    if (
-      lowerStatus === AWAITING_WORKSPACE_STATUS_NAME ||
-      lowerStatus === PREPARATION_STATUS_NAME
-    ) {
-      const canonicalStatusName =
-        project.status.statuses.find(
-          (o) => o.name.toLowerCase() === lowerStatus,
-        )?.name ?? statusName;
-      context.patchItemIntoQueuedTab?.(
-        pjcode,
-        projectItemId,
-        canonicalStatusName,
-      );
+    try {
+      recordDoneForStatusChange(context, pjcode, projectItemId);
+      const lowerStatus = statusName.toLowerCase();
+      if (
+        lowerStatus === AWAITING_WORKSPACE_STATUS_NAME ||
+        lowerStatus === PREPARATION_STATUS_NAME
+      ) {
+        const canonicalStatusName =
+          project.status.statuses.find(
+            (o) => o.name.toLowerCase() === lowerStatus,
+          )?.name ?? statusName;
+        context.patchItemIntoQueuedTab?.(
+          pjcode,
+          projectItemId,
+          canonicalStatusName,
+        );
+      }
+    } catch (error) {
+      if (!commentPosted) throw error;
+      return {
+        statusCode: 502,
+        body: {
+          ok: false,
+          commentPosted: true,
+          statusSet: true,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
     }
     const resultBody =
       commentFailure === null

@@ -182,8 +182,9 @@ const generateId = (): string => {
 export const isNetworkError = (error: unknown): boolean =>
   error instanceof TypeError;
 
-const commentWasPosted = (cause: unknown): boolean =>
-  cause instanceof ConsoleOperationRejectedError && cause.commentPosted;
+const notPostedByServer = (cause: unknown): boolean =>
+  cause instanceof ConsoleOperationRejectedError &&
+  cause.commentPosted === false;
 
 export class ConsoleActionPartiallySentError extends Error {
   readonly sentStepCount: number;
@@ -297,17 +298,14 @@ export const useConsoleActionQueue = (
     [],
   );
   const handBackDefinitiveRejection = useCallback(
-    (action: ConsoleOfflineQueuedAction, cause: unknown): void => {
-      if (
-        action.composerDraftBody === undefined ||
-        isNetworkError(cause) ||
-        commentWasPosted(cause)
-      ) {
-        return;
+    (action: ConsoleOfflineQueuedAction, cause: unknown): boolean => {
+      if (action.composerDraftBody === undefined || !notPostedByServer(cause)) {
+        return false;
       }
       removePersistedConsoleAction(action.id);
       removeOfflineQueueAction(action.id);
       handBackComments([action]);
+      return true;
     },
     [handBackComments],
   );
@@ -460,17 +458,21 @@ export const useConsoleActionQueue = (
           ) {
             actionHoldOffline(unsentOfflinePayloads);
           } else {
-            for (const payload of offlinePayloads) {
-              if (payload.id !== undefined) {
-                removePersistedConsoleAction(payload.id);
-                removeOfflineQueueAction(payload.id);
-              }
-            }
-            if (
+            const refusedToComposer =
               action.composerDraft !== undefined &&
               sentStepCountAfterAttempt === 0 &&
-              !commentWasPosted(unsentRequestFailure)
-            ) {
+              notPostedByServer(unsentRequestFailure);
+            const ambiguousForRetry =
+              action.composerDraft !== undefined && !refusedToComposer;
+            if (!ambiguousForRetry) {
+              for (const payload of offlinePayloads) {
+                if (payload.id !== undefined) {
+                  removePersistedConsoleAction(payload.id);
+                  removeOfflineQueueAction(payload.id);
+                }
+              }
+            }
+            if (refusedToComposer && action.composerDraft !== undefined) {
               restoreCommentDraftRef.current?.(
                 action.composerDraft.projectItemId,
                 action.composerDraft.body,
@@ -479,12 +481,14 @@ export const useConsoleActionQueue = (
             applyError({
               message: action.message,
               reason: errorReason(unsentRequestFailure),
-              retry: () =>
-                runCommitRef.current(
-                  action,
-                  sentStepCountAfterAttempt,
-                  errorId,
-                ),
+              retry: refusedToComposer
+                ? undefined
+                : () =>
+                    runCommitRef.current(
+                      action,
+                      sentStepCountAfterAttempt,
+                      errorId,
+                    ),
             });
             setWriteState({ status: 'failed', attempt });
           }
@@ -590,7 +594,10 @@ export const useConsoleActionQueue = (
             result.rateLimitResetAt !== null
               ? ` Rate limit resets at ${result.rateLimitResetAt}.`
               : '';
-          if (action.composerDraftBody !== undefined) {
+          if (
+            result.commentPosted === false &&
+            action.composerDraftBody !== undefined
+          ) {
             handBackComments([action]);
             discardOfflineAction(id);
             appendError({
@@ -618,12 +625,19 @@ export const useConsoleActionQueue = (
             message: action.message,
             reason: 'Still offline — action is still held in the queue',
           });
-        } else {
-          if (!commentWasPosted(cause)) {
-            handBackComments([action]);
-          }
+        } else if (action.composerDraftBody === undefined) {
           appendError({ message: action.message, reason: errorReason(cause) });
           discardOfflineAction(id);
+        } else if (notPostedByServer(cause)) {
+          handBackComments([action]);
+          appendError({ message: action.message, reason: errorReason(cause) });
+          discardOfflineAction(id);
+        } else {
+          appendError({
+            message: action.message,
+            reason: errorReason(cause),
+            retry: () => void confirmOfflineAction(id),
+          });
         }
       }
     },
@@ -700,11 +714,16 @@ export const useConsoleActionQueue = (
         void deliverPersistedConsoleAction(action)
           .then(() => removeOfflineQueueAction(action.id))
           .catch((cause: unknown) => {
-            handBackDefinitiveRejection(action, cause);
+            const handedBack = handBackDefinitiveRejection(action, cause);
             appendError({
               message: action.message,
               reason: errorReason(cause),
-              retry: () => void replay(),
+              retry: handedBack
+                ? undefined
+                : () => {
+                    deliveredActionIdsRef.current.delete(action.id);
+                    replay();
+                  },
             });
           });
       }
@@ -719,12 +738,21 @@ export const useConsoleActionQueue = (
         setPending((prev) => prev.filter((pending) => pending.id !== entry.id));
         const offlinePayloads = entry.action.offline ?? [];
         if (offlinePayloads.length === 0) {
-          void entry.action.commit(0).catch((cause: unknown) =>
+          void entry.action.commit(0).catch((cause: unknown) => {
+            if (
+              entry.action.composerDraft !== undefined &&
+              notPostedByServer(cause)
+            ) {
+              restoreCommentDraftRef.current?.(
+                entry.action.composerDraft.projectItemId,
+                entry.action.composerDraft.body,
+              );
+            }
             appendError({
               message: entry.action.message,
               reason: errorReason(cause),
-            }),
-          );
+            });
+          });
         }
         for (const payload of offlinePayloads) {
           const action = loadPersistedConsoleActions().find(
@@ -736,10 +764,16 @@ export const useConsoleActionQueue = (
             void deliverPersistedConsoleAction(action, true)
               .then(() => removeOfflineQueueAction(action.id))
               .catch((cause: unknown) => {
-                handBackDefinitiveRejection(action, cause);
+                const handedBack = handBackDefinitiveRejection(action, cause);
                 appendError({
                   message: entry.action.message,
                   reason: errorReason(cause),
+                  retry: handedBack
+                    ? undefined
+                    : () => {
+                        deliveredActionIdsRef.current.delete(action.id);
+                        replay();
+                      },
                 });
               });
           }

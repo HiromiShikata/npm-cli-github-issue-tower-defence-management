@@ -3342,7 +3342,11 @@ describe('ConsolePage comment draft reload persistence', () => {
               ok: false,
               status: 400,
               text: async () =>
-                'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                JSON.stringify({
+                  error:
+                    'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                  commentPosted: false,
+                }),
               json: async () => ({}),
             });
         });
@@ -3431,7 +3435,11 @@ describe('ConsolePage comment draft reload persistence', () => {
               ok: false,
               status: 400,
               text: async () =>
-                'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                JSON.stringify({
+                  error:
+                    'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                  commentPosted: false,
+                }),
               json: async () => ({}),
             });
         });
@@ -10197,6 +10205,12 @@ describe('ConsolePage offline action queue', () => {
     json: async () => ({}),
   });
 
+  const respondWithSetStatusWithCommentSucceeded: PostResponder = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true, commentPosted: true, statusSet: true }),
+  });
+
   const respondWithHostRejection: PostResponder = async () => ({
     ok: false,
     status: 500,
@@ -10577,17 +10591,19 @@ describe('ConsolePage offline action queue', () => {
   it.each(commentThenSecondRequestActions)(
     'retries $actionName without duplicating its comment when its request answered HTTP 500 online',
     async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+      const isCombined = 'commentBody' in expectedSecondRequestBody;
       const fetchMock = installOfflineQueueFetch(
         respondWithPostedCommentsAndTriageRequestsInTurn(
           respondWithHostRejection,
-          respondWithOperationSucceeded,
+          isCombined
+            ? respondWithSetStatusWithCommentSucceeded
+            : respondWithOperationSucceeded,
         ),
       );
       const view = render(<ConsolePage />);
       await startAction(view);
       await dismissUndoToast(view.container);
       const retryButton = await findErrorToastRetryButton(view.container);
-      const isCombined = 'commentBody' in expectedSecondRequestBody;
       expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual(
         isCombined
           ? []
@@ -10622,6 +10638,7 @@ describe('ConsolePage offline action queue', () => {
         expectedSecondRequestBody,
         expectedSecondRequestBody,
       ]);
+      await new Promise((resolve) => setTimeout(resolve, 50));
       expect(readStoredOfflineQueue()).toEqual([]);
       expect(view.container.querySelector('.console-error-toast')).toBeNull();
     },

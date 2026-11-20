@@ -588,7 +588,12 @@ export const useConsoleOperations = (
       option: ConsoleFieldOption,
       actionId?: string,
     ) => {
-      if (pjcode === null) throw missingPjcodeError();
+      if (pjcode === null) {
+        throw new ConsoleOperationRejectedError(
+          missingPjcodeError().message,
+          false,
+        );
+      }
       const resolvedActionId = actionId ?? generateActionId();
       const hasAttemptedAction =
         combinedActionIdsRef.current.has(resolvedActionId);
@@ -623,6 +628,16 @@ export const useConsoleOperations = (
         }
         await awaitingWorkspaceStatusMoveAfterCommentPosted(item, option);
         return commentResult.comment;
+      }
+      if (
+        isRecord(response) &&
+        response.ok !== true &&
+        response.commentPosted === false
+      ) {
+        throw new ConsoleOperationRejectedError(
+          String(response.error ?? 'Comment was not posted'),
+          false,
+        );
       }
       if (
         !isRecord(response) ||
