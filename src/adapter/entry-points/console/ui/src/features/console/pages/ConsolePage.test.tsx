@@ -3342,7 +3342,11 @@ describe('ConsolePage comment draft reload persistence', () => {
               ok: false,
               status: 400,
               text: async () =>
-                'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                JSON.stringify({
+                  error:
+                    'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                  commentPosted: false,
+                }),
               json: async () => ({}),
             });
         });
@@ -3431,7 +3435,11 @@ describe('ConsolePage comment draft reload persistence', () => {
               ok: false,
               status: 400,
               text: async () =>
-                'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                JSON.stringify({
+                  error:
+                    'Status changed since this action was queued: expected "Todo" but the issue\'s Status is now "Done". Please re-check the issue and act again.',
+                  commentPosted: false,
+                }),
               json: async () => ({}),
             });
         });
@@ -10197,6 +10205,12 @@ describe('ConsolePage offline action queue', () => {
     json: async () => ({}),
   });
 
+  const respondWithSetStatusWithCommentSucceeded: PostResponder = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true, commentPosted: true, statusSet: true }),
+  });
+
   const respondWithHostRejection: PostResponder = async () => ({
     ok: false,
     status: 500,
@@ -10574,51 +10588,22 @@ describe('ConsolePage offline action queue', () => {
     },
   ];
 
-  it('keeps a Comment & Awaiting Workspace refused with HTTP 500 in the persisted composer draft with no Retry, and sends its comment once', async () => {
-    const fetchMock = installOfflineQueueFetch(
-      respondWithPostedCommentsAndTriageRequestsInTurn(
-        respondWithHostRejection,
-        respondWithOperationSucceeded,
-      ),
-    );
-    const view = render(<ConsolePage />);
-    await openPullRequestDetail(view);
-    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
-      target: { value: 'Moving after the outage.' },
-    });
-    fireEvent.click(view.getByText('Comment & Awaiting Workspace'));
-    await dismissUndoToast(view.container);
-
-    await waitFor(() => {
-      expect(
-        JSON.parse(localStorage.getItem('console-comment-drafts') ?? '[]'),
-      ).toContainEqual([expect.any(String), 'Moving after the outage.']);
-    });
-    expect(
-      view.container.querySelector('.console-error-toast-retry'),
-    ).toBeNull();
-    expect(postedRequestBodies(fetchMock, '/api/triage')).toHaveLength(1);
-  });
-
-  it.each(
-    commentThenSecondRequestActions.filter(
-      (action) =>
-        action.actionName !== 'Comment & Awaiting Workspace from the detail',
-    ),
-  )(
+  it.each(commentThenSecondRequestActions)(
     'retries $actionName without duplicating its comment when its request answered HTTP 500 online',
     async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+      const isCombined = 'commentBody' in expectedSecondRequestBody;
       const fetchMock = installOfflineQueueFetch(
         respondWithPostedCommentsAndTriageRequestsInTurn(
           respondWithHostRejection,
-          respondWithOperationSucceeded,
+          isCombined
+            ? respondWithSetStatusWithCommentSucceeded
+            : respondWithOperationSucceeded,
         ),
       );
       const view = render(<ConsolePage />);
       await startAction(view);
       await dismissUndoToast(view.container);
       const retryButton = await findErrorToastRetryButton(view.container);
-      const isCombined = 'commentBody' in expectedSecondRequestBody;
       expect(postedRequestBodies(fetchMock, '/api/comment')).toEqual(
         isCombined
           ? []
@@ -10653,17 +10638,14 @@ describe('ConsolePage offline action queue', () => {
         expectedSecondRequestBody,
         expectedSecondRequestBody,
       ]);
-      expect(readStoredOfflineQueue()).toEqual([]);
+      await waitFor(() => {
+        expect(readStoredOfflineQueue()).toEqual([]);
+      });
       expect(view.container.querySelector('.console-error-toast')).toBeNull();
     },
   );
 
-  it.each(
-    commentThenSecondRequestActions.filter(
-      (action) =>
-        action.actionName !== 'Comment & Awaiting Workspace from the detail',
-    ),
-  )(
+  it.each(commentThenSecondRequestActions)(
     'holds the failed request of $actionName without an error toast and does not duplicate its comment when its retry fails because the network is unavailable',
     async ({
       startAction,
@@ -10787,12 +10769,7 @@ describe('ConsolePage offline action queue', () => {
     });
   };
 
-  it.each(
-    commentThenSecondRequestActions.filter(
-      (action) =>
-        action.actionName !== 'Comment & Awaiting Workspace from the detail',
-    ),
-  )(
+  it.each(commentThenSecondRequestActions)(
     'holds the failed request of $actionName without sending anything or showing an airplane mode error when airplane mode is turned on before the retry',
     async ({
       startAction,
