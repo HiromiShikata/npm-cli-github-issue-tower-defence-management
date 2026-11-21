@@ -1,3 +1,10 @@
+## [2.201.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.8...v2.201.9) (2026-11-21)
+
+
+### Bug Fixes
+
+* **security:** remove quadratic PEM redaction and harden workflow permissions ([#3753](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3753)) ([1622952](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/16229526b2e4850d36d93a63aa460494c66afc5a))
+
 ## [2.201.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.7...v2.201.8) (2026-11-20)
 
 
