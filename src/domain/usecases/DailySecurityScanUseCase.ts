@@ -156,7 +156,7 @@ type ScannedVulnerablePackage = {
 const parseScannerVulnerabilities = (
   repositoryName: string,
   scannerOutput: string,
-): ScannedVulnerablePackage[] => {
+): ScannedVulnerablePackage[] | null => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(scannerOutput);
@@ -164,7 +164,7 @@ const parseScannerVulnerabilities = (
     console.error(
       `Unparsable osv-scanner output for ${repositoryName}: ${String(error)}`,
     );
-    return [];
+    return null;
   }
   const toRecord = (value: unknown): Record<string, unknown> =>
     typeof value === 'object' && value !== null ? { ...value } : {};
@@ -467,6 +467,19 @@ export class DailySecurityScanUseCase {
         repositoryName,
         scanOutput,
       );
+      if (vulnerablePackages === null) {
+        await this.appendDailySecurityScanRunLogEntry({
+          repositoryName,
+          executedAtIso,
+          outcome: {
+            type: 'scanFailed',
+            clonedCommitSha,
+            exitCode: scanExitCode,
+            stderr: scanStderr,
+          },
+        });
+        continue;
+      }
       scannedVulnerablePackages.push(...vulnerablePackages);
       await this.appendDailySecurityScanRunLogEntry({
         repositoryName,
