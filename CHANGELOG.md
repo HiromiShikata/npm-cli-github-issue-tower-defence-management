@@ -1,3 +1,10 @@
+# [2.202.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.9...v2.202.0) (2026-11-22)
+
+
+### Features
+
+* **live-session:** delegate GPT-Live backend work to gpt-6.2-astra ([#3754](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3754)) ([0f39094](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0f3909492eff230729dae8c2c94d41c00105f21d))
+
 ## [2.201.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.8...v2.201.9) (2026-11-21)
 
 
