@@ -47,7 +47,7 @@ describe('OpenAiLiveSessionRepository', () => {
         delegation: {
           type: 'responses',
           responses: {
-            model: 'gpt-6-luna',
+            model: 'gpt-6.2-astra',
             tools: [
               {
                 type: 'function',

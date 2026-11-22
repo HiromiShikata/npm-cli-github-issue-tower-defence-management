@@ -46,7 +46,7 @@ const buildLiveSessionRequestBody = (sdpOffer: string): string =>
       delegation: {
         type: 'responses',
         responses: {
-          model: 'gpt-6-luna',
+          model: 'gpt-6.2-astra',
           tools: LIVE_SESSION_TOOLS,
         },
       },
