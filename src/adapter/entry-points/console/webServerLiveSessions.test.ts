@@ -104,6 +104,7 @@ class RecordingLiveSessionSideband implements LiveSessionSideband {
 const createTestServer = async (
   liveSessionRepository: LiveSessionRepository | null,
   liveSessionSideband?: LiveSessionSideband | null,
+  liveSessionCloser?: { close(sessionId: string): Promise<void> } | null,
 ): Promise<http.Server> => {
   const server = createWebServer({
     accessToken: testToken,
@@ -115,6 +116,7 @@ const createTestServer = async (
     dashboardProjectNames: [],
     liveSessionRepository,
     liveSessionSideband,
+    liveSessionCloser,
   });
   await listen(server);
   return server;
@@ -343,6 +345,95 @@ describe('webServer live sessions route', () => {
       expect(repository.calls).toEqual(['OFFER-SDP']);
       expect(response.statusCode).toBe(201);
       expect(response.body).toBe('ANSWER-SDP');
+    } finally {
+      await close(server);
+    }
+  });
+});
+
+class FailingLiveSessionSideband implements LiveSessionSideband {
+  attach(): void {
+    throw new Error('OPENAI_API_KEY is not set for the live session sideband');
+  }
+}
+
+class RecordingLiveSessionCloser {
+  readonly closedSessionIds: string[] = [];
+
+  close(sessionId: string): Promise<void> {
+    this.closedSessionIds.push(sessionId);
+    return Promise.resolve();
+  }
+}
+
+describe('webServer live session creation when the voice console sideband cannot attach', () => {
+  it('fails with a non-2xx JSON error and closes the created session', async () => {
+    const repository = new InMemoryLiveSessionRepository({
+      type: 'created',
+      sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_9',
+    });
+    const closer = new RecordingLiveSessionCloser();
+    const server = await createTestServer(
+      repository,
+      new FailingLiveSessionSideband(),
+      closer,
+    );
+
+    try {
+      const response = await requestServer(
+        server,
+        'POST',
+        '/api/live/sessions',
+        'OFFER-SDP',
+        'application/sdp',
+      );
+      expect({
+        statusCode: response.statusCode,
+        contentType: response.contentType,
+        body: JSON.parse(response.body) as { error: string },
+        closedSessionIds: closer.closedSessionIds,
+      }).toEqual({
+        statusCode: 502,
+        contentType: 'application/json; charset=utf-8',
+        body: {
+          error: 'voice_console_sideband_failed',
+          message: 'OPENAI_API_KEY is not set for the live session sideband',
+        },
+        closedSessionIds: ['live_9'],
+      });
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('keeps the 201 SDP answer and closes nothing when the sideband attaches', async () => {
+    const repository = new InMemoryLiveSessionRepository({
+      type: 'created',
+      sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_10',
+    });
+    const sideband = new RecordingLiveSessionSideband();
+    const closer = new RecordingLiveSessionCloser();
+    const server = await createTestServer(repository, sideband, closer);
+
+    try {
+      const response = await requestServer(
+        server,
+        'POST',
+        '/api/live/sessions',
+        'OFFER-SDP',
+        'application/sdp',
+      );
+      expect({
+        statusCode: response.statusCode,
+        body: response.body,
+        closedSessionIds: closer.closedSessionIds,
+      }).toEqual({
+        statusCode: 201,
+        body: 'ANSWER-SDP',
+        closedSessionIds: [],
+      });
     } finally {
       await close(server);
     }
