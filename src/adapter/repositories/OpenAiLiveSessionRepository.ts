@@ -9,6 +9,8 @@ import {
 
 const OPENAI_LIVE_SESSIONS_URL = 'https://api.openai.com/v1/live/sessions';
 
+const LIVE_SESSION_CLOSE_TIMEOUT_MS = 10_000;
+
 const liveSessionUrl = (sessionId: string): string =>
   `${OPENAI_LIVE_SESSIONS_URL}/${encodeURIComponent(sessionId)}`;
 
@@ -159,6 +161,7 @@ export class OpenAiLiveSessionRepository implements LiveSessionRepository {
     const response = await this.fetchImplementation(liveSessionUrl(sessionId), {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(LIVE_SESSION_CLOSE_TIMEOUT_MS),
     });
     if (!response.ok) {
       const body = await response.text();

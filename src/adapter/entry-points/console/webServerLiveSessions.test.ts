@@ -90,14 +90,15 @@ type LiveSessionSideband = {
       event: unknown,
       send: (event: Record<string, unknown>) => void,
     ) => Promise<void>,
-  ): void;
+  ): Promise<void>;
 };
 
 class RecordingLiveSessionSideband implements LiveSessionSideband {
   readonly attachedSessionIds: string[] = [];
 
-  attach(sessionId: string): void {
+  attach(sessionId: string): Promise<void> {
     this.attachedSessionIds.push(sessionId);
+    return Promise.resolve();
   }
 }
 
@@ -352,8 +353,10 @@ describe('webServer live sessions route', () => {
 });
 
 class FailingLiveSessionSideband implements LiveSessionSideband {
-  attach(): void {
-    throw new Error('OPENAI_API_KEY is not set for the live session sideband');
+  constructor(private readonly message: string) {}
+
+  attach(): Promise<void> {
+    return Promise.reject(new Error(this.message));
   }
 }
 
@@ -376,7 +379,9 @@ describe('webServer live session creation when the voice console sideband cannot
     const closer = new RecordingLiveSessionCloser();
     const server = await createTestServer(
       repository,
-      new FailingLiveSessionSideband(),
+      new FailingLiveSessionSideband(
+        'OPENAI_API_KEY is not set for the live session sideband',
+      ),
       closer,
     );
 
@@ -403,6 +408,38 @@ describe('webServer live session creation when the voice console sideband cannot
         },
         closedSessionIds: ['live_9'],
       });
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('fails the same way when the socket closes before it opens', async () => {
+    const repository = new InMemoryLiveSessionRepository({
+      type: 'created',
+      sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_11',
+    });
+    const closer = new RecordingLiveSessionCloser();
+    const server = await createTestServer(
+      repository,
+      new FailingLiveSessionSideband(
+        'OpenAI live session live_11 sideband closed before it opened',
+      ),
+      closer,
+    );
+
+    try {
+      const response = await requestServer(
+        server,
+        'POST',
+        '/api/live/sessions',
+        'OFFER-SDP',
+        'application/sdp',
+      );
+      expect({
+        statusCode: response.statusCode,
+        closedSessionIds: closer.closedSessionIds,
+      }).toEqual({ statusCode: 502, closedSessionIds: ['live_11'] });
     } finally {
       await close(server);
     }

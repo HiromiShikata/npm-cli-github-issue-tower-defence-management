@@ -1897,7 +1897,7 @@ describe('VoiceConsoleSession navigation cancels a staged write', () => {
 
       expect({
         name: testCase.name,
-        cancellationReported: /cancel/i.test(JSON.stringify(navigated)),
+        cancellationReported: navigated.stagedActionCancelled === true,
         confirmOk: confirmed.ok,
       }).toEqual({
         name: testCase.name,
@@ -1944,5 +1944,49 @@ describe('VoiceConsoleSession request_changes removes the item from the queue', 
         itemStillQueued: testCase.keepsItem,
       });
     }
+  });
+});
+
+describe('VoiceConsoleSession staged write survives a failed navigation', () => {
+  it('keeps the staged write when the navigation moves nothing and confirms it after はい', async () => {
+    const { call, session } = await openSession({ position: 4 });
+    const prepared = await call('prepare_ok');
+    const navigated = await call('next_task');
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('はい');
+    const confirmed = await confirmYes(call);
+
+    expect({
+      navigationOk: navigated.ok,
+      navigationError: navigated.error,
+      stagedActionCancelled: navigated.stagedActionCancelled,
+      confirmOk: confirmed.ok,
+    }).toEqual({
+      navigationOk: false,
+      navigationError: 'end_of_queue',
+      stagedActionCancelled: undefined,
+      confirmOk: true,
+    });
+  });
+});
+
+describe('VoiceConsoleSession read-back gate ignores quotation marks and URLs', () => {
+  it('opens the window when the read-back is spoken without the quotation marks or the pull request URL', async () => {
+    const { call, session } = await openSession({ position: 4 });
+    const prepared = await call('prepare_pull_request_review', {
+      action: 'approve_and_merge',
+    });
+    const spoken = String(prepared.readBack)
+      .replace(/[「」]/g, '')
+      .replace(/https?:\/\/\S+/g, '');
+    session.recordAssistantSpeech(spoken);
+    session.recordOwnerSpeech('はい');
+
+    const confirmed = await confirmYes(call);
+
+    expect({ ok: confirmed.ok, error: confirmed.error }).toEqual({
+      ok: true,
+      error: undefined,
+    });
   });
 });

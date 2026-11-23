@@ -116,6 +116,11 @@ const failure = (error: string): ToolResult => ({ ok: false, error });
 const ownerSpeechSaysYes = (speech: string): boolean =>
   normalizeSpeech(speech) === OWNER_CONFIRMATION_REPLY;
 
+const readBackSpeechKey = (text: string): string =>
+  normalizeSpeech(
+    text.replace(/https?:\/\/\S+/g, '').replace(/[「」『』]/g, ''),
+  );
+
 const parseToolArguments = (argumentsJson: string): ToolArguments => {
   if (argumentsJson.trim() === '') {
     return {};
@@ -380,8 +385,8 @@ export class VoiceConsoleSession {
     }
     this.assistantSpeech += delta;
     if (
-      normalizeSpeech(this.assistantSpeech).includes(
-        normalizeSpeech(this.pendingReadBack),
+      readBackSpeechKey(this.assistantSpeech).includes(
+        readBackSpeechKey(this.pendingReadBack),
       )
     ) {
       this.readBackState = 'open';

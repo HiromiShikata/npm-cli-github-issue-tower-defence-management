@@ -3,7 +3,7 @@ import {
   type VoiceConsoleSocket,
 } from './OpenAiLiveSessionSideband';
 
-type SocketEventType = 'message' | 'close' | 'error';
+type SocketEventType = 'open' | 'message' | 'close' | 'error';
 type SocketListener = (event: { data?: unknown }) => void;
 
 class FakeSocket implements VoiceConsoleSocket {
@@ -76,7 +76,7 @@ describe('OpenAiLiveSessionSideband.attachUrl', () => {
 });
 
 describe('OpenAiLiveSessionSideband.attach', () => {
-  it('throws and opens no socket for a session id with characters outside the allowed set', () => {
+  it('rejects and opens no socket for a session id with characters outside the allowed set', async () => {
     const cases = [
       { sessionId: 'a/b' },
       { sessionId: 'a b' },
@@ -88,14 +88,14 @@ describe('OpenAiLiveSessionSideband.attach', () => {
     for (const testCase of cases) {
       const { createSocket, sideband } = createHarness();
 
-      expect(() =>
+      await expect(
         sideband.attach(testCase.sessionId, () => Promise.resolve()),
-      ).toThrow(Error);
+      ).rejects.toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
   });
 
-  it('throws and opens no socket when the API key is missing or empty', () => {
+  it('rejects and opens no socket when the API key is missing or empty', async () => {
     const cases = [
       {
         name: 'undefined key',
@@ -109,9 +109,9 @@ describe('OpenAiLiveSessionSideband.attach', () => {
         readApiKey: testCase.readApiKey,
       });
 
-      expect(() =>
+      await expect(
         sideband.attach('live_123', () => Promise.resolve()),
-      ).toThrow(Error);
+      ).rejects.toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
   });
@@ -164,12 +164,14 @@ describe('OpenAiLiveSessionSideband.attach', () => {
     expect(logError).toHaveBeenCalledTimes(1);
   });
 
-  it('logs close and error events', () => {
+  it('logs close and error events after the socket has opened', async () => {
     const cases = [{ type: 'close' as const }, { type: 'error' as const }];
 
     for (const testCase of cases) {
       const { socket, logError, sideband } = createHarness();
-      sideband.attach('live_123', () => Promise.resolve());
+      const attached = sideband.attach('live_123', () => Promise.resolve());
+      socket.emit('open', {});
+      await attached;
 
       socket.emit(testCase.type, {});
 
@@ -190,5 +192,37 @@ describe('OpenAiLiveSessionSideband.attach', () => {
     await flushPromises();
 
     expect(logError.mock.calls.flat().join('\n')).toContain('handler boom');
+  });
+
+  it('resolves the attach once the socket opens and rejects when it fails before opening', async () => {
+    const cases = [
+      { name: 'opens', event: 'open' as const, expectedResult: 'resolved' },
+      {
+        name: 'closes first',
+        event: 'close' as const,
+        expectedResult: 'rejected',
+      },
+      {
+        name: 'errors first',
+        event: 'error' as const,
+        expectedResult: 'rejected',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { socket, sideband } = createHarness();
+      const attached = sideband.attach('live_123', () => Promise.resolve());
+      socket.emit(testCase.event, {});
+
+      const outcome = await attached.then(
+        () => 'resolved',
+        () => 'rejected',
+      );
+
+      expect({ name: testCase.name, outcome }).toEqual({
+        name: testCase.name,
+        outcome: testCase.expectedResult,
+      });
+    }
   });
 });

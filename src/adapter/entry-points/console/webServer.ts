@@ -266,7 +266,7 @@ export type LiveSessionSidebandConnector = {
   attach(
     sessionId: string,
     handleServerEvent: VoiceConsoleServerEventHandler,
-  ): void;
+  ): Promise<void>;
 };
 
 export type LiveSessionCloser = {
@@ -1106,10 +1106,10 @@ const buildVoiceConsoleSession = (
   });
 };
 
-const attachVoiceConsoleSideband = (
+const attachVoiceConsoleSideband = async (
   options: WebServerOptions,
   sessionId: string,
-): void => {
+): Promise<void> => {
   const sideband = options.liveSessionSideband ?? null;
   if (sideband === null) {
     return;
@@ -1118,7 +1118,7 @@ const attachVoiceConsoleSideband = (
   const handlerHolder: { handler: VoiceConsoleSidebandHandler | null } = {
     handler: null,
   };
-  sideband.attach(sessionId, (event, send) => {
+  await sideband.attach(sessionId, (event, send) => {
     const handler =
       handlerHolder.handler ??
       new VoiceConsoleSidebandHandler(session, send, (message) =>
@@ -1169,7 +1169,7 @@ const handleLiveSessionCreate = async (
   const result = await liveSessionRepository.createFromSdpOffer(sdpOffer);
   if (result.type === 'created') {
     try {
-      attachVoiceConsoleSideband(options, result.sessionId);
+      await attachVoiceConsoleSideband(options, result.sessionId);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(
