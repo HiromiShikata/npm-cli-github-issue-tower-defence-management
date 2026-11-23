@@ -368,11 +368,28 @@ export class VoiceConsoleSession {
   private readonly pendingActions = new VoiceConsolePendingActionStore();
   private pendingTargetKey: string | null = null;
   private ownerSpeech = '';
+  // 'idle': no prepare yet. 'awaiting': prepared, read-back not started.
+  // 'open': the assistant has started the read-back, owner speech counts.
+  private readBackState: 'idle' | 'awaiting' | 'open' = 'idle';
 
   constructor(private readonly deps: VoiceConsoleSessionDeps) {}
 
-  // Fed by the sideband with the owner's input transcript deltas.
+  // Fed by the sideband with the assistant's output transcript deltas. The
+  // first delta after a prepare opens the read-back window.
+  recordAssistantSpeech(_delta: string): void {
+    if (this.readBackState !== 'awaiting') {
+      return;
+    }
+    this.readBackState = 'open';
+    this.ownerSpeech = '';
+  }
+
+  // Fed by the sideband with the owner's input transcript deltas. Ignored
+  // until the read-back window is open.
   recordOwnerSpeech(delta: string): void {
+    if (this.readBackState !== 'open') {
+      return;
+    }
     this.ownerSpeech += delta;
   }
 
@@ -731,6 +748,7 @@ export class VoiceConsoleSession {
     this.pendingActions.prepare(action);
     this.pendingTargetKey = queueEntryKey(entry);
     this.ownerSpeech = '';
+    this.readBackState = 'awaiting';
     return {
       ok: true,
       actionId,
@@ -970,7 +988,10 @@ export class VoiceConsoleSession {
     if (!confirmed.ok) {
       return failure(confirmed.error);
     }
-    if (!ownerSpeechSaysYes(this.ownerSpeech)) {
+    if (
+      this.readBackState !== 'open' ||
+      !ownerSpeechSaysYes(this.ownerSpeech)
+    ) {
       // Keep the pending action so that a later spoken はい can confirm it.
       this.pendingActions.prepare(confirmed.action);
       return failure('owner_speech_not_heard');

@@ -3,6 +3,7 @@ export type VoiceConsoleToolCaller = {
 };
 
 export type VoiceConsoleSidebandSession = VoiceConsoleToolCaller & {
+  recordAssistantSpeech(delta: string): void;
   recordOwnerSpeech(delta: string): void;
 };
 
@@ -33,6 +34,13 @@ const isOwnerInputTranscriptDelta = (
 ): event is { delta: string } =>
   isRecord(event) &&
   event.type === 'session.input_transcript.delta' &&
+  typeof event.delta === 'string';
+
+const isAssistantOutputTranscriptDelta = (
+  event: unknown,
+): event is { delta: string } =>
+  isRecord(event) &&
+  event.type === 'session.output_transcript.delta' &&
   typeof event.delta === 'string';
 
 const readDelegatedServerEvent = (
@@ -124,6 +132,10 @@ export class VoiceConsoleSidebandHandler {
   private async processServerEvent(event: unknown): Promise<void> {
     if (isOwnerInputTranscriptDelta(event)) {
       this.session.recordOwnerSpeech(event.delta);
+      return;
+    }
+    if (isAssistantOutputTranscriptDelta(event)) {
+      this.session.recordAssistantSpeech(event.delta);
       return;
     }
     const delegated = readDelegatedServerEvent(event);
