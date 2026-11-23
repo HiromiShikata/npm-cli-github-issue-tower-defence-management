@@ -1674,3 +1674,61 @@ describe('VoiceConsoleSession title-gated read-back', () => {
     }
   });
 });
+
+describe('VoiceConsoleSession pull request review read-back title', () => {
+  const normaliseSpeech = (text: string): string =>
+    text.replace(/[\s。、.,!?！？]/gu, '');
+
+  it('speaks the normalised item title in every pull request review read-back', async () => {
+    const cases = [
+      { action: 'approve_and_merge', args: { action: 'approve_and_merge' } },
+      {
+        action: 'request_changes',
+        args: { action: 'request_changes', comment_text: 'Z' },
+      },
+      { action: 'unnecessary', args: { action: 'unnecessary' } },
+      { action: 'totally_wrong', args: { action: 'totally_wrong' } },
+    ];
+
+    for (const testCase of cases) {
+      const { call } = await openSession({ position: 4 });
+
+      const prepared = await call('prepare_pull_request_review', testCase.args);
+      const readBack = normaliseSpeech(String(prepared.readBack));
+
+      expect({
+        action: testCase.action,
+        ok: prepared.ok,
+        titleSpoken: readBack.includes(normaliseSpeech('Review pull 9')),
+      }).toEqual({
+        action: testCase.action,
+        ok: true,
+        titleSpoken: true,
+      });
+    }
+  });
+
+  it('speaks a title containing spaces and punctuation so that it still gates after normalisation', async () => {
+    const punctuatedDir = fs.mkdtempSync(path.join(root, 'punctuated-'));
+    writeListFile(punctuatedDir, 'umino', 'prs', [
+      item({
+        number: 9,
+        url: PR9,
+        projectItemId: 'PVTI_3',
+        title: 'Review: pull 9, now!',
+        isPr: true,
+      }),
+    ]);
+    const { call } = await openSession({ consoleDataOutputDir: punctuatedDir });
+
+    const prepared = await call('prepare_pull_request_review', {
+      action: 'approve_and_merge',
+    });
+    const readBack = normaliseSpeech(String(prepared.readBack));
+
+    expect({
+      ok: prepared.ok,
+      titleSpoken: readBack.includes(normaliseSpeech('Review: pull 9, now!')),
+    }).toEqual({ ok: true, titleSpoken: true });
+  });
+});
