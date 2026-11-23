@@ -251,10 +251,7 @@ const defaultReadRepositoryFile = (
   _path: string,
 ): Promise<string> => Promise.resolve('FILE BODY');
 
-// The read-back text returned by the most recent prepare, which the assistant
-// must speak in full before the owner's はい counts.
 let lastReadBack = '';
-// Marks a step in a case table that stands for the full read-back of the last prepare.
 const READ_BACK = '<read-back>';
 const resolveSpeech = (text: string): string =>
   text === READ_BACK ? lastReadBack : text;

@@ -369,16 +369,11 @@ export class VoiceConsoleSession {
   private assistantSpeech = '';
   private pendingReadBack: string | null = null;
   // 'idle': no prepare yet. 'awaiting': prepared, read-back not yet spoken.
-  // 'open': the assistant has spoken the full read-back of the prepared action,
-  // so owner speech counts.
   private readBackState: 'idle' | 'awaiting' | 'open' = 'idle';
 
   constructor(private readonly deps: VoiceConsoleSessionDeps) {}
 
   // Fed by the sideband with the assistant's output transcript deltas. The
-  // read-back window opens only once the accumulated assistant speech since
-  // the prepare contains the full read-back of the prepared action. Speech
-  // that merely names the item title does not open it.
   recordAssistantSpeech(delta: string): void {
     if (this.readBackState !== 'awaiting' || this.pendingReadBack === null) {
       return;
@@ -1039,10 +1034,6 @@ export class VoiceConsoleSession {
     return { ok: true };
   }
 
-  // Moving to another item drops any staged write, so a later はい cannot
-  // confirm an action for an item the owner has left. The cancellation is
-  // reported in the tool output. A navigation that fails moves nothing and
-  // keeps the staged action.
   private clearStagedActionOnNavigation(result: ToolResult): ToolResult {
     if (!result.ok || this.pendingActions.current() === null) {
       return result;
