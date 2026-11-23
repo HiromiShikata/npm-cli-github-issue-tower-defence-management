@@ -19,6 +19,7 @@ import {
   capLiveSessionText,
   isBinaryText,
   isPathInsideFolder,
+  lastScreenLines,
   issueUrlOfSessionName,
   joinSessionFolderPath,
   normalizeLiveSessionName,
@@ -186,12 +187,11 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     const capture = await this.dependencies.commands.run(location.host, {
       kind: 'tmuxCapturePane',
       sessionName: location.sessionName,
-      lineCount: screenLines.lineCount,
     });
     if (!commandSucceeded(capture) || capture.kind !== 'exited') {
       return outputOf(SESSION_NOT_LOCATED_TEXT);
     }
-    return outputOf(capture.stdout);
+    return outputOf(lastScreenLines(capture.stdout, screenLines.lineCount));
   };
 
   private sessionTaskIssueRead = async (

@@ -2,6 +2,7 @@ import {
   capLiveSessionText,
   isBinaryText,
   isPathInsideFolder,
+  lastScreenLines,
   issueUrlOfSessionName,
   joinSessionFolderPath,
   normalizeLiveSessionName,
@@ -161,5 +162,42 @@ describe('isBinaryText', () => {
     },
   ])('$name', ({ text, expected }) => {
     expect(isBinaryText(text)).toBe(expected);
+  });
+});
+
+describe('lastScreenLines', () => {
+  it.each([
+    {
+      name: 'returns the last N lines of the text',
+      text: 'a\nb\nc\nd',
+      lineCount: 2,
+      expected: 'c\nd',
+    },
+    {
+      name: 'drops trailing blank rows before counting',
+      text: 'a\nb\n\n  \n',
+      lineCount: 2,
+      expected: 'a\nb',
+    },
+    {
+      name: 'returns every line when there are fewer than N',
+      text: 'a\nb\n',
+      lineCount: 10,
+      expected: 'a\nb',
+    },
+    {
+      name: 'keeps blank rows that sit between content lines',
+      text: 'a\n\nb\n\n',
+      lineCount: 5,
+      expected: 'a\n\nb',
+    },
+    {
+      name: 'returns an empty string for a blank pane',
+      text: '\n\n\n',
+      lineCount: 3,
+      expected: '',
+    },
+  ])('$name', ({ text, lineCount, expected }) => {
+    expect(lastScreenLines(text, lineCount)).toBe(expected);
   });
 });

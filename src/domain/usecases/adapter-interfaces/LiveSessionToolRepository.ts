@@ -24,7 +24,7 @@ export interface SessionHostRepository {
 
 export type SessionReadCommand =
   | { kind: 'tmuxHasSession'; sessionName: string }
-  | { kind: 'tmuxCapturePane'; sessionName: string; lineCount: number }
+  | { kind: 'tmuxCapturePane'; sessionName: string }
   | { kind: 'tmuxPanePath'; sessionName: string }
   | { kind: 'realPath'; path: string }
   | { kind: 'fileType'; path: string }

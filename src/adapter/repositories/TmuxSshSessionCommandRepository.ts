@@ -7,7 +7,22 @@ import {
   SessionReadCommandResult,
 } from '../../domain/usecases/adapter-interfaces/LiveSessionToolRepository';
 
+export type ExecuteFileOptions = {
+  encoding: 'utf8';
+  timeout: number;
+  maxBuffer: number;
+};
+
+export type ExecuteFile = (
+  program: string,
+  args: string[],
+  options: ExecuteFileOptions,
+) => Promise<{ stdout: string }>;
+
 const execFileAsync = promisify(execFile);
+
+const defaultExecuteFile: ExecuteFile = (program, args, options) =>
+  execFileAsync(program, args, options).then(({ stdout }) => ({ stdout }));
 
 const SSH_CONNECT_FAILURE_EXIT_CODE = 255;
 
@@ -34,7 +49,7 @@ export const toProgramInvocation = (
           '-p',
           '-J',
           '-S',
-          `-${command.lineCount}`,
+          '-',
           '-t',
           `=${command.sessionName}:`,
         ],
@@ -92,6 +107,8 @@ export const sshInvocation = (
 };
 
 export class TmuxSshSessionCommandRepository implements SessionCommandRepository {
+  constructor(private readonly executeFile: ExecuteFile = defaultExecuteFile) {}
+
   run = async (
     host: SessionHost,
     command: SessionReadCommand,
@@ -103,7 +120,7 @@ export class TmuxSshSessionCommandRepository implements SessionCommandRepository
     const target =
       host.kind === 'local' ? invocation : sshInvocation(host, invocation);
     try {
-      const { stdout } = await execFileAsync(target.program, target.args, {
+      const { stdout } = await this.executeFile(target.program, target.args, {
         encoding: 'utf8',
         timeout: COMMAND_TIMEOUT_MILLISECONDS,
         maxBuffer: COMMAND_MAX_BUFFER_BYTES,

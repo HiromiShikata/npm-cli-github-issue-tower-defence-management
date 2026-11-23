@@ -89,3 +89,12 @@ export const isPathInsideFolder = (
 };
 
 export const isBinaryText = (text: string): boolean => text.includes('\u0000');
+
+export const lastScreenLines = (text: string, lineCount: number): string => {
+  const lines = text.split('\n');
+  let end = lines.length;
+  while (end > 0 && lines[end - 1].trim() === '') {
+    end -= 1;
+  }
+  return lines.slice(Math.max(0, end - lineCount), end).join('\n');
+};

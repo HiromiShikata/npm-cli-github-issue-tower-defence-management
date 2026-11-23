@@ -272,28 +272,68 @@ describe('LiveSessionToolCallUseCase session_screen_read', () => {
       command: {
         kind: 'tmuxCapturePane',
         sessionName: PLAIN_SESSION_NAME,
-        lineCount: 80,
       },
     });
   });
 
-  it('passes an explicit lineCount of 300 through unchanged', async () => {
-    const { useCase, commands } = buildHarness({
-      respond: (_host, command) =>
-        command.kind === 'tmuxHasSession' ? exited('') : exited('x'),
-    });
-    await useCase.run(
-      call(
-        LIVE_SESSION_TOOL_NAMES.sessionScreenRead,
-        { lineCount: 300 },
-        PLAIN_SESSION_NAME,
-      ),
+  it.each([
+    {
+      name: 'returns exactly the last 80 lines by default',
+      arguments: {},
+      expectedLineCount: 80,
+    },
+    {
+      name: 'returns exactly the last 300 lines at the maximum',
+      arguments: { lineCount: 300 },
+      expectedLineCount: 300,
+    },
+    {
+      name: 'returns exactly the last 5 lines when asked for 5',
+      arguments: { lineCount: 5 },
+      expectedLineCount: 5,
+    },
+  ])('$name', async ({ arguments: toolArguments, expectedLineCount }) => {
+    const history = Array.from(
+      { length: 400 },
+      (_unused, index) => `row-${index + 1}`,
     );
-    expect(commands.executed[1]?.command).toEqual({
-      kind: 'tmuxCapturePane',
-      sessionName: PLAIN_SESSION_NAME,
-      lineCount: 300,
+    const { useCase } = buildHarness({
+      respond: (_host, command) =>
+        command.kind === 'tmuxHasSession'
+          ? exited('')
+          : exited(`${history.join('\n')}\n\n\n`),
     });
+    const lines = outputOf(
+      await useCase.run(
+        call(
+          LIVE_SESSION_TOOL_NAMES.sessionScreenRead,
+          toolArguments,
+          PLAIN_SESSION_NAME,
+        ),
+      ),
+    ).split('\n');
+    expect(lines).toHaveLength(expectedLineCount);
+    expect(lines[lines.length - 1]).toBe('row-400');
+  });
+
+  it('drops trailing empty pane rows before taking the last lines', async () => {
+    const { useCase } = buildHarness({
+      respond: (_host, command) =>
+        command.kind === 'tmuxHasSession'
+          ? exited('')
+          : exited('alpha\nbeta\n\n\n\n'),
+    });
+    expect(
+      outputOf(
+        await useCase.run(
+          call(
+            LIVE_SESSION_TOOL_NAMES.sessionScreenRead,
+            { lineCount: 3 },
+            PLAIN_SESSION_NAME,
+          ),
+        ),
+      ),
+    ).toBe('alpha\nbeta');
   });
 
   it('uses the arguments sessionName before the session the app is handling', async () => {
