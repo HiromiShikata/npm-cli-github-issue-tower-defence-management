@@ -1797,13 +1797,34 @@ export const handleStoryAdd = async (
 const GITHUB_ISSUE_OR_PULL_REQUEST_URL_PATTERN =
   /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/(?:issues|pull)\/\d+$/;
 
-const isCommaSeparatedGitHubIssueOrPullRequestUrlList = (
-  value: string,
-): boolean => {
-  const entries = value.split(',').map((entry) => entry.trim());
-  return entries.every((entry) =>
-    GITHUB_ISSUE_OR_PULL_REQUEST_URL_PATTERN.test(entry),
+const splitDependedIssueUrlEntries = (value: string): string[] =>
+  value.split(',').map((entry) => entry.trim());
+
+const loadStoredDependedIssueUrls = async (
+  context: ConsoleOperationContext,
+  issueUrl: string,
+): Promise<string[]> => {
+  const issue = await context
+    .resolveIssueRepository(issueUrl)
+    .getIssueByUrl(issueUrl);
+  return issue?.dependedIssueUrls ?? [];
+};
+
+const isNewDependedIssueUrlEntryRejected = async (
+  context: ConsoleOperationContext,
+  issueUrl: string,
+  entries: string[],
+): Promise<boolean> => {
+  const invalidEntries = entries.filter(
+    (entry) => !GITHUB_ISSUE_OR_PULL_REQUEST_URL_PATTERN.test(entry),
   );
+  if (invalidEntries.length === 0) {
+    return false;
+  }
+  const storedEntries = (
+    await loadStoredDependedIssueUrls(context, issueUrl)
+  ).map((entry) => entry.trim());
+  return invalidEntries.some((entry) => !storedEntries.includes(entry));
 };
 
 export const handleSetDependedIssueUrl = async (
@@ -1838,7 +1859,11 @@ export const handleSetDependedIssueUrl = async (
     if (
       typeof dependedIssueUrl === 'string' &&
       dependedIssueUrl !== '' &&
-      !isCommaSeparatedGitHubIssueOrPullRequestUrlList(dependedIssueUrl)
+      (await isNewDependedIssueUrlEntryRejected(
+        context,
+        issueUrl,
+        splitDependedIssueUrlEntries(dependedIssueUrl),
+      ))
     ) {
       return badRequest(
         'dependedIssueUrl must be a comma-separated list of https://github.com/{owner}/{repo}/issues/{number} or https://github.com/{owner}/{repo}/pull/{number} URLs',

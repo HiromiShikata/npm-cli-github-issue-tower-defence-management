@@ -16,6 +16,7 @@ import {
   type ConsoleActionQueue,
   type ConsoleOfflinePayload,
   type ConsoleOfflineQueuedAction,
+  type ConsoleUncommittedOutcome,
   consoleActionStepsRun,
   isNetworkError,
 } from '../hooks/useConsoleActionQueue';
@@ -81,6 +82,7 @@ export type ConsoleQueueActionInput = {
   item: ConsoleListItem;
   composerDraft?: { projectItemId: string; body: string };
   commit: (sentStepCount: number) => Promise<void>;
+  onUncommitted?: (outcome: ConsoleUncommittedOutcome) => void;
   commitWithActionId?: (
     sentStepCount: number,
     actionId: string,
@@ -562,41 +564,59 @@ export const ConsoleItemDetailContainer = ({
               return;
             }
             const option = awaitingWorkspaceOption;
-            onQueueAction({
-              kind: {
-                type: 'set_status',
-                optionName: option.name,
-              },
-              item,
-              commit: (sentStepCount) =>
-                consoleActionStepsRun(
-                  [
-                    () =>
-                      operations.replaceDependedIssueUrl(
-                        item,
-                        dependedIssueUrl,
-                      ),
-                    () => operations.setStatus(item, option),
-                  ],
-                  sentStepCount,
-                ),
-              offline: [
-                dependedIssueUrlOfflinePayloadBuild(
-                  pjcode,
-                  item,
-                  dependedIssueUrl,
-                ),
-                buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                  statusName: option.name,
-                }),
-              ],
-              overlayPatch: {
-                done: true,
-                status: {
-                  name: option.name,
-                  color: option.color,
+            await new Promise<void>((resolve, reject) => {
+              onQueueAction({
+                kind: {
+                  type: 'set_status',
+                  optionName: option.name,
                 },
-              },
+                item,
+                commit: (sentStepCount) => {
+                  const commitRun = consoleActionStepsRun(
+                    [
+                      () =>
+                        operations.replaceDependedIssueUrl(
+                          item,
+                          dependedIssueUrl,
+                        ),
+                      () => operations.setStatus(item, option),
+                    ],
+                    sentStepCount,
+                  );
+                  commitRun.then(resolve, reject);
+                  return commitRun;
+                },
+                onUncommitted: (outcome) => {
+                  if (outcome.status === 'held_offline') {
+                    resolve();
+                  } else if (outcome.status === 'undone') {
+                    reject(
+                      new Error(
+                        'The depended issue URL change was undone and not saved.',
+                      ),
+                    );
+                  } else {
+                    reject(outcome.cause);
+                  }
+                },
+                offline: [
+                  dependedIssueUrlOfflinePayloadBuild(
+                    pjcode,
+                    item,
+                    dependedIssueUrl,
+                  ),
+                  buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                    statusName: option.name,
+                  }),
+                ],
+                overlayPatch: {
+                  done: true,
+                  status: {
+                    name: option.name,
+                    color: option.color,
+                  },
+                },
+              });
             });
           }
         : null,

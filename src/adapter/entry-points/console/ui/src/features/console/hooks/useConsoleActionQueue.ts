@@ -46,10 +46,16 @@ export type ConsoleOfflineQueuedAction = {
   enqueuedAt: number;
 } & ConsoleOfflinePayload;
 
+export type ConsoleUncommittedOutcome =
+  | { status: 'undone' }
+  | { status: 'held_offline' }
+  | { status: 'failed'; cause: unknown };
+
 export type ConsoleQueuedAction = {
   message: string;
   color: ConsoleToastColor;
   commit: (sentStepCount: number) => Promise<void>;
+  onUncommitted?: (outcome: ConsoleUncommittedOutcome) => void;
   commitWithActionId?: (
     sentStepCount: number,
     actionId: string,
@@ -415,12 +421,17 @@ export const useConsoleActionQueue = (
         const unsentOfflinePayloads = offlinePayloads.slice(sentStepCount);
         if (unsentOfflinePayloads.length > 0) {
           actionHoldOffline(unsentOfflinePayloads);
+          action.onUncommitted?.({ status: 'held_offline' });
         } else {
           action.revertAdvance?.();
           action.revertOptimistic?.();
           applyError({
             message: AIRPLANE_MODE_ERROR_MESSAGE,
             reason: AIRPLANE_MODE_ERROR_REASON,
+          });
+          action.onUncommitted?.({
+            status: 'failed',
+            cause: new Error(AIRPLANE_MODE_ERROR_MESSAGE),
           });
           setWriteState({ status: 'failed', attempt });
         }
@@ -548,6 +559,7 @@ export const useConsoleActionQueue = (
     }
     entry.action.revertAdvance?.();
     entry.action.revertOptimistic?.();
+    entry.action.onUncommitted?.({ status: 'undone' });
   }, []);
 
   const dismiss = useCallback(
@@ -737,7 +749,9 @@ export const useConsoleActionQueue = (
         pendingEntriesRef.current.delete(entry.id);
         setPending((prev) => prev.filter((pending) => pending.id !== entry.id));
         const offlinePayloads = entry.action.offline ?? [];
-        if (offlinePayloads.length === 0) {
+        if (offlinePayloads.length > 0) {
+          entry.action.onUncommitted?.({ status: 'held_offline' });
+        } else {
           void entry.action.commit(0).catch((cause: unknown) => {
             if (
               entry.action.composerDraft !== undefined &&
