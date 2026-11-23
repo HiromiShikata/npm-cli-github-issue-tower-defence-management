@@ -5199,4 +5199,66 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
       localStorage.clear();
     }
   });
+
+  it('reopens the panel with the item prop list, not the saved list, after the item prop changed to a different list and returned to the base list on the direct path', async () => {
+    const operations = buildOperations();
+    const renderItemWithDependedIssueUrls = (dependedIssueUrls: string[]) => (
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={{ ...issueItem, dependedIssueUrls }}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={statusOptionsWithoutAwaitingWorkspace}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+      />
+    );
+    const view = render(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    openRareActionsAndSubmit(view, urlB);
+    await waitFor(() => {
+      expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+    });
+    expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
+
+    view.rerender(renderItemWithDependedIssueUrls([urlB]));
+    view.rerender(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    fireEvent.click(view.getByTitle('Rare actions'));
+    expect(readRareActionsTextareaValue(view)).toBe(`${urlA}\n${urlB}`);
+  });
+
+  it('reopens the panel with the saved list on the queued path when the replace write succeeds and the status write fails with a non-network error', async () => {
+    jest.useFakeTimers();
+    localStorage.clear();
+    try {
+      const operations = buildOperations();
+      operations.setStatus = jest.fn(async () => {
+        throw new Error('status write failed');
+      });
+      const { view } = renderWithRealQueue(operations, false);
+
+      openRareActionsAndSubmit(view, urlB);
+      await runFakeWindow();
+      await waitFor(() => {
+        expect(view.getByText(/status write failed/)).toBeTruthy();
+      });
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(view.getByTitle('Rare actions'));
+      fireEvent.click(view.getByTitle('Rare actions'));
+      expect(readRareActionsTextareaValue(view)).toBe(urlB);
+    } finally {
+      jest.useRealTimers();
+      localStorage.clear();
+    }
+  });
 });
