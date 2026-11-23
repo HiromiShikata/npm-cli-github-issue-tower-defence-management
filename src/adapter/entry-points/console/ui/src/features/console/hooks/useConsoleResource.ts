@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ResourceCache } from '../lib/resourceCache';
+import { startLoadWithNetworkRetry } from './networkRetryingLoad';
 
 export type ConsoleResourceState<T> = {
   data: T;
@@ -31,26 +32,20 @@ export const useConsoleResource = <T>(
       setError(null);
       return;
     }
-    let cancelled = false;
     setIsLoading(true);
     setError(null);
-    cache
-      .load(key, url)
-      .then((value) => {
-        if (!cancelled) {
-          setData(value);
-          setIsLoading(false);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) {
-          setError(cause instanceof Error ? cause.message : String(cause));
-          setIsLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+    return startLoadWithNetworkRetry<T>({
+      load: () => cache.load(key, url),
+      onSuccess: (value) => {
+        setData(value);
+        setError(null);
+        setIsLoading(false);
+      },
+      onFailure: (cause) => {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        setIsLoading(false);
+      },
+    });
   }, [cache, key, url]);
 
   return { data, isLoading, error };

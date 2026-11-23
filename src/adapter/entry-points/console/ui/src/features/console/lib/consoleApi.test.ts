@@ -3,6 +3,7 @@ import type { ConsoleListItem } from '../logic/types';
 import { consoleListItemsFixture } from '../testing/fixtures';
 import {
   ADD_STORY_OPERATION_PATH,
+  ConsoleNetworkError,
   createConsoleApiClient,
   DELETE_STORY_OPERATION_PATH,
   fetchProjectList,
@@ -1287,5 +1288,52 @@ describe('postConsoleIssueCommentBodyUpdate', () => {
         body: '',
       }),
     ).rejects.toThrow('commentId is required');
+  });
+});
+
+describe('createConsoleApiClient request failure classification', () => {
+  const originalFetch = global.fetch;
+  const itemUrl = 'https://github.com/o/r/issues/1';
+
+  beforeEach(() => {
+    removeMockCaches();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    removeMockCaches();
+  });
+
+  it('rejects with ConsoleNetworkError when the browser fetch fails at network level', async () => {
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(
+        new TypeError('Failed to fetch'),
+      ) as unknown as typeof fetch;
+    const client = createConsoleApiClient();
+    const error = await client.fetchItemBody(itemUrl).then(
+      () => undefined,
+      (cause: unknown) => cause,
+    );
+    expect(error).toBeInstanceOf(ConsoleNetworkError);
+    expect((error as Error).name).toBe('ConsoleNetworkError');
+    expect((error as Error).message).toBe('Failed to fetch');
+  });
+
+  it('rejects with a plain Error carrying the status for a non-ok HTTP response', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => ({}),
+      text: async () => 'Bad Gateway',
+    }) as unknown as typeof fetch;
+    const client = createConsoleApiClient();
+    const error = await client.fetchItemBody(itemUrl).then(
+      () => undefined,
+      (cause: unknown) => cause,
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(ConsoleNetworkError);
+    expect((error as Error).message).toBe('HTTP 502');
   });
 });
