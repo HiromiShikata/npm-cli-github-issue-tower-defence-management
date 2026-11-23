@@ -228,6 +228,19 @@ describe('ProcCodexRunningWorkerRepository', () => {
       expectedIssueUrls: [ISSUE_URL_1],
     },
     {
+      name: 'does not count a local codex aw launch whose model position holds a flag token',
+      cmdlines: [
+        argv(
+          '/bin/bash',
+          LOCAL_AW_PATH,
+          ISSUE_URL_1,
+          'codex-agent',
+          '--configFilePath',
+        ),
+      ],
+      expectedIssueUrls: [],
+    },
+    {
       name: 'does not count a local claude aw launch (argv form)',
       cmdlines: [localAwLaunch(ISSUE_URL_1, 'claude-opus-5-5')],
       expectedIssueUrls: [],
@@ -241,6 +254,55 @@ describe('ProcCodexRunningWorkerRepository', () => {
       name: 'counts a remote-side bash -ic codex worker with a gpt-5.6-luna model',
       cmdlines: [remoteSideBashIcCodexWorker(ISSUE_URL_1, 'gpt-5.6-luna')],
       expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'strips surrounding quotes from the model token in the delegated form',
+      cmdlines: [sshDelegatedCodexWorker(ISSUE_URL_1, '"gpt-5-codex"')],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'counts a delegated aw invocation whose path is not quoted',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; /usr/local/bin/aw ${ISSUE_URL_1} codex-agent gpt-5-codex --configFilePath /home/u/.config/aw.json'`,
+        ),
+      ],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'does not count a delegated script whose take ownership URL differs from its aw invocation URL',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_2} codex-agent gpt-5-codex --configFilePath /home/u/.config/aw.json'`,
+        ),
+      ],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'does not count a delegated aw invocation without a model token',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_1} codex-agent'`,
+        ),
+      ],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'does not count a delegated aw invocation whose model position holds a flag token',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_1} codex-agent --configFilePath /x'`,
+        ),
+      ],
+      expectedIssueUrls: [],
     },
     {
       name: 'counts an ssh-delegated codex worker whose remote command is shell-quoted as TDPM sends it',
