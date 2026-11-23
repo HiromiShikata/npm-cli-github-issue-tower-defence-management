@@ -1,3 +1,10 @@
+## [2.204.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.204.0...v2.204.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **live:** read multi-document owner call files and refuse credential folders ([#3761](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3761)) ([d5733ce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d5733cec850d10df0efe734fcb2e35fc12cc795b))
+
 # [2.204.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.203.0...v2.204.0) (2026-11-23)
 
 
