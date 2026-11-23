@@ -61,10 +61,12 @@ const createFakeSession = () => {
       Promise.resolve(TOOL_RESULT),
   );
   const recordOwnerSpeech = jest.fn((_delta: string): void => undefined);
+  const recordAssistantSpeech = jest.fn((_delta: string): void => undefined);
   return {
     callTool,
     recordOwnerSpeech,
-    session: { callTool, recordOwnerSpeech },
+    recordAssistantSpeech,
+    session: { callTool, recordOwnerSpeech, recordAssistantSpeech },
   };
 };
 
@@ -278,6 +280,65 @@ describe('VoiceConsoleSidebandHandler owner speech', () => {
         name: testCase.name,
         forwarded: recordOwnerSpeech.mock.calls.map((call) => call[0]),
       }).toEqual({ name: testCase.name, forwarded: testCase.forwarded });
+    }
+  });
+});
+
+describe('VoiceConsoleSidebandHandler assistant speech', () => {
+  it('forwards output transcript deltas to recordAssistantSpeech and input deltas to recordOwnerSpeech only', async () => {
+    const cases = [
+      {
+        name: 'an output transcript delta is forwarded to the assistant speech',
+        event: {
+          type: 'session.output_transcript.delta',
+          event_id: 'o1',
+          delta: '読み上げ',
+          start_ms: 0,
+          end_ms: 100,
+        },
+        assistantForwarded: ['読み上げ'],
+        ownerForwarded: [],
+      },
+      {
+        name: 'an input transcript delta is forwarded to the owner speech',
+        event: {
+          type: 'session.input_transcript.delta',
+          event_id: 'i1',
+          delta: 'はい',
+          start_ms: 0,
+          end_ms: 100,
+        },
+        assistantForwarded: [],
+        ownerForwarded: ['はい'],
+      },
+      {
+        name: 'a response text delta is forwarded to neither',
+        event: { type: 'response.output_text.delta', delta: 'はい' },
+        assistantForwarded: [],
+        ownerForwarded: [],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { recordAssistantSpeech, recordOwnerSpeech, session } =
+        createFakeSession();
+      const handler = new VoiceConsoleSidebandHandler(
+        session,
+        jest.fn(),
+        jest.fn(),
+      );
+
+      await handler.handleServerEvent(testCase.event);
+
+      expect({
+        name: testCase.name,
+        assistant: recordAssistantSpeech.mock.calls.map((call) => call[0]),
+        owner: recordOwnerSpeech.mock.calls.map((call) => call[0]),
+      }).toEqual({
+        name: testCase.name,
+        assistant: testCase.assistantForwarded,
+        owner: testCase.ownerForwarded,
+      });
     }
   });
 });
