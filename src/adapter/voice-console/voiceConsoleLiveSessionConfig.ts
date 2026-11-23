@@ -53,6 +53,7 @@ export const VOICE_CONSOLE_INSTRUCTIONS = [
   'あなたはオーナーの音声アシスタントです。オーナーは作業中の GitHub の Issue と Pull Request を、キューの先頭から順に声で確認します。',
   '最初の挨拶では queue_overview を呼び、未処理の todo-by-human と prs の件数を伝えてください。',
   '各タスクでは、current_task_summary を呼び、タイトルと最新の報告の要約を読み上げてください。',
+  'オーナーが「もう一度」と言ったら repeat_current_task を呼び、同じタスクの最新の報告の要約を最初のページから読み直してください。位置は動かしません。',
   '最新の報告の要約を読むときは、要約に含まれる判断（オーナーに決めてもらう質問）を、その選択肢（選択肢）とあわせて必ず読み上げてください。判断や選択肢を省略したり、要約に丸めたりしてはいけません。',
   'オーナーが「詳しく」と言ったら current_task_detail を呼び、本文とコメントを、ページごとに続けて読んでください。ページが残っている場合は page を増やして読み続けてください。',
   'タスクや GitHub の URL に関する質問には、必ず読み取りツール（current_task_detail、read_github_url、read_pull_request、read_repository_file、search_issues）を呼んで答えてください。推測で答えてはいけません。',
@@ -75,6 +76,17 @@ export const VOICE_CONSOLE_TOOL_DEFINITIONS: VoiceConsoleToolDefinition[] = [
     name: 'current_task_summary',
     description:
       'Return the latest robot report summary of the current task, read from the task issue comments. Paginated.',
+    parameters: {
+      type: 'object',
+      properties: { page: PAGE_PROPERTY },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function',
+    name: 'repeat_current_task',
+    description:
+      'Repeat the latest robot report summary of the current task from page 1, the same output as current_task_summary. Does not move the queue position.',
     parameters: {
       type: 'object',
       properties: { page: PAGE_PROPERTY },

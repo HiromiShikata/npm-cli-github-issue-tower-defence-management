@@ -394,6 +394,8 @@ export class VoiceConsoleSession {
         return this.queueOverview();
       case 'current_task_summary':
         return this.currentTaskSummary(args);
+      case 'repeat_current_task':
+        return this.currentTaskSummary(args);
       case 'current_task_detail':
         return this.currentTaskDetail(args);
       case 'read_github_url':
@@ -822,6 +824,7 @@ export class VoiceConsoleSession {
           ? commentText
           : null;
     const closeAction = reason === 'completed' ? 'close' : 'close_not_planned';
+    const reasonJapanese = reason === 'completed' ? '完了' : '完了せず';
     const commentPart =
       commentBody === null ? '' : `、コメント「${commentBody}」を付けて`;
     return this.stageAction(entry, {
@@ -833,7 +836,7 @@ export class VoiceConsoleSession {
         projectItemId: entry.item.projectItemId,
         ...(commentBody === null ? {} : { commentBody }),
       },
-      readBack: `「${entry.item.title}」${commentPart}${reason} として閉じます。`,
+      readBack: `「${entry.item.title}」${commentPart}${reasonJapanese} として閉じます。`,
       removesFromQueue: true,
     });
   }
