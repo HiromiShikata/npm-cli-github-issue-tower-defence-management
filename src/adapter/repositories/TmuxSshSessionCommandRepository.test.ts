@@ -291,3 +291,30 @@ describe('TmuxSshSessionCommandRepository.run', () => {
     expect(calls[0]?.program).toBe(expectedProgram);
   });
 });
+
+describe('toProgramInvocation for read-only git commands', () => {
+  it.each<{
+    name: string;
+    command: SessionReadCommand;
+    expected: { program: string; args: string[] };
+  }>([
+    {
+      name: 'asks git for the work tree top level of a folder',
+      command: { kind: 'gitTopLevel', folderPath: '/work/project' },
+      expected: {
+        program: 'git',
+        args: ['-C', '/work/project', 'rev-parse', '--show-toplevel'],
+      },
+    },
+    {
+      name: 'lists the tracked files of a work tree, NUL separated',
+      command: { kind: 'gitTrackedFiles', topLevelPath: '/work/project' },
+      expected: {
+        program: 'git',
+        args: ['-C', '/work/project', 'ls-files', '-z'],
+      },
+    },
+  ])('$name', ({ command, expected }) => {
+    expect(toProgramInvocation(command)).toEqual(expected);
+  });
+});

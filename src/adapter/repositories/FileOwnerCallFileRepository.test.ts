@@ -88,6 +88,72 @@ describe('FileOwnerCallFileRepository.listPendingOwnerCalls', () => {
       /owner call files could not be read: NA\/broken-one\.yaml: .*; NA\/broken-two\.yaml: /,
     );
   });
+
+  it('returns the first call of a multi-document file, the call the voice patrol shows', () => {
+    writeOwnerCall(
+      'NA',
+      'multi.yaml',
+      [
+        ownerCallDocument('multi-session', '2026-11-23T01:00:00Z'),
+        ownerCallDocument('multi-session', '2026-11-23T02:00:00Z'),
+        ownerCallDocument('multi-session', '2026-11-23T03:00:00Z'),
+      ].join(''),
+    );
+    expect(
+      new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
+    ).toEqual([
+      { sessionName: 'multi-session', calledAt: '2026-11-23T01:00:00Z' },
+    ]);
+  });
+
+  it('returns one current call per session when a multi-document file holds several sessions', () => {
+    writeOwnerCall(
+      'NA',
+      'mixed.yaml',
+      [
+        ownerCallDocument('session-a', '2026-11-23T01:00:00Z'),
+        ownerCallDocument('session-b', '2026-11-23T01:30:00Z'),
+        ownerCallDocument('session-a', '2026-11-23T02:00:00Z'),
+        ownerCallDocument('session-b', '2026-11-23T02:30:00Z'),
+      ].join(''),
+    );
+    expect(
+      new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
+    ).toEqual([
+      { sessionName: 'session-a', calledAt: '2026-11-23T01:00:00Z' },
+      { sessionName: 'session-b', calledAt: '2026-11-23T01:30:00Z' },
+    ]);
+  });
+
+  it('names the document of a multi-document file that cannot be parsed and still reads the others', () => {
+    writeOwnerCall(
+      'NA',
+      'partly-broken.yaml',
+      [
+        ownerCallDocument('ok-session', '2026-11-23T01:00:00Z'),
+        '---\nsessionName: [unclosed\n',
+      ].join(''),
+    );
+    expect(() =>
+      new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
+    ).toThrow(/NA\/partly-broken\.yaml: document 1: /);
+  });
+
+  it('names a document without a calledAt in a multi-document file', () => {
+    writeOwnerCall(
+      'NA',
+      'missing-time.yaml',
+      [
+        ownerCallDocument('ok-session', '2026-11-23T01:00:00Z'),
+        '---\nsessionName: "ok-session"\nbody: |2\n  no time\n',
+      ].join(''),
+    );
+    expect(() =>
+      new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
+    ).toThrow(
+      'owner call files could not be read: NA/missing-time.yaml: document 1: sessionName or calledAt is missing or not a string',
+    );
+  });
 });
 
 describe('FileOwnerCallFileRepository with stray entries', () => {

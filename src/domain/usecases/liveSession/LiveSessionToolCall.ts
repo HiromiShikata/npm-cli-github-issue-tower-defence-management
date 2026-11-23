@@ -110,3 +110,108 @@ export const lastScreenLines = (text: string, lineCount: number): string => {
   }
   return lines.slice(Math.max(0, end - lineCount), end).join('\n');
 };
+
+const CREDENTIAL_EXACT_NAMES = [
+  '.ssh',
+  '.gnupg',
+  '.aws',
+  '.azure',
+  '.kube',
+  '.docker',
+  '.netrc',
+  '.npmrc',
+  '.pypirc',
+  '.git-credentials',
+  '.xauthority',
+  '.iceauthority',
+  '.git',
+];
+
+const CREDENTIAL_KEY_FILE_EXTENSIONS = [
+  '.pem',
+  '.key',
+  '.p12',
+  '.pfx',
+  '.kdbx',
+];
+
+const CREDENTIAL_CONFIG_STEM_NAMES = ['creds', 'credentials', 'secrets', 'gh'];
+
+const isCredentialComponent = (rawName: string): boolean => {
+  const name = rawName.toLowerCase();
+  return (
+    CREDENTIAL_EXACT_NAMES.includes(name) ||
+    name.startsWith('.env') ||
+    (name.startsWith('id_') && !name.endsWith('.pub')) ||
+    CREDENTIAL_KEY_FILE_EXTENSIONS.some((extension) => name.endsWith(extension))
+  );
+};
+
+const isUnderCredentialConfigFolder = (
+  components: readonly string[],
+): boolean => {
+  const lowerNames = components.map((name) => name.toLowerCase());
+  const configIndex = lowerNames.indexOf('.config');
+  return (
+    configIndex !== -1 &&
+    lowerNames
+      .slice(configIndex + 1)
+      .some((name) =>
+        CREDENTIAL_CONFIG_STEM_NAMES.includes(name.split('.')[0] ?? ''),
+      )
+  );
+};
+
+export const isCredentialLikePath = (components: readonly string[]): boolean =>
+  components.some(isCredentialComponent) ||
+  isUnderCredentialConfigFolder(components);
+
+export const pathComponentsOf = (realPath: string): string[] =>
+  realPath.split('/').filter((name) => name.length > 0);
+
+export const directChildrenOfTrackedPaths = (
+  trackedPaths: readonly string[],
+  directoryComponents: readonly string[],
+): string[] => {
+  const children = new Set<string>();
+  for (const trackedPath of trackedPaths) {
+    const parts = trackedPath.split('/');
+    if (parts.length <= directoryComponents.length) {
+      continue;
+    }
+    if (directoryComponents.some((name, index) => parts[index] !== name)) {
+      continue;
+    }
+    const child = parts[directoryComponents.length] ?? '';
+    const isDirectory = parts.length > directoryComponents.length + 1;
+    children.add(isDirectory ? `${child}/` : child);
+  }
+  return [...children].sort();
+};
+
+export const componentsBelowFolder = (
+  folderRealPath: string,
+  targetRealPath: string,
+): string[] => {
+  const folder = folderRealPath.replace(/\/+$/, '');
+  if (targetRealPath === folder || targetRealPath === '/') {
+    return [];
+  }
+  const prefix = folder === '' ? '/' : `${folder}/`;
+  return targetRealPath
+    .slice(prefix.length)
+    .split('/')
+    .filter((name) => name.length > 0);
+};
+
+export const isFolderRefusedForFileRead = (
+  folderRealPath: string,
+  homeRealPath: string,
+): boolean => {
+  const folder = folderRealPath.replace(/\/+$/, '') || '/';
+  if (folder === '/') {
+    return true;
+  }
+  const home = homeRealPath.replace(/\/+$/, '') || '/';
+  return home === folder || home.startsWith(`${folder}/`);
+};

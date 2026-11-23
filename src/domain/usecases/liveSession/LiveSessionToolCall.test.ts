@@ -1,4 +1,8 @@
 import {
+  directChildrenOfTrackedPaths,
+  componentsBelowFolder,
+  isCredentialLikePath,
+  isFolderRefusedForFileRead,
   capLiveSessionText,
   isBinaryText,
   isPathInsideFolder,
@@ -245,5 +249,182 @@ describe('issueUrlOfSessionName with known issue URLs', () => {
     },
   ])('$name', ({ sessionName, knownIssueUrls, expected }) => {
     expect(issueUrlOfSessionName(sessionName, knownIssueUrls)).toBe(expected);
+  });
+});
+
+describe('isFolderRefusedForFileRead', () => {
+  it.each([
+    {
+      name: 'refuses the root folder',
+      folder: '/',
+      home: '/home/owner',
+      expected: true,
+    },
+    {
+      name: 'refuses the home folder itself',
+      folder: '/home/owner',
+      home: '/home/owner',
+      expected: true,
+    },
+    {
+      name: 'refuses an ancestor of the home folder',
+      folder: '/home',
+      home: '/home/owner',
+      expected: true,
+    },
+    {
+      name: 'allows a folder inside the home folder',
+      folder: '/home/owner/repo',
+      home: '/home/owner',
+      expected: false,
+    },
+    {
+      name: 'allows a sibling that shares a name prefix with home',
+      folder: '/home/owner-two',
+      home: '/home/owner',
+      expected: false,
+    },
+  ])('$name', ({ folder, home, expected }) => {
+    expect(isFolderRefusedForFileRead(folder, home)).toBe(expected);
+  });
+});
+
+describe('componentsBelowFolder', () => {
+  it.each([
+    {
+      name: 'lists the components below a folder',
+      folder: '/work/project',
+      target: '/work/project/src/a.ts',
+      expected: ['src', 'a.ts'],
+    },
+    {
+      name: 'returns no components for the folder itself',
+      folder: '/work/project',
+      target: '/work/project',
+      expected: [],
+    },
+    {
+      name: 'lists components below the root folder',
+      folder: '/',
+      target: '/etc/x',
+      expected: ['etc', 'x'],
+    },
+  ])('$name', ({ folder, target, expected }) => {
+    expect(componentsBelowFolder(folder, target)).toEqual(expected);
+  });
+});
+
+describe('isCredentialLikePath', () => {
+  it.each([
+    {
+      name: 'refuses a dot-ssh folder component',
+      components: ['.ssh', 'config'],
+      expected: true,
+    },
+    {
+      name: 'refuses a dot-env file and its variants',
+      components: ['.env.production'],
+      expected: true,
+    },
+    {
+      name: 'refuses an id file without an extension',
+      components: ['keys', 'id_ed25519'],
+      expected: true,
+    },
+    {
+      name: 'allows a public key file',
+      components: ['keys', 'id_rsa.pub'],
+      expected: false,
+    },
+    {
+      name: 'refuses a key file by extension',
+      components: ['certs', 'x.kdbx'],
+      expected: true,
+    },
+    {
+      name: 'refuses a gh folder under the config folder',
+      components: ['.config', 'gh', 'hosts.yml'],
+      expected: true,
+    },
+    {
+      name: 'allows an ordinary file under the config folder',
+      components: ['.config', 'app', 'settings.json'],
+      expected: false,
+    },
+    {
+      name: 'allows an ordinary repository file',
+      components: ['src', 'environment.ts'],
+      expected: false,
+    },
+  ])('$name', ({ components, expected }) => {
+    expect(isCredentialLikePath(components)).toBe(expected);
+  });
+});
+
+describe('credential path rules, case-insensitive and exact', () => {
+  it.each([
+    {
+      name: 'allows a dockerignore file by its exact name',
+      components: ['.dockerignore'],
+      expected: false,
+    },
+    {
+      name: 'allows an azure pipelines file by its exact name',
+      components: ['.azure-pipelines.yml'],
+      expected: false,
+    },
+    {
+      name: 'refuses an upper-case key extension',
+      components: ['server.PEM'],
+      expected: true,
+    },
+    { name: 'refuses an envrc file', components: ['.envrc'], expected: true },
+    {
+      name: 'refuses an id file with a backup extension',
+      components: ['id_rsa.bak'],
+      expected: true,
+    },
+    {
+      name: 'refuses a gh file under config by stem',
+      components: ['.config', 'gh.yml'],
+      expected: true,
+    },
+    {
+      name: 'refuses an upper-case credential folder name',
+      components: ['.AWS', 'credentials'],
+      expected: true,
+    },
+    {
+      name: 'refuses a git metadata component',
+      components: ['repo', '.git', 'config'],
+      expected: true,
+    },
+  ])('$name', ({ components, expected }) => {
+    expect(isCredentialLikePath(components)).toBe(expected);
+  });
+});
+
+describe('directChildrenOfTrackedPaths', () => {
+  it.each([
+    {
+      name: 'lists files and folders directly under the root, folders with a slash',
+      tracked: ['README.md', 'src/index.ts', 'src/a/b.ts'],
+      directory: [],
+      expected: ['README.md', 'src/'],
+    },
+    {
+      name: 'lists only the direct children of a subfolder',
+      tracked: ['src/index.ts', 'src/a/b.ts', 'other.ts'],
+      directory: ['src'],
+      expected: ['a/', 'index.ts'],
+    },
+    {
+      name: 'lists nothing for a folder without tracked files',
+      tracked: ['README.md'],
+      directory: ['untracked'],
+      expected: [],
+    },
+  ])('$name', ({ tracked, directory, expected }) => {
+    expect(directChildrenOfTrackedPaths(tracked, directory)).toEqual(expected);
   });
 });

@@ -33,7 +33,9 @@ export type SessionReadCommand =
   | { kind: 'realPath'; path: string }
   | { kind: 'fileType'; path: string }
   | { kind: 'readFileHead'; path: string; byteLimit: number }
-  | { kind: 'listDirectory'; path: string };
+  | { kind: 'listDirectory'; path: string }
+  | { kind: 'gitTopLevel'; folderPath: string }
+  | { kind: 'gitTrackedFiles'; topLevelPath: string };
 
 export type SessionReadCommandResult =
   | { kind: 'exited'; exitCode: number; stdout: string }

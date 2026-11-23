@@ -18,7 +18,12 @@ import {
   LiveSessionToolCallOutcome,
   LiveSessionToolCallRunner,
   capLiveSessionText,
+  componentsBelowFolder,
+  directChildrenOfTrackedPaths,
   isBinaryText,
+  isCredentialLikePath,
+  isFolderRefusedForFileRead,
+  pathComponentsOf,
   isPathInsideFolder,
   lastScreenLines,
   issueUrlOfSessionName,
@@ -34,6 +39,7 @@ export type LiveSessionIssueReader = Pick<
 >;
 
 export type LiveSessionToolCallDependencies = {
+  localHomeDirectory: string;
   ownerCalls: OwnerCallFileRepository;
   knownIssueUrls: KnownIssueUrlRepository;
   hosts: SessionHostRepository;
@@ -67,6 +73,21 @@ const FILE_NOT_FOUND_TEXT = 'ファイルまたはフォルダが見つかりま
 
 const FILE_OUTSIDE_FOLDER_TEXT =
   '指定されたパスはセッションの作業フォルダの外にあるため、読めません。';
+
+const FILE_REFUSED_CREDENTIAL_TEXT =
+  '認証情報と見なされるファイルまたはフォルダのため、読めません。';
+
+const FOLDER_REFUSED_HOME_TEXT =
+  'ホームディレクトリ、またはその上位のフォルダは作業フォルダとして読めません。';
+
+const REMOTE_FILE_READ_REFUSED_TEXT =
+  'リモートホストで動いているセッションの作業フォルダのファイルは読めません。';
+
+const NOT_IN_WORK_TREE_TEXT =
+  'Git の作業ツリーの中にないフォルダのファイルは読めません。';
+
+const UNTRACKED_TEXT =
+  'Git で管理されていないファイルまたはフォルダのため、読めません。';
 
 const FILE_BINARY_TEXT = 'バイナリファイルのため内容は表示できません。';
 
@@ -291,6 +312,9 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
       return outputOf(location.text);
     }
     const { host, sessionName } = location;
+    if (host.kind !== 'local') {
+      return outputOf(REMOTE_FILE_READ_REFUSED_TEXT);
+    }
     const panePath = await this.dependencies.commands.run(host, {
       kind: 'tmuxPanePath',
       sessionName,
@@ -305,6 +329,25 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     if (folderRealPath === null) {
       return outputOf(PANE_PATH_UNAVAILABLE_TEXT);
     }
+    const homeRealPath = await this.realPathOf(
+      host,
+      this.dependencies.localHomeDirectory,
+    );
+    if (
+      homeRealPath === null ||
+      isFolderRefusedForFileRead(folderRealPath, homeRealPath)
+    ) {
+      return outputOf(FOLDER_REFUSED_HOME_TEXT);
+    }
+    const topLevel = await this.commandStdout(host, {
+      kind: 'gitTopLevel',
+      folderPath: folderRealPath,
+    });
+    const topLevelRealPath =
+      topLevel === null ? null : await this.realPathOf(host, topLevel);
+    if (topLevelRealPath === null) {
+      return outputOf(NOT_IN_WORK_TREE_TEXT);
+    }
     const targetRealPath = await this.realPathOf(
       host,
       joinSessionFolderPath(folderRealPath, relativePath),
@@ -315,6 +358,18 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     if (!isPathInsideFolder(folderRealPath, targetRealPath)) {
       return outputOf(FILE_OUTSIDE_FOLDER_TEXT);
     }
+    if (isCredentialLikePath(pathComponentsOf(targetRealPath))) {
+      return outputOf(FILE_REFUSED_CREDENTIAL_TEXT);
+    }
+    const trackedPaths = await this.trackedPathsOf(host, topLevelRealPath);
+    if (trackedPaths === null) {
+      return outputOf(NOT_IN_WORK_TREE_TEXT);
+    }
+    const targetRelativeComponents = componentsBelowFolder(
+      topLevelRealPath,
+      targetRealPath,
+    );
+    const targetRelativePath = targetRelativeComponents.join('/');
     const fileType = await this.dependencies.commands.run(host, {
       kind: 'fileType',
       path: targetRealPath,
@@ -324,9 +379,23 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     }
     const typeName = fileType.stdout.trim();
     if (typeName === 'directory') {
-      return this.listDirectory(host, targetRealPath);
+      if (
+        targetRelativeComponents.length > 0 &&
+        directChildrenOfTrackedPaths(trackedPaths, targetRelativeComponents)
+          .length === 0
+      ) {
+        return outputOf(UNTRACKED_TEXT);
+      }
+      return this.listTrackedDirectory(
+        trackedPaths,
+        targetRealPath,
+        targetRelativeComponents,
+      );
     }
     if (typeName === 'regular file' || typeName === 'regular empty file') {
+      if (!trackedPaths.includes(targetRelativePath)) {
+        return outputOf(UNTRACKED_TEXT);
+      }
       return this.readFileText(host, targetRealPath);
     }
     return outputOf(FILE_TYPE_UNSUPPORTED_TEXT);
@@ -378,21 +447,47 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     return result.stdout.replace(/\n$/, '');
   };
 
-  private listDirectory = async (
+  private commandStdout = async (
     host: SessionHost,
-    directoryPath: string,
-  ): Promise<LiveSessionToolCallOutcome> => {
+    command: Parameters<SessionCommandRepository['run']>[1],
+  ): Promise<string | null> => {
+    const result = await this.dependencies.commands.run(host, command);
+    if (!commandSucceeded(result) || result.kind !== 'exited') {
+      return null;
+    }
+    return result.stdout.replace(/\n$/, '');
+  };
+
+  private trackedPathsOf = async (
+    host: SessionHost,
+    topLevelRealPath: string,
+  ): Promise<string[] | null> => {
     const result = await this.dependencies.commands.run(host, {
-      kind: 'listDirectory',
-      path: directoryPath,
+      kind: 'gitTrackedFiles',
+      topLevelPath: topLevelRealPath,
     });
     if (!commandSucceeded(result) || result.kind !== 'exited') {
-      return outputOf(FILE_NOT_FOUND_TEXT);
+      return null;
     }
-    const entries = result.stdout
-      .split('\n')
-      .filter((entry) => entry.length > 0)
-      .sort();
+    return result.stdout.split('\u0000').filter((entry) => entry.length > 0);
+  };
+
+  private listTrackedDirectory = (
+    trackedPaths: readonly string[],
+    directoryRealPath: string,
+    directoryComponents: readonly string[],
+  ): LiveSessionToolCallOutcome => {
+    const directoryPathComponents = pathComponentsOf(directoryRealPath);
+    const entries = directChildrenOfTrackedPaths(
+      trackedPaths,
+      directoryComponents,
+    ).filter(
+      (entry) =>
+        !isCredentialLikePath([
+          ...directoryPathComponents,
+          entry.replace(/\/$/, ''),
+        ]),
+    );
     return outputOf(entries.join('\n'));
   };
 
