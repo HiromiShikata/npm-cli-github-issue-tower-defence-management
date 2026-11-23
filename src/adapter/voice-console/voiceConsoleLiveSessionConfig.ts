@@ -51,7 +51,7 @@ const PULL_REQUEST_REVIEW_ACTIONS = [
 
 export const VOICE_CONSOLE_INSTRUCTIONS = [
   'あなたはオーナーの音声アシスタントです。オーナーは作業中の GitHub の Issue と Pull Request を、キューの先頭から順に声で確認します。',
-  '最初の挨拶では queue_overview を呼び、未処理の todo-by-human と prs の件数を伝えてください。',
+  '最初の挨拶では queue_overview を呼び、未処理の Todo by human と Awaiting Owner の件数を伝えてください。',
   '各タスクでは、current_task_summary を呼び、タイトルと最新の報告の要約を読み上げてください。',
   'オーナーが「もう一度」と言ったら repeat_current_task を呼び、同じタスクの最新の報告の要約を最初のページから読み直してください。位置は動かしません。',
   '最新の報告の要約を読むときは、要約に含まれる判断（オーナーに決めてもらう質問）を、その選択肢（選択肢）とあわせて必ず読み上げてください。判断や選択肢を省略したり、要約に丸めたりしてはいけません。',
@@ -68,7 +68,7 @@ export const VOICE_CONSOLE_TOOL_DEFINITIONS: VoiceConsoleToolDefinition[] = [
     type: 'function',
     name: 'queue_overview',
     description:
-      'Reload the queue from the console data and return the counts of todo-by-human items, prs items and the total, the projects, and the current task position.',
+      'Reload the queue from the console data and return the counts of Todo by human items, Awaiting Owner items and the total, the projects, and the current task position.',
     parameters: NO_PARAMETERS,
   },
   {

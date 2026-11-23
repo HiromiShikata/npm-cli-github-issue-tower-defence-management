@@ -344,6 +344,30 @@ describe('VoiceConsoleSession queue navigation', () => {
     expect(collectNumbers(overview)).toEqual(expect.arrayContaining([3, 1, 4]));
     expect(JSON.stringify(overview)).toContain('umino');
     expect(JSON.stringify(overview)).toContain('xcare');
+    expect(overview).toMatchObject({
+      totalCount: 4,
+      todoByHumanCount: 3,
+      awaitingOwnerCount: 1,
+    });
+    expect(overview).not.toHaveProperty('prsCount');
+    expect(overview.projects).toEqual(
+      expect.arrayContaining([
+        { pjcode: 'umino', todoByHumanCount: 2, awaitingOwnerCount: 1 },
+        { pjcode: 'xcare', todoByHumanCount: 1, awaitingOwnerCount: 0 },
+      ]),
+    );
+  });
+
+  it('labels the tab of each entry in tool results with the owner terms', async () => {
+    const { call } = await openSession();
+
+    const todoEntry = await call('jump_to_task', { position: 2 });
+    const awaitingOwnerEntry = await call('jump_to_task', { position: 4 });
+
+    expect({
+      todo: todoEntry.tab,
+      awaitingOwner: awaitingOwnerEntry.tab,
+    }).toEqual({ todo: 'Todo by human', awaitingOwner: 'Awaiting Owner' });
   });
 
   it('moves the 1-based position through the tab-major queue and reports end and start errors', async () => {

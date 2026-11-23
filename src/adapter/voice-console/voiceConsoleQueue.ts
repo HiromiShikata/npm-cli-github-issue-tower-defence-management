@@ -9,6 +9,11 @@ export const VOICE_CONSOLE_QUEUE_TABS = ['todo-by-human', 'prs'] as const;
 
 export type VoiceConsoleQueueTab = (typeof VOICE_CONSOLE_QUEUE_TABS)[number];
 
+export const VOICE_CONSOLE_TAB_LABELS: Record<VoiceConsoleQueueTab, string> = {
+  'todo-by-human': 'Todo by human',
+  prs: 'Awaiting Owner',
+};
+
 export type VoiceConsoleQueueEntry = {
   pjcode: string;
   tab: VoiceConsoleQueueTab;

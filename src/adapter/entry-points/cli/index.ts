@@ -1493,6 +1493,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
   const fleetTaskCreateUrl = loadFleetTaskCreateUrl(fleetConfigFilePath);
   const liveSessionRepositoryInstance = new OpenAiLiveSessionRepository();
+  const liveSessionSidebandInstance = new OpenAiLiveSessionSideband();
 
   const consoleErrorReporter = buildConsoleErrorReporter(
     workflowImprovementIssueUrl,
@@ -1515,7 +1516,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     resolveGithubTokenByRepository,
     issueRepository,
     liveSessionRepository: liveSessionRepositoryInstance,
-    liveSessionCloser: liveSessionRepositoryInstance,
+    liveSessionCloser: liveSessionSidebandInstance,
     liveSessionToolCalls: new LiveSessionToolCallUseCase({
       localHomeDirectory: os.homedir(),
       ownerCalls: new FileOwnerCallFileRepository(inTmuxDataDir),
@@ -1524,7 +1525,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       commands: new TmuxSshSessionCommandRepository(),
       issues: issueRepository,
     }),
-    liveSessionSideband: new OpenAiLiveSessionSideband(),
+    liveSessionSideband: liveSessionSidebandInstance,
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,

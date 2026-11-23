@@ -14,6 +14,7 @@ import {
 } from './voiceConsolePendingAction';
 import {
   buildVoiceConsoleQueue,
+  VOICE_CONSOLE_TAB_LABELS,
   type VoiceConsoleQueueEntry,
 } from './voiceConsoleQueue';
 import {
@@ -545,7 +546,7 @@ export class VoiceConsoleSession {
       position: this.index + 1,
       totalCount: this.entries.length,
       pjcode: entry.pjcode,
-      tab: entry.tab,
+      tab: VOICE_CONSOLE_TAB_LABELS[entry.tab],
       number: entry.item.number,
       title: entry.item.title,
       url: entry.item.url,
@@ -572,14 +573,14 @@ export class VoiceConsoleSession {
       return {
         pjcode,
         todoByHumanCount: countTab(projectEntries, 'todo-by-human'),
-        prsCount: countTab(projectEntries, 'prs'),
+        awaitingOwnerCount: countTab(projectEntries, 'prs'),
       };
     });
     return {
       ok: true,
       totalCount: this.entries.length,
       todoByHumanCount: countTab(this.entries, 'todo-by-human'),
-      prsCount: countTab(this.entries, 'prs'),
+      awaitingOwnerCount: countTab(this.entries, 'prs'),
       projects,
       current: entry === null ? null : this.describeEntry(entry),
     };

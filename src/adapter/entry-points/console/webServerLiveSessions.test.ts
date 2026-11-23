@@ -477,3 +477,47 @@ describe('webServer live session creation when the voice console sideband cannot
     }
   });
 });
+
+describe('webServer live session creation when closing the session after a sideband failure also fails', () => {
+  it('logs the session id with the close failure and still returns the sideband failure', async () => {
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const repository = new InMemoryLiveSessionRepository({
+        type: 'created',
+        sdpAnswer: 'ANSWER-SDP',
+        sessionId: 'live_9',
+      });
+      const closer = {
+        close: (): Promise<void> => Promise.reject(new Error('socket refused')),
+      };
+      const server = await createTestServer(
+        repository,
+        new FailingLiveSessionSideband(
+          'OPENAI_API_KEY is not set for the live session sideband',
+        ),
+        closer,
+      );
+
+      try {
+        const response = await requestServer(
+          server,
+          'POST',
+          '/api/live/sessions',
+          'OFFER-SDP',
+          'application/sdp',
+        );
+
+        expect(response.statusCode).toBe(502);
+        expect(consoleError).toHaveBeenCalledWith(
+          'live session live_9 could not be closed after the sideband failure: socket refused',
+        );
+      } finally {
+        await close(server);
+      }
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+});
