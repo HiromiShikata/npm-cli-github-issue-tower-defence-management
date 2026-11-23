@@ -1,3 +1,10 @@
+## [2.202.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.202.0...v2.202.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **console:** retry detail reads after network failure ([#3756](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3756)) ([add3137](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/add313720154c6bca2c27215c20a9c9d512f6fdd))
+
 # [2.202.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.201.9...v2.202.0) (2026-11-22)
 
 
