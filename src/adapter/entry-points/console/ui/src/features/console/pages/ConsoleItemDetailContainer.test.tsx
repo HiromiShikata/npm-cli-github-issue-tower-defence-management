@@ -5236,6 +5236,58 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
     expect(readRareActionsTextareaValue(view)).toBe(`${urlA}\n${urlB}`);
   });
 
+  it('reopens the panel with the item prop list when the item changed while a depended issue save was in flight and later returned to the save base list', async () => {
+    const operations = buildOperations();
+    let resolvePendingReplace: () => void = () => {};
+    operations.replaceDependedIssueUrl = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePendingReplace = resolve;
+        }),
+    );
+    const urlC = 'https://github.com/o/r/issues/3';
+    const renderItemWithDependedIssueUrls = (dependedIssueUrls: string[]) => (
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={{ ...issueItem, dependedIssueUrls }}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={statusOptionsWithoutAwaitingWorkspace}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+      />
+    );
+    const view = render(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    openRareActionsAndSubmit(view, urlB);
+    await waitFor(() => {
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
+    });
+
+    view.rerender(renderItemWithDependedIssueUrls([urlB, urlC]));
+
+    await act(async () => {
+      resolvePendingReplace();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+    });
+
+    view.rerender(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    fireEvent.click(view.getByTitle('Rare actions'));
+    expect(readRareActionsTextareaValue(view)).toBe(`${urlA}\n${urlB}`);
+  });
+
   it('reopens the panel with the saved list on the queued path when the replace write succeeds and the status write fails with a non-network error', async () => {
     jest.useFakeTimers();
     localStorage.clear();
