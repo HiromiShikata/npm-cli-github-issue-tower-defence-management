@@ -7,6 +7,10 @@ import {
   CodexSevenDayWindowStatus,
 } from '../../../domain/usecases/dashboard/CodexSevenDayWindowUseCase';
 import {
+  CODEX_WORKER_COUNT_FILE_NAME,
+  CodexWorkerCountFile,
+} from '../../../domain/usecases/dashboard/CodexWorkerCountFile';
+import {
   CloseEventCounts,
   ComposeDashboardDisk,
   ComposeDashboardInput,
@@ -454,6 +458,58 @@ const mergeCodexSevenDayWindows = (
   );
 };
 
+const isCodexWorkerCountFile = (
+  value: unknown,
+): value is CodexWorkerCountFile =>
+  isRecord(value) &&
+  typeof value.capturedAt === 'string' &&
+  (value.runningIssueCount === null ||
+    (typeof value.runningIssueCount === 'number' &&
+      Number.isInteger(value.runningIssueCount) &&
+      value.runningIssueCount >= 0)) &&
+  (value.errorMessage === null || typeof value.errorMessage === 'string');
+
+export const readCodexRunningWorkerCount = (
+  dashboardDataDir: string,
+): number | null => {
+  const filePath = path.join(dashboardDataDir, CODEX_WORKER_COUNT_FILE_NAME);
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    if (!isNotFoundError(error)) {
+      console.error(
+        `Failed to read Codex worker count file ${filePath}:`,
+        error,
+      );
+    }
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    console.error(
+      `Ignored malformed Codex worker count file ${filePath}:`,
+      error,
+    );
+    return null;
+  }
+  if (!isCodexWorkerCountFile(parsed)) {
+    console.error(
+      `Ignored Codex worker count file with unexpected shape ${filePath}`,
+    );
+    return null;
+  }
+  if (parsed.errorMessage !== null) {
+    console.error(
+      `Codex worker count is unavailable: ${parsed.errorMessage} (${filePath})`,
+    );
+    return null;
+  }
+  return parsed.runningIssueCount;
+};
+
 export const buildComposeDashboardInput = (
   options: DashboardComposeOptions,
 ): ComposeDashboardInput => {
@@ -490,6 +546,9 @@ export const buildComposeDashboardInput = (
       codexSevenDayWindowFiles.length === 0
         ? null
         : mergeCodexSevenDayWindows(codexSevenDayWindowFiles),
+    codexRunningWorkerCount: readCodexRunningWorkerCount(
+      options.dashboardDataDir,
+    ),
     nowMs,
   };
 };

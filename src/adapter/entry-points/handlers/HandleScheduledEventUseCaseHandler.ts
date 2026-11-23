@@ -11,7 +11,9 @@ import { writeDashboardRow } from './dashboardRowWriter';
 import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
 import { writeCodexSevenDayWindowStatus } from './codexSevenDayWindowWriter';
+import { writeCodexWorkerCountStatus } from './codexWorkerCountWriter';
 import { FileSystemCodexRolloutRateLimitRepository } from '../../repositories/FileSystemCodexRolloutRateLimitRepository';
+import { ProcCodexRunningWorkerRepository } from '../../repositories/ProcCodexRunningWorkerRepository';
 import { handleSubscriptionDisabledTokens } from './subscriptionDisabledTokenHandler';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { cleanClosedIssueOwnerCallFiles } from './ownerCallFileCleaner';
@@ -837,6 +839,21 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write Codex seven day window status: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        writeCodexWorkerCountStatus({
+          dashboardDataDir,
+          repository: new ProcCodexRunningWorkerRepository(),
+          now: new Date(),
+          logError: (message) => console.error(message),
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write Codex worker count status: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );

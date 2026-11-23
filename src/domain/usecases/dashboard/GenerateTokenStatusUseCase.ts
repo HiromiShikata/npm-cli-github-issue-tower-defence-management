@@ -59,7 +59,7 @@ export type GenerateTokenStatusInput = {
   nowEpochSeconds: number;
 };
 
-const HIGH_UTILIZATION_THRESHOLD = 0.7;
+export const HIGH_UTILIZATION_THRESHOLD = 0.7;
 const ALLOWED_WARNING_STATUS = 'allowed_warning';
 
 export const judgeTokenColor = (

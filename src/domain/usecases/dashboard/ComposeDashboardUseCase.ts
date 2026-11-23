@@ -4,6 +4,7 @@ import {
 } from './CodexSevenDayWindowUseCase';
 import { DashboardRow } from './GenerateDashboardRowUseCase';
 import {
+  HIGH_UTILIZATION_THRESHOLD,
   SevenDayWindowAggregate,
   TokenStatus,
   TokenStatusColor,
@@ -44,6 +45,7 @@ export type ComposeDashboardInput = {
   tokens: TokenStatus[];
   sevenDayWindowAggregate?: SevenDayWindowAggregate | null;
   codexSevenDayWindows?: CodexSevenDayWindowStatus[] | null;
+  codexRunningWorkerCount?: number | null;
   nowMs?: number;
 };
 
@@ -350,7 +352,7 @@ const formatReset = (
 ): string =>
   resetSeconds === null
     ? utilizationPercent === null
-      ? '?'
+      ? padEnd('?', TOKEN_RESET_WIDTH, ' ')
       : padEnd('--', TOKEN_RESET_WIDTH, ' ')
     : formatResetCountdown(resetSeconds);
 
@@ -379,13 +381,7 @@ const joinTokenRowSegments = (segments: string[]): string =>
   segments.join(TOKEN_SEGMENT_SEPARATOR);
 
 export const SEVEN_DAY_UTILIZATION_COLUMN_START =
-  STATUS_DOT_DISPLAY_WIDTH +
-  TOKEN_NAME_WIDTH +
-  TOKEN_SEGMENT_SEPARATOR.length +
-  TOKEN_UTILIZATION_WIDTH +
-  TOKEN_SEGMENT_SEPARATOR.length +
-  TOKEN_RESET_WIDTH +
-  TOKEN_SEGMENT_SEPARATOR.length;
+  STATUS_DOT_DISPLAY_WIDTH + TOKEN_NAME_WIDTH + TOKEN_SEGMENT_SEPARATOR.length;
 
 export const TOKEN_SESSION_COLUMN_START =
   SEVEN_DAY_UTILIZATION_COLUMN_START +
@@ -396,15 +392,18 @@ export const TOKEN_SESSION_COLUMN_START =
 
 export const formatTokenSessionTotalLine = (
   tokens: TokenStatus[],
+  runningCodexWorkerCount: number | null,
 ): string | null => {
-  if (tokens.length === 0) {
+  const codexWorkerCount = runningCodexWorkerCount ?? 0;
+  if (tokens.length === 0 && codexWorkerCount === 0) {
     return null;
   }
-  const totalPrep = tokens.reduce((sum, t) => sum + t.prep, 0);
+  const totalPrep =
+    tokens.reduce((sum, t) => sum + t.prep, 0) + codexWorkerCount;
   const totalHum = tokens.reduce((sum, t) => sum + t.hum, 0);
   return (
     padEnd('', TOKEN_SESSION_COLUMN_START, ' ') +
-    capTwoDigits(totalPrep) +
+    padStart(capTwoDigits(totalPrep), 2) +
     ' ' +
     capTwoDigits(totalHum)
   );
@@ -428,20 +427,12 @@ export const formatSevenDayWindowAggregateLine = (
   );
 };
 
+const formatTokenName = (name: string): string =>
+  padEnd(name.slice(-TOKEN_NAME_WIDTH), TOKEN_NAME_WIDTH, '_');
+
 export const formatTokenRowLine = (token: TokenStatus): string => {
   const dot = TOKEN_COLOR_DOT[token.color];
-  const name = padEnd(
-    token.name.slice(-TOKEN_NAME_WIDTH),
-    TOKEN_NAME_WIDTH,
-    '_',
-  );
-  const fiveHourUtilization = formatUtilization(
-    token.fiveHourUtilizationPercent,
-  );
-  const fiveHourReset = formatReset(
-    token.fiveHourResetSeconds,
-    token.fiveHourUtilizationPercent,
-  );
+  const name = formatTokenName(token.name);
   const sevenDayUtilization = formatUtilization(
     token.sevenDayUtilizationPercent,
   );
@@ -453,8 +444,6 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
   const hum = capTwoDigits(token.hum);
   return joinTokenRowSegments([
     `${dot}${name}`,
-    fiveHourUtilization,
-    fiveHourReset,
     sevenDayUtilization,
     sevenDayReset,
     prep,
@@ -462,63 +451,115 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
   ]);
 };
 
-const CODEX_LINE_PREFIX = 'cx';
+const CODEX_DEFAULT_HOME = '.codex';
 
-const NO_CODEX_HOME_LABEL = '--';
+const CODEX_DEFAULT_TOKEN_NAME = 'cx';
 
-const padTwoDigits = (value: number): string => String(value).padStart(2, '0');
-
-export const formatCodexCaptureStamp = (isoTimestamp: string): string => {
-  const captured = new Date(isoTimestamp);
-  return `@${padTwoDigits(captured.getUTCMonth() + 1)}-${padTwoDigits(
-    captured.getUTCDate(),
-  )} ${padTwoDigits(captured.getUTCHours())}:${padTwoDigits(
-    captured.getUTCMinutes(),
-  )}Z`;
+const CODEX_PLACEHOLDER_WINDOW: CodexSevenDayWindowStatus = {
+  codexHome: CODEX_DEFAULT_HOME,
+  state: 'no-data',
+  usedPercent: null,
+  resetsAtEpochSeconds: null,
+  capturedAt: null,
+  errorMessage: null,
 };
 
-const formatCodexWindowLine = (
+const isCodexWindowResetPassed = (
+  window: CodexSevenDayWindowStatus,
+  nowEpochSeconds: number,
+): boolean =>
+  window.resetsAtEpochSeconds !== null &&
+  isCodexSevenDayWindowReset(window.resetsAtEpochSeconds, nowEpochSeconds);
+
+const codexSevenDayTokenColorAt = (
+  window: CodexSevenDayWindowStatus,
+  nowEpochSeconds: number,
+): TokenStatusColor => {
+  if (window.state !== 'observed' || window.usedPercent === null) {
+    return 'Y';
+  }
+  if (isCodexWindowResetPassed(window, nowEpochSeconds)) {
+    return 'G';
+  }
+  if (window.usedPercent >= 100) {
+    return 'K';
+  }
+  if (window.usedPercent / 100 >= HIGH_UTILIZATION_THRESHOLD) {
+    return 'Y';
+  }
+  return 'G';
+};
+
+export const codexSevenDayTokenColor = (
+  window: CodexSevenDayWindowStatus,
+): TokenStatusColor =>
+  codexSevenDayTokenColorAt(window, Math.floor(Date.now() / 1000));
+
+const formatCodexUtilization = (
   window: CodexSevenDayWindowStatus,
   nowEpochSeconds: number,
 ): string => {
-  const head = `${CODEX_LINE_PREFIX} ${window.codexHome}`;
-  if (window.state === 'error') {
-    return `${head} error`;
+  if (window.state !== 'observed' || window.usedPercent === null) {
+    return formatUtilization(null);
   }
-  if (
-    window.state === 'no-data' ||
-    window.usedPercent === null ||
-    window.resetsAtEpochSeconds === null
-  ) {
-    return `${head} no data`;
+  if (isCodexWindowResetPassed(window, nowEpochSeconds)) {
+    return formatUtilization(0);
   }
-  const stamp =
-    window.capturedAt === null
-      ? ''
-      : ` ${formatCodexCaptureStamp(window.capturedAt)}`;
-  if (
-    isCodexSevenDayWindowReset(window.resetsAtEpochSeconds, nowEpochSeconds)
-  ) {
-    return `${head} reset${stamp}`;
+  return formatUtilization(roundHalfToEven(window.usedPercent));
+};
+
+const formatCodexReset = (
+  window: CodexSevenDayWindowStatus,
+  nowEpochSeconds: number,
+): string => {
+  if (window.state !== 'observed' || window.resetsAtEpochSeconds === null) {
+    return formatReset(null, null);
   }
-  return `${head} ${roundHalfToEven(window.usedPercent)}% ${formatResetCountdown(
-    window.resetsAtEpochSeconds - nowEpochSeconds,
-  )}${stamp}`;
+  if (isCodexWindowResetPassed(window, nowEpochSeconds)) {
+    return formatReset(null, 0);
+  }
+  return formatResetCountdown(window.resetsAtEpochSeconds - nowEpochSeconds);
+};
+
+export const formatCodexTokenRowLine = (
+  window: CodexSevenDayWindowStatus,
+  options: { nowMs: number; runningCodexWorkerCount: number | null },
+): string => {
+  const nowEpochSeconds = Math.floor(options.nowMs / 1000);
+  const dot =
+    TOKEN_COLOR_DOT[codexSevenDayTokenColorAt(window, nowEpochSeconds)];
+  const name =
+    window.codexHome === CODEX_DEFAULT_HOME
+      ? CODEX_DEFAULT_TOKEN_NAME
+      : formatTokenName(window.codexHome);
+  const prep =
+    options.runningCodexWorkerCount === null
+      ? padStart('?', 2)
+      : padStart(capTwoDigits(options.runningCodexWorkerCount), 2);
+  const row = joinTokenRowSegments([
+    `${dot}${name}`,
+    formatCodexUtilization(window, nowEpochSeconds),
+    formatCodexReset(window, nowEpochSeconds),
+    prep,
+    '-',
+  ]);
+  if (window.capturedAt === null) {
+    return row;
+  }
+  return `${row} ${formatElapsedMinutes(
+    options.nowMs - Date.parse(window.capturedAt),
+  )}`;
 };
 
 export const formatCodexSevenDayWindowLines = (
   windows: CodexSevenDayWindowStatus[] | null,
-  nowEpochSeconds: number,
+  options: { nowMs: number; runningCodexWorkerCount: number | null },
 ): string[] => {
   if (windows === null) {
     return [];
   }
-  if (windows.length === 0) {
-    return [`${CODEX_LINE_PREFIX} ${NO_CODEX_HOME_LABEL} no data`];
-  }
-  return windows.map((window) =>
-    formatCodexWindowLine(window, nowEpochSeconds),
-  );
+  const rows = windows.length === 0 ? [CODEX_PLACEHOLDER_WINDOW] : windows;
+  return rows.map((window) => formatCodexTokenRowLine(window, options));
 };
 
 const wrapLine = (line: string): string =>
@@ -538,7 +579,11 @@ export class ComposeDashboardUseCase {
     const aggregateLine = formatSevenDayWindowAggregateLine(
       input.sevenDayWindowAggregate ?? null,
     );
-    const sessionTotalLine = formatTokenSessionTotalLine(sortedTokens);
+    const runningCodexWorkerCount = input.codexRunningWorkerCount ?? null;
+    const sessionTotalLine = formatTokenSessionTotalLine(
+      sortedTokens,
+      runningCodexWorkerCount,
+    );
     const aggrTotalLines = (() => {
       if (aggregateLine !== null && sessionTotalLine !== null) {
         const aggrPadded = padEnd(
@@ -557,7 +602,10 @@ export class ComposeDashboardUseCase {
     })();
     const codexLines = formatCodexSevenDayWindowLines(
       input.codexSevenDayWindows ?? null,
-      Math.floor((input.nowMs ?? Date.now()) / 1000),
+      {
+        nowMs: input.nowMs ?? Date.now(),
+        runningCodexWorkerCount,
+      },
     );
     const lines = [
       ...statsLines,
