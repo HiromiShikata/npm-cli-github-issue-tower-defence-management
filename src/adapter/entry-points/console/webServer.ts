@@ -269,6 +269,10 @@ export type LiveSessionSidebandConnector = {
   ): void;
 };
 
+export type LiveSessionCloser = {
+  close(sessionId: string): Promise<void>;
+};
+
 export type WebServerOptions = {
   accessToken: string;
   uiDistDir: string;
@@ -287,6 +291,7 @@ export type WebServerOptions = {
   liveSessionRepository?: LiveSessionRepository | null;
   liveSessionToolCalls?: LiveSessionToolCallRunner | null;
   liveSessionSideband?: LiveSessionSidebandConnector | null;
+  liveSessionCloser?: LiveSessionCloser | null;
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
@@ -1109,24 +1114,39 @@ const attachVoiceConsoleSideband = (
   if (sideband === null) {
     return;
   }
+  const session = buildVoiceConsoleSession(options);
+  const handlerHolder: { handler: VoiceConsoleSidebandHandler | null } = {
+    handler: null,
+  };
+  sideband.attach(sessionId, (event, send) => {
+    const handler =
+      handlerHolder.handler ??
+      new VoiceConsoleSidebandHandler(session, send, (message) =>
+        console.error(message),
+      );
+    handlerHolder.handler = handler;
+    return handler.handleServerEvent(event);
+  });
+};
+
+const closeLiveSessionAfterSidebandFailure = async (
+  options: WebServerOptions,
+  sessionId: string,
+  sidebandMessage: string,
+): Promise<void> => {
+  const closer = options.liveSessionCloser ?? null;
+  if (closer === null) {
+    console.error(
+      `live session ${sessionId} has no closer; it stays open after the sideband failure: ${sidebandMessage}`,
+    );
+    return;
+  }
   try {
-    const session = buildVoiceConsoleSession(options);
-    const handlerHolder: { handler: VoiceConsoleSidebandHandler | null } = {
-      handler: null,
-    };
-    sideband.attach(sessionId, (event, send) => {
-      const handler =
-        handlerHolder.handler ??
-        new VoiceConsoleSidebandHandler(session, send, (message) =>
-          console.error(message),
-        );
-      handlerHolder.handler = handler;
-      return handler.handleServerEvent(event);
-    });
+    await closer.close(sessionId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
-      `voice console sideband could not attach to live session ${sessionId}: ${message}`,
+      `live session ${sessionId} could not be closed after the sideband failure: ${message}`,
     );
   }
 };
@@ -1148,7 +1168,24 @@ const handleLiveSessionCreate = async (
   }
   const result = await liveSessionRepository.createFromSdpOffer(sdpOffer);
   if (result.type === 'created') {
-    attachVoiceConsoleSideband(options, result.sessionId);
+    try {
+      attachVoiceConsoleSideband(options, result.sessionId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        `voice console sideband could not attach to live session ${result.sessionId}: ${message}`,
+      );
+      await closeLiveSessionAfterSidebandFailure(
+        options,
+        result.sessionId,
+        message,
+      );
+      sendJson(response, 502, {
+        error: 'voice_console_sideband_failed',
+        message,
+      });
+      return;
+    }
     response.writeHead(201, {
       'Content-Type': 'application/sdp',
       'Cache-Control': 'no-store',
