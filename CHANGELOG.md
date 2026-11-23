@@ -1,3 +1,10 @@
+## [2.206.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.0...v2.206.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **voice-console:** address PR 3760 review findings ([#3763](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3763)) ([6860df8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6860df85a00e74c91d2ac9d44e68b3b70023cdef))
+
 # [2.206.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.205.0...v2.206.0) (2026-11-23)
 
 
