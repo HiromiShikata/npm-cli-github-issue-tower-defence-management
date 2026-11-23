@@ -60,7 +60,12 @@ const createFakeSession = () => {
     (_name: string, _argumentsJson: string): Promise<string> =>
       Promise.resolve(TOOL_RESULT),
   );
-  return { callTool, session: { callTool } };
+  const recordOwnerSpeech = jest.fn((_delta: string): void => undefined);
+  return {
+    callTool,
+    recordOwnerSpeech,
+    session: { callTool, recordOwnerSpeech },
+  };
 };
 
 describe('VoiceConsoleSidebandHandler', () => {
@@ -219,5 +224,60 @@ describe('VoiceConsoleSidebandHandler', () => {
 
     expect(callTool).toHaveBeenCalledTimes(1);
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe('VoiceConsoleSidebandHandler owner speech', () => {
+  it('forwards only owner input transcript deltas to recordOwnerSpeech', async () => {
+    const cases = [
+      {
+        name: 'an input transcript delta is forwarded with its text',
+        event: {
+          type: 'session.input_transcript.delta',
+          event_id: 't1',
+          delta: 'は',
+          start_ms: 0,
+          end_ms: 100,
+        },
+        forwarded: ['は'],
+      },
+      {
+        name: 'a second fragment is forwarded in order',
+        event: {
+          type: 'session.input_transcript.delta',
+          event_id: 't2',
+          delta: 'い',
+          start_ms: 100,
+          end_ms: 200,
+        },
+        forwarded: ['い'],
+      },
+      {
+        name: 'an output text delta is not forwarded',
+        event: { type: 'response.output_text.delta', delta: 'はい' },
+        forwarded: [],
+      },
+      {
+        name: 'a session update is not forwarded',
+        event: { type: 'session.updated', session: {} },
+        forwarded: [],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { recordOwnerSpeech, session } = createFakeSession();
+      const handler = new VoiceConsoleSidebandHandler(
+        session,
+        jest.fn(),
+        jest.fn(),
+      );
+
+      await handler.handleServerEvent(testCase.event);
+
+      expect({
+        name: testCase.name,
+        forwarded: recordOwnerSpeech.mock.calls.map((call) => call[0]),
+      }).toEqual({ name: testCase.name, forwarded: testCase.forwarded });
+    }
   });
 });
