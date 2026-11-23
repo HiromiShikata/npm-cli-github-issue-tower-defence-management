@@ -6,7 +6,13 @@ import {
 const OPENAI_LIVE_SESSIONS_URL = 'https://api.openai.com/v1/live/sessions';
 
 const LIVE_SESSION_INSTRUCTIONS =
-  'あなたはオーナーの音声アシスタントです。オーナーは複数の作業セッションからの呼び出しに、順番に声で答えています。アプリが呼び出しの本文を読み上げた後、あなたはオーナーと日本語で短く会話し、そのセッションに送る返事を決める手助けをします。オーナーが送る文を述べたら、その文を一字一句そのまま復唱し、オーナーが「送って」と言ったら、その文をそのまま session_reply_send で送ります。送る文を自分で作ったり言い換えたりしてはいけません。オーナーが「次」と言ったら session_skip を、「もう一度」と言ったら owner_call_repeat を呼びます。';
+  'あなたはオーナーの音声アシスタントです。オーナーは複数の作業セッションからの呼び出しに、順番に声で答えています。アプリが呼び出しの本文を読み上げた後、あなたはオーナーと日本語で短く会話し、そのセッションに送る返事を決める手助けをします。オーナーが送る文を述べたら、その文を一字一句そのまま復唱し、オーナーが「送って」と言ったら、その文をそのまま session_reply_send で送ります。送る文を自分で作ったり言い換えたりしてはいけません。オーナーが「次」と言ったら session_skip を、「もう一度」と言ったら owner_call_repeat を呼びます。オーナーがセッション、そのセッションが動いている PC、その画面、タスク Issue、またはファイルについて尋ねたら、calling_sessions_list、session_screen_read、session_task_issue_read、session_file_read のいずれかを呼び、結果を日本語で短く答えます。これらの道具は読むだけで、PC に書き込んだり操作したりはできません。';
+
+const SESSION_NAME_PROPERTY = {
+  type: 'string',
+  description:
+    'Tmux session name of the session. Omit it to use the session the owner is currently handling.',
+};
 
 const NO_PARAMETERS_SCHEMA = {
   type: 'object',
@@ -34,6 +40,62 @@ const LIVE_SESSION_TOOLS = [
     type: 'function',
     name: 'owner_call_repeat',
     parameters: NO_PARAMETERS_SCHEMA,
+  },
+  {
+    type: 'function',
+    name: 'calling_sessions_list',
+    description:
+      'List the sessions that have an unanswered owner call, with the machine each runs on, the call time and the task issue URL when it can be derived.',
+    parameters: NO_PARAMETERS_SCHEMA,
+  },
+  {
+    type: 'function',
+    name: 'session_screen_read',
+    description:
+      'Read the most recent lines of the terminal screen of a session. lineCount defaults to 80 and is at most 300.',
+    parameters: {
+      type: 'object',
+      properties: {
+        sessionName: SESSION_NAME_PROPERTY,
+        lineCount: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 300,
+          description: 'Number of recent screen lines to read. Defaults to 80.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function',
+    name: 'session_task_issue_read',
+    description:
+      'Read the title, body and latest comment of the task issue of a session.',
+    parameters: {
+      type: 'object',
+      properties: { sessionName: SESSION_NAME_PROPERTY },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function',
+    name: 'session_file_read',
+    description:
+      'Read a text file, or list a folder, given by a path relative to the current working folder of a session. Paths outside that folder are refused.',
+    parameters: {
+      type: 'object',
+      properties: {
+        sessionName: SESSION_NAME_PROPERTY,
+        path: {
+          type: 'string',
+          description:
+            'Path relative to the working folder of the session. A folder path returns a sorted listing.',
+        },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
   },
 ];
 

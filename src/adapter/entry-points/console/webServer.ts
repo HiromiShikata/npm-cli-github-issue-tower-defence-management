@@ -6,6 +6,7 @@ import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/LiveSessionRepository';
+import type { LiveSessionToolCallRunner } from '../../../domain/usecases/liveSession/LiveSessionToolCall';
 import { Project } from '../../../domain/entities/Project';
 import type {
   ConsoleFieldOption,
@@ -272,6 +273,7 @@ export type WebServerOptions = {
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
   liveSessionRepository?: LiveSessionRepository | null;
+  liveSessionToolCalls?: LiveSessionToolCallRunner | null;
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
@@ -1083,6 +1085,77 @@ const handleLiveSessionCreate = async (
   });
 };
 
+const LIVE_TOOL_CALLS_REQUEST_PATH = '/api/live/tool-calls';
+
+const parseLiveToolCallBody = (
+  raw: string,
+): {
+  name: string;
+  arguments: Record<string, unknown>;
+  sessionName: string | null;
+} | null => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(parsed)) {
+    return null;
+  }
+  const { name, arguments: toolArguments, sessionName } = parsed;
+  if (typeof name !== 'string' || !isRecord(toolArguments)) {
+    return null;
+  }
+  if (
+    sessionName !== undefined &&
+    sessionName !== null &&
+    typeof sessionName !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    name,
+    arguments: toolArguments,
+    sessionName: typeof sessionName === 'string' ? sessionName : null,
+  };
+};
+
+const handleLiveToolCall = async (
+  toolCalls: LiveSessionToolCallRunner,
+  request: http.IncomingMessage,
+  response: http.ServerResponse,
+): Promise<void> => {
+  const mediaType = (request.headers['content-type'] ?? '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  const raw = await readRequestBody(request);
+  const call =
+    mediaType === 'application/json' ? parseLiveToolCallBody(raw) : null;
+  if (call === null) {
+    sendJson(response, 400, { error: 'invalid_arguments' });
+    return;
+  }
+  try {
+    const outcome = await toolCalls.run(call);
+    if (outcome.kind === 'unknownTool') {
+      sendJson(response, 400, { error: 'unknown_tool' });
+      return;
+    }
+    if (outcome.kind === 'invalidArguments') {
+      sendJson(response, 400, { error: 'invalid_arguments' });
+      return;
+    }
+    sendJson(response, 200, { output: outcome.output });
+  } catch (error) {
+    sendJson(response, 500, {
+      error: 'tool_failed',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
 const handleTokenedRequest = async (
   options: WebServerOptions,
   request: http.IncomingMessage,
@@ -1103,6 +1176,14 @@ const handleTokenedRequest = async (
         request,
         response,
       );
+      return;
+    }
+    if (requestPath === LIVE_TOOL_CALLS_REQUEST_PATH && method === 'POST') {
+      if (options.liveSessionToolCalls == null) {
+        sendNotFound(response);
+        return;
+      }
+      await handleLiveToolCall(options.liveSessionToolCalls, request, response);
       return;
     }
     if (method === 'GET') {
