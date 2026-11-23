@@ -63,6 +63,17 @@ describe('VOICE_CONSOLE_INSTRUCTIONS', () => {
       expect(VOICE_CONSOLE_INSTRUCTIONS).toContain(testCase.word);
     }
   });
+
+  it('tells the assistant to read decision questions with their options', () => {
+    const cases = [{ word: '判断' }, { word: '選択肢' }];
+
+    for (const testCase of cases) {
+      expect({
+        word: testCase.word,
+        mentioned: VOICE_CONSOLE_INSTRUCTIONS.includes(testCase.word),
+      }).toEqual({ word: testCase.word, mentioned: true });
+    }
+  });
 });
 
 describe('VOICE_CONSOLE_TOOL_NAMES', () => {

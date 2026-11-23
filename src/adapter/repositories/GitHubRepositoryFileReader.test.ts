@@ -104,4 +104,26 @@ describe('GitHubRepositoryFileReader.readFile', () => {
       ).rejects.toThrow(testCase.messagePart);
     }
   });
+
+  it('rejects a path with a parent-directory segment before any request is made', async () => {
+    const cases = [
+      { path: '..' },
+      { path: '../secret.md' },
+      { path: 'docs/../secret.md' },
+    ];
+
+    for (const testCase of cases) {
+      const fetchImplementation: jest.MockedFunction<typeof fetch> = jest.fn();
+      fetchImplementation.mockResolvedValue(responseWithStatus(200, 'content'));
+      const reader = createReader(fetchImplementation);
+
+      await expect(
+        reader.readFile('HiromiShikata', 'example', 'main', testCase.path),
+      ).rejects.toThrow();
+      expect({
+        path: testCase.path,
+        fetchCalls: fetchImplementation.mock.calls.length,
+      }).toEqual({ path: testCase.path, fetchCalls: 0 });
+    }
+  });
 });

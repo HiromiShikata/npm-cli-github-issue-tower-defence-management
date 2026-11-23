@@ -571,6 +571,38 @@ describe('VoiceConsoleSession reading tools', () => {
     }
   });
 
+  it('rejects blob URLs whose path escapes the repository before reading anything', async () => {
+    const cases = [
+      {
+        url: 'https://github.com/HiromiShikata/example/blob/main/../secret.md',
+      },
+      {
+        url: 'https://github.com/HiromiShikata/example/blob/main/a/..%2F..%2Fuser%2Frepos',
+      },
+      {
+        url: 'https://github.com/HiromiShikata/example/blob/main/docs/..%2Fsecret.md',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, readRepositoryFile } = await openSession();
+
+      const result = await call('read_repository_file', { url: testCase.url });
+
+      expect({
+        url: testCase.url,
+        ok: result.ok,
+        error: result.error,
+        reads: readRepositoryFile.mock.calls.length,
+      }).toEqual({
+        url: testCase.url,
+        ok: false,
+        error: 'invalid_url',
+        reads: 0,
+      });
+    }
+  });
+
   it('prefixes a query without a user, org or repo qualifier with the authenticated login', async () => {
     const cases = [
       { query: 'label:bug', expected: 'user:HiromiShikata label:bug' },
