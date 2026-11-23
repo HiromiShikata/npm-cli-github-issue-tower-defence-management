@@ -1,3 +1,10 @@
+# [2.206.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.205.0...v2.206.0) (2026-11-23)
+
+
+### Features
+
+* **dashboard:** drop 5-hour columns and show Codex token row ([#3762](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3762)) ([427930a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/427930aca7151f66872f21942bbe3e87fea82e6e))
+
 # [2.205.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.204.1...v2.205.0) (2026-11-23)
 
 
