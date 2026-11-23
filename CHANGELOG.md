@@ -1,3 +1,10 @@
+## [2.206.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.1...v2.206.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* **codex-worker-count:** count local codex aw launches from argv ([#3764](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3764)) ([b16ec14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b16ec146f56aecfa9371636d1db6a7f930404b79))
+
 ## [2.206.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.0...v2.206.1) (2026-11-23)
 
 
