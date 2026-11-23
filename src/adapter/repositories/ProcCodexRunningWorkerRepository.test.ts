@@ -9,18 +9,83 @@ const AW_PATH = '"$HOME/git/secretary/machine/sk/aw"';
 
 const argv = (...parts: string[]): string => `${parts.join('\0')}\0`;
 
+const LOCAL_AW_PATH = '/home/hiromi/git/secretary/machine/sk/aw';
+
 const localCodexWorker = (issueUrl: string, model = 'gpt-5-codex'): string =>
   argv(
-    'bash',
-    '-c',
-    `: "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model}`,
+    '/bin/bash',
+    LOCAL_AW_PATH,
+    issueUrl,
+    'codex-agent',
+    model,
+    '--configFilePath',
+    '/home/hiromi/git/secretary/machine/sk/config.yml',
   );
 
-const sshDelegatedCodexWorker = (issueUrl: string): string =>
+const sshDelegatedCodexWorker = (
+  issueUrl: string,
+  model = 'gpt-5-codex',
+): string =>
   argv(
     'ssh',
     'remote-host',
-    `bash -ic 'set +m; : "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent gpt-5-codex --configFilePath /home/u/.config/aw.json'`,
+    `bash -ic 'set +m; : "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model} --configFilePath /home/u/.config/aw.json'`,
+  );
+
+const sshShellQuotedCodexWorker = (issueUrl: string, model: string): string =>
+  argv(
+    'ssh',
+    '-o',
+    'BatchMode=yes',
+    '-o',
+    'ConnectTimeout=5',
+    '-o',
+    'StrictHostKeyChecking=accept-new',
+    '-p',
+    '22',
+    'user@remote-host',
+    `'bash' '-ic' 'set +m; : "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model} --configFilePath /home/u/.config/aw.json'`,
+  );
+
+const localAwLaunch = (issueUrl: string, model: string): string =>
+  argv(
+    '/bin/bash',
+    LOCAL_AW_PATH,
+    issueUrl,
+    'general',
+    model,
+    '--configFilePath',
+    '/home/hiromi/git/secretary/machine/sk/aw.yml',
+  );
+
+const remoteSideBashIcCodexWorker = (issueUrl: string, model: string): string =>
+  argv(
+    'bash',
+    '-ic',
+    `set +m; : "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model} --configFilePath /home/u/.config/aw.json`,
+  );
+
+const codexExecWithAwPromptText = (issueUrl: string): string =>
+  argv(
+    'codex',
+    'exec',
+    '--model',
+    'gpt-5.6-luna',
+    `Take ownership of ${issueUrl}; ${AW_PATH} ${issueUrl} general gpt-5.6-luna`,
+  );
+
+const bashCommandStringWithAwInvocation = (issueUrl: string): string =>
+  argv(
+    '/bin/bash',
+    '-c',
+    `: "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} general gpt-5.6-luna`,
+  );
+
+const claudePromptWithAwInvocationText = (issueUrl: string): string =>
+  argv(
+    'claude',
+    '-p',
+    `Take ownership of ${issueUrl}; ${AW_PATH} ${issueUrl} general gpt-5.6-luna`,
   );
 
 const claudeWorker = (issueUrl: string): string =>
@@ -88,23 +153,14 @@ describe('ProcCodexRunningWorkerRepository', () => {
       expectedIssueUrls: [ISSUE_URL_1],
     },
     {
-      name: 'counts an aw invocation whose path is not quoted',
+      name: 'counts a local codex aw launch whose aw path is outside the home directory',
       cmdlines: [
         argv(
-          'bash',
-          '-c',
-          `: "Take ownership of ${ISSUE_URL_1}"; /usr/local/bin/aw ${ISSUE_URL_1} codex-agent gpt-5-codex`,
-        ),
-      ],
-      expectedIssueUrls: [ISSUE_URL_1],
-    },
-    {
-      name: 'strips surrounding quotes from the model token',
-      cmdlines: [
-        argv(
-          'bash',
-          '-c',
-          `: "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_1} codex-agent "gpt-5-codex"`,
+          '/bin/bash',
+          '/opt/tools/machine/sk/aw',
+          ISSUE_URL_1,
+          'codex-agent',
+          'gpt-5-codex',
         ),
       ],
       expectedIssueUrls: [ISSUE_URL_1],
@@ -166,6 +222,121 @@ describe('ProcCodexRunningWorkerRepository', () => {
       ],
       expectedIssueUrls: [],
     },
+    {
+      name: 'counts a local codex aw launch (argv form, no Take ownership text)',
+      cmdlines: [localAwLaunch(ISSUE_URL_1, 'gpt-5.6-luna')],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'does not count a local codex aw launch whose model position holds a flag token',
+      cmdlines: [
+        argv(
+          '/bin/bash',
+          LOCAL_AW_PATH,
+          ISSUE_URL_1,
+          'codex-agent',
+          '--configFilePath',
+        ),
+      ],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'does not count a local claude aw launch (argv form)',
+      cmdlines: [localAwLaunch(ISSUE_URL_1, 'claude-opus-5-5')],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'counts an ssh-delegated codex worker with a gpt-5.6-luna model',
+      cmdlines: [sshDelegatedCodexWorker(ISSUE_URL_1, 'gpt-5.6-luna')],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'counts a remote-side bash -ic codex worker with a gpt-5.6-luna model',
+      cmdlines: [remoteSideBashIcCodexWorker(ISSUE_URL_1, 'gpt-5.6-luna')],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'strips surrounding quotes from the model token in the delegated form',
+      cmdlines: [sshDelegatedCodexWorker(ISSUE_URL_1, '"gpt-5-codex"')],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'counts a delegated aw invocation whose path is not quoted',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; /usr/local/bin/aw ${ISSUE_URL_1} codex-agent gpt-5-codex --configFilePath /home/u/.config/aw.json'`,
+        ),
+      ],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'does not count a delegated script whose take ownership URL differs from its aw invocation URL',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_2} codex-agent gpt-5-codex --configFilePath /home/u/.config/aw.json'`,
+        ),
+      ],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'does not count a delegated aw invocation without a model token',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_1} codex-agent'`,
+        ),
+      ],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'does not count a delegated aw invocation whose model position holds a flag token',
+      cmdlines: [
+        argv(
+          'ssh',
+          'remote-host',
+          `bash -ic 'set +m; : "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_1} codex-agent --configFilePath /x'`,
+        ),
+      ],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'counts an ssh-delegated codex worker whose remote command is shell-quoted as TDPM sends it',
+      cmdlines: [sshShellQuotedCodexWorker(ISSUE_URL_1, 'gpt-5.6-luna')],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'does not count an ssh-delegated claude worker whose remote command is shell-quoted as TDPM sends it',
+      cmdlines: [sshShellQuotedCodexWorker(ISSUE_URL_1, 'claude-opus-5-5')],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'counts a local codex aw launch and its ssh child for the same issue URL once',
+      cmdlines: [
+        localAwLaunch(ISSUE_URL_1, 'gpt-5.6-luna'),
+        sshDelegatedCodexWorker(ISSUE_URL_1, 'gpt-5.6-luna'),
+      ],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'does not count a codex exec whose prompt contains both the take ownership and aw invocation text',
+      cmdlines: [codexExecWithAwPromptText(ISSUE_URL_1)],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'does not count a /bin/bash -c command string containing an aw invocation with a codex model',
+      cmdlines: [bashCommandStringWithAwInvocation(ISSUE_URL_1)],
+      expectedIssueUrls: [],
+    },
+    {
+      name: 'does not count a claude -p prompt containing take ownership and aw invocation text',
+      cmdlines: [claudePromptWithAwInvocationText(ISSUE_URL_1)],
+      expectedIssueUrls: [],
+    },
   ];
 
   it.each(cases)('$name', ({ cmdlines, expectedIssueUrls }) => {
@@ -202,6 +373,28 @@ describe('ProcCodexRunningWorkerRepository', () => {
 
     expect(result.issueUrls).toEqual([ISSUE_URL_2]);
     expect(result.errorMessages.length).toBeGreaterThan(0);
+  });
+
+  it('records the unreadable cmdline error with its pid and still counts an ssh-delegated codex worker', () => {
+    writeProcess(sshDelegatedCodexWorker(ISSUE_URL_2, 'gpt-5.6-luna'));
+    const unreadablePid = writeProcess(
+      localAwLaunch(ISSUE_URL_1, 'gpt-5.6-luna'),
+    );
+    const unreadableCmdlinePath = path.join(
+      procDirectory,
+      String(unreadablePid),
+      'cmdline',
+    );
+    fs.rmSync(unreadableCmdlinePath);
+    fs.mkdirSync(unreadableCmdlinePath);
+
+    const result = listUrls();
+
+    expect(result.issueUrls).toEqual([ISSUE_URL_2]);
+    expect(result.errorMessages).toHaveLength(1);
+    expect(result.errorMessages[0]).toMatch(
+      new RegExp(`^pid ${unreadablePid}: `),
+    );
   });
 
   it('skips a process that vanished between listing and reading without recording an error', () => {
