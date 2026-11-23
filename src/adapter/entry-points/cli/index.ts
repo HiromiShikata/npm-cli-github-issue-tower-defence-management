@@ -29,6 +29,10 @@ import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/serv
 
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { OpenAiLiveSessionRepository } from '../../repositories/OpenAiLiveSessionRepository';
+import { FileOwnerCallFileRepository } from '../../repositories/FileOwnerCallFileRepository';
+import { ProcSshSessionHostRepository } from '../../repositories/ProcSshSessionHostRepository';
+import { TmuxSshSessionCommandRepository } from '../../repositories/TmuxSshSessionCommandRepository';
+import { LiveSessionToolCallUseCase } from '../../../domain/usecases/liveSession/LiveSessionToolCallUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
@@ -1475,6 +1479,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
   const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
   const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
+  const workerHostsFilePath = process.env.AW_WORKER_HOSTS_FILE ?? null;
   const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =
     options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
@@ -1506,6 +1511,12 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     resolveGithubTokenByRepository,
     issueRepository,
     liveSessionRepository: new OpenAiLiveSessionRepository(),
+    liveSessionToolCalls: new LiveSessionToolCallUseCase({
+      ownerCalls: new FileOwnerCallFileRepository(inTmuxDataDir),
+      hosts: new ProcSshSessionHostRepository(workerHostsFilePath),
+      commands: new TmuxSshSessionCommandRepository(),
+      issues: issueRepository,
+    }),
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
