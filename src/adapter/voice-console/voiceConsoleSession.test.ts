@@ -335,13 +335,16 @@ const openSession = async (
 };
 
 describe('VoiceConsoleSession queue navigation', () => {
-  it('reports the Todo by human, Awaiting Owner and total counts and the projects in the queue overview', async () => {
+  it('reports the todo-by-human, prs and total counts and the projects in the queue overview', async () => {
     const { call } = await openSession();
 
     const overview = await call('queue_overview');
 
+    expect(overview.ok).toBe(true);
+    expect(collectNumbers(overview)).toEqual(expect.arrayContaining([3, 1, 4]));
+    expect(JSON.stringify(overview)).toContain('umino');
+    expect(JSON.stringify(overview)).toContain('xcare');
     expect(overview).toMatchObject({
-      ok: true,
       totalCount: 4,
       todoByHumanCount: 3,
       awaitingOwnerCount: 1,
