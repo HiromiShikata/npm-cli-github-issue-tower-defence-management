@@ -12,6 +12,25 @@ const COUNT_FILE_NAME = 'codex-worker-count.json';
 
 type RepositoryBehavior = CodexRunningWorkerListResult | Error;
 
+type CodexWorkerCountFile = {
+  capturedAt: string;
+  runningIssueCount: number | null;
+  errorMessage: string | null;
+};
+
+const isCodexWorkerCountFile = (
+  value: unknown,
+): value is CodexWorkerCountFile =>
+  typeof value === 'object' &&
+  value !== null &&
+  'capturedAt' in value &&
+  typeof value.capturedAt === 'string' &&
+  'runningIssueCount' in value &&
+  (typeof value.runningIssueCount === 'number' ||
+    value.runningIssueCount === null) &&
+  'errorMessage' in value &&
+  (typeof value.errorMessage === 'string' || value.errorMessage === null);
+
 const repositoryReturning = (
   behavior: RepositoryBehavior,
 ): CodexRunningWorkerRepository => ({
@@ -34,8 +53,17 @@ describe('writeCodexWorkerCountStatus', () => {
     fs.rmSync(dataDir, { recursive: true, force: true });
   });
 
-  const readCountFile = (): Record<string, unknown> =>
-    JSON.parse(fs.readFileSync(path.join(dataDir, COUNT_FILE_NAME), 'utf8'));
+  const readCountFile = (): CodexWorkerCountFile => {
+    const parsed: unknown = JSON.parse(
+      fs.readFileSync(path.join(dataDir, COUNT_FILE_NAME), 'utf8'),
+    );
+    if (!isCodexWorkerCountFile(parsed)) {
+      throw new Error(
+        `Unexpected codex worker count file shape: ${JSON.stringify(parsed)}`,
+      );
+    }
+    return parsed;
+  };
 
   const cases: {
     name: string;
