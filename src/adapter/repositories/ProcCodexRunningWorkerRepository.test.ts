@@ -9,11 +9,17 @@ const AW_PATH = '"$HOME/git/secretary/machine/sk/aw"';
 
 const argv = (...parts: string[]): string => `${parts.join('\0')}\0`;
 
+const LOCAL_AW_PATH = '/home/hiromi/git/secretary/machine/sk/aw';
+
 const localCodexWorker = (issueUrl: string, model = 'gpt-5-codex'): string =>
   argv(
-    'bash',
-    '-c',
-    `: "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model}`,
+    '/bin/bash',
+    LOCAL_AW_PATH,
+    issueUrl,
+    'codex-agent',
+    model,
+    '--configFilePath',
+    '/home/hiromi/git/secretary/machine/sk/config.yml',
   );
 
 const sshDelegatedCodexWorker = (
@@ -25,8 +31,6 @@ const sshDelegatedCodexWorker = (
     'remote-host',
     `bash -ic 'set +m; : "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model} --configFilePath /home/u/.config/aw.json'`,
   );
-
-const LOCAL_AW_PATH = '/home/hiromi/git/secretary/machine/sk/aw';
 
 const localAwLaunch = (issueUrl: string, model: string): string =>
   argv(
@@ -134,23 +138,14 @@ describe('ProcCodexRunningWorkerRepository', () => {
       expectedIssueUrls: [ISSUE_URL_1],
     },
     {
-      name: 'counts an aw invocation whose path is not quoted',
+      name: 'counts a local codex aw launch whose aw path is outside the home directory',
       cmdlines: [
         argv(
-          'bash',
-          '-c',
-          `: "Take ownership of ${ISSUE_URL_1}"; /usr/local/bin/aw ${ISSUE_URL_1} codex-agent gpt-5-codex`,
-        ),
-      ],
-      expectedIssueUrls: [ISSUE_URL_1],
-    },
-    {
-      name: 'strips surrounding quotes from the model token',
-      cmdlines: [
-        argv(
-          'bash',
-          '-c',
-          `: "Take ownership of ${ISSUE_URL_1}"; ${AW_PATH} ${ISSUE_URL_1} codex-agent "gpt-5-codex"`,
+          '/bin/bash',
+          '/opt/tools/machine/sk/aw',
+          ISSUE_URL_1,
+          'codex-agent',
+          'gpt-5-codex',
         ),
       ],
       expectedIssueUrls: [ISSUE_URL_1],
