@@ -97,7 +97,10 @@ describe('OpenAiLiveSessionSideband.attach', () => {
 
   it('throws and opens no socket when the API key is missing or empty', () => {
     const cases = [
-      { name: 'undefined key', readApiKey: (): string | undefined => undefined },
+      {
+        name: 'undefined key',
+        readApiKey: (): string | undefined => undefined,
+      },
       { name: 'empty key', readApiKey: (): string | undefined => '' },
     ];
 

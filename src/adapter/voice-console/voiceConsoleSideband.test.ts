@@ -185,7 +185,9 @@ describe('VoiceConsoleSidebandHandler', () => {
 
     for (const scenario of scenarios) {
       const { callTool, session } = createFakeSession();
-      const send = jest.fn();
+      const send = jest.fn(
+        (_event: Record<string, unknown>): void => undefined,
+      );
       const logError = jest.fn();
       const handler = new VoiceConsoleSidebandHandler(session, send, logError);
 
@@ -207,7 +209,7 @@ describe('VoiceConsoleSidebandHandler', () => {
 
   it('executes a function call on output_item.done but sends nothing before the completed event', async () => {
     const { callTool, session } = createFakeSession();
-    const send = jest.fn();
+    const send = jest.fn((_event: Record<string, unknown>): void => undefined);
     const handler = new VoiceConsoleSidebandHandler(session, send, jest.fn());
 
     await handler.handleServerEvent(responseCreated('e1', 'resp_1'));

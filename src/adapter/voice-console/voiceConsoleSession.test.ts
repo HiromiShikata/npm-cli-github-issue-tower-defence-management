@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { mock } from 'jest-mock-extended';
 import type {
   IssueComment,
   IssueRepository,
@@ -19,6 +20,19 @@ type Call = (
   name: string,
   args?: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
+
+const FIXED_ACTION_ID = 'action-1';
+
+const isJsonObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const parseJsonObject = (text: string): Record<string, unknown> => {
+  const value: unknown = JSON.parse(text);
+  if (!isJsonObject(value)) {
+    throw new Error(`tool result is not a JSON object: ${text}`);
+  }
+  return value;
+};
 
 const ISSUE7 = 'https://github.com/HiromiShikata/example/issues/7';
 const ISSUE8 = 'https://github.com/HiromiShikata/example/issues/8';
@@ -241,10 +255,10 @@ const openSession = async (
   const getIssueOrPullRequestBody = jest.fn((url: string) =>
     Promise.resolve(bodiesByUrl.get(url) ?? ''),
   );
-  const issueRepository = {
+  const issueRepository = mock<IssueRepository>({
     getIssueOrPullRequestComments,
     getIssueOrPullRequestBody,
-  } as unknown as IssueRepository;
+  });
 
   const resolveIssueRepository = jest.fn((_url: string) => issueRepository);
   const searchIssues = jest.fn(options.searchIssues ?? defaultSearchIssues);
@@ -255,7 +269,7 @@ const openSession = async (
     options.readRepositoryFile ?? defaultReadRepositoryFile,
   );
   const runOperation = jest.fn(options.runOperation ?? defaultRunOperation);
-  const newActionId = jest.fn(() => 'action-1');
+  const newActionId = jest.fn((): string => FIXED_ACTION_ID);
   const logError = jest.fn((_message: string) => undefined);
 
   const deps: VoiceConsoleSessionDeps = {
@@ -272,7 +286,7 @@ const openSession = async (
   const session = new VoiceConsoleSession(deps);
 
   const call: Call = async (name, args = {}) =>
-    JSON.parse(await session.callTool(name, JSON.stringify(args)));
+    parseJsonObject(await session.callTool(name, JSON.stringify(args)));
 
   const position = options.position ?? 1;
   if (position !== 1) {
@@ -813,7 +827,8 @@ describe('VoiceConsoleSession write tools', () => {
       });
 
       const prepared = await call(row.tool, row.args);
-      const returnedActionId = newActionId.mock.results[0]?.value;
+      const returnedActionId = FIXED_ACTION_ID;
+      expect(newActionId).toHaveBeenCalledTimes(1);
 
       expect({
         name: row.name,
@@ -1149,7 +1164,7 @@ describe('VoiceConsoleSession error handling', () => {
     for (const testCase of cases) {
       const { session } = await openSession();
 
-      const result: Record<string, unknown> = JSON.parse(
+      const result = parseJsonObject(
         await session.callTool('queue_overview', testCase.argumentsJson),
       );
 
