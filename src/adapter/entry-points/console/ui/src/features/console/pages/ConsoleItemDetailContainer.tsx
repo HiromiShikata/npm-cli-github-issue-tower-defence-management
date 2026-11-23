@@ -176,7 +176,13 @@ const dependedIssueUrlOfflinePayloadBuild = (
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
-  requestBody: { pjcode, issueUrl: item.url, dependedIssueUrl },
+  requestBody: {
+    pjcode,
+    issueUrl: item.url,
+    dependedIssueUrl,
+    projectItemId: item.projectItemId,
+    replaceExisting: true,
+  },
 });
 
 const deleteAllCommentsOfflinePayloadBuild = (
@@ -551,8 +557,8 @@ export const ConsoleItemDetailContainer = ({
     onSetDependedIssueUrl:
       pjcode != null
         ? async (dependedIssueUrl: string) => {
-            if (awaitingWorkspaceOption === null) {
-              await operations.setDependedIssueUrl(item, dependedIssueUrl);
+            if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
+              await operations.replaceDependedIssueUrl(item, dependedIssueUrl);
               return;
             }
             const option = awaitingWorkspaceOption;
@@ -566,7 +572,10 @@ export const ConsoleItemDetailContainer = ({
                 consoleActionStepsRun(
                   [
                     () =>
-                      operations.setDependedIssueUrl(item, dependedIssueUrl),
+                      operations.replaceDependedIssueUrl(
+                        item,
+                        dependedIssueUrl,
+                      ),
                     () => operations.setStatus(item, option),
                   ],
                   sentStepCount,

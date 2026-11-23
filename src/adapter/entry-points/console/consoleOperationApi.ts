@@ -1794,12 +1794,16 @@ export const handleStoryAdd = async (
   return { statusCode: 200, body: { ok: true, stories: savedStories } };
 };
 
-const GITHUB_ISSUE_URL_PATTERN =
-  /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+$/;
+const GITHUB_ISSUE_OR_PULL_REQUEST_URL_PATTERN =
+  /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/(?:issues|pull)\/\d+$/;
 
-const isCommaSeparatedGitHubIssueUrlList = (value: string): boolean => {
+const isCommaSeparatedGitHubIssueOrPullRequestUrlList = (
+  value: string,
+): boolean => {
   const entries = value.split(',').map((entry) => entry.trim());
-  return entries.every((entry) => GITHUB_ISSUE_URL_PATTERN.test(entry));
+  return entries.every((entry) =>
+    GITHUB_ISSUE_OR_PULL_REQUEST_URL_PATTERN.test(entry),
+  );
 };
 
 export const handleSetDependedIssueUrl = async (
@@ -1834,10 +1838,10 @@ export const handleSetDependedIssueUrl = async (
     if (
       typeof dependedIssueUrl === 'string' &&
       dependedIssueUrl !== '' &&
-      !isCommaSeparatedGitHubIssueUrlList(dependedIssueUrl)
+      !isCommaSeparatedGitHubIssueOrPullRequestUrlList(dependedIssueUrl)
     ) {
       return badRequest(
-        'dependedIssueUrl must be a comma-separated list of https://github.com/{owner}/{repo}/issues/{number} URLs',
+        'dependedIssueUrl must be a comma-separated list of https://github.com/{owner}/{repo}/issues/{number} or https://github.com/{owner}/{repo}/pull/{number} URLs',
       );
     }
     if (!isNonEmptyString(projectItemId)) {

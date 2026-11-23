@@ -20,6 +20,6 @@ export const patchTaskInStories = (
 
 export const parseDependedIssueUrlsInput = (value: string): string[] =>
   value
-    .split(',')
+    .split(/[\n,]/)
     .map((url) => url.trim())
     .filter((url) => url.length > 0);

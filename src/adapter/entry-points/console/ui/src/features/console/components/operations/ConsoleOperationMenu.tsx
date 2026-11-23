@@ -39,6 +39,7 @@ export type ConsoleOperationBarProps = {
 
 export const ConsoleOperationMenu = ({
   tab,
+  item,
   hasPullRequest,
   rejectEnabled,
   statusOptions,
@@ -59,6 +60,7 @@ export const ConsoleOperationMenu = ({
   if (!isVisible) {
     return null;
   }
+  const onSetDependedIssueUrl = handlers.onSetDependedIssueUrl;
   return (
     <div className="console-operation-bar">
       {hasPullRequest && (
@@ -107,7 +109,12 @@ export const ConsoleOperationMenu = ({
             </div>
           )}
           <ConsoleRareActions
-            onSetDependedIssueUrl={handlers.onSetDependedIssueUrl}
+            dependedIssueUrls={item.dependedIssueUrls}
+            onReplaceDependedIssueUrls={
+              onSetDependedIssueUrl === null
+                ? null
+                : (urls) => onSetDependedIssueUrl(urls.join(','))
+            }
           />
           <ConsoleDangerousActions
             onDeleteAllComments={handlers.onDeleteAllComments}

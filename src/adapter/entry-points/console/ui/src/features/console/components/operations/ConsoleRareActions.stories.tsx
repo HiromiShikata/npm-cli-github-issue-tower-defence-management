@@ -4,6 +4,8 @@ import { ConsoleRareActions } from './ConsoleRareActions';
 
 const dependedIssueUrl =
   'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845';
+const dependedPullRequestUrl =
+  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/3756';
 
 type CanvasQueries = ReturnType<typeof within>;
 
@@ -35,19 +37,22 @@ type Story = StoryObj<typeof ConsoleRareActions>;
 
 export const WithDependedIssueUrl: Story = {
   args: {
-    onSetDependedIssueUrl: async () => {},
+    dependedIssueUrls: [dependedIssueUrl, dependedPullRequestUrl],
+    onReplaceDependedIssueUrls: async () => {},
   },
 };
 
 export const Disabled: Story = {
   args: {
-    onSetDependedIssueUrl: null,
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: null,
   },
 };
 
 export const FieldShown: Story = {
   args: {
-    onSetDependedIssueUrl: async () => {},
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: async () => {},
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -61,16 +66,34 @@ export const FieldShown: Story = {
   },
 };
 
-export const FieldReopenedWithTextKept: Story = {
+export const FieldPrefilledWithCurrentUrls: Story = {
   args: {
-    onSetDependedIssueUrl: async () => {
+    dependedIssueUrls: [dependedIssueUrl, dependedPullRequestUrl],
+    onReplaceDependedIssueUrls: async () => {},
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await toggleRareActions(canvas);
+    await expect(canvas.getByPlaceholderText('Depended issue URL')).toHaveValue(
+      `${dependedIssueUrl}\n${dependedPullRequestUrl}`,
+    );
+  },
+};
+
+export const FieldReopenedShowsCurrentUrls: Story = {
+  args: {
+    dependedIssueUrls: [dependedIssueUrl],
+    onReplaceDependedIssueUrls: async () => {
       throw new Error('HTTP 500');
     },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await toggleRareActions(canvas);
-    await typeDependedIssueUrl(canvas);
+    await userEvent.type(
+      canvas.getByPlaceholderText('Depended issue URL'),
+      `{Enter}${dependedPullRequestUrl}`,
+    );
     await pressSetDependedIssue(canvas);
     await expect(await canvas.findByText('HTTP 500')).toBeInTheDocument();
 
@@ -87,22 +110,24 @@ export const FieldReopenedWithTextKept: Story = {
   },
 };
 
-export const SubmitButtonEmpty: Story = {
+export const SubmitButtonEnabledWhenEmpty: Story = {
   args: {
-    onSetDependedIssueUrl: async () => {},
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: async () => {},
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await toggleRareActions(canvas);
     await expect(
       canvas.getByRole('button', { name: 'Set Depended Issue' }),
-    ).toBeDisabled();
+    ).toBeEnabled();
   },
 };
 
 export const SubmitButtonWithUrl: Story = {
   args: {
-    onSetDependedIssueUrl: async () => {},
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: async () => {},
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -116,7 +141,8 @@ export const SubmitButtonWithUrl: Story = {
 
 export const SubmitButtonRunning: Story = {
   args: {
-    onSetDependedIssueUrl: () => new Promise<void>(() => {}),
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: () => new Promise<void>(() => {}),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -131,7 +157,8 @@ export const SubmitButtonRunning: Story = {
 
 export const ErrorFromErrorInstance: Story = {
   args: {
-    onSetDependedIssueUrl: async () => {
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: async () => {
       throw new Error('HTTP 500');
     },
   },
@@ -146,7 +173,8 @@ export const ErrorFromErrorInstance: Story = {
 
 export const ErrorFromNonErrorValue: Story = {
   args: {
-    onSetDependedIssueUrl: () => Promise.reject('HTTP 500'),
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: () => Promise.reject('HTTP 500'),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -161,7 +189,8 @@ export const ErrorFromNonErrorValue: Story = {
 
 export const DisabledToggleClicked: Story = {
   args: {
-    onSetDependedIssueUrl: null,
+    dependedIssueUrls: [],
+    onReplaceDependedIssueUrls: null,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
