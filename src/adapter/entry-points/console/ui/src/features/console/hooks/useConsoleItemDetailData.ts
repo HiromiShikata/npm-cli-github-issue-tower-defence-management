@@ -206,6 +206,7 @@ export const useConsoleItemDetailData = (
     pullRequestStatus: isPr ? prStatus.data : null,
     pullRequestStatusError: isPr ? prStatus.error : null,
     relatedPullRequests: relatedViews,
-    relatedPullRequestsError: isPr ? null : relatedPrs.error,
+    relatedPullRequestsError:
+      isPr || !boardListsRelatedPullRequests ? null : relatedPrs.error,
   };
 };
