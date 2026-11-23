@@ -244,6 +244,7 @@ const defaultReadRepositoryFile = (
 const openSession = async (
   options: {
     position?: number;
+    consoleDataOutputDir?: string;
     runOperation?: VoiceConsoleSessionDeps['runOperation'];
     searchIssues?: VoiceConsoleSessionDeps['searchIssues'];
     readRepositoryFile?: VoiceConsoleSessionDeps['readRepositoryFile'];
@@ -273,7 +274,7 @@ const openSession = async (
   const logError = jest.fn((_message: string) => undefined);
 
   const deps: VoiceConsoleSessionDeps = {
-    consoleDataOutputDir: root,
+    consoleDataOutputDir: options.consoleDataOutputDir ?? root,
     projectPjcodes: ['umino', 'xcare'],
     resolveIssueRepository,
     searchIssues,
@@ -987,6 +988,65 @@ describe('VoiceConsoleSession write tools', () => {
         },
       ],
     ]);
+  });
+});
+
+describe('VoiceConsoleSession repeat navigation', () => {
+  it('repeats the current summary from page 1 without moving the queue position', async () => {
+    const { call } = await openSession({ position: 2 });
+
+    const repeated = await call('repeat_current_task');
+    const detail = await call('current_task_detail', { page: 1 });
+
+    expect({ ok: repeated.ok, text: repeated.text }).toEqual({
+      ok: true,
+      text: LONG_SUMMARY_8.slice(0, 3000),
+    });
+    expect(String(detail.text)).toContain('Refactor queue');
+  });
+
+  it('gives no_current_task when the queue is empty', async () => {
+    const emptyDir = path.join(root, 'empty-queue');
+    fs.mkdirSync(emptyDir, { recursive: true });
+    const { call } = await openSession({ consoleDataOutputDir: emptyDir });
+
+    const repeated = await call('repeat_current_task');
+
+    expect({ ok: repeated.ok, error: repeated.error }).toEqual({
+      ok: false,
+      error: 'no_current_task',
+    });
+  });
+});
+
+describe('VoiceConsoleSession close read-back', () => {
+  it('speaks the close reason in Japanese instead of the enum word', async () => {
+    const cases = [
+      { reason: 'completed', japanese: '完了', enumWord: 'completed' },
+      { reason: 'not_planned', japanese: '完了せず', enumWord: 'not_planned' },
+    ];
+
+    for (const testCase of cases) {
+      const { call } = await openSession();
+
+      const prepared = await call('prepare_close', {
+        reason: testCase.reason,
+        comment_kind: 'none',
+      });
+      const readBack = String(prepared.readBack);
+
+      expect({
+        reason: testCase.reason,
+        ok: prepared.ok,
+        hasJapanese: readBack.includes(testCase.japanese),
+        hasEnumWord: readBack.includes(testCase.enumWord),
+      }).toEqual({
+        reason: testCase.reason,
+        ok: true,
+        hasJapanese: true,
+        hasEnumWord: false,
+      });
+    }
   });
 });
 

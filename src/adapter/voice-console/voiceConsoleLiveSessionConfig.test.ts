@@ -25,6 +25,7 @@ const requiredToolNames = [
   'prepare_pull_request_review',
   'confirm_pending_action',
   'cancel_pending_action',
+  'repeat_current_task',
 ];
 
 const removedToolNames = [
