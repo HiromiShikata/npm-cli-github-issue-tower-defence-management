@@ -1732,3 +1732,222 @@ describe('VoiceConsoleSession pull request review read-back title', () => {
     }).toEqual({ ok: true, titleSpoken: true });
   });
 });
+
+describe('VoiceConsoleSession read-back opens only on the read-back of the pending action', () => {
+  it('does not open the owner-speech window on assistant speech that only names the task title', async () => {
+    const cases = [
+      {
+        name: 'title named as a sentence of its own',
+        preamble: '「Fix login」について確認します。',
+      },
+      { name: 'title named as a question', preamble: 'Fix login ですね？' },
+      { name: 'title named in a greeting', preamble: 'Fix login の件です' },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession();
+      await call('prepare_ok');
+      session.recordAssistantSpeech(testCase.preamble);
+      session.recordOwnerSpeech('はい');
+
+      const result = await confirmYes(call);
+
+      expect({
+        name: testCase.name,
+        ok: result.ok,
+        error: result.error,
+      }).toEqual({
+        name: testCase.name,
+        ok: false,
+        error: 'owner_speech_not_heard',
+      });
+    }
+  });
+
+  it('accepts はい once the full read-back of the pending action has been spoken', async () => {
+    const { call, session } = await openSession();
+    const prepared = await call('prepare_ok');
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('はい');
+
+    const result = await confirmYes(call);
+
+    expect({ ok: result.ok, error: result.error }).toEqual({
+      ok: true,
+      error: undefined,
+    });
+  });
+});
+
+describe('VoiceConsoleSession bare はい counts only after the read-back of that action', () => {
+  it('confirms only when はい follows the completed read-back of the pending action', async () => {
+    const cases: {
+      name: string;
+      steps: (readBack: string, partial: string, rest: string) => ReadBackStep[];
+      accepted: boolean;
+    }[] = [
+      {
+        name: 'bare はい with no read-back is refused',
+        steps: () => [{ owner: 'はい' }],
+        accepted: false,
+      },
+      {
+        name: 'はい heard while the read-back is still incomplete is refused',
+        steps: (_readBack, partial) => [
+          { assistant: partial },
+          { owner: 'はい' },
+        ],
+        accepted: false,
+      },
+      {
+        name: 'はい after the completed read-back is accepted',
+        steps: (readBack) => [
+          { assistant: readBack },
+          { owner: 'はい' },
+        ],
+        accepted: true,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession();
+      const prepared = await call('prepare_ok');
+      const readBack = String(prepared.readBack);
+      const titleEnd = readBack.indexOf(ITEM_TITLE) + ITEM_TITLE.length;
+      const partial = readBack.slice(0, titleEnd);
+      const rest = readBack.slice(titleEnd);
+      for (const step of testCase.steps(readBack, partial, rest)) {
+        if ('assistant' in step) {
+          session.recordAssistantSpeech(step.assistant);
+        } else {
+          session.recordOwnerSpeech(step.owner);
+        }
+      }
+
+      const result = await confirmYes(call);
+
+      expect({
+        name: testCase.name,
+        ok: result.ok,
+      }).toEqual({
+        name: testCase.name,
+        ok: testCase.accepted,
+      });
+    }
+  });
+
+  it('refuses はい spoken before the read-back completes and accepts a later はい after it completes', async () => {
+    const { call, session } = await openSession();
+    const prepared = await call('prepare_ok');
+    const readBack = String(prepared.readBack);
+    const titleEnd = readBack.indexOf(ITEM_TITLE) + ITEM_TITLE.length;
+
+    session.recordAssistantSpeech(readBack.slice(0, titleEnd));
+    session.recordOwnerSpeech('はい');
+    const early = await confirmYes(call);
+
+    session.recordAssistantSpeech(readBack.slice(titleEnd));
+    session.recordOwnerSpeech('はい');
+    const late = await confirmYes(call);
+
+    expect({ earlyOk: early.ok, lateOk: late.ok }).toEqual({
+      earlyOk: false,
+      lateOk: true,
+    });
+  });
+});
+
+describe('VoiceConsoleSession navigation cancels a staged write', () => {
+  it('clears the staged action on navigation and reports the cancellation in the tool output', async () => {
+    const cases = [
+      {
+        name: 'next_task',
+        openPosition: 1,
+        navigate: { tool: 'next_task', args: {} },
+      },
+      {
+        name: 'previous_task',
+        openPosition: 2,
+        navigate: { tool: 'previous_task', args: {} },
+      },
+      {
+        name: 'jump_to_task',
+        openPosition: 1,
+        navigate: { tool: 'jump_to_task', args: { position: 2 } },
+      },
+      {
+        name: 'repeat_current_task',
+        openPosition: 1,
+        navigate: { tool: 'repeat_current_task', args: {} },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession({
+        position: testCase.openPosition,
+      });
+      const prepared = await call('prepare_ok');
+      const readBack = String(prepared.readBack);
+
+      const navigated = await call(
+        testCase.navigate.tool,
+        testCase.navigate.args,
+      );
+      session.recordAssistantSpeech(readBack);
+      session.recordOwnerSpeech('はい');
+      const confirmed = await confirmYes(call);
+
+      expect({
+        name: testCase.name,
+        cancellationReported: /cancel/i.test(JSON.stringify(navigated)),
+        confirmOk: confirmed.ok,
+      }).toEqual({
+        name: testCase.name,
+        cancellationReported: true,
+        confirmOk: false,
+      });
+    }
+  });
+});
+
+describe('VoiceConsoleSession request_changes removes the item from the queue', () => {
+  it('removes the item after a completing pull request review is confirmed', async () => {
+    const cases = [
+      {
+        name: 'request_changes removes the item',
+        args: { action: 'request_changes', comment_text: 'Z' },
+        keepsItem: false,
+      },
+      {
+        name: 'approve_and_merge removes the item',
+        args: { action: 'approve_and_merge' },
+        keepsItem: false,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession({ position: 4 });
+      const before = await call('queue_overview');
+      expect(collectNumbers(before)).toContain(4);
+
+      const prepared = await call(
+        'prepare_pull_request_review',
+        testCase.args,
+      );
+      session.recordAssistantSpeech(String(prepared.readBack));
+      session.recordOwnerSpeech('はい');
+      const confirmed = await confirmYes(call);
+      const after = await call('queue_overview');
+
+      expect({
+        name: testCase.name,
+        ok: confirmed.ok,
+        itemStillQueued: collectNumbers(after).includes(4),
+      }).toEqual({
+        name: testCase.name,
+        ok: true,
+        itemStillQueued: testCase.keepsItem,
+      });
+    }
+  });
+});
