@@ -9,8 +9,6 @@ export const VOICE_CONSOLE_QUEUE_TABS = ['todo-by-human', 'prs'] as const;
 
 export type VoiceConsoleQueueTab = (typeof VOICE_CONSOLE_QUEUE_TABS)[number];
 
-// Owner-facing names of the queue tabs. The tab value is the data key of the
-// console list file; the label is what the voice model reads to the owner.
 export const VOICE_CONSOLE_TAB_LABELS: Record<VoiceConsoleQueueTab, string> = {
   'todo-by-human': 'Todo by human',
   prs: 'Awaiting Owner',

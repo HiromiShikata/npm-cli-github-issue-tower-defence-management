@@ -151,8 +151,6 @@ export class OpenAiLiveSessionSideband {
     });
   }
 
-  // Ends the live session the documented way: session.close over the attach
-  // socket, then wait for session.closed. Failures reject with the session id.
   async close(sessionId: string): Promise<void> {
     const url = OpenAiLiveSessionSideband.attachUrl(sessionId);
     const apiKey = this.readApiKey();
