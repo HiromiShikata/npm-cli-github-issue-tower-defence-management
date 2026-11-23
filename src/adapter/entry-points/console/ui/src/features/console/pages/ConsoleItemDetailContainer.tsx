@@ -347,6 +347,8 @@ export const ConsoleItemDetailContainer = ({
   const [bodyOverride, setBodyOverride] = useState<string | null>(null);
   const [savedDependedIssueUrls, setSavedDependedIssueUrls] =
     useState<SavedDependedIssueUrls | null>(null);
+  const latestDependedIssueUrlsRef = useRef(item.dependedIssueUrls);
+  latestDependedIssueUrlsRef.current = item.dependedIssueUrls;
   useEffect(() => {
     setSavedDependedIssueUrls((saved) =>
       saved !== null && !isSameUrlList(saved.baseUrls, item.dependedIssueUrls)
@@ -354,6 +356,19 @@ export const ConsoleItemDetailContainer = ({
         : saved,
     );
   }, [item.dependedIssueUrls]);
+  const recordSavedDependedIssueUrls = (
+    baseUrls: string[],
+    dependedIssueUrl: string,
+  ): void => {
+    if (!isSameUrlList(baseUrls, latestDependedIssueUrlsRef.current)) {
+      return;
+    }
+    setSavedDependedIssueUrls({
+      projectItemId: item.projectItemId,
+      baseUrls,
+      urls: parseDependedIssueUrlsInput(dependedIssueUrl),
+    });
+  };
   const savedDependedIssueUrlsOverride =
     savedDependedIssueUrls !== null &&
     savedDependedIssueUrls.projectItemId === item.projectItemId &&
@@ -593,14 +608,12 @@ export const ConsoleItemDetailContainer = ({
       pjcode != null
         ? async (dependedIssueUrl: string) => {
             if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
+              const baseUrls = item.dependedIssueUrls;
               await operations.replaceDependedIssueUrl(item, dependedIssueUrl);
-              setSavedDependedIssueUrls({
-                projectItemId: item.projectItemId,
-                baseUrls: item.dependedIssueUrls,
-                urls: parseDependedIssueUrlsInput(dependedIssueUrl),
-              });
+              recordSavedDependedIssueUrls(baseUrls, dependedIssueUrl);
               return;
             }
+            const baseUrls = item.dependedIssueUrls;
             const option = awaitingWorkspaceOption;
             const offline = [
               dependedIssueUrlOfflinePayloadBuild(
@@ -626,13 +639,10 @@ export const ConsoleItemDetailContainer = ({
                         operations
                           .replaceDependedIssueUrl(item, dependedIssueUrl)
                           .then(() =>
-                            setSavedDependedIssueUrls({
-                              projectItemId: item.projectItemId,
-                              baseUrls: item.dependedIssueUrls,
-                              urls: parseDependedIssueUrlsInput(
-                                dependedIssueUrl,
-                              ),
-                            }),
+                            recordSavedDependedIssueUrls(
+                              baseUrls,
+                              dependedIssueUrl,
+                            ),
                           ),
                       () => operations.setStatus(item, option),
                     ],
@@ -674,11 +684,7 @@ export const ConsoleItemDetailContainer = ({
                 },
               });
             });
-            setSavedDependedIssueUrls({
-              projectItemId: item.projectItemId,
-              baseUrls: item.dependedIssueUrls,
-              urls: parseDependedIssueUrlsInput(dependedIssueUrl),
-            });
+            recordSavedDependedIssueUrls(baseUrls, dependedIssueUrl);
           }
         : null,
   };
