@@ -30,6 +30,7 @@ import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/serv
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { OpenAiLiveSessionRepository } from '../../repositories/OpenAiLiveSessionRepository';
 import { FileOwnerCallFileRepository } from '../../repositories/FileOwnerCallFileRepository';
+import { FileInTmuxIssueUrlRepository } from '../../repositories/FileInTmuxIssueUrlRepository';
 import { ProcSshSessionHostRepository } from '../../repositories/ProcSshSessionHostRepository';
 import { TmuxSshSessionCommandRepository } from '../../repositories/TmuxSshSessionCommandRepository';
 import { LiveSessionToolCallUseCase } from '../../../domain/usecases/liveSession/LiveSessionToolCallUseCase';
@@ -1513,6 +1514,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     liveSessionRepository: new OpenAiLiveSessionRepository(),
     liveSessionToolCalls: new LiveSessionToolCallUseCase({
       ownerCalls: new FileOwnerCallFileRepository(inTmuxDataDir),
+      knownIssueUrls: new FileInTmuxIssueUrlRepository(inTmuxDataDir),
       hosts: new ProcSshSessionHostRepository(workerHostsFilePath),
       commands: new TmuxSshSessionCommandRepository(),
       issues: issueRepository,

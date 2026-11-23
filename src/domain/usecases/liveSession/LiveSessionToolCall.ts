@@ -65,7 +65,16 @@ export const normalizeLiveSessionName = (rawName: string): string | null => {
 const SESSION_NAME_ISSUE_PATTERN =
   /^https_\/\/github_com\/([A-Za-z0-9_-]+)\/([A-Za-z0-9_-]+)\/(issues|pull)\/([0-9]+)$/;
 
-export const issueUrlOfSessionName = (sessionName: string): string | null => {
+export const issueUrlOfSessionName = (
+  sessionName: string,
+  knownIssueUrls: readonly string[] = [],
+): string | null => {
+  const knownUrl = knownIssueUrls.find(
+    (issueUrl) => toTmuxSessionName(issueUrl) === sessionName,
+  );
+  if (knownUrl !== undefined) {
+    return knownUrl;
+  }
   const match = SESSION_NAME_ISSUE_PATTERN.exec(sessionName);
   if (match === null) {
     return null;

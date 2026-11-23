@@ -7,6 +7,10 @@ export interface OwnerCallFileRepository {
   listPendingOwnerCalls: () => PendingOwnerCall[];
 }
 
+export interface KnownIssueUrlRepository {
+  listKnownIssueUrls: () => string[];
+}
+
 export type SessionHost =
   | { kind: 'local' }
   | {

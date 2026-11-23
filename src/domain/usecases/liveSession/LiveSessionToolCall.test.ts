@@ -201,3 +201,37 @@ describe('lastScreenLines', () => {
     expect(lastScreenLines(text, lineCount)).toBe(expected);
   });
 });
+
+describe('issueUrlOfSessionName with known issue URLs', () => {
+  it.each([
+    {
+      name: 'returns the original dotted URL when a known URL maps to the session name',
+      sessionName: 'https_//github_com/example-org/example_repo/issues/12',
+      knownIssueUrls: ['https://github.com/example-org/example.repo/issues/12'],
+      expected: 'https://github.com/example-org/example.repo/issues/12',
+    },
+    {
+      name: 'picks the known URL whose normalized name matches among several',
+      sessionName: 'https_//github_com/example-org/example_repo/issues/12',
+      knownIssueUrls: [
+        'https://github.com/example-org/other-repo/issues/12',
+        'https://github.com/example-org/example.repo/issues/12',
+      ],
+      expected: 'https://github.com/example-org/example.repo/issues/12',
+    },
+    {
+      name: 'falls back to the name when no known URL maps to it',
+      sessionName: 'https_//github_com/example-org/example_repo/issues/12',
+      knownIssueUrls: ['https://github.com/example-org/other-repo/issues/12'],
+      expected: 'https://github.com/example-org/example_repo/issues/12',
+    },
+    {
+      name: 'returns null for a non-issue name with no known URL',
+      sessionName: 'plain-session',
+      knownIssueUrls: [],
+      expected: null,
+    },
+  ])('$name', ({ sessionName, knownIssueUrls, expected }) => {
+    expect(issueUrlOfSessionName(sessionName, knownIssueUrls)).toBe(expected);
+  });
+});

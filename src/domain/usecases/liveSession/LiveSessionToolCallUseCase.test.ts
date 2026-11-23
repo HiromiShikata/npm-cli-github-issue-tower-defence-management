@@ -130,6 +130,7 @@ const buildHarness = (options: {
   hostsByIssueUrl?: Record<string, SessionHost>;
   respond?: CommandResponder;
   issues?: LiveSessionIssueReader;
+  knownIssueUrls?: string[];
 }): Harness => {
   const commands = new InMemorySessionCommandRepository(
     options.respond ?? (() => exited('', 1)),
@@ -139,6 +140,9 @@ const buildHarness = (options: {
   );
   const useCase = new LiveSessionToolCallUseCase({
     ownerCalls: new InMemoryOwnerCallFileRepository(options.ownerCalls ?? []),
+    knownIssueUrls: {
+      listKnownIssueUrls: () => options.knownIssueUrls ?? [],
+    },
     hosts,
     commands,
     issues: options.issues ?? unusedIssueReader,
@@ -585,6 +589,12 @@ describe('LiveSessionToolCallUseCase session_file_read', () => {
       expected: 'バイナリファイルのため内容は表示できません。',
     },
     {
+      name: 'reads a symlink inside the folder that points to a file inside the folder',
+      overrides: { targetReal: exited(`${FOLDER}/src/index.ts\n`) },
+      path: 'link-in-folder.ts',
+      expected: 'console.log(1);\n',
+    },
+    {
       name: 'refuses a path that escapes the folder through a symlink',
       overrides: { targetReal: exited('/etc/hosts\n') },
       path: 'link-to-hosts',
@@ -649,5 +659,85 @@ describe('LiveSessionToolCallUseCase session_file_read', () => {
       path: `${FOLDER}/src/index.ts`,
       byteLimit: LIVE_SESSION_TOOL_OUTPUT_LIMIT_BYTES + 1,
     });
+  });
+});
+
+describe('LiveSessionToolCallUseCase with a dotted repository name', () => {
+  const DOTTED_SESSION =
+    'https_//github_com/example-org/example_repo/issues/12';
+  const DOTTED_URL = 'https://github.com/example-org/example.repo/issues/12';
+
+  it('lists the dotted task issue URL of an owner call, not the lossy one derived from the name', async () => {
+    const { useCase, hosts } = buildHarness({
+      ownerCalls: [
+        { sessionName: DOTTED_SESSION, calledAt: '2026-11-23T04:00:00Z' },
+      ],
+      knownIssueUrls: [DOTTED_URL],
+      hostsByIssueUrl: { [DOTTED_URL]: REMOTE_HOST },
+    });
+    const outcome = await useCase.run(
+      call(LIVE_SESSION_TOOL_NAMES.callingSessionsList),
+    );
+    expect(JSON.parse(outputOf(outcome))).toEqual({
+      calls: [
+        {
+          sessionName: DOTTED_SESSION,
+          calledAt: '2026-11-23T04:00:00Z',
+          host: REMOTE_HOST_NAME,
+          taskIssueUrl: DOTTED_URL,
+        },
+      ],
+    });
+    expect(hosts.requestedIssueUrls).toEqual([DOTTED_URL]);
+  });
+
+  it('reads the task issue by the dotted URL', async () => {
+    const requestedUrls: string[] = [];
+    const issues: LiveSessionIssueReader = {
+      getIssueByUrl: (url) => {
+        requestedUrls.push(url);
+        return Promise.resolve(buildIssue({ url, title: 'Dotted title' }));
+      },
+      getIssueOrPullRequestBody: () => Promise.resolve('dotted body'),
+      getIssueOrPullRequestComments: () => Promise.resolve([]),
+    };
+    const { useCase } = buildHarness({
+      issues,
+      knownIssueUrls: [DOTTED_URL],
+    });
+    const outcome = await useCase.run(
+      call(LIVE_SESSION_TOOL_NAMES.sessionTaskIssueRead, {}, DOTTED_SESSION),
+    );
+    expect(requestedUrls).toEqual([DOTTED_URL]);
+    expect(JSON.parse(outputOf(outcome))).toMatchObject({
+      url: DOTTED_URL,
+      title: 'Dotted title',
+      body: 'dotted body',
+    });
+  });
+
+  it('looks up the remote host of a dotted session by the dotted URL', async () => {
+    const { useCase, hosts } = buildHarness({
+      knownIssueUrls: [DOTTED_URL],
+      hostsByIssueUrl: { [DOTTED_URL]: REMOTE_HOST },
+      respond: () => exited('remote screen'),
+    });
+    const outcome = await useCase.run(
+      call(LIVE_SESSION_TOOL_NAMES.sessionScreenRead, {}, DOTTED_SESSION),
+    );
+    expect(outputOf(outcome)).toBe('remote screen');
+    expect(hosts.requestedIssueUrls).toEqual([DOTTED_URL]);
+  });
+
+  it('falls back to deriving the URL from the name when no known URL maps to it', async () => {
+    const { useCase, hosts } = buildHarness({
+      knownIssueUrls: ['https://github.com/example-org/another-repo/issues/3'],
+    });
+    await useCase.run(
+      call(LIVE_SESSION_TOOL_NAMES.sessionScreenRead, {}, DOTTED_SESSION),
+    );
+    expect(hosts.requestedIssueUrls).toEqual([
+      'https://github.com/example-org/example_repo/issues/12',
+    ]);
   });
 });

@@ -1,4 +1,5 @@
 import {
+  KnownIssueUrlRepository,
   OwnerCallFileRepository,
   SessionCommandRepository,
   SessionHost,
@@ -34,6 +35,7 @@ export type LiveSessionIssueReader = Pick<
 
 export type LiveSessionToolCallDependencies = {
   ownerCalls: OwnerCallFileRepository;
+  knownIssueUrls: KnownIssueUrlRepository;
   hosts: SessionHostRepository;
   commands: SessionCommandRepository;
   issues: LiveSessionIssueReader;
@@ -151,7 +153,7 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
         .map((call) => {
           const sessionName = normalizeLiveSessionName(call.sessionName);
           const issueUrl =
-            sessionName === null ? null : issueUrlOfSessionName(sessionName);
+            sessionName === null ? null : this.issueUrlOf(sessionName);
           const host =
             issueUrl === null
               ? LOCAL_HOST
@@ -205,8 +207,7 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
       return outputOf(NO_SESSION_NAME_TEXT);
     }
     const sessionName = normalizeLiveSessionName(session.sessionName);
-    const issueUrl =
-      sessionName === null ? null : issueUrlOfSessionName(sessionName);
+    const issueUrl = sessionName === null ? null : this.issueUrlOf(sessionName);
     if (issueUrl === null) {
       return outputOf(TASK_ISSUE_NOT_DERIVABLE_TEXT);
     }
@@ -310,12 +311,18 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     return outputOf(FILE_TYPE_UNSUPPORTED_TEXT);
   };
 
+  private issueUrlOf = (sessionName: string): string | null =>
+    issueUrlOfSessionName(
+      sessionName,
+      this.dependencies.knownIssueUrls.listKnownIssueUrls(),
+    );
+
   private locateSession = async (rawName: string): Promise<SessionLocation> => {
     const sessionName = normalizeLiveSessionName(rawName);
     if (sessionName === null) {
       return { kind: 'notLocated', text: SESSION_NOT_LOCATED_TEXT };
     }
-    const issueUrl = issueUrlOfSessionName(sessionName);
+    const issueUrl = this.issueUrlOf(sessionName);
     const host =
       issueUrl === null
         ? LOCAL_HOST
