@@ -45,22 +45,71 @@ describe('FileInTmuxIssueUrlRepository.listKnownIssueUrls', () => {
     ]);
   });
 
-  it('ignores the index file, other files, and groups without a sessions list', () => {
+  it('ignores the index file and other files', () => {
     fs.writeFileSync(
       path.join(dataDir, 'index.v4.json'),
       projectData(['https://github.com/example-org/x/issues/1']),
     );
     fs.writeFileSync(path.join(dataDir, 'notes.txt'), 'not data');
+    expect(
+      new FileInTmuxIssueUrlRepository(dataDir).listKnownIssueUrls(),
+    ).toEqual([]);
+  });
+
+  it('accepts an empty groups list and an empty sessions list, as the real data has them', () => {
     fs.writeFileSync(
-      path.join(dataDir, 'CC.v4.json'),
+      path.join(dataDir, 'AA.v4.json'),
+      JSON.stringify({ version: 4, groups: [] }),
+    );
+    fs.writeFileSync(
+      path.join(dataDir, 'BB.v4.json'),
       JSON.stringify({
-        groups: [{ story: 'no sessions' }, { sessions: [{ name: 3 }] }],
+        version: 4,
+        groups: [{ story: 'empty', sessions: [] }],
       }),
     );
     expect(
       new FileInTmuxIssueUrlRepository(dataDir).listKnownIssueUrls(),
     ).toEqual([]);
   });
+
+  it.each([
+    {
+      name: 'a group without a sessions list',
+      groups: [{ story: 'no sessions' }],
+      reason: 'groups[0] has no sessions list',
+    },
+    {
+      name: 'a session without a string name, after a valid group',
+      groups: [
+        {
+          story: 'ok',
+          sessions: [{ name: 'https://github.com/example-org/x/issues/1' }],
+        },
+        {
+          story: 'bad',
+          sessions: [
+            { name: 'https://github.com/example-org/x/issues/2' },
+            { name: 3 },
+          ],
+        },
+      ],
+      reason: 'groups[1].sessions[1] has no string name',
+    },
+  ])(
+    'fails naming the file and the position of $name',
+    ({ groups, reason }) => {
+      fs.writeFileSync(
+        path.join(dataDir, 'CC.v4.json'),
+        JSON.stringify({ version: 4, groups }),
+      );
+      expect(() =>
+        new FileInTmuxIssueUrlRepository(dataDir).listKnownIssueUrls(),
+      ).toThrow(
+        `in-tmux project data could not be read: CC.v4.json: ${reason}`,
+      );
+    },
+  );
 
   it('returns an empty list when the data directory does not exist', () => {
     expect(

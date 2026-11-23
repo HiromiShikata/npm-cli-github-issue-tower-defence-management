@@ -19,7 +19,22 @@ type WorkerHostEntry = {
   user: string;
 };
 
-const readWorkerHostEntry = (value: unknown): WorkerHostEntry => {
+const describeWorkerHostEntry = (value: unknown, index: number): string => {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    typeof value.name === 'string'
+  ) {
+    return `entry ${index} ("${value.name}")`;
+  }
+  return `entry ${index} (without a name)`;
+};
+
+const readWorkerHostEntry = (
+  value: unknown,
+  index: number,
+): WorkerHostEntry => {
   if (
     typeof value !== 'object' ||
     value === null ||
@@ -37,7 +52,7 @@ const readWorkerHostEntry = (value: unknown): WorkerHostEntry => {
     !Number.isInteger(value.port)
   ) {
     throw new Error(
-      'worker host entry has an invalid name, address, port or user',
+      `worker host ${describeWorkerHostEntry(value, index)} has an invalid name, address, port or user`,
     );
   }
   return {
@@ -61,7 +76,9 @@ const readWorkerHosts = (filePath: string | null): WorkerHostEntry[] => {
   ) {
     throw new Error('worker host table has no hosts list');
   }
-  return parsed.hosts.map(readWorkerHostEntry);
+  return parsed.hosts.map((entry: unknown, index: number) =>
+    readWorkerHostEntry(entry, index),
+  );
 };
 
 const readProcFile = (

@@ -43,6 +43,8 @@ export type LiveSessionToolCallDependencies = {
 
 const LOCAL_HOST: SessionHost = { kind: 'local' };
 
+const UNKNOWN_HOST_LABEL = '不明';
+
 const NO_SESSION_NAME_TEXT = 'セッション名が指定されていません。';
 
 const SESSION_NOT_LOCATED_TEXT = 'セッションが見つかりません。';
@@ -148,25 +150,44 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
 
   private callingSessionsList =
     async (): Promise<LiveSessionToolCallOutcome> => {
-      const entries = this.dependencies.ownerCalls
-        .listPendingOwnerCalls()
-        .map((call) => {
-          const sessionName = normalizeLiveSessionName(call.sessionName);
-          const issueUrl =
-            sessionName === null ? null : this.issueUrlOf(sessionName);
-          const host =
-            issueUrl === null
-              ? LOCAL_HOST
-              : this.dependencies.hosts.findHostOfIssueSession(issueUrl);
-          return {
-            sessionName: call.sessionName,
-            calledAt: call.calledAt,
-            host: describeHost(host),
-            taskIssueUrl: issueUrl,
-          };
-        });
+      const entries = await Promise.all(
+        this.dependencies.ownerCalls
+          .listPendingOwnerCalls()
+          .map(async (call) => {
+            const sessionName = normalizeLiveSessionName(call.sessionName);
+            const issueUrl =
+              sessionName === null ? null : this.issueUrlOf(sessionName);
+            return {
+              sessionName: call.sessionName,
+              calledAt: call.calledAt,
+              host: await this.hostLabelOfCall(sessionName, issueUrl),
+              taskIssueUrl: issueUrl,
+            };
+          }),
+      );
       return outputOf(JSON.stringify({ calls: entries }, null, 2));
     };
+
+  private hostLabelOfCall = async (
+    sessionName: string | null,
+    issueUrl: string | null,
+  ): Promise<string> => {
+    const host =
+      issueUrl === null
+        ? LOCAL_HOST
+        : this.dependencies.hosts.findHostOfIssueSession(issueUrl);
+    if (host.kind !== 'local') {
+      return describeHost(host);
+    }
+    if (sessionName === null) {
+      return UNKNOWN_HOST_LABEL;
+    }
+    const exists = await this.dependencies.commands.run(LOCAL_HOST, {
+      kind: 'tmuxHasSession',
+      sessionName,
+    });
+    return commandSucceeded(exists) ? describeHost(host) : UNKNOWN_HOST_LABEL;
+  };
 
   private sessionScreenRead = async (
     input: LiveSessionToolCallInput,

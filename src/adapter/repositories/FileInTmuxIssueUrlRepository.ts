@@ -15,23 +15,28 @@ const readIssueUrlsOfProjectFile = (filePath: string): string[] => {
   ) {
     throw new Error('in-tmux project data has no groups list');
   }
-  return parsed.groups.flatMap((group: unknown) => {
+  return parsed.groups.flatMap((group: unknown, groupIndex: number) => {
     if (
       typeof group !== 'object' ||
       group === null ||
       !('sessions' in group) ||
       !Array.isArray(group.sessions)
     ) {
-      return [];
+      throw new Error(`groups[${groupIndex}] has no sessions list`);
     }
-    return group.sessions.flatMap((session: unknown) =>
-      typeof session === 'object' &&
-      session !== null &&
-      'name' in session &&
-      typeof session.name === 'string'
-        ? [session.name]
-        : [],
-    );
+    return group.sessions.map((session: unknown, sessionIndex: number) => {
+      if (
+        typeof session !== 'object' ||
+        session === null ||
+        !('name' in session) ||
+        typeof session.name !== 'string'
+      ) {
+        throw new Error(
+          `groups[${groupIndex}].sessions[${sessionIndex}] has no string name`,
+        );
+      }
+      return session.name;
+    });
   });
 };
 

@@ -195,7 +195,7 @@ describe('ProcSshSessionHostRepository.findHostOfIssueSession', () => {
       procDirectory,
     );
     expect(() => repository.findHostOfIssueSession(ISSUE_URL)).toThrow(
-      'worker host entry has an invalid name, address, port or user',
+      'worker host entry 0 ("bad name") has an invalid name, address, port or user',
     );
   });
 });

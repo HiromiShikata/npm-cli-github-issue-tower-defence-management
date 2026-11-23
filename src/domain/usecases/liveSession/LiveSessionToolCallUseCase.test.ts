@@ -229,6 +229,11 @@ describe('LiveSessionToolCallUseCase calling_sessions_list', () => {
         { sessionName: PLAIN_SESSION_NAME, calledAt: '2026-11-23T02:00:00Z' },
       ],
       hostsByIssueUrl: { [ISSUE_URL]: REMOTE_HOST },
+      respond: (_host, command) =>
+        command.kind === 'tmuxHasSession' &&
+        command.sessionName === PLAIN_SESSION_NAME
+          ? exited('')
+          : exited('', 1),
     });
     const outcome = await useCase.run(
       call(LIVE_SESSION_TOOL_NAMES.callingSessionsList),
@@ -740,5 +745,77 @@ describe('LiveSessionToolCallUseCase with a dotted repository name', () => {
       'セッション名からタスク Issue の URL を特定できません。',
     );
     expect(hosts.requestedIssueUrls).toEqual([]);
+  });
+});
+
+describe('LiveSessionToolCallUseCase calling_sessions_list host label', () => {
+  const listedCalls = async (options: {
+    sessionName: string;
+    localHasSession: boolean;
+    hostsByIssueUrl?: Record<string, SessionHost>;
+  }): Promise<unknown> => {
+    const { useCase } = buildHarness({
+      ownerCalls: [
+        { sessionName: options.sessionName, calledAt: '2026-11-23T06:00:00Z' },
+      ],
+      hostsByIssueUrl: options.hostsByIssueUrl ?? {},
+      respond: (_host, command) =>
+        command.kind === 'tmuxHasSession' && options.localHasSession
+          ? exited('')
+          : exited('', 1),
+    });
+    return JSON.parse(
+      outputOf(
+        await useCase.run(call(LIVE_SESSION_TOOL_NAMES.callingSessionsList)),
+      ),
+    );
+  };
+
+  it('reports local for a session that the local tmux server has and whose URL is not derivable', async () => {
+    expect(
+      await listedCalls({
+        sessionName: PLAIN_SESSION_NAME,
+        localHasSession: true,
+      }),
+    ).toMatchObject({ calls: [{ host: 'local', taskIssueUrl: null }] });
+  });
+
+  it('reports unknown for a session that is not local and whose URL is not derivable', async () => {
+    expect(
+      await listedCalls({
+        sessionName: PLAIN_SESSION_NAME,
+        localHasSession: false,
+      }),
+    ).toMatchObject({ calls: [{ host: '不明', taskIssueUrl: null }] });
+  });
+
+  it('reports the remote host for a session with a derivable URL that a remote launch runs', async () => {
+    expect(
+      await listedCalls({
+        sessionName: ISSUE_SESSION_NAME,
+        localHasSession: false,
+        hostsByIssueUrl: { [ISSUE_URL]: REMOTE_HOST },
+      }),
+    ).toMatchObject({
+      calls: [{ host: REMOTE_HOST_NAME, taskIssueUrl: ISSUE_URL }],
+    });
+  });
+
+  it('reports local for a session with a derivable URL that no remote launch runs and local tmux has', async () => {
+    expect(
+      await listedCalls({
+        sessionName: ISSUE_SESSION_NAME,
+        localHasSession: true,
+      }),
+    ).toMatchObject({ calls: [{ host: 'local', taskIssueUrl: ISSUE_URL }] });
+  });
+
+  it('reports unknown for a session with a derivable URL that no remote launch runs and local tmux lacks', async () => {
+    expect(
+      await listedCalls({
+        sessionName: ISSUE_SESSION_NAME,
+        localHasSession: false,
+      }),
+    ).toMatchObject({ calls: [{ host: '不明', taskIssueUrl: ISSUE_URL }] });
   });
 });
