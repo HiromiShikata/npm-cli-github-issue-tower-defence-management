@@ -11,6 +11,7 @@ export type VoiceConsoleSocketListener = (event: { data?: unknown }) => void;
 
 export type VoiceConsoleSocket = {
   send(data: string): void;
+  close(): void;
   addEventListener(
     type: VoiceConsoleSocketEventType,
     listener: VoiceConsoleSocketListener,
@@ -98,6 +99,7 @@ export class OpenAiLiveSessionSideband {
       const openTimer = setTimeout(() => {
         const message = `OpenAI live session ${sessionId} sideband did not open within ${SIDEBAND_OPEN_TIMEOUT_MS} ms`;
         this.logError(message);
+        socket.close();
         reject(new Error(message));
       }, SIDEBAND_OPEN_TIMEOUT_MS);
       openTimer.unref();

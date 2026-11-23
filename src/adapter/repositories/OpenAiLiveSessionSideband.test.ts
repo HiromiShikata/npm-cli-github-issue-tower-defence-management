@@ -8,6 +8,11 @@ type SocketListener = (event: { data?: unknown }) => void;
 
 class FakeSocket implements VoiceConsoleSocket {
   readonly sent: string[] = [];
+  closed = false;
+
+  close(): void {
+    this.closed = true;
+  }
   private readonly listeners = new Map<SocketEventType, SocketListener[]>();
 
   send(data: string): void {
@@ -37,7 +42,7 @@ const createRecordingHandler = () =>
   );
 
 const createHarness = (
-  options: { readApiKey?: () => string | undefined } = {},
+  options: { readApiKey?: () => string | undefined; opens?: boolean } = {},
 ) => {
   const socket = new FakeSocket();
   const createSocket = jest.fn(
@@ -45,9 +50,11 @@ const createHarness = (
       socket,
   );
   const logError = jest.fn();
-  queueMicrotask(() => {
-    socket.emit('open', {});
-  });
+  if (options.opens !== false) {
+    queueMicrotask(() => {
+      socket.emit('open', {});
+    });
+  }
   const readApiKey = options.readApiKey ?? (() => 'key-1');
   const sideband = new OpenAiLiveSessionSideband(
     createSocket,
@@ -226,6 +233,22 @@ describe('OpenAiLiveSessionSideband.attach', () => {
         name: testCase.name,
         outcome: testCase.expectedResult,
       });
+    }
+  });
+
+  it('rejects and closes the socket when it does not open within the timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      const { socket, sideband } = createHarness({ opens: false });
+      const attached = sideband.attach('live_123', () => Promise.resolve());
+      jest.advanceTimersByTime(10_000);
+
+      await expect(attached).rejects.toThrow(
+        'OpenAI live session live_123 sideband did not open within 10000 ms',
+      );
+      expect(socket.closed).toBe(true);
+    } finally {
+      jest.useRealTimers();
     }
   });
 });
