@@ -1,3 +1,10 @@
+## [2.206.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.2...v2.206.3) (2026-11-23)
+
+
+### Bug Fixes
+
+* **voice-console:** use Awaiting Owner wording and close live sessions with session.close ([#3765](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3765)) ([4342475](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4342475971db622132059f9932de9e5aeaf37738))
+
 ## [2.206.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.1...v2.206.2) (2026-11-23)
 
 
