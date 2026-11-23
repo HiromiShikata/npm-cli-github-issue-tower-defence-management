@@ -31,15 +31,6 @@ const confirmYes = (call: Call) =>
 
 type ReadBackStep = { assistant: string } | { owner: string };
 
-const titleAtPosition = (position: number): string => {
-  const titles = ['Fix login', 'Refactor queue', 'xcare task', 'Review pull 9'];
-  const title = titles[position - 1];
-  if (title === undefined) {
-    throw new Error(`no fixture title for position ${position}`);
-  }
-  return title;
-};
-
 const ITEM_TITLE = 'Fix login';
 
 const isJsonObject = (value: unknown): value is Record<string, unknown> =>
@@ -1792,7 +1783,11 @@ describe('VoiceConsoleSession bare はい counts only after the read-back of tha
   it('confirms only when はい follows the completed read-back of the pending action', async () => {
     const cases: {
       name: string;
-      steps: (readBack: string, partial: string, rest: string) => ReadBackStep[];
+      steps: (
+        readBack: string,
+        partial: string,
+        rest: string,
+      ) => ReadBackStep[];
       accepted: boolean;
     }[] = [
       {
@@ -1810,10 +1805,7 @@ describe('VoiceConsoleSession bare はい counts only after the read-back of tha
       },
       {
         name: 'はい after the completed read-back is accepted',
-        steps: (readBack) => [
-          { assistant: readBack },
-          { owner: 'はい' },
-        ],
+        steps: (readBack) => [{ assistant: readBack }, { owner: 'はい' }],
         accepted: true,
       },
     ];
@@ -1939,10 +1931,7 @@ describe('VoiceConsoleSession request_changes removes the item from the queue', 
       const before = await call('queue_overview');
       expect(collectNumbers(before)).toContain(4);
 
-      const prepared = await call(
-        'prepare_pull_request_review',
-        testCase.args,
-      );
+      const prepared = await call('prepare_pull_request_review', testCase.args);
       session.recordAssistantSpeech(String(prepared.readBack));
       session.recordOwnerSpeech('はい');
       const confirmed = await confirmYes(call);

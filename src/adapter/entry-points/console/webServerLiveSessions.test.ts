@@ -388,10 +388,11 @@ describe('webServer live session creation when the voice console sideband cannot
         'OFFER-SDP',
         'application/sdp',
       );
+      const errorBody: unknown = JSON.parse(response.body);
       expect({
         statusCode: response.statusCode,
         contentType: response.contentType,
-        body: JSON.parse(response.body) as { error: string },
+        body: errorBody,
         closedSessionIds: closer.closedSessionIds,
       }).toEqual({
         statusCode: 502,
