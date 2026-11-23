@@ -2,6 +2,10 @@ export type VoiceConsoleToolCaller = {
   callTool(name: string, argumentsJson: string): Promise<string>;
 };
 
+export type VoiceConsoleSidebandSession = VoiceConsoleToolCaller & {
+  recordOwnerSpeech(delta: string): void;
+};
+
 export type VoiceConsoleSendEvent = (event: Record<string, unknown>) => void;
 
 type CollectedFunctionCall = {
@@ -23,6 +27,13 @@ const describeError = (error: unknown): string =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isOwnerInputTranscriptDelta = (
+  event: unknown,
+): event is { delta: string } =>
+  isRecord(event) &&
+  event.type === 'session.input_transcript.delta' &&
+  typeof event.delta === 'string';
 
 const readDelegatedServerEvent = (
   event: unknown,
@@ -91,7 +102,7 @@ export class VoiceConsoleSidebandHandler {
   private processing: Promise<void> = Promise.resolve();
 
   constructor(
-    private readonly session: VoiceConsoleToolCaller,
+    private readonly session: VoiceConsoleSidebandSession,
     private readonly send: VoiceConsoleSendEvent,
     private readonly logError: (message: string) => void,
   ) {}
@@ -111,6 +122,10 @@ export class VoiceConsoleSidebandHandler {
   }
 
   private async processServerEvent(event: unknown): Promise<void> {
+    if (isOwnerInputTranscriptDelta(event)) {
+      this.session.recordOwnerSpeech(event.delta);
+      return;
+    }
     const delegated = readDelegatedServerEvent(event);
     if (delegated === null) {
       return;

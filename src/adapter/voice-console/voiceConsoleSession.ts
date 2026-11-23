@@ -7,6 +7,7 @@ import type {
 } from '../../domain/usecases/adapter-interfaces/IssueRepository';
 import { paginateText } from './voiceConsolePaging';
 import {
+  OWNER_CONFIRMATION_REPLY,
   VoiceConsolePendingActionStore,
   type PreparedVoiceAction,
 } from './voiceConsolePendingAction';
@@ -109,6 +110,13 @@ const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 const failure = (error: string): ToolResult => ({ ok: false, error });
+
+// Owner speech is matched with whitespace and these punctuation marks removed,
+// so that a split or punctuated transcript of はい still counts.
+const SPEECH_IGNORED_PATTERN = /[\s。、.,!?！？]/g;
+
+const ownerSpeechSaysYes = (speech: string): boolean =>
+  speech.replace(SPEECH_IGNORED_PATTERN, '').includes(OWNER_CONFIRMATION_REPLY);
 
 const parseToolArguments = (argumentsJson: string): ToolArguments => {
   if (argumentsJson.trim() === '') {
@@ -359,8 +367,14 @@ export class VoiceConsoleSession {
   private readonly removedKeys = new Set<string>();
   private readonly pendingActions = new VoiceConsolePendingActionStore();
   private pendingTargetKey: string | null = null;
+  private ownerSpeech = '';
 
   constructor(private readonly deps: VoiceConsoleSessionDeps) {}
+
+  // Fed by the sideband with the owner's input transcript deltas.
+  recordOwnerSpeech(delta: string): void {
+    this.ownerSpeech += delta;
+  }
 
   async callTool(name: string, argumentsJson: string): Promise<string> {
     let args: ToolArguments;
@@ -716,6 +730,7 @@ export class VoiceConsoleSession {
     };
     this.pendingActions.prepare(action);
     this.pendingTargetKey = queueEntryKey(entry);
+    this.ownerSpeech = '';
     return {
       ok: true,
       actionId,
@@ -954,6 +969,11 @@ export class VoiceConsoleSession {
     const confirmed = this.pendingActions.confirm(actionId, ownerReply);
     if (!confirmed.ok) {
       return failure(confirmed.error);
+    }
+    if (!ownerSpeechSaysYes(this.ownerSpeech)) {
+      // Keep the pending action so that a later spoken はい can confirm it.
+      this.pendingActions.prepare(confirmed.action);
+      return failure('owner_speech_not_heard');
     }
     const targetKey = this.pendingTargetKey;
     this.pendingTargetKey = null;
