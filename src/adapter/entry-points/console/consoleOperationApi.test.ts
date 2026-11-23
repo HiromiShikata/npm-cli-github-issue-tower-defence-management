@@ -7113,11 +7113,64 @@ describe('consoleOperationApi', () => {
     });
 
     it.each([
+      {
+        name: 'a single GitHub issue URL',
+        dependedIssueUrl: 'https://github.com/o/r/issues/2',
+      },
+      {
+        name: 'a single GitHub pull request URL',
+        dependedIssueUrl: 'https://github.com/o/r/pull/2',
+      },
+      {
+        name: 'a mixed list of issue and pull request URLs',
+        dependedIssueUrl:
+          'https://github.com/o/r/issues/2,https://github.com/o/other-repo/pull/30',
+      },
+    ])(
+      'accepts $name in replace mode and writes the list unchanged',
+      async ({ dependedIssueUrl }) => {
+        issueRepository.replaceDependedIssueUrlField.mockResolvedValue(
+          undefined,
+        );
+        const response = await handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl,
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        );
+        expect(response.statusCode).toBe(200);
+        expect(
+          issueRepository.replaceDependedIssueUrlField,
+        ).toHaveBeenCalledWith(
+          projectWithDependedField(),
+          expect.objectContaining({ itemId: 'PVTI_dep' }),
+          dependedIssueUrl,
+        );
+      },
+    );
+
+    it.each([
       ['free text', 'see the spec'],
-      ['a non-issue GitHub URL', 'https://github.com/o/r/pull/2'],
+      ['a non-GitHub issue URL', 'https://example.com/o/r/issues/1'],
+      [
+        'a GitHub pulls URL (not a valid form)',
+        'https://github.com/o/r/pulls/1',
+      ],
+      [
+        'a GitHub URL of an unsupported kind',
+        'https://github.com/o/r/tree/main',
+      ],
       [
         'a list with one invalid entry',
         'https://github.com/o/r/issues/2, not-a-url',
+      ],
+      [
+        'a list with a valid pull request and one invalid entry',
+        'https://github.com/o/r/pull/2, https://example.com/o/r/issues/1',
       ],
       ['an empty entry in the list', 'https://github.com/o/r/issues/2,'],
     ])(

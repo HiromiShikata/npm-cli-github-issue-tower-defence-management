@@ -4574,6 +4574,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       pjcode: 'acme',
       issueUrl: issueItem.url,
       dependedIssueUrl: 'https://github.com/owner/repo/issues/100',
+      projectItemId: issueItem.projectItemId,
+      replaceExisting: true,
     });
   });
 
@@ -4589,22 +4591,23 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       expect(onQueueAction).toHaveBeenCalledTimes(1);
     });
     const input = onQueueAction.mock.calls[0][0];
-    expect(operations.setDependedIssueUrl).not.toHaveBeenCalled();
+    expect(operations.replaceDependedIssueUrl).not.toHaveBeenCalled();
     expect(operations.setStatus).not.toHaveBeenCalled();
 
     await input.commit(0);
 
-    const setDependedIssueUrlMock = operations.setDependedIssueUrl as jest.Mock;
+    const replaceDependedIssueUrlMock =
+      operations.replaceDependedIssueUrl as jest.Mock;
     const setStatusMock = operations.setStatus as jest.Mock;
-    expect(setDependedIssueUrlMock.mock.calls).toEqual([
+    expect(replaceDependedIssueUrlMock.mock.calls).toEqual([
       [issueItem, dependedIssueUrlToSubmit],
     ]);
     expect(setStatusMock.mock.calls).toEqual([
       [issueItem, awaitingWorkspaceOption],
     ]);
-    expect(setDependedIssueUrlMock.mock.invocationCallOrder[0]).toBeLessThan(
-      setStatusMock.mock.invocationCallOrder[0],
-    );
+    expect(
+      replaceDependedIssueUrlMock.mock.invocationCallOrder[0],
+    ).toBeLessThan(setStatusMock.mock.invocationCallOrder[0]);
     expect(operations.addComment).not.toHaveBeenCalled();
   });
 
@@ -4638,9 +4641,9 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
 
       await input.commit(sentStepCount);
 
-      expect((operations.setDependedIssueUrl as jest.Mock).mock.calls).toEqual(
-        expectedSetDependedIssueUrlCalls,
-      );
+      expect(
+        (operations.replaceDependedIssueUrl as jest.Mock).mock.calls,
+      ).toEqual(expectedSetDependedIssueUrlCalls);
       expect((operations.setStatus as jest.Mock).mock.calls).toEqual(
         expectedSetStatusCalls,
       );
@@ -4672,15 +4675,15 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect((rejection as ConsoleActionPartiallySentError).cause).toBe(
       statusFailure,
     );
-    expect(operations.setDependedIssueUrl).toHaveBeenCalledWith(
+    expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
       issueItem,
       dependedIssueUrlToSubmit,
     );
   });
 
-  it('collapses the Rare actions panel as soon as onQueueAction is called, without waiting for operations.setDependedIssueUrl to resolve', async () => {
+  it('collapses the Rare actions panel as soon as onQueueAction is called, without waiting for operations.replaceDependedIssueUrl to resolve', async () => {
     const operations = buildOperations();
-    operations.setDependedIssueUrl = jest.fn(() => new Promise(() => {}));
+    operations.replaceDependedIssueUrl = jest.fn(() => new Promise(() => {}));
     const onQueueAction = jest.fn();
     const {
       getByTitle,
@@ -4727,6 +4730,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
           pjcode: 'acme',
           issueUrl: issueItem.url,
           dependedIssueUrl: dependedIssueUrlToSubmit,
+          projectItemId: issueItem.projectItemId,
+          replaceExisting: true,
         },
       },
       {
@@ -4763,7 +4768,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect(operations.addComment).not.toHaveBeenCalled();
   });
 
-  it('calls only operations.setDependedIssueUrl, with no onQueueAction call and no Status write, when no status option named Awaiting Workspace exists', async () => {
+  it('calls only operations.replaceDependedIssueUrl, with no onQueueAction call and no Status write, when no status option named Awaiting Workspace exists', async () => {
     const statusOptionsWithoutAwaitingWorkspace =
       consoleStatusOptionsFixture.filter(
         (o) => o.name !== AWAITING_WORKSPACE_NAME,
@@ -4780,9 +4785,130 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
 
     await waitFor(() => {
-      expect(operations.setDependedIssueUrl).toHaveBeenCalledWith(
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
         issueItem,
         dependedIssueUrlToSubmit,
+      );
+    });
+    expect(onQueueAction).not.toHaveBeenCalled();
+    expect(operations.setStatus).not.toHaveBeenCalled();
+  });
+
+  it('prefills the Rare actions field with the item current depended issue URLs, one per line', () => {
+    const itemWithDependedIssueUrls = {
+      ...issueItem,
+      dependedIssueUrls: [
+        'https://github.com/owner/repo/issues/10',
+        'https://github.com/owner/repo/pull/11',
+      ],
+    };
+    const { getByTitle, getByPlaceholderText } =
+      renderIssueDetailForDependedIssueUrl({
+        item: itemWithDependedIssueUrls,
+      });
+
+    fireEvent.click(getByTitle('Rare actions'));
+
+    expect(getByPlaceholderText('Depended issue URL')).toHaveValue(
+      'https://github.com/owner/repo/issues/10\nhttps://github.com/owner/repo/pull/11',
+    );
+  });
+
+  it('saves several URLs as one comma-joined replace payload and queues the Awaiting Workspace move', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      'https://github.com/owner/repo/issues/1\nhttps://github.com/owner/repo/pull/2',
+    );
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.offline[0].requestBody).toEqual({
+      pjcode: 'acme',
+      issueUrl: issueItem.url,
+      dependedIssueUrl:
+        'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
+      projectItemId: issueItem.projectItemId,
+      replaceExisting: true,
+    });
+
+    await input.commit(0);
+
+    expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
+      issueItem,
+      'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
+    );
+    expect(operations.setStatus).toHaveBeenCalledWith(
+      issueItem,
+      awaitingWorkspaceOption,
+    );
+  });
+
+  it('saves a line deletion as a replace of the remaining URL only, and still queues the Awaiting Workspace move', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const itemWithTwoDependedIssueUrls = {
+      ...issueItem,
+      dependedIssueUrls: [
+        'https://github.com/owner/repo/issues/10',
+        'https://github.com/owner/repo/issues/11',
+      ],
+    };
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({
+        item: itemWithTwoDependedIssueUrls,
+        operations,
+        onQueueAction,
+      });
+
+    submitDependedIssueUrl(
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      'https://github.com/owner/repo/issues/10',
+    );
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.offline[0].requestBody.dependedIssueUrl).toBe(
+      'https://github.com/owner/repo/issues/10',
+    );
+    expect(input.kind).toEqual({
+      type: 'set_status',
+      optionName: AWAITING_WORKSPACE_NAME,
+    });
+  });
+
+  it('clearing the field replaces with an empty value immediately, without queuing a status move', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const itemWithDependedIssueUrl = {
+      ...issueItem,
+      dependedIssueUrls: ['https://github.com/owner/repo/issues/10'],
+    };
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({
+        item: itemWithDependedIssueUrl,
+        operations,
+        onQueueAction,
+      });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText, '');
+
+    await waitFor(() => {
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
+        itemWithDependedIssueUrl,
+        '',
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();
