@@ -211,3 +211,86 @@ describe('ComposeDashboardUseCase token column alignment', () => {
     expect(aliceIndex).toBeLessThan(codexIndex);
   });
 });
+
+const singleDigitTotalsInput: ComposeDashboardInput = {
+  ...alignmentInput,
+  tokens: [
+    tokenStatus({
+      name: 'alice',
+      sevenDayUtilizationPercent: 12,
+      sevenDayResetSeconds: 86400 * 5,
+      color: 'G',
+      prep: 6,
+      hum: 3,
+    }),
+    tokenStatus({
+      name: 'bob',
+      sevenDayUtilizationPercent: 40,
+      sevenDayResetSeconds: 86400 * 3,
+      color: 'G',
+      prep: 1,
+      hum: 2,
+    }),
+  ],
+  codexRunningWorkerCount: 0,
+};
+
+describe('ComposeDashboardUseCase token column alignment with single-digit totals', () => {
+  const lines = unwrapTtLines(
+    new ComposeDashboardUseCase().run(singleDigitTotalsInput),
+  );
+  const bobRow = lines.find((line) => line.includes('3d00h00')) ?? '';
+  const aliceRow = lines.find((line) => line.includes('5d00h00')) ?? '';
+  const codexRow = lines.find((line) => line.includes('6d12h34')) ?? '';
+  const totalLine = lines[lines.indexOf(bobRow) - 1] ?? '';
+
+  const rowCases: {
+    name: string;
+    row: string;
+    utilization: string;
+    reset: string;
+    prep: string;
+    hum: string;
+  }[] = [
+    {
+      name: 'Claude row of bob',
+      row: bobRow,
+      utilization: '40',
+      reset: '3d00h00',
+      prep: ' 1',
+      hum: '2',
+    },
+    {
+      name: 'Claude row of alice',
+      row: aliceRow,
+      utilization: '12',
+      reset: '5d00h00',
+      prep: ' 6',
+      hum: '3',
+    },
+    {
+      name: 'Codex row',
+      row: codexRow,
+      utilization: '11',
+      reset: '6d12h34',
+      prep: ' 0',
+      hum: '-',
+    },
+  ];
+
+  it.each(rowCases)(
+    'places the 7-day utilization at column 5, the 7-day reset at column 8, prep at column 16 and hum at column 19 of the $name',
+    ({ row, utilization, reset, prep, hum }) => {
+      expect(displayColumnOf(row, utilization)).toBe(5);
+      expect(displayColumnOf(row, reset)).toBe(8);
+      expect(displayColumnOf(row, prep)).toBe(16);
+      expect(displayColumnOf(row, hum)).toBe(19);
+    },
+  );
+
+  it('places the 7-day mean at column 5, the one-digit prep total at column 16 and the one-digit hum total at column 19 of the total line', () => {
+    expect(displayColumnOf(totalLine, '63')).toBe(5);
+    expect(displayColumnOf(totalLine, ' 7')).toBe(16);
+    expect(displayColumnOf(totalLine, '5')).toBe(19);
+  });
+});

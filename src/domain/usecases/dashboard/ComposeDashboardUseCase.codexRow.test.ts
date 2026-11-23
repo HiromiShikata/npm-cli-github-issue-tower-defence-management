@@ -176,7 +176,7 @@ describe('formatCodexTokenRowLine', () => {
         capturedAt: null,
       }),
       runningCodexWorkerCount: 2,
-      expected: '🟡cx  ? ?  2 -',
+      expected: `🟡cx  ? ${'?'.padEnd(7)}  2 -`,
     },
     {
       name: 'renders question marks for an error and keeps the age when the capture time is present',
@@ -187,7 +187,7 @@ describe('formatCodexTokenRowLine', () => {
         errorMessage: 'read failed',
       }),
       runningCodexWorkerCount: 2,
-      expected: '🟡cx  ? ?  2 - 3m',
+      expected: `🟡cx  ? ${'?'.padEnd(7)}  2 - 3m`,
     },
   ];
 

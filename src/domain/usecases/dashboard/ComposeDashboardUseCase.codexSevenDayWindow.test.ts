@@ -73,7 +73,7 @@ describe('formatCodexSevenDayWindowLines', () => {
         }),
       ],
       runningCodexWorkerCount: 2,
-      expected: ['🟡cx  ? ?  2 -'],
+      expected: [`🟡cx  ? ${'?'.padEnd(7)}  2 -`],
     },
     {
       name: 'renders question marks for an error state and still shows the age when the capture time is present',
@@ -86,7 +86,7 @@ describe('formatCodexSevenDayWindowLines', () => {
         }),
       ],
       runningCodexWorkerCount: 2,
-      expected: ['🟡cx  ? ?  2 - 3m'],
+      expected: [`🟡cx  ? ${'?'.padEnd(7)}  2 - 3m`],
     },
     {
       name: 'names a non-default Codex home with the last two characters of its path',
@@ -98,7 +98,7 @@ describe('formatCodexSevenDayWindowLines', () => {
       name: 'renders a placeholder no data row for the default home when no Codex home is known',
       windows: [],
       runningCodexWorkerCount: 2,
-      expected: ['🟡cx  ? ?  2 -'],
+      expected: [`🟡cx  ? ${'?'.padEnd(7)}  2 -`],
     },
     {
       name: 'renders nothing when the windows are not collected yet',

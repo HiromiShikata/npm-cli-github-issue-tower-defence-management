@@ -729,7 +729,7 @@ describe('formatTokenRowLine', () => {
         prep: 1,
         hum: 0,
       },
-      expected: '🟡xx  ? ?  1 0',
+      expected: `🟡xx  ? ${'?'.padEnd(7)}  1 0`,
     },
     {
       name: 'renders a double dash padded to the reset width when only the reset is unknown',
@@ -870,10 +870,12 @@ describe('ComposeDashboardUseCase', () => {
     '<tt></tt><br>\n' +
     '<tt>' +
     '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
-    '3&nbsp;1</tt><br>\n' +
+    '&nbsp;3&nbsp;1</tt><br>\n' +
     '<tt>⚪ob&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;0</tt><br>\n' +
     '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
-    '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;1&nbsp;0</tt><br>\n';
+    '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?' +
+    '&nbsp;'.repeat(8) +
+    '1&nbsp;0</tt><br>\n';
 
   it('composes byte-identical dashboard text for representative inputs', () => {
     expect(new ComposeDashboardUseCase().run(representativeInput)).toBe(
@@ -1255,7 +1257,7 @@ describe('formatTokenSessionTotalLine', () => {
       name: 'shows only the running Codex worker count in the prep total when there are no Claude tokens',
       tokens: [],
       runningCodexWorkerCount: 2,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '2 0',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 2 0',
     },
     {
       name: 'sums prep and hum across tokens at the session column start position',
@@ -1265,7 +1267,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'carolxx', prep: 1, hum: 0 },
       ],
       runningCodexWorkerCount: null,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '3 1',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 3 1',
     },
     {
       name: 'adds the running Codex worker count to the prep total and leaves the hum total unchanged',
@@ -1275,7 +1277,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'carolxx', prep: 1, hum: 0 },
       ],
       runningCodexWorkerCount: 2,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '5 1',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 5 1',
     },
     {
       name: 'renders zero totals when all tokens have no assigned sessions and no Codex worker is running',
@@ -1284,7 +1286,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'bob', prep: 0, hum: 0 },
       ],
       runningCodexWorkerCount: 0,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 0',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 0 0',
     },
     {
       name: 'caps total prep at 99 when the sum including the Codex count exceeds 99',
@@ -1311,7 +1313,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'bob', prep: 0, hum: 60 },
       ],
       runningCodexWorkerCount: null,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 99',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 0 99',
     },
   ];
 
