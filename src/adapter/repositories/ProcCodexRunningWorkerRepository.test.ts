@@ -32,6 +32,21 @@ const sshDelegatedCodexWorker = (
     `bash -ic 'set +m; : "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model} --configFilePath /home/u/.config/aw.json'`,
   );
 
+const sshShellQuotedCodexWorker = (issueUrl: string, model: string): string =>
+  argv(
+    'ssh',
+    '-o',
+    'BatchMode=yes',
+    '-o',
+    'ConnectTimeout=5',
+    '-o',
+    'StrictHostKeyChecking=accept-new',
+    '-p',
+    '22',
+    'user@remote-host',
+    `'bash' '-ic' 'set +m; : "Take ownership of ${issueUrl}"; ${AW_PATH} ${issueUrl} codex-agent ${model} --configFilePath /home/u/.config/aw.json'`,
+  );
+
 const localAwLaunch = (issueUrl: string, model: string): string =>
   argv(
     '/bin/bash',
@@ -226,6 +241,16 @@ describe('ProcCodexRunningWorkerRepository', () => {
       name: 'counts a remote-side bash -ic codex worker with a gpt-5.6-luna model',
       cmdlines: [remoteSideBashIcCodexWorker(ISSUE_URL_1, 'gpt-5.6-luna')],
       expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'counts an ssh-delegated codex worker whose remote command is shell-quoted as TDPM sends it',
+      cmdlines: [sshShellQuotedCodexWorker(ISSUE_URL_1, 'gpt-5.6-luna')],
+      expectedIssueUrls: [ISSUE_URL_1],
+    },
+    {
+      name: 'does not count an ssh-delegated claude worker whose remote command is shell-quoted as TDPM sends it',
+      cmdlines: [sshShellQuotedCodexWorker(ISSUE_URL_1, 'claude-opus-5-5')],
+      expectedIssueUrls: [],
     },
     {
       name: 'counts a local codex aw launch and its ssh child for the same issue URL once',
