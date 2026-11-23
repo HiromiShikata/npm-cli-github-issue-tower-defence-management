@@ -1,7 +1,8 @@
 import { OpenAiLiveSessionRepository } from './OpenAiLiveSessionRepository';
-
-const instructions =
-  'あなたはオーナーの音声アシスタントです。オーナーは複数の作業セッションからの呼び出しに、順番に声で答えています。アプリが呼び出しの本文を読み上げた後、あなたはオーナーと日本語で短く会話し、そのセッションに送る返事を決める手助けをします。オーナーが送る文を述べたら、その文を一字一句そのまま復唱し、オーナーが「送って」と言ったら、その文をそのまま session_reply_send で送ります。送る文を自分で作ったり言い換えたりしてはいけません。オーナーが「次」と言ったら session_skip を、「もう一度」と言ったら owner_call_repeat を呼びます。オーナーがセッション、そのセッションが動いている PC、その画面、タスク Issue、またはファイルについて尋ねたら、calling_sessions_list、session_screen_read、session_task_issue_read、session_file_read のいずれかを呼び、結果を日本語で短く答えます。これらの道具は読むだけで、PC に書き込んだり操作したりはできません。';
+import {
+  VOICE_CONSOLE_INSTRUCTIONS,
+  VOICE_CONSOLE_TOOL_DEFINITIONS,
+} from '../voice-console/voiceConsoleLiveSessionConfig';
 
 const responseWithJson = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), {
@@ -42,117 +43,13 @@ describe('OpenAiLiveSessionRepository', () => {
     expect(JSON.parse(requestBody)).toEqual({
       session: {
         model: 'gpt-live-1',
-        instructions,
+        instructions: VOICE_CONSOLE_INSTRUCTIONS,
         audio: { output: { voice: 'harema' } },
         delegation: {
           type: 'responses',
           responses: {
             model: 'gpt-6.2-astra',
-            tools: [
-              {
-                type: 'function',
-                name: 'session_reply_send',
-                parameters: {
-                  type: 'object',
-                  properties: { replyText: { type: 'string' } },
-                  required: ['replyText'],
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: 'function',
-                name: 'session_skip',
-                parameters: {
-                  type: 'object',
-                  properties: {},
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: 'function',
-                name: 'owner_call_repeat',
-                parameters: {
-                  type: 'object',
-                  properties: {},
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: 'function',
-                name: 'calling_sessions_list',
-                description:
-                  'List the sessions that have an unanswered owner call, with the machine each runs on, the call time and the task issue URL when it can be derived.',
-                parameters: {
-                  type: 'object',
-                  properties: {},
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: 'function',
-                name: 'session_screen_read',
-                description:
-                  'Read the most recent lines of the terminal screen of a session. lineCount defaults to 80 and is at most 300.',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    sessionName: {
-                      type: 'string',
-                      description:
-                        'Tmux session name of the session. Omit it to use the session the owner is currently handling.',
-                    },
-                    lineCount: {
-                      type: 'integer',
-                      minimum: 1,
-                      maximum: 300,
-                      description:
-                        'Number of recent screen lines to read. Defaults to 80.',
-                    },
-                  },
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: 'function',
-                name: 'session_task_issue_read',
-                description:
-                  'Read the title, body and latest comment of the task issue of a session.',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    sessionName: {
-                      type: 'string',
-                      description:
-                        'Tmux session name of the session. Omit it to use the session the owner is currently handling.',
-                    },
-                  },
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: 'function',
-                name: 'session_file_read',
-                description:
-                  'Read a text file, or list a folder, given by a path relative to the current working folder of a session. Paths outside that folder are refused.',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    sessionName: {
-                      type: 'string',
-                      description:
-                        'Tmux session name of the session. Omit it to use the session the owner is currently handling.',
-                    },
-                    path: {
-                      type: 'string',
-                      description:
-                        'Path relative to the working folder of the session. A folder path returns a sorted listing.',
-                    },
-                  },
-                  required: ['path'],
-                  additionalProperties: false,
-                },
-              },
-            ],
+            tools: VOICE_CONSOLE_TOOL_DEFINITIONS,
           },
         },
       },
@@ -221,7 +118,56 @@ describe('OpenAiLiveSessionRepository', () => {
     await expect(repository.createFromSdpOffer('OFFER-SDP')).resolves.toEqual({
       type: 'created',
       sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_123',
     });
+  });
+
+  it('logs and maps a successful response without a string session.id as a 502 failure', async () => {
+    const cases = [
+      {
+        name: 'no session object',
+        body: { transport: { type: 'webrtc', sdp: 'ANSWER-SDP' } },
+      },
+      {
+        name: 'session without id',
+        body: { session: {}, transport: { type: 'webrtc', sdp: 'ANSWER-SDP' } },
+      },
+      {
+        name: 'non-string session id',
+        body: {
+          session: { id: 5 },
+          transport: { type: 'webrtc', sdp: 'ANSWER-SDP' },
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const fetchImplementation: jest.MockedFunction<typeof fetch> = jest.fn();
+      fetchImplementation.mockResolvedValue(
+        responseWithJson(200, testCase.body),
+      );
+      const logError = jest.fn();
+      const repository = new OpenAiLiveSessionRepository(
+        fetchImplementation,
+        () => 'secret-api-key',
+        logError,
+      );
+
+      const result = await repository.createFromSdpOffer('OFFER-SDP');
+
+      expect({ name: testCase.name, result }).toEqual({
+        name: testCase.name,
+        result: {
+          type: 'openAiFailed',
+          status: 502,
+          message: 'OpenAI live session response has no session.id',
+        },
+      });
+      expect(logError).toHaveBeenCalledWith(expect.stringContaining('502'));
+      expect(logError.mock.calls.flat().join('\n')).not.toContain(
+        'secret-api-key',
+      );
+    }
   });
 
   it('maps JSON error responses and logs each failure without the key', async () => {

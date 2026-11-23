@@ -35,6 +35,7 @@ import { FileInTmuxIssueUrlRepository } from '../../repositories/FileInTmuxIssue
 import { ProcSshSessionHostRepository } from '../../repositories/ProcSshSessionHostRepository';
 import { TmuxSshSessionCommandRepository } from '../../repositories/TmuxSshSessionCommandRepository';
 import { LiveSessionToolCallUseCase } from '../../../domain/usecases/liveSession/LiveSessionToolCallUseCase';
+import { OpenAiLiveSessionSideband } from '../../repositories/OpenAiLiveSessionSideband';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
@@ -1521,6 +1522,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       commands: new TmuxSshSessionCommandRepository(),
       issues: issueRepository,
     }),
+    liveSessionSideband: new OpenAiLiveSessionSideband(),
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
