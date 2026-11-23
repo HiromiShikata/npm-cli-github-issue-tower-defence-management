@@ -1307,7 +1307,9 @@ describe('createConsoleApiClient request failure classification', () => {
   it('rejects with ConsoleNetworkError when the browser fetch fails at network level', async () => {
     global.fetch = jest
       .fn()
-      .mockRejectedValue(new TypeError('Failed to fetch')) as unknown as typeof fetch;
+      .mockRejectedValue(
+        new TypeError('Failed to fetch'),
+      ) as unknown as typeof fetch;
     const client = createConsoleApiClient();
     const error = await client.fetchItemBody(itemUrl).then(
       () => undefined,
