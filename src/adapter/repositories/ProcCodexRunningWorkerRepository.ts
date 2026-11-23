@@ -36,7 +36,9 @@ const splitArgv = (cmdline: string): string[] => {
 };
 
 const isCodexModel = (model: string): boolean =>
-  model.length > 0 && modelRuntimeOf(model) === 'codex';
+  model.length > 0 &&
+  !model.startsWith('-') &&
+  modelRuntimeOf(model) === 'codex';
 
 const localCodexAwLaunchIssueUrls = (argv: string[]): string[] =>
   argv.length >= 5 &&
