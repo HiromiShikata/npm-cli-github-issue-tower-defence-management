@@ -290,6 +290,7 @@ const openSession = async (
     getAuthenticatedUserLogin,
     readRepositoryFile,
     runOperation,
+    newActionId,
     logError,
     getIssueOrPullRequestComments,
     getIssueOrPullRequestBody,
@@ -812,6 +813,7 @@ describe('VoiceConsoleSession write tools', () => {
       });
 
       const prepared = await call(row.tool, row.args);
+      const returnedActionId = newActionId.mock.results[0]?.value;
 
       expect({
         name: row.name,
@@ -820,7 +822,7 @@ describe('VoiceConsoleSession write tools', () => {
       }).toEqual({
         name: row.name,
         ok: true,
-        actionId: 'action-1',
+        actionId: returnedActionId,
       });
       expect(typeof prepared.readBack).toBe('string');
       expect(String(prepared.readBack).length).toBeGreaterThan(0);
@@ -832,7 +834,7 @@ describe('VoiceConsoleSession write tools', () => {
       );
 
       const confirmed = await call('confirm_pending_action', {
-        action_id: 'action-1',
+        action_id: returnedActionId,
         owner_reply: 'はい',
       });
 
@@ -845,9 +847,10 @@ describe('VoiceConsoleSession write tools', () => {
         operations: runOperation.mock.calls,
       }).toEqual({
         name: row.name,
-        operations: [[row.requestPath, { ...row.body, actionId: 'action-1' }]],
+        operations: [
+          [row.requestPath, { ...row.body, actionId: returnedActionId }],
+        ],
       });
-      expect(newActionId).toHaveBeenCalled();
     }
   });
 

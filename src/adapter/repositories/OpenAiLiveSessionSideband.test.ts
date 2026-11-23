@@ -36,16 +36,19 @@ const createRecordingHandler = () =>
     ): Promise<void> => Promise.resolve(),
   );
 
-const createHarness = (apiKey: string | undefined = 'key-1') => {
+const createHarness = (
+  options: { readApiKey?: () => string | undefined } = {},
+) => {
   const socket = new FakeSocket();
   const createSocket = jest.fn(
     (_url: string, _headers: Record<string, string>): VoiceConsoleSocket =>
       socket,
   );
   const logError = jest.fn();
+  const readApiKey = options.readApiKey ?? (() => 'key-1');
   const sideband = new OpenAiLiveSessionSideband(
     createSocket,
-    () => apiKey,
+    readApiKey,
     logError,
   );
   return { socket, createSocket, logError, sideband };
@@ -93,10 +96,15 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   });
 
   it('throws and opens no socket when the API key is missing or empty', () => {
-    const cases = [{ apiKey: undefined }, { apiKey: '' }];
+    const cases = [
+      { name: 'undefined key', readApiKey: (): string | undefined => undefined },
+      { name: 'empty key', readApiKey: (): string | undefined => '' },
+    ];
 
     for (const testCase of cases) {
-      const { createSocket, sideband } = createHarness(testCase.apiKey);
+      const { createSocket, sideband } = createHarness({
+        readApiKey: testCase.readApiKey,
+      });
 
       expect(() =>
         sideband.attach('live_123', () => Promise.resolve()),
@@ -106,7 +114,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   });
 
   it('opens one socket to the attach URL with the bearer key header', () => {
-    const { createSocket, sideband } = createHarness('key-1');
+    const { createSocket, sideband } = createHarness();
 
     sideband.attach('live_123', () => Promise.resolve());
 
