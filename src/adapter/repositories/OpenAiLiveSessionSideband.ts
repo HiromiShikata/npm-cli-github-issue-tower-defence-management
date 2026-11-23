@@ -75,18 +75,11 @@ export class OpenAiLiveSessionSideband {
     sessionId: string,
     handleServerEvent: VoiceConsoleServerEventHandler,
   ): Promise<void> {
-    let url: string;
-    try {
-      url = OpenAiLiveSessionSideband.attachUrl(sessionId);
-    } catch (error) {
-      return Promise.reject(
-        error instanceof Error ? error : new Error(String(error)),
-      );
-    }
+    const url = OpenAiLiveSessionSideband.attachUrl(sessionId);
     const apiKey = this.readApiKey();
     if (apiKey === undefined || apiKey === '') {
-      return Promise.reject(
-        new Error('OPENAI_API_KEY is not set for the live session sideband'),
+      throw new Error(
+        'OPENAI_API_KEY is not set for the live session sideband',
       );
     }
     return new Promise<void>((resolve, reject) => {

@@ -86,7 +86,7 @@ describe('OpenAiLiveSessionSideband.attachUrl', () => {
 });
 
 describe('OpenAiLiveSessionSideband.attach', () => {
-  it('rejects and opens no socket for a session id with characters outside the allowed set', async () => {
+  it('throws and opens no socket for a session id with characters outside the allowed set', () => {
     const cases = [
       { sessionId: 'a/b' },
       { sessionId: 'a b' },
@@ -98,14 +98,14 @@ describe('OpenAiLiveSessionSideband.attach', () => {
     for (const testCase of cases) {
       const { createSocket, sideband } = createHarness();
 
-      await expect(
+      expect(() =>
         sideband.attach(testCase.sessionId, () => Promise.resolve()),
-      ).rejects.toThrow(Error);
+      ).toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
   });
 
-  it('rejects and opens no socket when the API key is missing or empty', async () => {
+  it('throws and opens no socket when the API key is missing or empty', () => {
     const cases = [
       {
         name: 'undefined key',
@@ -119,9 +119,9 @@ describe('OpenAiLiveSessionSideband.attach', () => {
         readApiKey: testCase.readApiKey,
       });
 
-      await expect(
+      expect(() =>
         sideband.attach('live_123', () => Promise.resolve()),
-      ).rejects.toThrow(Error);
+      ).toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
   });
