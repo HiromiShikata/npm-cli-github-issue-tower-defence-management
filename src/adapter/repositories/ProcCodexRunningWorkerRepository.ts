@@ -12,7 +12,6 @@ const TAKE_OWNERSHIP_ISSUE_URL_PATTERN =
 const ISSUE_URL_PATTERN =
   /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/(issues|pull)\/\d+$/;
 const LOCAL_AW_SCRIPT_SUFFIX = '/machine/sk/aw';
-const DELEGATED_BASH_IC_PREFIX = 'bash -ic ';
 
 const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -51,10 +50,7 @@ const localCodexAwLaunchIssueUrls = (argv: string[]): string[] =>
 
 const delegatedScriptOf = (argv: string[]): string | null => {
   if (path.basename(argv[0]) === 'ssh') {
-    const remoteCommand = argv[argv.length - 1];
-    return remoteCommand.startsWith(DELEGATED_BASH_IC_PREFIX)
-      ? remoteCommand
-      : null;
+    return argv[argv.length - 1];
   }
   if (
     path.basename(argv[0]) === 'bash' &&
