@@ -18,7 +18,10 @@ import {
   LiveSessionToolCallOutcome,
   LiveSessionToolCallRunner,
   capLiveSessionText,
+  componentsBelowFolder,
   isBinaryText,
+  isCredentialLikePath,
+  isFolderRefusedForFileRead,
   isPathInsideFolder,
   lastScreenLines,
   issueUrlOfSessionName,
@@ -34,6 +37,7 @@ export type LiveSessionIssueReader = Pick<
 >;
 
 export type LiveSessionToolCallDependencies = {
+  localHomeDirectory: string;
   ownerCalls: OwnerCallFileRepository;
   knownIssueUrls: KnownIssueUrlRepository;
   hosts: SessionHostRepository;
@@ -67,6 +71,15 @@ const FILE_NOT_FOUND_TEXT = 'ファイルまたはフォルダが見つかりま
 
 const FILE_OUTSIDE_FOLDER_TEXT =
   '指定されたパスはセッションの作業フォルダの外にあるため、読めません。';
+
+const FILE_REFUSED_CREDENTIAL_TEXT =
+  '認証情報と見なされるファイルまたはフォルダのため、読めません。';
+
+const FOLDER_REFUSED_HOME_TEXT =
+  'ホームディレクトリ、またはその上位のフォルダは作業フォルダとして読めません。';
+
+const REMOTE_FILE_READ_REFUSED_TEXT =
+  'リモートホストで動いているセッションの作業フォルダのファイルは読めません。';
 
 const FILE_BINARY_TEXT = 'バイナリファイルのため内容は表示できません。';
 
@@ -291,6 +304,9 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
       return outputOf(location.text);
     }
     const { host, sessionName } = location;
+    if (host.kind !== 'local') {
+      return outputOf(REMOTE_FILE_READ_REFUSED_TEXT);
+    }
     const panePath = await this.dependencies.commands.run(host, {
       kind: 'tmuxPanePath',
       sessionName,
@@ -305,6 +321,16 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     if (folderRealPath === null) {
       return outputOf(PANE_PATH_UNAVAILABLE_TEXT);
     }
+    const homeRealPath = await this.realPathOf(
+      host,
+      this.dependencies.localHomeDirectory,
+    );
+    if (
+      homeRealPath === null ||
+      isFolderRefusedForFileRead(folderRealPath, homeRealPath)
+    ) {
+      return outputOf(FOLDER_REFUSED_HOME_TEXT);
+    }
     const targetRealPath = await this.realPathOf(
       host,
       joinSessionFolderPath(folderRealPath, relativePath),
@@ -315,6 +341,13 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     if (!isPathInsideFolder(folderRealPath, targetRealPath)) {
       return outputOf(FILE_OUTSIDE_FOLDER_TEXT);
     }
+    if (
+      isCredentialLikePath(
+        componentsBelowFolder(folderRealPath, targetRealPath),
+      )
+    ) {
+      return outputOf(FILE_REFUSED_CREDENTIAL_TEXT);
+    }
     const fileType = await this.dependencies.commands.run(host, {
       kind: 'fileType',
       path: targetRealPath,
@@ -324,7 +357,7 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     }
     const typeName = fileType.stdout.trim();
     if (typeName === 'directory') {
-      return this.listDirectory(host, targetRealPath);
+      return this.listDirectory(host, targetRealPath, folderRealPath);
     }
     if (typeName === 'regular file' || typeName === 'regular empty file') {
       return this.readFileText(host, targetRealPath);
@@ -381,7 +414,12 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
   private listDirectory = async (
     host: SessionHost,
     directoryPath: string,
+    folderRealPath: string,
   ): Promise<LiveSessionToolCallOutcome> => {
+    const directoryComponents = componentsBelowFolder(
+      folderRealPath,
+      directoryPath,
+    );
     const result = await this.dependencies.commands.run(host, {
       kind: 'listDirectory',
       path: directoryPath,
@@ -392,6 +430,13 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     const entries = result.stdout
       .split('\n')
       .filter((entry) => entry.length > 0)
+      .filter(
+        (entry) =>
+          !isCredentialLikePath([
+            ...directoryComponents,
+            entry.replace(/\/$/, ''),
+          ]),
+      )
       .sort();
     return outputOf(entries.join('\n'));
   };

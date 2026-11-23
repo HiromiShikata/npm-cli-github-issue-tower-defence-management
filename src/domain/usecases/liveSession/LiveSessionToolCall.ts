@@ -110,3 +110,88 @@ export const lastScreenLines = (text: string, lineCount: number): string => {
   }
   return lines.slice(Math.max(0, end - lineCount), end).join('\n');
 };
+
+const CREDENTIAL_DIRECTORY_PREFIXES = [
+  '.ssh',
+  '.gnupg',
+  '.aws',
+  '.azure',
+  '.kube',
+  '.docker',
+];
+
+const CREDENTIAL_FILE_NAMES = [
+  '.netrc',
+  '.npmrc',
+  '.pypirc',
+  '.git-credentials',
+  '.Xauthority',
+  '.ICEauthority',
+  '.env',
+];
+
+const CREDENTIAL_KEY_FILE_EXTENSIONS = [
+  '.pem',
+  '.key',
+  '.p12',
+  '.pfx',
+  '.kdbx',
+];
+
+const CREDENTIAL_CONFIG_STEM_NAMES = ['creds', 'credentials', 'secrets'];
+
+const isCredentialComponent = (name: string): boolean =>
+  CREDENTIAL_DIRECTORY_PREFIXES.some((prefix) => name.startsWith(prefix)) ||
+  CREDENTIAL_FILE_NAMES.includes(name) ||
+  name.startsWith('.env.') ||
+  (name.startsWith('id_') && !name.slice('id_'.length).includes('.')) ||
+  CREDENTIAL_KEY_FILE_EXTENSIONS.some((extension) => name.endsWith(extension));
+
+const isUnderCredentialConfigFolder = (
+  components: readonly string[],
+): boolean => {
+  const configIndex = components.indexOf('.config');
+  return (
+    configIndex !== -1 &&
+    components
+      .slice(configIndex + 1)
+      .some(
+        (name) =>
+          name === 'gh' ||
+          CREDENTIAL_CONFIG_STEM_NAMES.some(
+            (stem) => name === stem || name.startsWith(`${stem}.`),
+          ),
+      )
+  );
+};
+
+export const isCredentialLikePath = (components: readonly string[]): boolean =>
+  components.some(isCredentialComponent) ||
+  isUnderCredentialConfigFolder(components);
+
+export const componentsBelowFolder = (
+  folderRealPath: string,
+  targetRealPath: string,
+): string[] => {
+  const folder = folderRealPath.replace(/\/+$/, '');
+  if (targetRealPath === folder || targetRealPath === '/') {
+    return [];
+  }
+  const prefix = folder === '' ? '/' : `${folder}/`;
+  return targetRealPath
+    .slice(prefix.length)
+    .split('/')
+    .filter((name) => name.length > 0);
+};
+
+export const isFolderRefusedForFileRead = (
+  folderRealPath: string,
+  homeRealPath: string,
+): boolean => {
+  const folder = folderRealPath.replace(/\/+$/, '') || '/';
+  if (folder === '/') {
+    return true;
+  }
+  const home = homeRealPath.replace(/\/+$/, '') || '/';
+  return home === folder || home.startsWith(`${folder}/`);
+};

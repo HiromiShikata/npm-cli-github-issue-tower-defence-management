@@ -11,6 +11,7 @@ export {
   type ProjectReadmeConfig,
 } from './projectConfig';
 
+import * as os from 'os';
 import * as path from 'path';
 import { workerRequestTextOf } from '../../../domain/entities/WorkerRequestText';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
@@ -1513,6 +1514,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueRepository,
     liveSessionRepository: new OpenAiLiveSessionRepository(),
     liveSessionToolCalls: new LiveSessionToolCallUseCase({
+      localHomeDirectory: os.homedir(),
       ownerCalls: new FileOwnerCallFileRepository(inTmuxDataDir),
       knownIssueUrls: new FileInTmuxIssueUrlRepository(inTmuxDataDir),
       hosts: new ProcSshSessionHostRepository(workerHostsFilePath),

@@ -125,6 +125,8 @@ type Harness = {
   hosts: InMemorySessionHostRepository;
 };
 
+const HOME = '/home/example-user';
+
 const buildHarness = (options: {
   ownerCalls?: PendingOwnerCall[];
   hostsByIssueUrl?: Record<string, SessionHost>;
@@ -140,6 +142,7 @@ const buildHarness = (options: {
   );
   const useCase = new LiveSessionToolCallUseCase({
     ownerCalls: new InMemoryOwnerCallFileRepository(options.ownerCalls ?? []),
+    localHomeDirectory: HOME,
     knownIssueUrls: {
       listKnownIssueUrls: () => options.knownIssueUrls ?? [],
     },
@@ -557,6 +560,9 @@ describe('LiveSessionToolCallUseCase session_file_read', () => {
         case 'tmuxPanePath':
           return overrides.panePath ?? exited(`${FOLDER}\n`);
         case 'realPath':
+          if (['/', '/home', HOME].includes(command.path)) {
+            return exited(`${command.path}\n`);
+          }
           return command.path === FOLDER
             ? (overrides.folderReal ?? exited(`${FOLDER}\n`))
             : (overrides.targetReal ?? exited(`${FOLDER}/src/index.ts\n`));
@@ -817,5 +823,169 @@ describe('LiveSessionToolCallUseCase calling_sessions_list host label', () => {
         localHasSession: false,
       }),
     ).toMatchObject({ calls: [{ host: '不明', taskIssueUrl: ISSUE_URL }] });
+  });
+});
+
+describe('LiveSessionToolCallUseCase session_file_read safety rules', () => {
+  const FOLDER = '/work/project';
+
+  const respondWith =
+    (
+      overrides: Partial<{
+        panePath: string;
+        targetReal: string;
+        fileType: string;
+        listing: string;
+        content: string;
+      }>,
+    ): CommandResponder =>
+    (_host, command) => {
+      switch (command.kind) {
+        case 'tmuxHasSession':
+          return exited('');
+        case 'tmuxPanePath':
+          return exited(`${overrides.panePath ?? FOLDER}\n`);
+        case 'realPath':
+          if (['/', '/home', HOME].includes(command.path)) {
+            return exited(`${command.path}\n`);
+          }
+          if (command.path === (overrides.panePath ?? FOLDER)) {
+            return exited(`${command.path}\n`);
+          }
+          return exited(`${overrides.targetReal ?? `${FOLDER}/notes.txt`}\n`);
+        case 'fileType':
+          return exited(overrides.fileType ?? 'regular file\n');
+        case 'readFileHead':
+          return exited(overrides.content ?? 'plain text\n');
+        case 'listDirectory':
+          return exited(overrides.listing ?? 'notes.txt\n');
+        case 'tmuxCapturePane':
+          return exited('');
+      }
+    };
+
+  const readFile = async (
+    overrides: Parameters<typeof respondWith>[0],
+    path: string,
+  ): Promise<string> => {
+    const { useCase } = buildHarness({ respond: respondWith(overrides) });
+    return outputOf(
+      await useCase.run(
+        call(
+          LIVE_SESSION_TOOL_NAMES.sessionFileRead,
+          { path },
+          PLAIN_SESSION_NAME,
+        ),
+      ),
+    );
+  };
+
+  it.each([
+    { name: 'refuses the home folder itself', panePath: HOME },
+    { name: 'refuses the filesystem root', panePath: '/' },
+    { name: 'refuses an ancestor of the home folder', panePath: '/home' },
+  ])('$name', async ({ panePath }) => {
+    expect(await readFile({ panePath }, '.')).toBe(
+      'ホームディレクトリ、またはその上位のフォルダは作業フォルダとして読めません。',
+    );
+  });
+
+  it('reads a file in a folder that sits inside the home folder', async () => {
+    expect(
+      await readFile(
+        { panePath: `${HOME}/repo`, targetReal: `${HOME}/repo/notes.txt` },
+        'notes.txt',
+      ),
+    ).toBe('plain text\n');
+  });
+
+  it.each([
+    '.ssh/config',
+    '.ssh-keys/id',
+    '.gnupg/private-keys-v1.d/key',
+    '.aws/credentials',
+    '.azure/accessTokens.json',
+    '.kube/config',
+    '.docker/config.json',
+    '.netrc',
+    '.npmrc',
+    '.pypirc',
+    '.git-credentials',
+    '.Xauthority',
+    '.ICEauthority',
+    '.env',
+    '.env.local',
+    '.config/gh/hosts.yml',
+    '.config/app/credentials.json',
+    '.config/tool/secrets/token',
+    '.config/tool/creds',
+    'keys/id_ed25519',
+    'certs/server.pem',
+    'certs/private.key',
+    'bundle/store.p12',
+    'bundle/store.pfx',
+    'vault/passwords.kdbx',
+  ])('refuses the credential-like file %s', async (relative) => {
+    expect(
+      await readFile({ targetReal: `${FOLDER}/${relative}` }, relative),
+    ).toBe('認証情報と見なされるファイルまたはフォルダのため、読めません。');
+  });
+
+  it.each([
+    '.github/workflows/ci.yml',
+    '.config/app/settings.json',
+    'keys/id_rsa.pub',
+    'src/config.ts',
+    'docs/environment.md',
+  ])('still reads the ordinary file %s', async (relative) => {
+    expect(
+      await readFile({ targetReal: `${FOLDER}/${relative}` }, relative),
+    ).toBe('plain text\n');
+  });
+
+  it('omits credential-like entries from a folder listing', async () => {
+    expect(
+      await readFile(
+        {
+          targetReal: FOLDER,
+          fileType: 'directory\n',
+          listing: '.ssh/\n.env\nnotes.txt\nsub/\nid_ed25519\n.config/\n',
+        },
+        '.',
+      ),
+    ).toBe('.config/\nnotes.txt\nsub/');
+  });
+
+  it('omits entries under a credential config folder from its listing', async () => {
+    expect(
+      await readFile(
+        {
+          targetReal: `${FOLDER}/.config`,
+          fileType: 'directory\n',
+          listing: 'gh/\napp/\n',
+        },
+        '.config',
+      ),
+    ).toBe('app/');
+  });
+
+  it('refuses a session on a remote host, which has no local home folder to compare with', async () => {
+    const { useCase } = buildHarness({
+      hostsByIssueUrl: { [ISSUE_URL]: REMOTE_HOST },
+      respond: respondWith({}),
+    });
+    expect(
+      outputOf(
+        await useCase.run(
+          call(
+            LIVE_SESSION_TOOL_NAMES.sessionFileRead,
+            { path: 'notes.txt' },
+            ISSUE_SESSION_NAME,
+          ),
+        ),
+      ),
+    ).toBe(
+      'リモートホストで動いているセッションの作業フォルダのファイルは読めません。',
+    );
   });
 });
