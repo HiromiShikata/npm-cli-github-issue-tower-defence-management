@@ -947,7 +947,7 @@ export class VoiceConsoleSession {
       return this.stageAction(entry, {
         requestPath: '/api/review',
         body: { ...baseBody, action },
-        readBack: `プルリクエスト ${prUrl} を承認してマージします。`,
+        readBack: `「${entry.item.title}」のプルリクエスト ${prUrl} を承認してマージします。`,
         removesFromQueue: true,
       });
     }
@@ -960,7 +960,7 @@ export class VoiceConsoleSession {
       return this.stageAction(entry, {
         requestPath: '/api/review',
         body: { ...baseBody, action, commentBody: commentText },
-        readBack: `プルリクエスト ${prUrl} に変更依頼「${commentText}」を出します。`,
+        readBack: `「${entry.item.title}」のプルリクエスト ${prUrl} に変更依頼「${commentText}」を出します。`,
         removesFromQueue: false,
       });
     }
@@ -974,7 +974,7 @@ export class VoiceConsoleSession {
           commentBody: UNNECESSARY_COMMENT_TEXT,
           issueCommentBody: `The pull request for this issue was unnecessary and has been closed: ${prUrl}\n\nDo not create it again.`,
         },
-        readBack: `プルリクエスト ${prUrl} は不要だったとして閉じます。`,
+        readBack: `「${entry.item.title}」のプルリクエスト ${prUrl} は不要だったとして閉じます。`,
         removesFromQueue: true,
       });
     }
@@ -986,7 +986,7 @@ export class VoiceConsoleSession {
         issueUrl: entry.item.url,
         commentBody: TOTALLY_WRONG_COMMENT_TEXT,
       },
-      readBack: `プルリクエスト ${prUrl} を内容が違うとして閉じます。`,
+      readBack: `「${entry.item.title}」のプルリクエスト ${prUrl} を内容が違うとして閉じます。`,
       removesFromQueue: true,
     });
   }
