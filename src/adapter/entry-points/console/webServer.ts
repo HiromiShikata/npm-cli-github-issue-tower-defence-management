@@ -2,11 +2,16 @@ import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
+import { randomUUID } from 'crypto';
 import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/LiveSessionRepository';
 import type { LiveSessionToolCallRunner } from '../../../domain/usecases/liveSession/LiveSessionToolCall';
+import type { VoiceConsoleServerEventHandler } from '../../repositories/OpenAiLiveSessionSideband';
+import { GitHubRepositoryFileReader } from '../../repositories/GitHubRepositoryFileReader';
+import { VoiceConsoleSession } from '../../voice-console/voiceConsoleSession';
+import { VoiceConsoleSidebandHandler } from '../../voice-console/voiceConsoleSideband';
 import { Project } from '../../../domain/entities/Project';
 import type {
   ConsoleFieldOption,
@@ -257,6 +262,13 @@ const readStaticFile = (filePath: string): Buffer | null => {
   }
 };
 
+export type LiveSessionSidebandConnector = {
+  attach(
+    sessionId: string,
+    handleServerEvent: VoiceConsoleServerEventHandler,
+  ): void;
+};
+
 export type WebServerOptions = {
   accessToken: string;
   uiDistDir: string;
@@ -274,6 +286,7 @@ export type WebServerOptions = {
   issueRepository?: IssueRepository | null;
   liveSessionRepository?: LiveSessionRepository | null;
   liveSessionToolCalls?: LiveSessionToolCallRunner | null;
+  liveSessionSideband?: LiveSessionSidebandConnector | null;
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
@@ -1051,7 +1064,75 @@ const resolveAirplaneSyncDeps = (
 
 const LIVE_SESSIONS_REQUEST_PATH = '/api/live/sessions';
 
+const buildVoiceConsoleSession = (
+  options: WebServerOptions,
+): VoiceConsoleSession => {
+  const requireIssueRepository = (): IssueRepository => {
+    const repository = options.issueRepository ?? null;
+    if (repository === null) {
+      throw new Error(
+        'issue repository is not configured for the voice console',
+      );
+    }
+    return repository;
+  };
+  const resolveIssueRepository: ConsoleIssueRepositoryResolver =
+    options.resolveIssueRepository ?? (() => requireIssueRepository());
+  const repositoryFileReader = new GitHubRepositoryFileReader(
+    fetch,
+    (owner) => options.resolveGithubToken?.(owner) ?? '',
+  );
+  return new VoiceConsoleSession({
+    consoleDataOutputDir: options.consoleDataOutputDir,
+    projectPjcodes: options.dashboardProjectNames,
+    resolveIssueRepository,
+    searchIssues: (query) => requireIssueRepository().searchIssues(query),
+    getAuthenticatedUserLogin: () =>
+      requireIssueRepository().getAuthenticatedUserLogin(),
+    readRepositoryFile: (owner, repo, ref, filePath) =>
+      repositoryFileReader.readFile(owner, repo, ref, filePath),
+    runOperation: async (requestPath, body) =>
+      (await handleOperationApi(options, requestPath, body)) ?? {
+        statusCode: 503,
+        body: { error: 'operation_unavailable' },
+      },
+    newActionId: () => randomUUID(),
+    logError: (message) => console.error(message),
+  });
+};
+
+const attachVoiceConsoleSideband = (
+  options: WebServerOptions,
+  sessionId: string,
+): void => {
+  const sideband = options.liveSessionSideband ?? null;
+  if (sideband === null) {
+    return;
+  }
+  try {
+    const session = buildVoiceConsoleSession(options);
+    const handlerHolder: { handler: VoiceConsoleSidebandHandler | null } = {
+      handler: null,
+    };
+    sideband.attach(sessionId, (event, send) => {
+      const handler =
+        handlerHolder.handler ??
+        new VoiceConsoleSidebandHandler(session, send, (message) =>
+          console.error(message),
+        );
+      handlerHolder.handler = handler;
+      return handler.handleServerEvent(event);
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(
+      `voice console sideband could not attach to live session ${sessionId}: ${message}`,
+    );
+  }
+};
+
 const handleLiveSessionCreate = async (
+  options: WebServerOptions,
   liveSessionRepository: LiveSessionRepository,
   request: http.IncomingMessage,
   response: http.ServerResponse,
@@ -1067,6 +1148,7 @@ const handleLiveSessionCreate = async (
   }
   const result = await liveSessionRepository.createFromSdpOffer(sdpOffer);
   if (result.type === 'created') {
+    attachVoiceConsoleSideband(options, result.sessionId);
     response.writeHead(201, {
       'Content-Type': 'application/sdp',
       'Cache-Control': 'no-store',
@@ -1172,6 +1254,7 @@ const handleTokenedRequest = async (
         return;
       }
       await handleLiveSessionCreate(
+        options,
         options.liveSessionRepository,
         request,
         response,

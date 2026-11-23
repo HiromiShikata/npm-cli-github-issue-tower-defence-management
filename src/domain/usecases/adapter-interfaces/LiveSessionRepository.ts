@@ -1,5 +1,5 @@
 export type LiveSessionCreateResult =
-  | { type: 'created'; sdpAnswer: string }
+  | { type: 'created'; sdpAnswer: string; sessionId: string }
   | { type: 'apiKeyMissing' }
   | { type: 'openAiFailed'; status: number; message: string };
 
