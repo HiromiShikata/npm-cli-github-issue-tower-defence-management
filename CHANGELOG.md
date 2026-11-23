@@ -1,3 +1,10 @@
+# [2.204.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.203.0...v2.204.0) (2026-11-23)
+
+
+### Features
+
+* **live:** add read-only session tools to the voice assistant ([#3759](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3759)) ([22a525f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/22a525fc72579751efae9e0bf97112fa012b6a8c))
+
 # [2.203.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.202.1...v2.203.0) (2026-11-23)
 
 
