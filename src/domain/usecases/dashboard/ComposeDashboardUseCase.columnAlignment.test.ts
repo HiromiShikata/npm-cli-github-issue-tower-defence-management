@@ -83,9 +83,6 @@ const codexWindow: CodexSevenDayWindowStatus = {
   errorMessage: null,
 };
 
-// Every value is two digits so each value's display column is unambiguous.
-// Claude prep total = 21 + 10 + codex 13 = 44; Claude hum total = 34 + 7 = 41.
-// bob resets in 3 days and alice in 5 days, so bob sorts first.
 const alignmentInput: ComposeDashboardInput = {
   machineStatus: null,
   projects: [
