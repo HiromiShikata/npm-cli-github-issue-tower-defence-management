@@ -1,3 +1,10 @@
+# [2.205.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.204.1...v2.205.0) (2026-11-23)
+
+
+### Features
+
+* **voice-console:** replace live session patrol with server-side voice console tools ([#3760](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3760)) ([5b881b0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5b881b0bba74b8cca57339a9f15c3db94d53fa15))
+
 ## [2.204.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.204.0...v2.204.1) (2026-11-23)
 
 
