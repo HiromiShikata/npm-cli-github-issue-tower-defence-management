@@ -8,6 +8,7 @@ import type {
 import {
   buildVoiceConsoleQueue,
   VOICE_CONSOLE_QUEUE_TABS,
+  VOICE_CONSOLE_TAB_LABELS,
 } from './voiceConsoleQueue';
 
 type Tab = 'todo-by-human' | 'prs';
@@ -159,5 +160,14 @@ describe('buildVoiceConsoleQueue', () => {
         projectPjcodes: ['umino'],
       }),
     ).toThrow();
+  });
+});
+
+describe('voice console queue tab labels', () => {
+  it('labels each queue tab with the owner term shown in the console', () => {
+    expect(VOICE_CONSOLE_TAB_LABELS).toEqual({
+      'todo-by-human': 'Todo by human',
+      prs: 'Awaiting Owner',
+    });
   });
 });

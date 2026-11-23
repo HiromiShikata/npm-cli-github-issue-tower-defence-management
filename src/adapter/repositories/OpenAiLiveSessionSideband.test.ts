@@ -252,3 +252,128 @@ describe('OpenAiLiveSessionSideband.attach', () => {
     }
   });
 });
+
+
+describe('OpenAiLiveSessionSideband.close', () => {
+  const sessionClosedEvent = JSON.stringify({
+    type: 'session.closed',
+    event_id: 'event_1',
+    reason: 'close_requested',
+  });
+
+  it('opens the attach socket with the bearer key, sends session.close and resolves on session.closed', async () => {
+    const { socket, createSocket, sideband, logError } = createHarness();
+
+    const closing = sideband.close('live_123');
+    await flushPromises();
+
+    expect(createSocket.mock.calls[0]).toEqual([
+      'wss://api.openai.com/v1/live/sessions/live_123/attach',
+      { Authorization: 'Bearer key-1' },
+    ]);
+    expect(socket.sent.map((data) => JSON.parse(data))).toEqual([
+      { type: 'session.close' },
+    ]);
+    socket.emit('message', { data: sessionClosedEvent });
+
+    await expect(closing).resolves.toBeUndefined();
+    expect({ closed: socket.closed, logged: logError.mock.calls }).toEqual({
+      closed: true,
+      logged: [],
+    });
+  });
+
+  it('ignores events other than session.closed while it waits', async () => {
+    const { socket, sideband } = createHarness();
+
+    const closing = sideband.close('live_123');
+    await flushPromises();
+    socket.emit('message', {
+      data: JSON.stringify({ type: 'session.updated' }),
+    });
+    socket.emit('message', { data: sessionClosedEvent });
+
+    await expect(closing).resolves.toBeUndefined();
+  });
+
+  it('rejects with the session id when the socket closes before session.closed', async () => {
+    const { socket, sideband } = createHarness();
+
+    const closing = sideband.close('live_123');
+    await flushPromises();
+    socket.emit('close', {});
+
+    await expect(closing).rejects.toThrow(
+      'OpenAI live session live_123 sideband closed before session.closed',
+    );
+  });
+
+  it('rejects with the session id when the socket errors before session.closed', async () => {
+    const { socket, sideband } = createHarness();
+
+    const closing = sideband.close('live_123');
+    await flushPromises();
+    socket.emit('error', {});
+
+    await expect(closing).rejects.toThrow(
+      'OpenAI live session live_123 sideband error before session.closed',
+    );
+  });
+
+  it('rejects and closes the socket when session.closed does not arrive within the timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      const { socket, sideband } = createHarness({ opens: false });
+
+      const closing = sideband.close('live_123');
+      socket.emit('open', {});
+      jest.advanceTimersByTime(10_000);
+
+      await expect(closing).rejects.toThrow(
+        'OpenAI live session live_123 did not confirm session.closed within 10000 ms',
+      );
+      expect(socket.closed).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('rejects and closes the socket when it does not open within the timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      const { socket, sideband } = createHarness({ opens: false });
+
+      const closing = sideband.close('live_123');
+      jest.advanceTimersByTime(10_000);
+
+      await expect(closing).rejects.toThrow(
+        'OpenAI live session live_123 did not confirm session.closed within 10000 ms',
+      );
+      expect(socket.closed).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('rejects without opening a socket when the API key is missing or empty', async () => {
+    for (const key of [undefined, '']) {
+      const { createSocket, sideband } = createHarness({
+        readApiKey: () => key,
+      });
+
+      await expect(sideband.close('live_123')).rejects.toThrow(
+        'OPENAI_API_KEY is not set for the live session sideband',
+      );
+      expect(createSocket).not.toHaveBeenCalled();
+    }
+  });
+
+  it('rejects without opening a socket for a session id outside the allowed set', async () => {
+    const { createSocket, sideband } = createHarness();
+
+    await expect(sideband.close('live/123')).rejects.toThrow(
+      'OpenAI live session id has characters outside [A-Za-z0-9_-]',
+    );
+    expect(createSocket).not.toHaveBeenCalled();
+  });
+});

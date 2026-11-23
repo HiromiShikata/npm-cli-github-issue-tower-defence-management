@@ -136,3 +136,24 @@ describe('VOICE_CONSOLE_TOOL_DEFINITIONS', () => {
     }
   });
 });
+
+describe('voice console live session wording', () => {
+  it('names the queue tabs with the owner terms in the instructions and tool descriptions', () => {
+    const spokenText = [
+      VOICE_CONSOLE_INSTRUCTIONS,
+      JSON.stringify(VOICE_CONSOLE_TOOL_DEFINITIONS),
+    ].join('\n');
+
+    expect({
+      hasAwaitingOwner: spokenText.includes('Awaiting Owner'),
+      hasTodoByHuman: spokenText.includes('Todo by human'),
+      hasInternalPrsName: /prs/i.test(spokenText),
+      hasInternalTabValue: spokenText.includes('todo-by-human'),
+    }).toEqual({
+      hasAwaitingOwner: true,
+      hasTodoByHuman: true,
+      hasInternalPrsName: false,
+      hasInternalTabValue: false,
+    });
+  });
+});
