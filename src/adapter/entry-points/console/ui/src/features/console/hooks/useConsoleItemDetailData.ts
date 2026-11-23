@@ -10,6 +10,7 @@ import type {
   ConsoleRelatedPullRequest,
   ConsoleTabName,
 } from '../logic/types';
+import { startLoadWithNetworkRetry } from './networkRetryingLoad';
 import type { ConsoleCaches } from './useConsoleCaches';
 import { useConsoleResource } from './useConsoleResource';
 
@@ -99,18 +100,21 @@ export const useConsoleItemDetailData = (
     boardListsRelatedPullRequests ? url : null,
     EMPTY_RELATED,
   );
+  const relatedPullRequests = boardListsRelatedPullRequests
+    ? relatedPrs.data
+    : EMPTY_RELATED;
 
   const [relatedViews, setRelatedViews] = useState<
     ConsoleRelatedPullRequestView[]
   >([]);
 
   useEffect(() => {
-    if (isPr || relatedPrs.data.length === 0) {
+    if (isPr || relatedPullRequests.length === 0) {
       setRelatedViews([]);
       return;
     }
     let cancelled = false;
-    const initial: ConsoleRelatedPullRequestView[] = relatedPrs.data.map(
+    const initial: ConsoleRelatedPullRequestView[] = relatedPullRequests.map(
       (pullRequest) => ({
         pullRequest,
         files: EMPTY_FILES,
@@ -137,43 +141,51 @@ export const useConsoleItemDetailData = (
       );
     };
 
-    for (const pullRequest of relatedPrs.data) {
+    const stopLoads: (() => void)[] = [];
+    for (const pullRequest of relatedPullRequests) {
       const relatedKey = pullRequest.url;
-      caches.files
-        .load(relatedKey, pullRequest.url)
-        .then((value) =>
-          updateView(pullRequest.url, {
-            files: value,
-            filesAreLoading: false,
-          }),
-        )
-        .catch((cause: unknown) =>
-          updateView(pullRequest.url, {
-            filesAreLoading: false,
-            filesError: cause instanceof Error ? cause.message : String(cause),
-          }),
-        );
-      caches.commits
-        .load(relatedKey, pullRequest.url)
-        .then((value) =>
-          updateView(pullRequest.url, {
-            commits: value,
-            commitsAreLoading: false,
-          }),
-        )
-        .catch((cause: unknown) =>
-          updateView(pullRequest.url, {
-            commitsAreLoading: false,
-            commitsError:
-              cause instanceof Error ? cause.message : String(cause),
-          }),
-        );
+      stopLoads.push(
+        startLoadWithNetworkRetry<ConsoleChangedFile[]>({
+          load: () => caches.files.load(relatedKey, pullRequest.url),
+          onSuccess: (value) =>
+            updateView(pullRequest.url, {
+              files: value,
+              filesAreLoading: false,
+              filesError: null,
+            }),
+          onFailure: (cause) =>
+            updateView(pullRequest.url, {
+              filesAreLoading: false,
+              filesError: cause instanceof Error ? cause.message : String(cause),
+            }),
+        }),
+      );
+      stopLoads.push(
+        startLoadWithNetworkRetry<ConsoleCommit[]>({
+          load: () => caches.commits.load(relatedKey, pullRequest.url),
+          onSuccess: (value) =>
+            updateView(pullRequest.url, {
+              commits: value,
+              commitsAreLoading: false,
+              commitsError: null,
+            }),
+          onFailure: (cause) =>
+            updateView(pullRequest.url, {
+              commitsAreLoading: false,
+              commitsError:
+                cause instanceof Error ? cause.message : String(cause),
+            }),
+        }),
+      );
     }
 
     return () => {
       cancelled = true;
+      for (const stopLoad of stopLoads) {
+        stopLoad();
+      }
     };
-  }, [caches, isPr, relatedPrs.data]);
+  }, [caches, isPr, relatedPullRequests]);
 
   return {
     state: state.data,
