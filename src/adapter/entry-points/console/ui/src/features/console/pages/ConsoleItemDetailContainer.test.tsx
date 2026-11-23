@@ -4953,9 +4953,10 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
     ...issueItem,
     dependedIssueUrls: [urlA, urlB],
   };
-  const statusOptionsWithoutAwaitingWorkspace = consoleStatusOptionsFixture.filter(
-    (o) => o.name !== AWAITING_WORKSPACE_NAME,
-  );
+  const statusOptionsWithoutAwaitingWorkspace =
+    consoleStatusOptionsFixture.filter(
+      (o) => o.name !== AWAITING_WORKSPACE_NAME,
+    );
 
   const readStoredOfflineQueue = (): unknown[] =>
     JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) ?? '[]');
@@ -4999,8 +5000,6 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
       />,
     );
 
-  // Renders the container with the real queue hook in place of the
-  // onQueueAction mock, the same way the queue-delivery test above does.
   const renderWithRealQueue = (
     operations: ConsoleOperationsApi,
     isAirplaneModeOn: boolean,
@@ -5076,9 +5075,7 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
         expect(readStoredOfflineQueue()).toHaveLength(2);
       });
       await waitFor(() => {
-        expect(
-          view.queryByPlaceholderText('Depended issue URL'),
-        ).toBeNull();
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
       });
       expect(
         view.container.querySelector('.console-settings-modal-error'),
@@ -5133,9 +5130,7 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
         expect(readStoredOfflineQueue()).toHaveLength(2);
       });
       await waitFor(() => {
-        expect(
-          view.queryByPlaceholderText('Depended issue URL'),
-        ).toBeNull();
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
       });
       expect(
         view.container.querySelector('.console-settings-modal-error'),
@@ -5149,13 +5144,15 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
 
   it.each([
     {
-      outcomeCase: 'the list is emptied while an Awaiting Workspace option exists',
+      outcomeCase:
+        'the list is emptied while an Awaiting Workspace option exists',
       statusOptions: consoleStatusOptionsFixture,
       submittedText: '',
       expectedReopenedText: '',
     },
     {
-      outcomeCase: 'the list is changed while no Awaiting Workspace option exists',
+      outcomeCase:
+        'the list is changed while no Awaiting Workspace option exists',
       statusOptions: statusOptionsWithoutAwaitingWorkspace,
       submittedText: urlB,
       expectedReopenedText: urlB,
@@ -5168,9 +5165,7 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
 
       openRareActionsAndSubmit(view, submittedText);
       await waitFor(() => {
-        expect(
-          view.queryByPlaceholderText('Depended issue URL'),
-        ).toBeNull();
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
       });
       expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
 
@@ -5194,9 +5189,7 @@ describe('ConsoleItemDetailContainer depended issue save outcomes and reopened p
       fireEvent.click(view.getByText('Set Depended Issue'));
       await runFakeWindow();
       await waitFor(() => {
-        expect(
-          view.queryByPlaceholderText('Depended issue URL'),
-        ).toBeNull();
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
       });
 
       fireEvent.click(view.getByTitle('Rare actions'));

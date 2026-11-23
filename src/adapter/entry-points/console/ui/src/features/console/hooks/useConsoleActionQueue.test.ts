@@ -3061,7 +3061,8 @@ describe('useConsoleActionQueue onUncommitted outcomes', () => {
       },
     },
     {
-      outcomeCase: 'airplane mode is on and the action carries an offline payload',
+      outcomeCase:
+        'airplane mode is on and the action carries an offline payload',
       isAirplaneModeOn: true,
       commitRejection: null,
       offline: [offlinePayload],
