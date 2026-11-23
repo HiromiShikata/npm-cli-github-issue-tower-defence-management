@@ -7193,6 +7193,71 @@ describe('consoleOperationApi', () => {
       },
     );
 
+    it.each([
+      {
+        name: 'keeps a stored non-GitHub entry unchanged and adds a new GitHub issue URL',
+        storedDependedIssueUrls: ['see the spec'],
+        dependedIssueUrl: 'see the spec, https://github.com/o/r/issues/2',
+        expectedStatusCode: 200,
+        expectsWrite: true,
+      },
+      {
+        name: 'rejects a new non-GitHub entry added next to a stored non-GitHub entry',
+        storedDependedIssueUrls: ['see the spec'],
+        dependedIssueUrl: 'see the spec, see the design',
+        expectedStatusCode: 400,
+        expectsWrite: false,
+      },
+      {
+        name: 'rejects a new non-GitHub entry added to a stored list of GitHub URLs',
+        storedDependedIssueUrls: ['https://github.com/o/r/issues/5'],
+        dependedIssueUrl: 'https://github.com/o/r/issues/5, see the spec',
+        expectedStatusCode: 400,
+        expectsWrite: false,
+      },
+    ])(
+      '$name',
+      async ({
+        storedDependedIssueUrls,
+        dependedIssueUrl,
+        expectedStatusCode,
+        expectsWrite,
+      }) => {
+        issueRepository.getIssueByUrl.mockResolvedValue({
+          ...issue,
+          url: 'https://github.com/o/r/issues/1',
+          dependedIssueUrls: storedDependedIssueUrls,
+        });
+        issueRepository.replaceDependedIssueUrlField.mockResolvedValue(
+          undefined,
+        );
+        const response = await handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl,
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        );
+        expect(response.statusCode).toBe(expectedStatusCode);
+        if (expectsWrite) {
+          expect(
+            issueRepository.replaceDependedIssueUrlField,
+          ).toHaveBeenCalledWith(
+            projectWithDependedField(),
+            expect.objectContaining({ itemId: 'PVTI_dep' }),
+            dependedIssueUrl,
+          );
+        } else {
+          expect(
+            issueRepository.replaceDependedIssueUrlField,
+          ).not.toHaveBeenCalled();
+        }
+      },
+    );
+
     it('propagates a non-stale error from the replace path', async () => {
       issueRepository.replaceDependedIssueUrlField.mockRejectedValue(
         new Error('GraphQL failure'),

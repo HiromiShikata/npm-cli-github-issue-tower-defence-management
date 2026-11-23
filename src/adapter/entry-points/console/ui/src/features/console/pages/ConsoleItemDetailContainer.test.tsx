@@ -4681,25 +4681,51 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     );
   });
 
-  it('collapses the Rare actions panel as soon as onQueueAction is called, without waiting for operations.replaceDependedIssueUrl to resolve', async () => {
+  it('keeps the Rare actions panel open with the typed URL while the queued write is still pending', async () => {
     const operations = buildOperations();
     operations.replaceDependedIssueUrl = jest.fn(() => new Promise(() => {}));
-    const onQueueAction = jest.fn();
-    const {
-      getByTitle,
-      getByPlaceholderText,
-      getByText,
-      queryByPlaceholderText,
-    } = renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+    const onQueueAction = jest.fn(
+      (input: { commit: (sentStepCount: number) => Promise<void> }) => {
+        void input.commit(0);
+      },
+    );
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
 
     submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
 
     await waitFor(() => {
       expect(onQueueAction).toHaveBeenCalledTimes(1);
     });
-    await waitFor(() => {
-      expect(queryByPlaceholderText('Depended issue URL')).toBeNull();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    expect(getByPlaceholderText('Depended issue URL')).toHaveValue(
+      dependedIssueUrlToSubmit,
+    );
+  });
+
+  it('shows the error of a failed queued depended issue URL write and keeps the typed URL in the Rare actions field', async () => {
+    const operations = buildOperations();
+    operations.replaceDependedIssueUrl = jest.fn(async () => {
+      throw new Error('replace failed');
+    });
+    const onQueueAction = jest.fn(
+      (input: { commit: (sentStepCount: number) => Promise<void> }) => {
+        input.commit(0).catch(() => undefined);
+      },
+    );
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(getByText(/replace failed/)).toBeInTheDocument();
+    });
+    expect(getByPlaceholderText('Depended issue URL')).toHaveValue(
+      dependedIssueUrlToSubmit,
+    );
   });
 
   it('builds a two-entry offline payload array for the depended issue URL write and then the Awaiting Workspace status write', async () => {
