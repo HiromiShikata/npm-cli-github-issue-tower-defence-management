@@ -83,8 +83,27 @@ const close = (server: http.Server): Promise<void> =>
     server.close((error) => (error ? reject(error) : resolve()));
   });
 
+type LiveSessionSideband = {
+  attach(
+    sessionId: string,
+    handleServerEvent: (
+      event: unknown,
+      send: (event: Record<string, unknown>) => void,
+    ) => Promise<void>,
+  ): void;
+};
+
+class RecordingLiveSessionSideband implements LiveSessionSideband {
+  readonly attachedSessionIds: string[] = [];
+
+  attach(sessionId: string): void {
+    this.attachedSessionIds.push(sessionId);
+  }
+}
+
 const createTestServer = async (
   liveSessionRepository: LiveSessionRepository | null,
+  liveSessionSideband?: LiveSessionSideband | null,
 ): Promise<http.Server> => {
   const server = createWebServer({
     accessToken: testToken,
@@ -95,6 +114,7 @@ const createTestServer = async (
     dashboardDataDir: null,
     dashboardProjectNames: [],
     liveSessionRepository,
+    liveSessionSideband,
   });
   await listen(server);
   return server;
@@ -105,6 +125,7 @@ describe('webServer live sessions route', () => {
     const repository = new InMemoryLiveSessionRepository({
       type: 'created',
       sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_123',
     });
     const server = await createTestServer(repository);
 
@@ -122,6 +143,66 @@ describe('webServer live sessions route', () => {
       expect(response.body).toBe('ANSWER-SDP');
     } finally {
       await close(server);
+    }
+  });
+
+  it('attaches the sideband to the created session id and still returns the SDP answer', async () => {
+    const repository = new InMemoryLiveSessionRepository({
+      type: 'created',
+      sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_9',
+    });
+    const sideband = new RecordingLiveSessionSideband();
+    const server = await createTestServer(repository, sideband);
+
+    try {
+      const response = await requestServer(
+        server,
+        'POST',
+        '/api/live/sessions',
+        'OFFER-SDP',
+        'application/sdp',
+      );
+      expect(response.statusCode).toBe(201);
+      expect(response.contentType).toBe('application/sdp');
+      expect(response.body).toBe('ANSWER-SDP');
+      expect(sideband.attachedSessionIds).toEqual(['live_9']);
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('returns the SDP answer when the sideband is null or omitted', async () => {
+    const cases = [{ sideband: null }, { sideband: undefined }];
+
+    for (const testCase of cases) {
+      const repository = new InMemoryLiveSessionRepository({
+        type: 'created',
+        sdpAnswer: 'ANSWER-SDP',
+        sessionId: 'live_9',
+      });
+      const server = await createTestServer(repository, testCase.sideband);
+
+      try {
+        const response = await requestServer(
+          server,
+          'POST',
+          '/api/live/sessions',
+          'OFFER-SDP',
+          'application/sdp',
+        );
+        expect({
+          sideband: testCase.sideband,
+          statusCode: response.statusCode,
+          body: response.body,
+        }).toEqual({
+          sideband: testCase.sideband,
+          statusCode: 201,
+          body: 'ANSWER-SDP',
+        });
+      } finally {
+        await close(server);
+      }
     }
   });
 
@@ -189,6 +270,7 @@ describe('webServer live sessions route', () => {
     const repository = new InMemoryLiveSessionRepository({
       type: 'created',
       sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_123',
     });
     const server = await createTestServer(repository);
 
@@ -213,6 +295,7 @@ describe('webServer live sessions route', () => {
     const repository = new InMemoryLiveSessionRepository({
       type: 'created',
       sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_123',
     });
     const server = await createTestServer(repository);
 
@@ -245,6 +328,7 @@ describe('webServer live sessions route', () => {
     const repository = new InMemoryLiveSessionRepository({
       type: 'created',
       sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_123',
     });
     const server = await createTestServer(repository);
 
