@@ -204,6 +204,22 @@ export class ConsoleActionPartiallySentError extends Error {
   }
 }
 
+export const isHeldOfflineCommitFailure = (
+  cause: unknown,
+  sentStepCount: number,
+  offlinePayloadCount: number,
+): boolean => {
+  const isPartiallySent = cause instanceof ConsoleActionPartiallySentError;
+  const sentStepCountAfterAttempt = isPartiallySent
+    ? cause.sentStepCount
+    : sentStepCount;
+  const unsentRequestFailure = isPartiallySent ? cause.cause : cause;
+  return (
+    isNetworkError(unsentRequestFailure) &&
+    offlinePayloadCount > sentStepCountAfterAttempt
+  );
+};
+
 export const consoleActionStepsRun = async (
   steps: ReadonlyArray<() => Promise<void>>,
   sentStepCount = 0,
@@ -464,10 +480,14 @@ export const useConsoleActionQueue = (
           );
           const unsentRequestFailure = isPartiallySent ? cause.cause : cause;
           if (
-            isNetworkError(unsentRequestFailure) &&
-            unsentOfflinePayloads.length > 0
+            isHeldOfflineCommitFailure(
+              cause,
+              sentStepCount,
+              offlinePayloads.length,
+            )
           ) {
             actionHoldOffline(unsentOfflinePayloads);
+            action.onUncommitted?.({ status: 'held_offline' });
           } else {
             const refusedToComposer =
               action.composerDraft !== undefined &&

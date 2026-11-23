@@ -18,6 +18,7 @@ import {
   type ConsoleOfflineQueuedAction,
   type ConsoleUncommittedOutcome,
   consoleActionStepsRun,
+  isHeldOfflineCommitFailure,
   isNetworkError,
 } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
@@ -49,6 +50,7 @@ import {
   loadCommentDrafts,
   mergeRestoredCommentDraft,
 } from '../logic/commentDraftStorage';
+import { parseDependedIssueUrlsInput } from '../logic/consoleStoryTaskPatch';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
   AWAITING_WORKSPACE_NAME,
@@ -262,6 +264,18 @@ export type ConsoleItemDetailContainerProps = {
   };
 };
 
+type SavedDependedIssueUrls = {
+  projectItemId: string;
+  baseUrls: string[];
+  urls: string[];
+};
+
+const isSameUrlList = (
+  left: readonly string[],
+  right: readonly string[],
+): boolean =>
+  left.length === right.length && left.every((url, i) => url === right[i]);
+
 const reconcileCheckboxToConfirmedState = (
   source: string,
   checkboxIndex: number,
@@ -331,6 +345,18 @@ export const ConsoleItemDetailContainer = ({
   );
   const [postedComments, setPostedComments] = useState<ConsoleComment[]>([]);
   const [bodyOverride, setBodyOverride] = useState<string | null>(null);
+  const [savedDependedIssueUrls, setSavedDependedIssueUrls] =
+    useState<SavedDependedIssueUrls | null>(null);
+  const savedDependedIssueUrlsOverride =
+    savedDependedIssueUrls !== null &&
+    savedDependedIssueUrls.projectItemId === item.projectItemId &&
+    isSameUrlList(savedDependedIssueUrls.baseUrls, item.dependedIssueUrls)
+      ? savedDependedIssueUrls.urls
+      : null;
+  const operationMenuItem =
+    savedDependedIssueUrlsOverride === null
+      ? item
+      : { ...item, dependedIssueUrls: savedDependedIssueUrlsOverride };
   const [commentBodyOverrides, setCommentBodyOverrides] = useState<
     Record<number, string>
   >({});
@@ -561,9 +587,24 @@ export const ConsoleItemDetailContainer = ({
         ? async (dependedIssueUrl: string) => {
             if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
               await operations.replaceDependedIssueUrl(item, dependedIssueUrl);
+              setSavedDependedIssueUrls({
+                projectItemId: item.projectItemId,
+                baseUrls: item.dependedIssueUrls,
+                urls: parseDependedIssueUrlsInput(dependedIssueUrl),
+              });
               return;
             }
             const option = awaitingWorkspaceOption;
+            const offline = [
+              dependedIssueUrlOfflinePayloadBuild(
+                pjcode,
+                item,
+                dependedIssueUrl,
+              ),
+              buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                statusName: option.name,
+              }),
+            ];
             await new Promise<void>((resolve, reject) => {
               onQueueAction({
                 kind: {
@@ -583,7 +624,17 @@ export const ConsoleItemDetailContainer = ({
                     ],
                     sentStepCount,
                   );
-                  commitRun.then(resolve, reject);
+                  commitRun.then(resolve, (cause: unknown) => {
+                    if (
+                      !isHeldOfflineCommitFailure(
+                        cause,
+                        sentStepCount,
+                        offline.length,
+                      )
+                    ) {
+                      reject(cause);
+                    }
+                  });
                   return commitRun;
                 },
                 onUncommitted: (outcome) => {
@@ -599,16 +650,7 @@ export const ConsoleItemDetailContainer = ({
                     reject(outcome.cause);
                   }
                 },
-                offline: [
-                  dependedIssueUrlOfflinePayloadBuild(
-                    pjcode,
-                    item,
-                    dependedIssueUrl,
-                  ),
-                  buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                    statusName: option.name,
-                  }),
-                ],
+                offline,
                 overlayPatch: {
                   done: true,
                   status: {
@@ -617,6 +659,11 @@ export const ConsoleItemDetailContainer = ({
                   },
                 },
               });
+            });
+            setSavedDependedIssueUrls({
+              projectItemId: item.projectItemId,
+              baseUrls: item.dependedIssueUrls,
+              urls: parseDependedIssueUrlsInput(dependedIssueUrl),
             });
           }
         : null,
@@ -1016,7 +1063,7 @@ export const ConsoleItemDetailContainer = ({
       operationBar={
         <ConsoleOperationMenu
           tab={tab}
-          item={item}
+          item={operationMenuItem}
           hasPullRequest={hasPullRequest}
           rejectEnabled={pendingReviewComments.length > 0}
           statusOptions={statusOptions}
