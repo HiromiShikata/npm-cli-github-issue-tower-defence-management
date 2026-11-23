@@ -490,8 +490,7 @@ describe('webServer live session creation when closing the session after a sideb
         sessionId: 'live_9',
       });
       const closer = {
-        close: (): Promise<void> =>
-          Promise.reject(new Error('socket refused')),
+        close: (): Promise<void> => Promise.reject(new Error('socket refused')),
       };
       const server = await createTestServer(
         repository,

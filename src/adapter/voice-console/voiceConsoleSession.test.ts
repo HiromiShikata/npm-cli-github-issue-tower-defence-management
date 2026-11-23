@@ -345,12 +345,14 @@ describe('VoiceConsoleSession queue navigation', () => {
       totalCount: 4,
       todoByHumanCount: 3,
       awaitingOwnerCount: 1,
-      projects: expect.arrayContaining([
+    });
+    expect(overview).not.toHaveProperty('prsCount');
+    expect(overview.projects).toEqual(
+      expect.arrayContaining([
         { pjcode: 'umino', todoByHumanCount: 2, awaitingOwnerCount: 1 },
         { pjcode: 'xcare', todoByHumanCount: 1, awaitingOwnerCount: 0 },
       ]),
-    });
-    expect(overview).not.toHaveProperty('prsCount');
+    );
   });
 
   it('labels the tab of each entry in tool results with the owner terms', async () => {

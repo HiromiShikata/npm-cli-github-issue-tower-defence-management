@@ -253,7 +253,6 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   });
 });
 
-
 describe('OpenAiLiveSessionSideband.close', () => {
   const sessionClosedEvent = JSON.stringify({
     type: 'session.closed',
@@ -271,9 +270,7 @@ describe('OpenAiLiveSessionSideband.close', () => {
       'wss://api.openai.com/v1/live/sessions/live_123/attach',
       { Authorization: 'Bearer key-1' },
     ]);
-    expect(socket.sent.map((data) => JSON.parse(data))).toEqual([
-      { type: 'session.close' },
-    ]);
+    expect(socket.sent).toEqual([JSON.stringify({ type: 'session.close' })]);
     socket.emit('message', { data: sessionClosedEvent });
 
     await expect(closing).resolves.toBeUndefined();
@@ -375,5 +372,32 @@ describe('OpenAiLiveSessionSideband.close', () => {
       'OpenAI live session id has characters outside [A-Za-z0-9_-]',
     );
     expect(createSocket).not.toHaveBeenCalled();
+  });
+});
+
+describe('OpenAiLiveSessionSideband.close message errors', () => {
+  it('logs a non-text or malformed message while closing and keeps waiting for session.closed', async () => {
+    const { socket, sideband, logError } = createHarness();
+
+    const closing = sideband.close('live_123');
+    await flushPromises();
+    socket.emit('message', { data: new ArrayBuffer(0) });
+    socket.emit('message', { data: '{not json' });
+    socket.emit('message', {
+      data: JSON.stringify({ type: 'session.closed' }),
+    });
+
+    await expect(closing).resolves.toBeUndefined();
+    expect(logError).toHaveBeenCalledTimes(2);
+    expect(logError).toHaveBeenNthCalledWith(
+      1,
+      'OpenAI live session live_123 received a non-text message while closing',
+    );
+    expect(logError).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        'OpenAI live session live_123 received a malformed message while closing: ',
+      ),
+    );
   });
 });
