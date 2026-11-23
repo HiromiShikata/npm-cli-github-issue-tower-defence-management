@@ -92,7 +92,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
       const { createSocket, sideband } = createHarness();
 
       await expect(
-        sideband.attach(testCase.sessionId, () => Promise.resolve()),
+        void sideband.attach(testCase.sessionId, () => Promise.resolve()),
       ).rejects.toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
@@ -113,7 +113,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
       });
 
       await expect(
-        sideband.attach('live_123', () => Promise.resolve()),
+        void sideband.attach('live_123', () => Promise.resolve()),
       ).rejects.toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
@@ -122,7 +122,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   it('opens one socket to the attach URL with the bearer key header', () => {
     const { createSocket, sideband } = createHarness();
 
-    sideband.attach('live_123', () => Promise.resolve());
+    void sideband.attach('live_123', () => Promise.resolve());
 
     expect(createSocket).toHaveBeenCalledTimes(1);
     expect(createSocket).toHaveBeenCalledWith(
@@ -134,7 +134,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   it('parses each message and passes it with a send function that writes JSON to the socket', () => {
     const { socket, sideband } = createHarness();
     const handleServerEvent = createRecordingHandler();
-    sideband.attach('live_123', handleServerEvent);
+    void sideband.attach('live_123', handleServerEvent);
 
     const serverEvent = {
       type: 'response.event',
@@ -160,7 +160,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   it('logs a malformed message without throwing and does not pass it on', () => {
     const { socket, logError, sideband } = createHarness();
     const handleServerEvent = createRecordingHandler();
-    sideband.attach('live_123', handleServerEvent);
+    void sideband.attach('live_123', handleServerEvent);
 
     expect(() => socket.emit('message', { data: '{not json' })).not.toThrow();
     expect(handleServerEvent).not.toHaveBeenCalled();
@@ -187,7 +187,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
 
   it('logs a failure of the server event handler instead of dropping it', async () => {
     const { socket, logError, sideband } = createHarness();
-    sideband.attach('live_123', () =>
+    void sideband.attach('live_123', () =>
       Promise.reject(new Error('handler boom')),
     );
 

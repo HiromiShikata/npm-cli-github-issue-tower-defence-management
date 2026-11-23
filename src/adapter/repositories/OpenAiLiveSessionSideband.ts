@@ -78,7 +78,9 @@ export class OpenAiLiveSessionSideband {
     try {
       url = OpenAiLiveSessionSideband.attachUrl(sessionId);
     } catch (error) {
-      return Promise.reject(error);
+      return Promise.reject(
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
     const apiKey = this.readApiKey();
     if (apiKey === undefined || apiKey === '') {
