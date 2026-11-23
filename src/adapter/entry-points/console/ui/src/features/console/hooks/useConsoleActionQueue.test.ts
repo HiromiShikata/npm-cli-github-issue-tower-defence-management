@@ -3028,3 +3028,103 @@ describe('useConsoleActionQueue with a partially sent two-step action', () => {
     });
   });
 });
+
+describe('useConsoleActionQueue onUncommitted outcomes', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    localStorage.clear();
+  });
+
+  it.each([
+    {
+      outcomeCase: 'the user undoes the action before its window elapses',
+      isAirplaneModeOn: false,
+      commitRejection: null,
+      offline: [offlinePayload],
+      trigger: 'undo' as const,
+      expectedOutcome: { status: 'undone' },
+    },
+    {
+      outcomeCase: 'airplane mode is on and the action has no offline payload',
+      isAirplaneModeOn: true,
+      commitRejection: null,
+      offline: [],
+      trigger: 'window' as const,
+      expectedOutcome: {
+        status: 'failed',
+        causeMessage: 'Airplane mode',
+      },
+    },
+    {
+      outcomeCase: 'airplane mode is on and the action carries an offline payload',
+      isAirplaneModeOn: true,
+      commitRejection: null,
+      offline: [offlinePayload],
+      trigger: 'window' as const,
+      expectedOutcome: { status: 'held_offline' },
+    },
+    {
+      outcomeCase:
+        'the commit fails with a network error and an offline payload is held',
+      isAirplaneModeOn: false,
+      commitRejection: new TypeError('Failed to fetch'),
+      offline: [offlinePayload],
+      trigger: 'window' as const,
+      expectedOutcome: { status: 'held_offline' },
+    },
+  ])(
+    'reports $expectedOutcome.status to onUncommitted when $outcomeCase',
+    async ({
+      isAirplaneModeOn,
+      commitRejection,
+      offline,
+      trigger,
+      expectedOutcome,
+    }) => {
+      const { result } = renderHook(() =>
+        useConsoleActionQueue({ isAirplaneModeOn }),
+      );
+      const onUncommitted = jest.fn();
+      const action = makeAction({
+        commit:
+          commitRejection === null
+            ? jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
+            : jest.fn<Promise<void>, []>().mockRejectedValue(commitRejection),
+        offline,
+        onUncommitted,
+      });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      if (trigger === 'undo') {
+        act(() => {
+          result.current.undo(result.current.pending[0].id);
+          jest.advanceTimersByTime(6000);
+        });
+        expect(action.commit).not.toHaveBeenCalled();
+      } else {
+        await act(async () => {
+          jest.advanceTimersByTime(5000);
+          await flushMicrotasks();
+        });
+      }
+
+      expect(onUncommitted).toHaveBeenCalledTimes(1);
+      const [outcome] = onUncommitted.mock.calls[0] as [
+        { status: string; cause?: unknown },
+      ];
+      expect(outcome.status).toBe(expectedOutcome.status);
+      if ('causeMessage' in expectedOutcome) {
+        expect(outcome.cause).toBeInstanceOf(Error);
+        expect((outcome.cause as Error).message).toBe(
+          expectedOutcome.causeMessage,
+        );
+      }
+    },
+  );
+});
