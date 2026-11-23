@@ -19,9 +19,11 @@ import {
   LiveSessionToolCallRunner,
   capLiveSessionText,
   componentsBelowFolder,
+  directChildrenOfTrackedPaths,
   isBinaryText,
   isCredentialLikePath,
   isFolderRefusedForFileRead,
+  pathComponentsOf,
   isPathInsideFolder,
   lastScreenLines,
   issueUrlOfSessionName,
@@ -80,6 +82,12 @@ const FOLDER_REFUSED_HOME_TEXT =
 
 const REMOTE_FILE_READ_REFUSED_TEXT =
   'リモートホストで動いているセッションの作業フォルダのファイルは読めません。';
+
+const NOT_IN_WORK_TREE_TEXT =
+  'Git の作業ツリーの中にないフォルダのファイルは読めません。';
+
+const UNTRACKED_TEXT =
+  'Git で管理されていないファイルまたはフォルダのため、読めません。';
 
 const FILE_BINARY_TEXT = 'バイナリファイルのため内容は表示できません。';
 
@@ -331,6 +339,15 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     ) {
       return outputOf(FOLDER_REFUSED_HOME_TEXT);
     }
+    const topLevel = await this.commandStdout(host, {
+      kind: 'gitTopLevel',
+      folderPath: folderRealPath,
+    });
+    const topLevelRealPath =
+      topLevel === null ? null : await this.realPathOf(host, topLevel);
+    if (topLevelRealPath === null) {
+      return outputOf(NOT_IN_WORK_TREE_TEXT);
+    }
     const targetRealPath = await this.realPathOf(
       host,
       joinSessionFolderPath(folderRealPath, relativePath),
@@ -341,13 +358,18 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     if (!isPathInsideFolder(folderRealPath, targetRealPath)) {
       return outputOf(FILE_OUTSIDE_FOLDER_TEXT);
     }
-    if (
-      isCredentialLikePath(
-        componentsBelowFolder(folderRealPath, targetRealPath),
-      )
-    ) {
+    if (isCredentialLikePath(pathComponentsOf(targetRealPath))) {
       return outputOf(FILE_REFUSED_CREDENTIAL_TEXT);
     }
+    const trackedPaths = await this.trackedPathsOf(host, topLevelRealPath);
+    if (trackedPaths === null) {
+      return outputOf(NOT_IN_WORK_TREE_TEXT);
+    }
+    const targetRelativeComponents = componentsBelowFolder(
+      topLevelRealPath,
+      targetRealPath,
+    );
+    const targetRelativePath = targetRelativeComponents.join('/');
     const fileType = await this.dependencies.commands.run(host, {
       kind: 'fileType',
       path: targetRealPath,
@@ -357,9 +379,23 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     }
     const typeName = fileType.stdout.trim();
     if (typeName === 'directory') {
-      return this.listDirectory(host, targetRealPath, folderRealPath);
+      if (
+        targetRelativeComponents.length > 0 &&
+        directChildrenOfTrackedPaths(trackedPaths, targetRelativeComponents)
+          .length === 0
+      ) {
+        return outputOf(UNTRACKED_TEXT);
+      }
+      return this.listTrackedDirectory(
+        trackedPaths,
+        targetRealPath,
+        targetRelativeComponents,
+      );
     }
     if (typeName === 'regular file' || typeName === 'regular empty file') {
+      if (!trackedPaths.includes(targetRelativePath)) {
+        return outputOf(UNTRACKED_TEXT);
+      }
       return this.readFileText(host, targetRealPath);
     }
     return outputOf(FILE_TYPE_UNSUPPORTED_TEXT);
@@ -411,33 +447,47 @@ export class LiveSessionToolCallUseCase implements LiveSessionToolCallRunner {
     return result.stdout.replace(/\n$/, '');
   };
 
-  private listDirectory = async (
+  private commandStdout = async (
     host: SessionHost,
-    directoryPath: string,
-    folderRealPath: string,
-  ): Promise<LiveSessionToolCallOutcome> => {
-    const directoryComponents = componentsBelowFolder(
-      folderRealPath,
-      directoryPath,
-    );
+    command: Parameters<SessionCommandRepository['run']>[1],
+  ): Promise<string | null> => {
+    const result = await this.dependencies.commands.run(host, command);
+    if (!commandSucceeded(result) || result.kind !== 'exited') {
+      return null;
+    }
+    return result.stdout.replace(/\n$/, '');
+  };
+
+  private trackedPathsOf = async (
+    host: SessionHost,
+    topLevelRealPath: string,
+  ): Promise<string[] | null> => {
     const result = await this.dependencies.commands.run(host, {
-      kind: 'listDirectory',
-      path: directoryPath,
+      kind: 'gitTrackedFiles',
+      topLevelPath: topLevelRealPath,
     });
     if (!commandSucceeded(result) || result.kind !== 'exited') {
-      return outputOf(FILE_NOT_FOUND_TEXT);
+      return null;
     }
-    const entries = result.stdout
-      .split('\n')
-      .filter((entry) => entry.length > 0)
-      .filter(
-        (entry) =>
-          !isCredentialLikePath([
-            ...directoryComponents,
-            entry.replace(/\/$/, ''),
-          ]),
-      )
-      .sort();
+    return result.stdout.split('\u0000').filter((entry) => entry.length > 0);
+  };
+
+  private listTrackedDirectory = (
+    trackedPaths: readonly string[],
+    directoryRealPath: string,
+    directoryComponents: readonly string[],
+  ): LiveSessionToolCallOutcome => {
+    const directoryPathComponents = pathComponentsOf(directoryRealPath);
+    const entries = directChildrenOfTrackedPaths(
+      trackedPaths,
+      directoryComponents,
+    ).filter(
+      (entry) =>
+        !isCredentialLikePath([
+          ...directoryPathComponents,
+          entry.replace(/\/$/, ''),
+        ]),
+    );
     return outputOf(entries.join('\n'));
   };
 

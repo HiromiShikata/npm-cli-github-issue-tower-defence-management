@@ -92,7 +92,10 @@ const readProcFile = (
       'utf8',
     );
   } catch (error) {
-    const code = error instanceof Error && 'code' in error ? error.code : null;
+    const code =
+      typeof error === 'object' && error !== null && 'code' in error
+        ? error.code
+        : null;
     if (code === 'ENOENT' || code === 'EACCES') {
       return null;
     }

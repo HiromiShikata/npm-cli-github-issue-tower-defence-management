@@ -24,11 +24,21 @@ const execFileAsync = promisify(execFile);
 const defaultExecuteFile: ExecuteFile = (program, args, options) =>
   execFileAsync(program, args, options).then(({ stdout }) => ({ stdout }));
 
+const exitCodeOf = (error: unknown): unknown =>
+  typeof error === 'object' && error !== null && 'code' in error
+    ? error.code
+    : null;
+
+const stdoutOf = (error: unknown): unknown =>
+  typeof error === 'object' && error !== null && 'stdout' in error
+    ? error.stdout
+    : '';
+
 const SSH_CONNECT_FAILURE_EXIT_CODE = 255;
 
 const COMMAND_TIMEOUT_MILLISECONDS = 10_000;
 
-const COMMAND_MAX_BUFFER_BYTES = 4 * 1024 * 1024;
+const COMMAND_MAX_BUFFER_BYTES = 16 * 1024 * 1024;
 
 type ProgramInvocation = { program: string; args: string[] };
 
@@ -76,6 +86,16 @@ export const toProgramInvocation = (
       };
     case 'listDirectory':
       return { program: 'ls', args: ['-1Ap', '--', command.path] };
+    case 'gitTopLevel':
+      return {
+        program: 'git',
+        args: ['-C', command.folderPath, 'rev-parse', '--show-toplevel'],
+      };
+    case 'gitTrackedFiles':
+      return {
+        program: 'git',
+        args: ['-C', command.topLevelPath, 'ls-files', '-z'],
+      };
   }
 };
 
@@ -127,8 +147,7 @@ export class TmuxSshSessionCommandRepository implements SessionCommandRepository
       });
       return { kind: 'exited', exitCode: 0, stdout };
     } catch (error) {
-      const exitCode =
-        error instanceof Error && 'code' in error ? error.code : null;
+      const exitCode = exitCodeOf(error);
       if (typeof exitCode !== 'number') {
         throw error;
       }
@@ -138,8 +157,7 @@ export class TmuxSshSessionCommandRepository implements SessionCommandRepository
       ) {
         return { kind: 'unreachable' };
       }
-      const stdout =
-        error instanceof Error && 'stdout' in error ? error.stdout : '';
+      const stdout = stdoutOf(error);
       return {
         kind: 'exited',
         exitCode,

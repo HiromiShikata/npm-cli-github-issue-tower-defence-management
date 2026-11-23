@@ -1,4 +1,5 @@
 import {
+  directChildrenOfTrackedPaths,
   componentsBelowFolder,
   isCredentialLikePath,
   isFolderRefusedForFileRead,
@@ -357,5 +358,73 @@ describe('isCredentialLikePath', () => {
     },
   ])('$name', ({ components, expected }) => {
     expect(isCredentialLikePath(components)).toBe(expected);
+  });
+});
+
+describe('credential path rules, case-insensitive and exact', () => {
+  it.each([
+    {
+      name: 'allows a dockerignore file by its exact name',
+      components: ['.dockerignore'],
+      expected: false,
+    },
+    {
+      name: 'allows an azure pipelines file by its exact name',
+      components: ['.azure-pipelines.yml'],
+      expected: false,
+    },
+    {
+      name: 'refuses an upper-case key extension',
+      components: ['server.PEM'],
+      expected: true,
+    },
+    { name: 'refuses an envrc file', components: ['.envrc'], expected: true },
+    {
+      name: 'refuses an id file with a backup extension',
+      components: ['id_rsa.bak'],
+      expected: true,
+    },
+    {
+      name: 'refuses a gh file under config by stem',
+      components: ['.config', 'gh.yml'],
+      expected: true,
+    },
+    {
+      name: 'refuses an upper-case credential folder name',
+      components: ['.AWS', 'credentials'],
+      expected: true,
+    },
+    {
+      name: 'refuses a git metadata component',
+      components: ['repo', '.git', 'config'],
+      expected: true,
+    },
+  ])('$name', ({ components, expected }) => {
+    expect(isCredentialLikePath(components)).toBe(expected);
+  });
+});
+
+describe('directChildrenOfTrackedPaths', () => {
+  it.each([
+    {
+      name: 'lists files and folders directly under the root, folders with a slash',
+      tracked: ['README.md', 'src/index.ts', 'src/a/b.ts'],
+      directory: [],
+      expected: ['README.md', 'src/'],
+    },
+    {
+      name: 'lists only the direct children of a subfolder',
+      tracked: ['src/index.ts', 'src/a/b.ts', 'other.ts'],
+      directory: ['src'],
+      expected: ['a/', 'index.ts'],
+    },
+    {
+      name: 'lists nothing for a folder without tracked files',
+      tracked: ['README.md'],
+      directory: ['untracked'],
+      expected: [],
+    },
+  ])('$name', ({ tracked, directory, expected }) => {
+    expect(directChildrenOfTrackedPaths(tracked, directory)).toEqual(expected);
   });
 });

@@ -541,135 +541,263 @@ describe('LiveSessionToolCallUseCase session_task_issue_read', () => {
 
 describe('LiveSessionToolCallUseCase session_file_read', () => {
   const FOLDER = '/work/project';
+  const TRACKED = [
+    'README.md',
+    'src/index.ts',
+    '.dockerignore',
+    '.azure-pipelines.yml',
+    '.github/workflows/ci.yml',
+    'sub/a.md',
+    'keys/id_rsa.pub',
+    'config/app.json',
+  ];
+  const CREDENTIAL_TEXT =
+    '認証情報と見なされるファイルまたはフォルダのため、読めません。';
+
+  type FileOverrides = Partial<{
+    panePath: string;
+    topLevel: string | null;
+    targetReal: string;
+    fileType: string;
+    content: string;
+    tracked: string[];
+  }>;
 
   const fileRespond =
-    (
-      overrides: Partial<{
-        panePath: SessionReadCommandResult;
-        folderReal: SessionReadCommandResult;
-        targetReal: SessionReadCommandResult;
-        fileType: SessionReadCommandResult;
-        content: SessionReadCommandResult;
-        listing: SessionReadCommandResult;
-      }>,
-    ): CommandResponder =>
+    (overrides: FileOverrides): CommandResponder =>
     (_host, command) => {
+      const panePath = overrides.panePath ?? FOLDER;
       switch (command.kind) {
         case 'tmuxHasSession':
+        case 'tmuxCapturePane':
+        case 'listDirectory':
           return exited('');
         case 'tmuxPanePath':
-          return overrides.panePath ?? exited(`${FOLDER}\n`);
+          return exited(`${panePath}\n`);
+        case 'gitTopLevel':
+          return overrides.topLevel === null
+            ? exited('fatal: not a git repository\n', 128)
+            : exited(`${overrides.topLevel ?? panePath}\n`);
+        case 'gitTrackedFiles':
+          return exited(
+            `${(overrides.tracked ?? TRACKED).join('\u0000')}\u0000`,
+          );
         case 'realPath':
-          if (['/', '/home', HOME].includes(command.path)) {
+          if (['/', '/home', HOME, FOLDER, panePath].includes(command.path)) {
             return exited(`${command.path}\n`);
           }
-          return command.path === FOLDER
-            ? (overrides.folderReal ?? exited(`${FOLDER}\n`))
-            : (overrides.targetReal ?? exited(`${FOLDER}/src/index.ts\n`));
+          return exited(`${overrides.targetReal ?? `${FOLDER}/README.md`}\n`);
         case 'fileType':
-          return overrides.fileType ?? exited('regular file\n');
+          return exited(overrides.fileType ?? 'regular file\n');
         case 'readFileHead':
-          return overrides.content ?? exited('console.log(1);\n');
-        case 'listDirectory':
-          return overrides.listing ?? exited('zeta/\nalpha.ts\nbeta/\n');
-        case 'tmuxCapturePane':
-          return exited('');
+          return exited(overrides.content ?? 'plain text\n');
       }
     };
 
-  it.each([
-    {
-      name: 'reads a text file inside the session folder',
-      overrides: {},
-      path: 'src/index.ts',
-      expected: 'console.log(1);\n',
-    },
-    {
-      name: 'lists a folder as a sorted listing',
-      overrides: {
-        fileType: exited('directory\n'),
-        targetReal: exited(`${FOLDER}/src\n`),
-      },
-      path: 'src',
-      expected: 'alpha.ts\nbeta/\nzeta/',
-    },
-    {
-      name: 'refuses a binary file',
-      overrides: { content: exited('ELF\u0000binary') },
-      path: 'bin/tool',
-      expected: 'バイナリファイルのため内容は表示できません。',
-    },
-    {
-      name: 'reads a symlink inside the folder that points to a file inside the folder',
-      overrides: { targetReal: exited(`${FOLDER}/src/index.ts\n`) },
-      path: 'link-in-folder.ts',
-      expected: 'console.log(1);\n',
-    },
-    {
-      name: 'refuses a path that escapes the folder through a symlink',
-      overrides: { targetReal: exited('/etc/hosts\n') },
-      path: 'link-to-hosts',
-      expected:
-        '指定されたパスはセッションの作業フォルダの外にあるため、読めません。',
-    },
-    {
-      name: 'refuses an absolute path outside the folder',
-      overrides: { targetReal: exited('/etc/hosts\n') },
-      path: '/etc/hosts',
-      expected:
-        '指定されたパスはセッションの作業フォルダの外にあるため、読めません。',
-    },
-    {
-      name: 'answers a missing file with a clear text',
-      overrides: { targetReal: exited('', 1) },
-      path: 'missing.txt',
-      expected: 'ファイルまたはフォルダが見つかりません。',
-    },
-    {
-      name: 'answers a file of an unsupported type with a clear text',
-      overrides: { fileType: exited('fifo\n') },
-      path: 'pipe',
-      expected: '通常のファイルでもフォルダでもないため、読めません。',
-    },
-    {
-      name: 'answers when the session folder cannot be read',
-      overrides: { panePath: exited('', 1) },
-      path: 'src/index.ts',
-      expected: 'セッションの作業フォルダを取得できませんでした。',
-    },
-  ])('$name', async ({ overrides, path, expected }) => {
-    const { useCase } = buildHarness({
-      respond: fileRespond(overrides),
-    });
-    const outcome = await useCase.run(
-      call(
-        LIVE_SESSION_TOOL_NAMES.sessionFileRead,
-        { path },
-        PLAIN_SESSION_NAME,
+  const readPath = async (
+    overrides: FileOverrides,
+    relativePath: string,
+  ): Promise<string> => {
+    const { useCase } = buildHarness({ respond: fileRespond(overrides) });
+    return outputOf(
+      await useCase.run(
+        call(
+          LIVE_SESSION_TOOL_NAMES.sessionFileRead,
+          { path: relativePath },
+          PLAIN_SESSION_NAME,
+        ),
       ),
     );
-    expect(outputOf(outcome)).toBe(expected);
+  };
+
+  it('reads a tracked file in a git work tree', async () => {
+    expect(
+      await readPath({ targetReal: `${FOLDER}/src/index.ts` }, 'src/index.ts'),
+    ).toBe('plain text\n');
   });
 
-  it('passes the byte limit plus one to the head read so truncation is detectable', async () => {
-    const { useCase, commands } = buildHarness({
+  it.each([
+    '.dockerignore',
+    '.azure-pipelines.yml',
+    'README.md',
+    '.github/workflows/ci.yml',
+  ])('reads the tracked ordinary file %s', async (relative) => {
+    expect(
+      await readPath(
+        { targetReal: `${FOLDER}/${relative}`, tracked: [...TRACKED] },
+        relative,
+      ),
+    ).toBe('plain text\n');
+  });
+
+  it('reads a symlink inside the folder that points to a tracked file', async () => {
+    expect(
+      await readPath(
+        { targetReal: `${FOLDER}/README.md` },
+        'link-to-readme.md',
+      ),
+    ).toBe('plain text\n');
+  });
+
+  it.each([
+    { name: 'refuses the home folder itself', panePath: HOME },
+    { name: 'refuses the filesystem root', panePath: '/' },
+    { name: 'refuses an ancestor of the home folder', panePath: '/home' },
+  ])('$name', async ({ panePath }) => {
+    expect(await readPath({ panePath }, '.')).toBe(
+      'ホームディレクトリ、またはその上位のフォルダは作業フォルダとして読めません。',
+    );
+  });
+
+  it('refuses a folder that is not inside a git work tree', async () => {
+    expect(await readPath({ topLevel: null }, 'src/index.ts')).toBe(
+      'Git の作業ツリーの中にないフォルダのファイルは読めません。',
+    );
+  });
+
+  it.each([
+    {
+      name: 'a working folder that is an .aws folder',
+      panePath: `${FOLDER}/.aws`,
+    },
+    {
+      name: 'a working folder that is an .ssh folder',
+      panePath: `${FOLDER}/.ssh`,
+    },
+    {
+      name: 'a working folder under .config/gh',
+      panePath: `${FOLDER}/.config/gh`,
+    },
+  ])('refuses $name by its credential components', async ({ panePath }) => {
+    expect(
+      await readPath(
+        {
+          panePath,
+          topLevel: panePath,
+          targetReal: panePath,
+          fileType: 'directory\n',
+        },
+        '.',
+      ),
+    ).toBe(CREDENTIAL_TEXT);
+  });
+
+  it.each([
+    '.ssh/config',
+    '.aws/credentials',
+    '.azure/accessTokens.json',
+    '.docker/config.json',
+    '.kube/config',
+    '.gnupg/private-keys-v1.d/key',
+    '.netrc',
+    '.npmrc',
+    '.pypirc',
+    '.git-credentials',
+    '.Xauthority',
+    '.XAUTHORITY',
+    '.ICEauthority',
+    '.env',
+    '.envrc',
+    '.env_local',
+    '.env.prod',
+    '.config/gh.yml',
+    '.config/gh/hosts.yml',
+    '.config/tool/credentials.json',
+    '.config/tool/secrets/token',
+    '.config/tool/creds',
+    'keys/id_rsa.bak',
+    'keys/id_ed25519',
+    'keys/server.PEM',
+    'keys/private.KEY',
+    'certs/store.p12',
+    'certs/store.pfx',
+    'vault/passwords.kdbx',
+    '.git/config',
+  ])('refuses the tracked credential-like file %s', async (relative) => {
+    expect(
+      await readPath(
+        {
+          targetReal: `${FOLDER}/${relative}`,
+          tracked: [...TRACKED, relative],
+        },
+        relative,
+      ),
+    ).toBe(CREDENTIAL_TEXT);
+  });
+
+  it('refuses an untracked dotenv file', async () => {
+    expect(await readPath({ targetReal: `${FOLDER}/.env` }, '.env')).toBe(
+      CREDENTIAL_TEXT,
+    );
+  });
+
+  it('refuses an untracked ordinary file', async () => {
+    expect(
+      await readPath({ targetReal: `${FOLDER}/notes.txt` }, 'notes.txt'),
+    ).toBe('Git で管理されていないファイルまたはフォルダのため、読めません。');
+  });
+
+  it('refuses an untracked folder', async () => {
+    expect(
+      await readPath(
+        { targetReal: `${FOLDER}/untracked-dir`, fileType: 'directory\n' },
+        'untracked-dir',
+      ),
+    ).toBe('Git で管理されていないファイルまたはフォルダのため、読めません。');
+  });
+
+  it('refuses a path that escapes the folder through a symlink', async () => {
+    expect(await readPath({ targetReal: '/etc/hosts' }, 'link-to-hosts')).toBe(
+      '指定されたパスはセッションの作業フォルダの外にあるため、読めません。',
+    );
+  });
+
+  it('lists only tracked entries and omits denied ones', async () => {
+    expect(
+      await readPath(
+        {
+          targetReal: FOLDER,
+          fileType: 'directory\n',
+          tracked: [...TRACKED, '.env', 'keys/server.PEM'],
+        },
+        '.',
+      ),
+    ).toBe(
+      '.azure-pipelines.yml\n.dockerignore\n.github/\nREADME.md\nconfig/\nkeys/\nsrc/\nsub/',
+    );
+  });
+
+  it('lists a subfolder with its tracked files only', async () => {
+    expect(
+      await readPath(
+        {
+          targetReal: `${FOLDER}/keys`,
+          fileType: 'directory\n',
+          tracked: [...TRACKED, 'keys/server.PEM'],
+        },
+        'keys',
+      ),
+    ).toBe('id_rsa.pub');
+  });
+
+  it('refuses a session on a remote host', async () => {
+    const { useCase } = buildHarness({
+      hostsByIssueUrl: { [ISSUE_URL]: REMOTE_HOST },
       respond: fileRespond({}),
     });
-    await useCase.run(
-      call(
-        LIVE_SESSION_TOOL_NAMES.sessionFileRead,
-        { path: 'src/index.ts' },
-        PLAIN_SESSION_NAME,
-      ),
-    );
     expect(
-      commands.executed.find((entry) => entry.command.kind === 'readFileHead')
-        ?.command,
-    ).toEqual({
-      kind: 'readFileHead',
-      path: `${FOLDER}/src/index.ts`,
-      byteLimit: LIVE_SESSION_TOOL_OUTPUT_LIMIT_BYTES + 1,
-    });
+      outputOf(
+        await useCase.run(
+          call(
+            LIVE_SESSION_TOOL_NAMES.sessionFileRead,
+            { path: 'README.md' },
+            ISSUE_SESSION_NAME,
+          ),
+        ),
+      ),
+    ).toBe(
+      'リモートホストで動いているセッションの作業フォルダのファイルは読めません。',
+    );
   });
 });
 
@@ -823,169 +951,5 @@ describe('LiveSessionToolCallUseCase calling_sessions_list host label', () => {
         localHasSession: false,
       }),
     ).toMatchObject({ calls: [{ host: '不明', taskIssueUrl: ISSUE_URL }] });
-  });
-});
-
-describe('LiveSessionToolCallUseCase session_file_read safety rules', () => {
-  const FOLDER = '/work/project';
-
-  const respondWith =
-    (
-      overrides: Partial<{
-        panePath: string;
-        targetReal: string;
-        fileType: string;
-        listing: string;
-        content: string;
-      }>,
-    ): CommandResponder =>
-    (_host, command) => {
-      switch (command.kind) {
-        case 'tmuxHasSession':
-          return exited('');
-        case 'tmuxPanePath':
-          return exited(`${overrides.panePath ?? FOLDER}\n`);
-        case 'realPath':
-          if (['/', '/home', HOME].includes(command.path)) {
-            return exited(`${command.path}\n`);
-          }
-          if (command.path === (overrides.panePath ?? FOLDER)) {
-            return exited(`${command.path}\n`);
-          }
-          return exited(`${overrides.targetReal ?? `${FOLDER}/notes.txt`}\n`);
-        case 'fileType':
-          return exited(overrides.fileType ?? 'regular file\n');
-        case 'readFileHead':
-          return exited(overrides.content ?? 'plain text\n');
-        case 'listDirectory':
-          return exited(overrides.listing ?? 'notes.txt\n');
-        case 'tmuxCapturePane':
-          return exited('');
-      }
-    };
-
-  const readFile = async (
-    overrides: Parameters<typeof respondWith>[0],
-    path: string,
-  ): Promise<string> => {
-    const { useCase } = buildHarness({ respond: respondWith(overrides) });
-    return outputOf(
-      await useCase.run(
-        call(
-          LIVE_SESSION_TOOL_NAMES.sessionFileRead,
-          { path },
-          PLAIN_SESSION_NAME,
-        ),
-      ),
-    );
-  };
-
-  it.each([
-    { name: 'refuses the home folder itself', panePath: HOME },
-    { name: 'refuses the filesystem root', panePath: '/' },
-    { name: 'refuses an ancestor of the home folder', panePath: '/home' },
-  ])('$name', async ({ panePath }) => {
-    expect(await readFile({ panePath }, '.')).toBe(
-      'ホームディレクトリ、またはその上位のフォルダは作業フォルダとして読めません。',
-    );
-  });
-
-  it('reads a file in a folder that sits inside the home folder', async () => {
-    expect(
-      await readFile(
-        { panePath: `${HOME}/repo`, targetReal: `${HOME}/repo/notes.txt` },
-        'notes.txt',
-      ),
-    ).toBe('plain text\n');
-  });
-
-  it.each([
-    '.ssh/config',
-    '.ssh-keys/id',
-    '.gnupg/private-keys-v1.d/key',
-    '.aws/credentials',
-    '.azure/accessTokens.json',
-    '.kube/config',
-    '.docker/config.json',
-    '.netrc',
-    '.npmrc',
-    '.pypirc',
-    '.git-credentials',
-    '.Xauthority',
-    '.ICEauthority',
-    '.env',
-    '.env.local',
-    '.config/gh/hosts.yml',
-    '.config/app/credentials.json',
-    '.config/tool/secrets/token',
-    '.config/tool/creds',
-    'keys/id_ed25519',
-    'certs/server.pem',
-    'certs/private.key',
-    'bundle/store.p12',
-    'bundle/store.pfx',
-    'vault/passwords.kdbx',
-  ])('refuses the credential-like file %s', async (relative) => {
-    expect(
-      await readFile({ targetReal: `${FOLDER}/${relative}` }, relative),
-    ).toBe('認証情報と見なされるファイルまたはフォルダのため、読めません。');
-  });
-
-  it.each([
-    '.github/workflows/ci.yml',
-    '.config/app/settings.json',
-    'keys/id_rsa.pub',
-    'src/config.ts',
-    'docs/environment.md',
-  ])('still reads the ordinary file %s', async (relative) => {
-    expect(
-      await readFile({ targetReal: `${FOLDER}/${relative}` }, relative),
-    ).toBe('plain text\n');
-  });
-
-  it('omits credential-like entries from a folder listing', async () => {
-    expect(
-      await readFile(
-        {
-          targetReal: FOLDER,
-          fileType: 'directory\n',
-          listing: '.ssh/\n.env\nnotes.txt\nsub/\nid_ed25519\n.config/\n',
-        },
-        '.',
-      ),
-    ).toBe('.config/\nnotes.txt\nsub/');
-  });
-
-  it('omits entries under a credential config folder from its listing', async () => {
-    expect(
-      await readFile(
-        {
-          targetReal: `${FOLDER}/.config`,
-          fileType: 'directory\n',
-          listing: 'gh/\napp/\n',
-        },
-        '.config',
-      ),
-    ).toBe('app/');
-  });
-
-  it('refuses a session on a remote host, which has no local home folder to compare with', async () => {
-    const { useCase } = buildHarness({
-      hostsByIssueUrl: { [ISSUE_URL]: REMOTE_HOST },
-      respond: respondWith({}),
-    });
-    expect(
-      outputOf(
-        await useCase.run(
-          call(
-            LIVE_SESSION_TOOL_NAMES.sessionFileRead,
-            { path: 'notes.txt' },
-            ISSUE_SESSION_NAME,
-          ),
-        ),
-      ),
-    ).toBe(
-      'リモートホストで動いているセッションの作業フォルダのファイルは読めません。',
-    );
   });
 });
