@@ -23,6 +23,14 @@ type Call = (
 
 const FIXED_ACTION_ID = 'action-1';
 
+const confirmYes = (call: Call) =>
+  call('confirm_pending_action', {
+    action_id: FIXED_ACTION_ID,
+    owner_reply: 'はい',
+  });
+
+type ReadBackStep = { assistant: string } | { owner: string };
+
 const isJsonObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -1320,12 +1328,6 @@ describe('VoiceConsoleSession error handling', () => {
 });
 
 describe('VoiceConsoleSession owner-speech confirmation gate', () => {
-  const confirmYes = (call: Call) =>
-    call('confirm_pending_action', {
-      action_id: FIXED_ACTION_ID,
-      owner_reply: 'はい',
-    });
-
   it('refuses a confirm with no owner speech after the prepare and keeps the pending action', async () => {
     const { call, runOperation, session } = await openSession();
     await call('prepare_ok');
@@ -1468,7 +1470,11 @@ describe('VoiceConsoleSession owner-speech confirmation gate', () => {
 
 describe('VoiceConsoleSession read-back window', () => {
   it('opens the owner-speech window only with assistant speech after a prepare', async () => {
-    const cases = [
+    const cases: {
+      name: string;
+      steps: ReadBackStep[];
+      expectedError: string | undefined;
+    }[] = [
       {
         name: 'はい heard after prepare but before any assistant speech is refused',
         steps: [{ owner: 'はい' }],
