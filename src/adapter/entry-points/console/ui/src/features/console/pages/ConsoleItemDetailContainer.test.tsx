@@ -4550,6 +4550,9 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     await waitFor(() => {
       expect(onQueueAction).toHaveBeenCalledTimes(1);
     });
+    await act(async () => {
+      await onQueueAction.mock.calls[0][0].commit(0);
+    });
     await waitFor(() => {
       expect(queryByPlaceholderText('Depended issue URL')).toBeNull();
     });
