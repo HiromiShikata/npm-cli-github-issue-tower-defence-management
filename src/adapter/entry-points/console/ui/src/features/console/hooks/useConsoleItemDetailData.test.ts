@@ -9,6 +9,7 @@ import type {
   ConsoleListItem,
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
+  ConsoleTabName,
 } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
 import { useConsoleItemDetailData } from './useConsoleItemDetailData';
@@ -554,5 +555,83 @@ describe('useConsoleItemDetailData related pull request read retry', () => {
     await advanceTimersBy(600000);
 
     expect(fetchPrFiles).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('useConsoleItemDetailData related pull request error scope', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('clears the related pull request read error when the item has no related pull requests on the board', async () => {
+    const fetchRelatedPrs = jest.fn(
+      async (): Promise<ConsoleRelatedPullRequest[]> => {
+        throw new ConsoleNetworkError(networkFailureMessage);
+      },
+    );
+    const caches: ConsoleCaches = {
+      ...buildCaches([]),
+      relatedPrs: new ResourceCache<ConsoleRelatedPullRequest[]>(
+        fetchRelatedPrs,
+      ),
+    };
+    const { result, rerender } = renderHook(
+      ({ item }: { item: ConsoleListItem }) =>
+        useConsoleItemDetailData(caches, item),
+      { initialProps: { item: issueItem } },
+    );
+    await advanceTimersBy(0);
+    expect(result.current.relatedPullRequestsError).toBe(networkFailureMessage);
+
+    rerender({ item: issueItemWithoutRelatedPullRequests });
+    await advanceTimersBy(0);
+
+    expect(result.current.relatedPullRequestsError).toBeNull();
+    expect(result.current.relatedPullRequests).toEqual([]);
+  });
+
+  it('keeps the related pull request read error when the board lists related pull requests for the item', async () => {
+    const cases: Array<{
+      name: string;
+      item: ConsoleListItem;
+      tab?: ConsoleTabName;
+    }> = [
+      {
+        name: 'issue with related pull request URLs on the default tab',
+        item: issueItem,
+      },
+      {
+        name: 'issue with no related pull request URLs on the prs tab',
+        item: issueItemWithoutRelatedPullRequests,
+        tab: 'prs',
+      },
+    ];
+    for (const testCase of cases) {
+      const fetchRelatedPrs = jest.fn(
+        async (): Promise<ConsoleRelatedPullRequest[]> => {
+          throw new ConsoleNetworkError(networkFailureMessage);
+        },
+      );
+      const caches: ConsoleCaches = {
+        ...buildCaches([]),
+        relatedPrs: new ResourceCache<ConsoleRelatedPullRequest[]>(
+          fetchRelatedPrs,
+        ),
+      };
+      const { result, unmount } = renderHook(() =>
+        useConsoleItemDetailData(caches, testCase.item, testCase.tab),
+      );
+      await advanceTimersBy(0);
+
+      expect({
+        name: testCase.name,
+        error: result.current.relatedPullRequestsError,
+      }).toEqual({ name: testCase.name, error: networkFailureMessage });
+      unmount();
+    }
   });
 });
