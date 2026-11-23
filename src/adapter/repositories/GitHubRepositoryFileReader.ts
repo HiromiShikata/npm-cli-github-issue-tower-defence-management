@@ -1,5 +1,20 @@
 const GITHUB_API_ORIGIN = 'https://api.github.com';
 
+const assertSafeFilePath = (filePath: string): void => {
+  const unsafe = filePath
+    .split('/')
+    .some(
+      (segment) =>
+        segment === '.' ||
+        segment === '..' ||
+        segment.includes('/') ||
+        segment.includes('\\'),
+    );
+  if (unsafe) {
+    throw new Error(`invalid_path: ${filePath}`);
+  }
+};
+
 const encodePathSegments = (filePath: string): string =>
   filePath
     .split('/')
@@ -18,6 +33,7 @@ export class GitHubRepositoryFileReader {
     ref: string,
     filePath: string,
   ): Promise<string> {
+    assertSafeFilePath(filePath);
     const url = `${GITHUB_API_ORIGIN}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodePathSegments(filePath)}?ref=${encodeURIComponent(ref)}`;
     const token = this.resolveToken(owner);
     const headers: Record<string, string> = {

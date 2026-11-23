@@ -231,6 +231,17 @@ const parseGithubIssueOrPullUrl = (
   return { owner: segments[0], repo: segments[1], kind: segments[2] };
 };
 
+const isSafeRepositoryFilePath = (filePath: string): boolean =>
+  filePath
+    .split('/')
+    .every(
+      (segment) =>
+        segment !== '' &&
+        segment !== '.' &&
+        segment !== '..' &&
+        !segment.includes('\\'),
+    );
+
 const parseGithubBlobUrl = (url: string): GithubBlobReference | null => {
   const parsed = parseGithubUrl(url);
   if (parsed === null) {
@@ -244,11 +255,15 @@ const parseGithubBlobUrl = (url: string): GithubBlobReference | null => {
   if (decodedPath.some((segment) => segment === null)) {
     return null;
   }
+  const filePath = decodedPath.join('/');
+  if (!isSafeRepositoryFilePath(filePath)) {
+    return null;
+  }
   return {
     owner: segments[0],
     repo: segments[1],
     ref: segments[3],
-    filePath: decodedPath.join('/'),
+    filePath,
   };
 };
 
