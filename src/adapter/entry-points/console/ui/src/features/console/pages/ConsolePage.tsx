@@ -969,6 +969,7 @@ export const ConsolePage = () => {
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit: commitAction,
+        onUncommitted: input.onUncommitted,
         commitWithActionId:
           commitWithActionId === undefined
             ? undefined

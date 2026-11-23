@@ -120,6 +120,72 @@ describe('parseDependedIssueUrlsInput', () => {
         'https://github.com/a/b/issues/2',
       ],
     },
+    {
+      name: 'newline-separated URLs are split into separate entries',
+      input: 'https://github.com/a/b/issues/1\nhttps://github.com/a/b/pull/2',
+      expected: [
+        'https://github.com/a/b/issues/1',
+        'https://github.com/a/b/pull/2',
+      ],
+    },
+    {
+      name: 'CRLF line endings are split and the carriage returns trimmed',
+      input:
+        'https://github.com/a/b/issues/1\r\nhttps://github.com/a/b/issues/2',
+      expected: [
+        'https://github.com/a/b/issues/1',
+        'https://github.com/a/b/issues/2',
+      ],
+    },
+    {
+      name: 'mixed newline and comma separators are both split',
+      input:
+        'https://github.com/a/b/issues/1, https://github.com/a/b/issues/2\nhttps://github.com/a/b/issues/3',
+      expected: [
+        'https://github.com/a/b/issues/1',
+        'https://github.com/a/b/issues/2',
+        'https://github.com/a/b/issues/3',
+      ],
+    },
+    {
+      name: 'surrounding whitespace on each newline-separated line is trimmed',
+      input:
+        '  https://github.com/a/b/issues/1  \n\t https://github.com/a/b/issues/2 \t',
+      expected: [
+        'https://github.com/a/b/issues/1',
+        'https://github.com/a/b/issues/2',
+      ],
+    },
+    {
+      name: 'empty and whitespace-only lines are dropped',
+      input:
+        '\nhttps://github.com/a/b/issues/1\n\n   \n\nhttps://github.com/a/b/issues/2\n',
+      expected: [
+        'https://github.com/a/b/issues/1',
+        'https://github.com/a/b/issues/2',
+      ],
+    },
+    {
+      name: 'whitespace-only input containing newlines yields no URLs',
+      input: ' \n\t\n ,\n',
+      expected: [],
+    },
+    {
+      name: 'duplicate comma-separated URLs are kept as given',
+      input: 'https://github.com/a/b/issues/1,https://github.com/a/b/issues/1',
+      expected: [
+        'https://github.com/a/b/issues/1',
+        'https://github.com/a/b/issues/1',
+      ],
+    },
+    {
+      name: 'duplicate newline-separated URLs are kept as given',
+      input: 'https://github.com/a/b/issues/1\nhttps://github.com/a/b/issues/1',
+      expected: [
+        'https://github.com/a/b/issues/1',
+        'https://github.com/a/b/issues/1',
+      ],
+    },
   ])('$name', ({ input, expected }) => {
     expect(parseDependedIssueUrlsInput(input)).toEqual(expected);
   });

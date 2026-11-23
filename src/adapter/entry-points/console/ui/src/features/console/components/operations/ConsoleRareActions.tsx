@@ -1,31 +1,42 @@
 import { useState } from 'react';
+import { parseDependedIssueUrlsInput } from '../../logic/consoleStoryTaskPatch';
 
 export type ConsoleRareActionsProps = {
-  onSetDependedIssueUrl: ((url: string) => Promise<void>) | null;
+  dependedIssueUrls: readonly string[];
+  onReplaceDependedIssueUrls:
+    ((urls: readonly string[]) => Promise<void>) | null;
 };
 
+const dependedIssueUrlsToText = (urls: readonly string[]): string =>
+  urls.join('\n');
+
 export const ConsoleRareActions = ({
-  onSetDependedIssueUrl,
+  dependedIssueUrls,
+  onReplaceDependedIssueUrls,
 }: ConsoleRareActionsProps) => {
   const [expanded, setExpanded] = useState(false);
-  const [dependedIssueUrl, setDependedIssueUrl] = useState('');
+  const [dependedIssueUrlsText, setDependedIssueUrlsText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleToggle = () => {
+    if (!expanded) {
+      setDependedIssueUrlsText(dependedIssueUrlsToText(dependedIssueUrls));
+    }
     setExpanded((prev) => !prev);
     setError(null);
   };
 
   const handleSubmit = async () => {
-    if (onSetDependedIssueUrl === null || dependedIssueUrl.trim() === '') {
+    if (onReplaceDependedIssueUrls === null) {
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      await onSetDependedIssueUrl(dependedIssueUrl.trim());
-      setDependedIssueUrl('');
+      await onReplaceDependedIssueUrls(
+        parseDependedIssueUrlsInput(dependedIssueUrlsText),
+      );
       setExpanded(false);
     } catch (err) {
       setError(
@@ -36,8 +47,12 @@ export const ConsoleRareActions = ({
     }
   };
 
+  const groupClassName = expanded
+    ? 'console-op-group console-op-group-rare-actions console-op-group-rare-actions-expanded'
+    : 'console-op-group console-op-group-rare-actions';
+
   return (
-    <div className="console-op-group console-op-group-rare-actions">
+    <div className={groupClassName}>
       <button
         type="button"
         className="console-op-button"
@@ -46,21 +61,21 @@ export const ConsoleRareActions = ({
       >
         ⋯
       </button>
-      {expanded && onSetDependedIssueUrl !== null && (
+      {expanded && onReplaceDependedIssueUrls !== null && (
         <>
-          <input
-            type="url"
-            className="console-settings-modal-input"
+          <textarea
+            className="console-rare-actions-textarea"
             placeholder="Depended issue URL"
-            value={dependedIssueUrl}
-            onChange={(e) => setDependedIssueUrl(e.target.value)}
+            value={dependedIssueUrlsText}
+            onChange={(e) => setDependedIssueUrlsText(e.target.value)}
             disabled={submitting}
+            rows={4}
           />
           <button
             type="button"
             className="console-op-button"
             onClick={handleSubmit}
-            disabled={submitting || dependedIssueUrl.trim() === ''}
+            disabled={submitting}
           >
             {submitting ? '...' : 'Set Depended Issue'}
           </button>

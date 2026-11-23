@@ -7113,11 +7113,64 @@ describe('consoleOperationApi', () => {
     });
 
     it.each([
+      {
+        name: 'a single GitHub issue URL',
+        dependedIssueUrl: 'https://github.com/o/r/issues/2',
+      },
+      {
+        name: 'a single GitHub pull request URL',
+        dependedIssueUrl: 'https://github.com/o/r/pull/2',
+      },
+      {
+        name: 'a mixed list of issue and pull request URLs',
+        dependedIssueUrl:
+          'https://github.com/o/r/issues/2,https://github.com/o/other-repo/pull/30',
+      },
+    ])(
+      'accepts $name in replace mode and writes the list unchanged',
+      async ({ dependedIssueUrl }) => {
+        issueRepository.replaceDependedIssueUrlField.mockResolvedValue(
+          undefined,
+        );
+        const response = await handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl,
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        );
+        expect(response.statusCode).toBe(200);
+        expect(
+          issueRepository.replaceDependedIssueUrlField,
+        ).toHaveBeenCalledWith(
+          projectWithDependedField(),
+          expect.objectContaining({ itemId: 'PVTI_dep' }),
+          dependedIssueUrl,
+        );
+      },
+    );
+
+    it.each([
       ['free text', 'see the spec'],
-      ['a non-issue GitHub URL', 'https://github.com/o/r/pull/2'],
+      ['a non-GitHub issue URL', 'https://example.com/o/r/issues/1'],
+      [
+        'a GitHub pulls URL (not a valid form)',
+        'https://github.com/o/r/pulls/1',
+      ],
+      [
+        'a GitHub URL of an unsupported kind',
+        'https://github.com/o/r/tree/main',
+      ],
       [
         'a list with one invalid entry',
         'https://github.com/o/r/issues/2, not-a-url',
+      ],
+      [
+        'a list with a valid pull request and one invalid entry',
+        'https://github.com/o/r/pull/2, https://example.com/o/r/issues/1',
       ],
       ['an empty entry in the list', 'https://github.com/o/r/issues/2,'],
     ])(
@@ -7137,6 +7190,71 @@ describe('consoleOperationApi', () => {
         expect(
           issueRepository.replaceDependedIssueUrlField,
         ).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      {
+        name: 'keeps a stored non-GitHub entry unchanged and adds a new GitHub issue URL',
+        storedDependedIssueUrls: ['see the spec'],
+        dependedIssueUrl: 'see the spec, https://github.com/o/r/issues/2',
+        expectedStatusCode: 200,
+        expectsWrite: true,
+      },
+      {
+        name: 'rejects a new non-GitHub entry added next to a stored non-GitHub entry',
+        storedDependedIssueUrls: ['see the spec'],
+        dependedIssueUrl: 'see the spec, see the design',
+        expectedStatusCode: 400,
+        expectsWrite: false,
+      },
+      {
+        name: 'rejects a new non-GitHub entry added to a stored list of GitHub URLs',
+        storedDependedIssueUrls: ['https://github.com/o/r/issues/5'],
+        dependedIssueUrl: 'https://github.com/o/r/issues/5, see the spec',
+        expectedStatusCode: 400,
+        expectsWrite: false,
+      },
+    ])(
+      '$name',
+      async ({
+        storedDependedIssueUrls,
+        dependedIssueUrl,
+        expectedStatusCode,
+        expectsWrite,
+      }) => {
+        issueRepository.getIssueByUrl.mockResolvedValue({
+          ...issue,
+          url: 'https://github.com/o/r/issues/1',
+          dependedIssueUrls: storedDependedIssueUrls,
+        });
+        issueRepository.replaceDependedIssueUrlField.mockResolvedValue(
+          undefined,
+        );
+        const response = await handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl,
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        );
+        expect(response.statusCode).toBe(expectedStatusCode);
+        if (expectsWrite) {
+          expect(
+            issueRepository.replaceDependedIssueUrlField,
+          ).toHaveBeenCalledWith(
+            projectWithDependedField(),
+            expect.objectContaining({ itemId: 'PVTI_dep' }),
+            dependedIssueUrl,
+          );
+        } else {
+          expect(
+            issueRepository.replaceDependedIssueUrlField,
+          ).not.toHaveBeenCalled();
+        }
       },
     );
 

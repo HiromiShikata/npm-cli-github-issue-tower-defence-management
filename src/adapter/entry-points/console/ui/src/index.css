@@ -1738,6 +1738,30 @@ body {
   justify-content: flex-start;
 }
 
+.console-op-group-rare-actions-expanded {
+  flex-basis: 100%;
+}
+
+.console-op-group-bottom-row:has(
+  > .console-op-group-left-pair > .console-op-group-rare-actions-expanded
+) {
+  flex-wrap: wrap;
+}
+
+.console-op-group-bottom-row
+  > .console-op-group-left-pair:has(> .console-op-group-rare-actions-expanded) {
+  flex-basis: 100%;
+}
+
+.console-rare-actions-textarea {
+  flex-basis: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  font: inherit;
+  resize: vertical;
+}
+
 .console-op-group-left-pair {
   display: flex;
   align-items: center;

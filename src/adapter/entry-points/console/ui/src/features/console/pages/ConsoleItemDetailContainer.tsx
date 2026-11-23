@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ConsoleCommentComposer,
   type ConsoleCommentSubmitResult,
@@ -16,7 +16,9 @@ import {
   type ConsoleActionQueue,
   type ConsoleOfflinePayload,
   type ConsoleOfflineQueuedAction,
+  type ConsoleUncommittedOutcome,
   consoleActionStepsRun,
+  isHeldOfflineCommitFailure,
   isNetworkError,
 } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
@@ -48,6 +50,7 @@ import {
   loadCommentDrafts,
   mergeRestoredCommentDraft,
 } from '../logic/commentDraftStorage';
+import { parseDependedIssueUrlsInput } from '../logic/consoleStoryTaskPatch';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
   AWAITING_WORKSPACE_NAME,
@@ -81,6 +84,7 @@ export type ConsoleQueueActionInput = {
   item: ConsoleListItem;
   composerDraft?: { projectItemId: string; body: string };
   commit: (sentStepCount: number) => Promise<void>;
+  onUncommitted?: (outcome: ConsoleUncommittedOutcome) => void;
   commitWithActionId?: (
     sentStepCount: number,
     actionId: string,
@@ -176,7 +180,13 @@ const dependedIssueUrlOfflinePayloadBuild = (
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
-  requestBody: { pjcode, issueUrl: item.url, dependedIssueUrl },
+  requestBody: {
+    pjcode,
+    issueUrl: item.url,
+    dependedIssueUrl,
+    projectItemId: item.projectItemId,
+    replaceExisting: true,
+  },
 });
 
 const deleteAllCommentsOfflinePayloadBuild = (
@@ -254,6 +264,18 @@ export type ConsoleItemDetailContainerProps = {
   };
 };
 
+type SavedDependedIssueUrls = {
+  projectItemId: string;
+  baseUrls: string[];
+  urls: string[];
+};
+
+const isSameUrlList = (
+  left: readonly string[],
+  right: readonly string[],
+): boolean =>
+  left.length === right.length && left.every((url, i) => url === right[i]);
+
 const reconcileCheckboxToConfirmedState = (
   source: string,
   checkboxIndex: number,
@@ -323,6 +345,40 @@ export const ConsoleItemDetailContainer = ({
   );
   const [postedComments, setPostedComments] = useState<ConsoleComment[]>([]);
   const [bodyOverride, setBodyOverride] = useState<string | null>(null);
+  const [savedDependedIssueUrls, setSavedDependedIssueUrls] =
+    useState<SavedDependedIssueUrls | null>(null);
+  const latestDependedIssueUrlsRef = useRef(item.dependedIssueUrls);
+  latestDependedIssueUrlsRef.current = item.dependedIssueUrls;
+  useEffect(() => {
+    setSavedDependedIssueUrls((saved) =>
+      saved !== null && !isSameUrlList(saved.baseUrls, item.dependedIssueUrls)
+        ? null
+        : saved,
+    );
+  }, [item.dependedIssueUrls]);
+  const recordSavedDependedIssueUrls = (
+    baseUrls: string[],
+    dependedIssueUrl: string,
+  ): void => {
+    if (!isSameUrlList(baseUrls, latestDependedIssueUrlsRef.current)) {
+      return;
+    }
+    setSavedDependedIssueUrls({
+      projectItemId: item.projectItemId,
+      baseUrls,
+      urls: parseDependedIssueUrlsInput(dependedIssueUrl),
+    });
+  };
+  const savedDependedIssueUrlsOverride =
+    savedDependedIssueUrls !== null &&
+    savedDependedIssueUrls.projectItemId === item.projectItemId &&
+    isSameUrlList(savedDependedIssueUrls.baseUrls, item.dependedIssueUrls)
+      ? savedDependedIssueUrls.urls
+      : null;
+  const operationMenuItem =
+    savedDependedIssueUrlsOverride === null
+      ? item
+      : { ...item, dependedIssueUrls: savedDependedIssueUrlsOverride };
   const [commentBodyOverrides, setCommentBodyOverrides] = useState<
     Record<number, string>
   >({});
@@ -551,44 +607,84 @@ export const ConsoleItemDetailContainer = ({
     onSetDependedIssueUrl:
       pjcode != null
         ? async (dependedIssueUrl: string) => {
-            if (awaitingWorkspaceOption === null) {
-              await operations.setDependedIssueUrl(item, dependedIssueUrl);
+            if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
+              const baseUrls = item.dependedIssueUrls;
+              await operations.replaceDependedIssueUrl(item, dependedIssueUrl);
+              recordSavedDependedIssueUrls(baseUrls, dependedIssueUrl);
               return;
             }
+            const baseUrls = item.dependedIssueUrls;
             const option = awaitingWorkspaceOption;
-            onQueueAction({
-              kind: {
-                type: 'set_status',
-                optionName: option.name,
-              },
-              item,
-              commit: (sentStepCount) =>
-                consoleActionStepsRun(
-                  [
-                    () =>
-                      operations.setDependedIssueUrl(item, dependedIssueUrl),
-                    () => operations.setStatus(item, option),
-                  ],
-                  sentStepCount,
-                ),
-              offline: [
-                dependedIssueUrlOfflinePayloadBuild(
-                  pjcode,
-                  item,
-                  dependedIssueUrl,
-                ),
-                buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                  statusName: option.name,
-                }),
-              ],
-              overlayPatch: {
-                done: true,
-                status: {
-                  name: option.name,
-                  color: option.color,
+            const offline = [
+              dependedIssueUrlOfflinePayloadBuild(
+                pjcode,
+                item,
+                dependedIssueUrl,
+              ),
+              buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                statusName: option.name,
+              }),
+            ];
+            await new Promise<void>((resolve, reject) => {
+              onQueueAction({
+                kind: {
+                  type: 'set_status',
+                  optionName: option.name,
                 },
-              },
+                item,
+                commit: (sentStepCount) => {
+                  const commitRun = consoleActionStepsRun(
+                    [
+                      () =>
+                        operations
+                          .replaceDependedIssueUrl(item, dependedIssueUrl)
+                          .then(() =>
+                            recordSavedDependedIssueUrls(
+                              baseUrls,
+                              dependedIssueUrl,
+                            ),
+                          ),
+                      () => operations.setStatus(item, option),
+                    ],
+                    sentStepCount,
+                  );
+                  commitRun.then(resolve, (cause: unknown) => {
+                    if (
+                      !isHeldOfflineCommitFailure(
+                        cause,
+                        sentStepCount,
+                        offline.length,
+                      )
+                    ) {
+                      reject(cause);
+                    }
+                  });
+                  return commitRun;
+                },
+                onUncommitted: (outcome) => {
+                  if (outcome.status === 'held_offline') {
+                    resolve();
+                  } else if (outcome.status === 'undone') {
+                    reject(
+                      new Error(
+                        'The depended issue URL change was undone and not saved.',
+                      ),
+                    );
+                  } else {
+                    reject(outcome.cause);
+                  }
+                },
+                offline,
+                overlayPatch: {
+                  done: true,
+                  status: {
+                    name: option.name,
+                    color: option.color,
+                  },
+                },
+              });
             });
+            recordSavedDependedIssueUrls(baseUrls, dependedIssueUrl);
           }
         : null,
   };
@@ -987,7 +1083,7 @@ export const ConsoleItemDetailContainer = ({
       operationBar={
         <ConsoleOperationMenu
           tab={tab}
-          item={item}
+          item={operationMenuItem}
           hasPullRequest={hasPullRequest}
           rejectEnabled={pendingReviewComments.length > 0}
           statusOptions={statusOptions}

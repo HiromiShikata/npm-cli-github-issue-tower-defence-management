@@ -4550,6 +4550,9 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     await waitFor(() => {
       expect(onQueueAction).toHaveBeenCalledTimes(1);
     });
+    await act(async () => {
+      await onQueueAction.mock.calls[0][0].commit(0);
+    });
     await waitFor(() => {
       expect(queryByPlaceholderText('Depended issue URL')).toBeNull();
     });
@@ -4574,6 +4577,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       pjcode: 'acme',
       issueUrl: issueItem.url,
       dependedIssueUrl: 'https://github.com/owner/repo/issues/100',
+      projectItemId: issueItem.projectItemId,
+      replaceExisting: true,
     });
   });
 
@@ -4589,22 +4594,23 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       expect(onQueueAction).toHaveBeenCalledTimes(1);
     });
     const input = onQueueAction.mock.calls[0][0];
-    expect(operations.setDependedIssueUrl).not.toHaveBeenCalled();
+    expect(operations.replaceDependedIssueUrl).not.toHaveBeenCalled();
     expect(operations.setStatus).not.toHaveBeenCalled();
 
     await input.commit(0);
 
-    const setDependedIssueUrlMock = operations.setDependedIssueUrl as jest.Mock;
+    const replaceDependedIssueUrlMock =
+      operations.replaceDependedIssueUrl as jest.Mock;
     const setStatusMock = operations.setStatus as jest.Mock;
-    expect(setDependedIssueUrlMock.mock.calls).toEqual([
+    expect(replaceDependedIssueUrlMock.mock.calls).toEqual([
       [issueItem, dependedIssueUrlToSubmit],
     ]);
     expect(setStatusMock.mock.calls).toEqual([
       [issueItem, awaitingWorkspaceOption],
     ]);
-    expect(setDependedIssueUrlMock.mock.invocationCallOrder[0]).toBeLessThan(
-      setStatusMock.mock.invocationCallOrder[0],
-    );
+    expect(
+      replaceDependedIssueUrlMock.mock.invocationCallOrder[0],
+    ).toBeLessThan(setStatusMock.mock.invocationCallOrder[0]);
     expect(operations.addComment).not.toHaveBeenCalled();
   });
 
@@ -4638,9 +4644,9 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
 
       await input.commit(sentStepCount);
 
-      expect((operations.setDependedIssueUrl as jest.Mock).mock.calls).toEqual(
-        expectedSetDependedIssueUrlCalls,
-      );
+      expect(
+        (operations.replaceDependedIssueUrl as jest.Mock).mock.calls,
+      ).toEqual(expectedSetDependedIssueUrlCalls);
       expect((operations.setStatus as jest.Mock).mock.calls).toEqual(
         expectedSetStatusCalls,
       );
@@ -4672,31 +4678,57 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect((rejection as ConsoleActionPartiallySentError).cause).toBe(
       statusFailure,
     );
-    expect(operations.setDependedIssueUrl).toHaveBeenCalledWith(
+    expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
       issueItem,
       dependedIssueUrlToSubmit,
     );
   });
 
-  it('collapses the Rare actions panel as soon as onQueueAction is called, without waiting for operations.setDependedIssueUrl to resolve', async () => {
+  it('keeps the Rare actions panel open with the typed URL while the queued write is still pending', async () => {
     const operations = buildOperations();
-    operations.setDependedIssueUrl = jest.fn(() => new Promise(() => {}));
-    const onQueueAction = jest.fn();
-    const {
-      getByTitle,
-      getByPlaceholderText,
-      getByText,
-      queryByPlaceholderText,
-    } = renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+    operations.replaceDependedIssueUrl = jest.fn(() => new Promise(() => {}));
+    const onQueueAction = jest.fn(
+      (input: { commit: (sentStepCount: number) => Promise<void> }) => {
+        void input.commit(0);
+      },
+    );
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
 
     submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
 
     await waitFor(() => {
       expect(onQueueAction).toHaveBeenCalledTimes(1);
     });
-    await waitFor(() => {
-      expect(queryByPlaceholderText('Depended issue URL')).toBeNull();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    expect(getByPlaceholderText('Depended issue URL')).toHaveValue(
+      dependedIssueUrlToSubmit,
+    );
+  });
+
+  it('shows the error of a failed queued depended issue URL write and keeps the typed URL in the Rare actions field', async () => {
+    const operations = buildOperations();
+    operations.replaceDependedIssueUrl = jest.fn(async () => {
+      throw new Error('replace failed');
+    });
+    const onQueueAction = jest.fn(
+      (input: { commit: (sentStepCount: number) => Promise<void> }) => {
+        input.commit(0).catch(() => undefined);
+      },
+    );
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
+
+    await waitFor(() => {
+      expect(getByText(/replace failed/)).toBeInTheDocument();
+    });
+    expect(getByPlaceholderText('Depended issue URL')).toHaveValue(
+      dependedIssueUrlToSubmit,
+    );
   });
 
   it('builds a two-entry offline payload array for the depended issue URL write and then the Awaiting Workspace status write', async () => {
@@ -4727,6 +4759,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
           pjcode: 'acme',
           issueUrl: issueItem.url,
           dependedIssueUrl: dependedIssueUrlToSubmit,
+          projectItemId: issueItem.projectItemId,
+          replaceExisting: true,
         },
       },
       {
@@ -4763,7 +4797,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect(operations.addComment).not.toHaveBeenCalled();
   });
 
-  it('calls only operations.setDependedIssueUrl, with no onQueueAction call and no Status write, when no status option named Awaiting Workspace exists', async () => {
+  it('calls only operations.replaceDependedIssueUrl, with no onQueueAction call and no Status write, when no status option named Awaiting Workspace exists', async () => {
     const statusOptionsWithoutAwaitingWorkspace =
       consoleStatusOptionsFixture.filter(
         (o) => o.name !== AWAITING_WORKSPACE_NAME,
@@ -4780,12 +4814,503 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText);
 
     await waitFor(() => {
-      expect(operations.setDependedIssueUrl).toHaveBeenCalledWith(
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
         issueItem,
         dependedIssueUrlToSubmit,
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();
     expect(operations.setStatus).not.toHaveBeenCalled();
+  });
+
+  it('prefills the Rare actions field with the item current depended issue URLs, one per line', () => {
+    const itemWithDependedIssueUrls = {
+      ...issueItem,
+      dependedIssueUrls: [
+        'https://github.com/owner/repo/issues/10',
+        'https://github.com/owner/repo/pull/11',
+      ],
+    };
+    const { getByTitle, getByPlaceholderText } =
+      renderIssueDetailForDependedIssueUrl({
+        item: itemWithDependedIssueUrls,
+      });
+
+    fireEvent.click(getByTitle('Rare actions'));
+
+    expect(getByPlaceholderText('Depended issue URL')).toHaveValue(
+      'https://github.com/owner/repo/issues/10\nhttps://github.com/owner/repo/pull/11',
+    );
+  });
+
+  it('saves several URLs as one comma-joined replace payload and queues the Awaiting Workspace move', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({ operations, onQueueAction });
+
+    submitDependedIssueUrl(
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      'https://github.com/owner/repo/issues/1\nhttps://github.com/owner/repo/pull/2',
+    );
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.offline[0].requestBody).toEqual({
+      pjcode: 'acme',
+      issueUrl: issueItem.url,
+      dependedIssueUrl:
+        'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
+      projectItemId: issueItem.projectItemId,
+      replaceExisting: true,
+    });
+
+    await input.commit(0);
+
+    expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
+      issueItem,
+      'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
+    );
+    expect(operations.setStatus).toHaveBeenCalledWith(
+      issueItem,
+      awaitingWorkspaceOption,
+    );
+  });
+
+  it('saves a line deletion as a replace of the remaining URL only, and still queues the Awaiting Workspace move', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const itemWithTwoDependedIssueUrls = {
+      ...issueItem,
+      dependedIssueUrls: [
+        'https://github.com/owner/repo/issues/10',
+        'https://github.com/owner/repo/issues/11',
+      ],
+    };
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({
+        item: itemWithTwoDependedIssueUrls,
+        operations,
+        onQueueAction,
+      });
+
+    submitDependedIssueUrl(
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      'https://github.com/owner/repo/issues/10',
+    );
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.offline[0].requestBody.dependedIssueUrl).toBe(
+      'https://github.com/owner/repo/issues/10',
+    );
+    expect(input.kind).toEqual({
+      type: 'set_status',
+      optionName: AWAITING_WORKSPACE_NAME,
+    });
+  });
+
+  it('clearing the field replaces with an empty value immediately, without queuing a status move', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const itemWithDependedIssueUrl = {
+      ...issueItem,
+      dependedIssueUrls: ['https://github.com/owner/repo/issues/10'],
+    };
+    const { getByTitle, getByPlaceholderText, getByText } =
+      renderIssueDetailForDependedIssueUrl({
+        item: itemWithDependedIssueUrl,
+        operations,
+        onQueueAction,
+      });
+
+    submitDependedIssueUrl(getByTitle, getByPlaceholderText, getByText, '');
+
+    await waitFor(() => {
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
+        itemWithDependedIssueUrl,
+        '',
+      );
+    });
+    expect(onQueueAction).not.toHaveBeenCalled();
+    expect(operations.setStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConsoleItemDetailContainer depended issue save outcomes and reopened prefill', () => {
+  const OFFLINE_QUEUE_KEY = 'console-offline-action-queue';
+  const urlA = 'https://github.com/owner/repo/issues/1';
+  const urlB = 'https://github.com/owner/repo/issues/2';
+  const itemWithDependedIssues = {
+    ...issueItem,
+    dependedIssueUrls: [urlA, urlB],
+  };
+  const statusOptionsWithoutAwaitingWorkspace =
+    consoleStatusOptionsFixture.filter(
+      (o) => o.name !== AWAITING_WORKSPACE_NAME,
+    );
+
+  const readStoredOfflineQueue = (): unknown[] =>
+    JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) ?? '[]');
+
+  const openRareActionsAndSubmit = (
+    view: ReturnType<typeof render>,
+    urlsText: string,
+  ): void => {
+    fireEvent.click(view.getByTitle('Rare actions'));
+    fireEvent.change(view.getByPlaceholderText('Depended issue URL'), {
+      target: { value: urlsText },
+    });
+    fireEvent.click(view.getByText('Set Depended Issue'));
+  };
+
+  const readRareActionsTextareaValue = (view: ReturnType<typeof render>) =>
+    (view.getByPlaceholderText('Depended issue URL') as HTMLTextAreaElement)
+      .value;
+
+  const renderDirect = (
+    operations: ConsoleOperationsApi,
+    statusOptions = consoleStatusOptionsFixture,
+  ) =>
+    render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={itemWithDependedIssues}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={statusOptions}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+      />,
+    );
+
+  const renderWithRealQueue = (
+    operations: ConsoleOperationsApi,
+    isAirplaneModeOn: boolean,
+  ) => {
+    const queueHandles = {
+      undoFirstPending: (): void => {
+        throw new Error('The queue harness has not rendered yet');
+      },
+    };
+    const QueueHarness = () => {
+      const actionQueue = useConsoleActionQueue({
+        isAirplaneModeOn,
+        projectCode: 'acme',
+      });
+      queueHandles.undoFirstPending = () => {
+        actionQueue.undo(actionQueue.pending[0].id);
+      };
+      return (
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={itemWithDependedIssues}
+          caches={buildCaches()}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={(input) => {
+            actionQueue.enqueue({
+              message: 'Set depended issue URL',
+              color: 'blue',
+              commit: input.commit,
+              onUncommitted: input.onUncommitted,
+              offline: input.offline,
+              advance: () => {},
+              revertAdvance: input.revertAdvance,
+            });
+          }}
+          isAirplaneModeOn={isAirplaneModeOn}
+          onOfflineActionsCreate={actionQueue.offlineActionsCreate}
+          pjcode="acme"
+        />
+      );
+    };
+    const view = render(<QueueHarness />);
+    return { view, queueHandles };
+  };
+
+  const runFakeWindow = async (): Promise<void> => {
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+  };
+
+  it('collapses the panel with no error when a queued save fails with a network error and its payloads are held offline', async () => {
+    jest.useFakeTimers();
+    localStorage.clear();
+    try {
+      const operations = buildOperations();
+      (operations.replaceDependedIssueUrl as jest.Mock).mockRejectedValue(
+        new TypeError('Failed to fetch'),
+      );
+      const { view } = renderWithRealQueue(operations, false);
+
+      openRareActionsAndSubmit(view, urlB);
+      await runFakeWindow();
+
+      await waitFor(() => {
+        expect(readStoredOfflineQueue()).toHaveLength(2);
+      });
+      await waitFor(() => {
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+      });
+      expect(
+        view.container.querySelector('.console-settings-modal-error'),
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+      localStorage.clear();
+    }
+  });
+
+  it('keeps the typed URL and shows the undo outcome as an error when the user undoes the queued save before it runs', async () => {
+    jest.useFakeTimers();
+    localStorage.clear();
+    try {
+      const operations = buildOperations();
+      const { view, queueHandles } = renderWithRealQueue(operations, false);
+
+      openRareActionsAndSubmit(view, urlB);
+      await act(async () => {
+        queueHandles.undoFirstPending();
+        jest.advanceTimersByTime(6000);
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(
+          view.getByText(
+            'The depended issue URL change was undone and not saved.',
+          ),
+        ).toBeTruthy();
+      });
+      expect(readRareActionsTextareaValue(view)).toBe(urlB);
+      expect(operations.replaceDependedIssueUrl).not.toHaveBeenCalled();
+      expect(operations.setStatus).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+      localStorage.clear();
+    }
+  });
+
+  it('collapses the panel with no error when airplane mode holds the queued save offline', async () => {
+    jest.useFakeTimers();
+    localStorage.clear();
+    try {
+      const operations = buildOperations();
+      const { view } = renderWithRealQueue(operations, true);
+
+      openRareActionsAndSubmit(view, urlB);
+      await runFakeWindow();
+
+      await waitFor(() => {
+        expect(readStoredOfflineQueue()).toHaveLength(2);
+      });
+      await waitFor(() => {
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+      });
+      expect(
+        view.container.querySelector('.console-settings-modal-error'),
+      ).toBeNull();
+      expect(operations.replaceDependedIssueUrl).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+      localStorage.clear();
+    }
+  });
+
+  it.each([
+    {
+      outcomeCase:
+        'the list is emptied while an Awaiting Workspace option exists',
+      statusOptions: consoleStatusOptionsFixture,
+      submittedText: '',
+      expectedReopenedText: '',
+    },
+    {
+      outcomeCase:
+        'the list is changed while no Awaiting Workspace option exists',
+      statusOptions: statusOptionsWithoutAwaitingWorkspace,
+      submittedText: urlB,
+      expectedReopenedText: urlB,
+    },
+  ])(
+    'reopens the panel with the saved list, not the previous list, on the direct path when $outcomeCase',
+    async ({ statusOptions, submittedText, expectedReopenedText }) => {
+      const operations = buildOperations();
+      const view = renderDirect(operations, statusOptions);
+
+      openRareActionsAndSubmit(view, submittedText);
+      await waitFor(() => {
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+      });
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(view.getByTitle('Rare actions'));
+      expect(readRareActionsTextareaValue(view)).toBe(expectedReopenedText);
+    },
+  );
+
+  it('reopens the panel with the saved list, not the previous list, on the queued path when the list is changed and an Awaiting Workspace option exists', async () => {
+    jest.useFakeTimers();
+    localStorage.clear();
+    try {
+      const operations = buildOperations();
+      const { view } = renderWithRealQueue(operations, false);
+
+      fireEvent.click(view.getByTitle('Rare actions'));
+      expect(readRareActionsTextareaValue(view)).toBe(`${urlA}\n${urlB}`);
+      fireEvent.change(view.getByPlaceholderText('Depended issue URL'), {
+        target: { value: urlB },
+      });
+      fireEvent.click(view.getByText('Set Depended Issue'));
+      await runFakeWindow();
+      await waitFor(() => {
+        expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+      });
+
+      fireEvent.click(view.getByTitle('Rare actions'));
+      expect(readRareActionsTextareaValue(view)).toBe(urlB);
+    } finally {
+      jest.useRealTimers();
+      localStorage.clear();
+    }
+  });
+
+  it('reopens the panel with the item prop list, not the saved list, after the item prop changed to a different list and returned to the base list on the direct path', async () => {
+    const operations = buildOperations();
+    const renderItemWithDependedIssueUrls = (dependedIssueUrls: string[]) => (
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={{ ...issueItem, dependedIssueUrls }}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={statusOptionsWithoutAwaitingWorkspace}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+      />
+    );
+    const view = render(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    openRareActionsAndSubmit(view, urlB);
+    await waitFor(() => {
+      expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+    });
+    expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
+
+    view.rerender(renderItemWithDependedIssueUrls([urlB]));
+    view.rerender(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    fireEvent.click(view.getByTitle('Rare actions'));
+    expect(readRareActionsTextareaValue(view)).toBe(`${urlA}\n${urlB}`);
+  });
+
+  it('reopens the panel with the item prop list when the item changed while a depended issue save was in flight and later returned to the save base list', async () => {
+    const operations = buildOperations();
+    let resolvePendingReplace: () => void = () => {};
+    operations.replaceDependedIssueUrl = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePendingReplace = resolve;
+        }),
+    );
+    const urlC = 'https://github.com/o/r/issues/3';
+    const renderItemWithDependedIssueUrls = (dependedIssueUrls: string[]) => (
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={{ ...issueItem, dependedIssueUrls }}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={statusOptionsWithoutAwaitingWorkspace}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
+      />
+    );
+    const view = render(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    openRareActionsAndSubmit(view, urlB);
+    await waitFor(() => {
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
+    });
+
+    view.rerender(renderItemWithDependedIssueUrls([urlB, urlC]));
+
+    await act(async () => {
+      resolvePendingReplace();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(view.queryByPlaceholderText('Depended issue URL')).toBeNull();
+    });
+
+    view.rerender(renderItemWithDependedIssueUrls([urlA, urlB]));
+
+    fireEvent.click(view.getByTitle('Rare actions'));
+    expect(readRareActionsTextareaValue(view)).toBe(`${urlA}\n${urlB}`);
+  });
+
+  it('reopens the panel with the saved list on the queued path when the replace write succeeds and the status write fails with a non-network error', async () => {
+    jest.useFakeTimers();
+    localStorage.clear();
+    try {
+      const operations = buildOperations();
+      operations.setStatus = jest.fn(async () => {
+        throw new Error('status write failed');
+      });
+      const { view } = renderWithRealQueue(operations, false);
+
+      openRareActionsAndSubmit(view, urlB);
+      await runFakeWindow();
+      await waitFor(() => {
+        expect(view.getByText(/status write failed/)).toBeTruthy();
+      });
+      expect(operations.replaceDependedIssueUrl).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(view.getByTitle('Rare actions'));
+      fireEvent.click(view.getByTitle('Rare actions'));
+      expect(readRareActionsTextareaValue(view)).toBe(urlB);
+    } finally {
+      jest.useRealTimers();
+      localStorage.clear();
+    }
   });
 });
