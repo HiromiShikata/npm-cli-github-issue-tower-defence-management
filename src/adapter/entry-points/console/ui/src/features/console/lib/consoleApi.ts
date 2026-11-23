@@ -86,13 +86,30 @@ const getBoolean = (value: unknown): boolean => value === true;
 
 const CONSOLE_API_CACHE_NAME = 'console-api-v1';
 
+export class ConsoleNetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConsoleNetworkError';
+  }
+}
+
+const fetchResponseOrNetworkError = async (url: string): Promise<Response> => {
+  try {
+    return await fetch(url);
+  } catch (cause: unknown) {
+    throw new ConsoleNetworkError(
+      cause instanceof Error ? cause.message : String(cause),
+    );
+  }
+};
+
 const requestJson = async (
   apiPath: string,
   resourceUrl: string,
 ): Promise<unknown> => {
   const url = `${apiPath}?url=${encodeURIComponent(resourceUrl)}`;
   try {
-    const response = await fetch(url);
+    const response = await fetchResponseOrNetworkError(url);
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
       try {
