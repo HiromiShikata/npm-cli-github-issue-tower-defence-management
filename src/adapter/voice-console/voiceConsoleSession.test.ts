@@ -31,15 +31,6 @@ const confirmYes = (call: Call) =>
 
 type ReadBackStep = { assistant: string } | { owner: string };
 
-const titleAtPosition = (position: number): string => {
-  const titles = ['Fix login', 'Refactor queue', 'xcare task', 'Review pull 9'];
-  const title = titles[position - 1];
-  if (title === undefined) {
-    throw new Error(`no fixture title for position ${position}`);
-  }
-  return title;
-};
-
 const ITEM_TITLE = 'Fix login';
 
 const isJsonObject = (value: unknown): value is Record<string, unknown> =>
@@ -260,6 +251,11 @@ const defaultReadRepositoryFile = (
   _path: string,
 ): Promise<string> => Promise.resolve('FILE BODY');
 
+let lastReadBack = '';
+const READ_BACK = '<read-back>';
+const resolveSpeech = (text: string): string =>
+  text === READ_BACK ? lastReadBack : text;
+
 const openSession = async (
   options: {
     position?: number;
@@ -305,8 +301,15 @@ const openSession = async (
   };
   const session = new VoiceConsoleSession(deps);
 
-  const call: Call = async (name, args = {}) =>
-    parseJsonObject(await session.callTool(name, JSON.stringify(args)));
+  const call: Call = async (name, args = {}) => {
+    const result = parseJsonObject(
+      await session.callTool(name, JSON.stringify(args)),
+    );
+    if (typeof result.readBack === 'string') {
+      lastReadBack = result.readBack;
+    }
+    return result;
+  };
 
   const position = options.position ?? 1;
   if (position !== 1) {
@@ -879,9 +882,7 @@ describe('VoiceConsoleSession write tools', () => {
       });
 
       const prepared = await call(row.tool, row.args);
-      session.recordAssistantSpeech(
-        `${titleAtPosition(row.position)} を読み上げます`,
-      );
+      session.recordAssistantSpeech(String(prepared.readBack));
       session.recordOwnerSpeech('はい');
       const returnedActionId = FIXED_ACTION_ID;
       expect(newActionId).toHaveBeenCalledTimes(1);
@@ -980,7 +981,7 @@ describe('VoiceConsoleSession write tools', () => {
     const { call, runOperation, session } = await openSession();
 
     await call('prepare_ok');
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     session.recordOwnerSpeech('はい');
     const failed = await call('prepare_close', {
       reason: 'completed',
@@ -1116,7 +1117,7 @@ describe('VoiceConsoleSession two-phase gate', () => {
       const { call, runOperation, session } = await openSession();
       if (testCase.prepare) {
         await call('prepare_ok');
-        session.recordAssistantSpeech('Fix login を読み上げます');
+        session.recordAssistantSpeech(lastReadBack);
         session.recordOwnerSpeech('はい');
       }
       if (testCase.cancel) {
@@ -1151,7 +1152,7 @@ describe('VoiceConsoleSession two-phase gate', () => {
     const { call, runOperation, session } = await openSession();
 
     await call('prepare_ok');
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     session.recordOwnerSpeech('はい');
     const first = await call('confirm_pending_action', {
       action_id: 'action-1',
@@ -1198,7 +1199,7 @@ describe('VoiceConsoleSession queue removal after confirm', () => {
       expect(collectNumbers(before)).toContain(4);
 
       await call(testCase.tool, testCase.args);
-      session.recordAssistantSpeech('Fix login を読み上げます');
+      session.recordAssistantSpeech(lastReadBack);
       session.recordOwnerSpeech('はい');
       const confirmed = await call('confirm_pending_action', {
         action_id: 'action-1',
@@ -1238,7 +1239,7 @@ describe('VoiceConsoleSession queue removal after confirm', () => {
           }),
       });
       await call('prepare_ok');
-      session.recordAssistantSpeech('Fix login を読み上げます');
+      session.recordAssistantSpeech(lastReadBack);
       session.recordOwnerSpeech('はい');
 
       const confirmed = await call('confirm_pending_action', {
@@ -1324,7 +1325,7 @@ describe('VoiceConsoleSession error handling', () => {
       runOperation: () => Promise.reject(new Error('operation boom')),
     });
     await call('prepare_ok');
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     session.recordOwnerSpeech('はい');
 
     const result = await call('confirm_pending_action', {
@@ -1352,7 +1353,7 @@ describe('VoiceConsoleSession owner-speech confirmation gate', () => {
     });
     expect(runOperation).not.toHaveBeenCalled();
 
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     session.recordOwnerSpeech('はい');
     const confirmed = await confirmYes(call);
     expect(confirmed.ok).toBe(true);
@@ -1371,7 +1372,7 @@ describe('VoiceConsoleSession owner-speech confirmation gate', () => {
     for (const testCase of cases) {
       const { call, session } = await openSession();
       await call('prepare_ok');
-      session.recordAssistantSpeech('Fix login を読み上げます');
+      session.recordAssistantSpeech(lastReadBack);
       for (const fragment of testCase.fragments) {
         session.recordOwnerSpeech(fragment);
       }
@@ -1396,7 +1397,7 @@ describe('VoiceConsoleSession owner-speech confirmation gate', () => {
     for (const testCase of cases) {
       const { call, runOperation, session } = await openSession();
       await call('prepare_ok');
-      session.recordAssistantSpeech('Fix login を読み上げます');
+      session.recordAssistantSpeech(lastReadBack);
       for (const fragment of testCase.fragments) {
         session.recordOwnerSpeech(fragment);
       }
@@ -1419,7 +1420,7 @@ describe('VoiceConsoleSession owner-speech confirmation gate', () => {
         calls: 0,
       });
 
-      session.recordAssistantSpeech('Fix login を読み上げます');
+      session.recordAssistantSpeech(lastReadBack);
       session.recordOwnerSpeech('はい');
       const confirmed = await confirmYes(call);
       expect({ name: testCase.name, ok: confirmed.ok }).toEqual({
@@ -1446,10 +1447,10 @@ describe('VoiceConsoleSession owner-speech confirmation gate', () => {
   it('clears owner speech when a new prepare replaces the pending action', async () => {
     const { call, runOperation, session } = await openSession();
     await call('prepare_ok');
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     session.recordOwnerSpeech('は');
     await call('prepare_ok');
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     session.recordOwnerSpeech('い');
 
     const refused = await confirmYes(call);
@@ -1464,13 +1465,13 @@ describe('VoiceConsoleSession owner-speech confirmation gate', () => {
   it('requires new owner speech for each write after a successful confirm', async () => {
     const { call, runOperation, session } = await openSession();
     await call('prepare_ok');
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     session.recordOwnerSpeech('はい');
     const first = await confirmYes(call);
     expect(first.ok).toBe(true);
 
     await call('prepare_ok');
-    session.recordAssistantSpeech('Fix login を読み上げます');
+    session.recordAssistantSpeech(lastReadBack);
     const second = await confirmYes(call);
 
     expect({ ok: second.ok, error: second.error }).toEqual({
@@ -1495,18 +1496,18 @@ describe('VoiceConsoleSession read-back window', () => {
       },
       {
         name: 'assistant speech then はい is accepted',
-        steps: [{ assistant: 'Fix login を読み上げます' }, { owner: 'はい' }],
+        steps: [{ assistant: READ_BACK }, { owner: 'はい' }],
         expectedError: undefined,
       },
       {
         name: 'assistant speech without はい is refused',
-        steps: [{ assistant: 'Fix login を読み上げます' }, { owner: 'うん' }],
+        steps: [{ assistant: READ_BACK }, { owner: 'うん' }],
         expectedError: 'owner_speech_not_heard',
       },
       {
         name: 'assistant speech, はい, then more assistant speech is still accepted',
         steps: [
-          { assistant: 'Fix login を読み上げます' },
+          { assistant: READ_BACK },
           { owner: 'はい' },
           { assistant: '続き' },
         ],
@@ -1519,7 +1520,7 @@ describe('VoiceConsoleSession read-back window', () => {
       await call('prepare_ok');
       for (const step of testCase.steps) {
         if ('assistant' in step) {
-          session.recordAssistantSpeech(step.assistant);
+          session.recordAssistantSpeech(resolveSpeech(step.assistant));
         } else {
           session.recordOwnerSpeech(step.owner);
         }
@@ -1566,7 +1567,7 @@ describe('VoiceConsoleSession strict owner yes', () => {
     for (const testCase of cases) {
       const { call, session } = await openSession();
       await call('prepare_ok');
-      session.recordAssistantSpeech(`${ITEM_TITLE} を読み上げます`);
+      session.recordAssistantSpeech(lastReadBack);
       for (const fragment of testCase.fragments) {
         session.recordOwnerSpeech(fragment);
       }
@@ -1595,7 +1596,7 @@ describe('VoiceConsoleSession strict owner yes', () => {
     for (const testCase of cases) {
       const { call, session } = await openSession();
       await call('prepare_ok');
-      session.recordAssistantSpeech(`${ITEM_TITLE} を読み上げます`);
+      session.recordAssistantSpeech(lastReadBack);
       session.recordOwnerSpeech('はい');
 
       const result = await call('confirm_pending_action', {
@@ -1630,22 +1631,18 @@ describe('VoiceConsoleSession title-gated read-back', () => {
       },
       {
         name: 'owner speech before the title is spoken is ignored',
-        steps: [{ owner: 'はい' }, { assistant: 'Fix login を読み上げます' }],
+        steps: [{ owner: 'はい' }, { assistant: READ_BACK }],
         accepted: false,
       },
       {
         name: 'the title spoken then はい is accepted',
-        steps: [{ assistant: 'Fix login を読み上げます' }, { owner: 'はい' }],
+        steps: [{ assistant: READ_BACK }, { owner: 'はい' }],
         accepted: true,
       },
       {
-        name: 'the title split across fragments opens the window',
-        steps: [
-          { assistant: 'Fix ' },
-          { assistant: 'login' },
-          { owner: 'はい' },
-        ],
-        accepted: true,
+        name: 'the title alone, without the rest of the read-back, does not open the window',
+        steps: [{ assistant: 'Fix login' }, { owner: 'はい' }],
+        accepted: false,
       },
     ];
 
@@ -1654,7 +1651,7 @@ describe('VoiceConsoleSession title-gated read-back', () => {
       await call('prepare_ok');
       for (const step of testCase.steps) {
         if ('assistant' in step) {
-          session.recordAssistantSpeech(step.assistant);
+          session.recordAssistantSpeech(resolveSpeech(step.assistant));
         } else {
           session.recordOwnerSpeech(step.owner);
         }
@@ -1730,5 +1727,266 @@ describe('VoiceConsoleSession pull request review read-back title', () => {
       ok: prepared.ok,
       titleSpoken: readBack.includes(normaliseSpeech('Review: pull 9, now!')),
     }).toEqual({ ok: true, titleSpoken: true });
+  });
+});
+
+describe('VoiceConsoleSession read-back opens only on the read-back of the pending action', () => {
+  it('does not open the owner-speech window on assistant speech that only names the task title', async () => {
+    const cases = [
+      {
+        name: 'title named as a sentence of its own',
+        preamble: '「Fix login」について確認します。',
+      },
+      { name: 'title named as a question', preamble: 'Fix login ですね？' },
+      { name: 'title named in a greeting', preamble: 'Fix login の件です' },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession();
+      await call('prepare_ok');
+      session.recordAssistantSpeech(testCase.preamble);
+      session.recordOwnerSpeech('はい');
+
+      const result = await confirmYes(call);
+
+      expect({
+        name: testCase.name,
+        ok: result.ok,
+        error: result.error,
+      }).toEqual({
+        name: testCase.name,
+        ok: false,
+        error: 'owner_speech_not_heard',
+      });
+    }
+  });
+
+  it('accepts はい once the full read-back of the pending action has been spoken', async () => {
+    const { call, session } = await openSession();
+    const prepared = await call('prepare_ok');
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('はい');
+
+    const result = await confirmYes(call);
+
+    expect({ ok: result.ok, error: result.error }).toEqual({
+      ok: true,
+      error: undefined,
+    });
+  });
+});
+
+describe('VoiceConsoleSession bare はい counts only after the read-back of that action', () => {
+  it('confirms only when はい follows the completed read-back of the pending action', async () => {
+    const cases: {
+      name: string;
+      steps: (
+        readBack: string,
+        partial: string,
+        rest: string,
+      ) => ReadBackStep[];
+      accepted: boolean;
+    }[] = [
+      {
+        name: 'bare はい with no read-back is refused',
+        steps: () => [{ owner: 'はい' }],
+        accepted: false,
+      },
+      {
+        name: 'はい heard while the read-back is still incomplete is refused',
+        steps: (_readBack, partial) => [
+          { assistant: partial },
+          { owner: 'はい' },
+        ],
+        accepted: false,
+      },
+      {
+        name: 'はい after the completed read-back is accepted',
+        steps: (readBack) => [{ assistant: readBack }, { owner: 'はい' }],
+        accepted: true,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession();
+      const prepared = await call('prepare_ok');
+      const readBack = String(prepared.readBack);
+      const titleEnd = readBack.indexOf(ITEM_TITLE) + ITEM_TITLE.length;
+      const partial = readBack.slice(0, titleEnd);
+      const rest = readBack.slice(titleEnd);
+      for (const step of testCase.steps(readBack, partial, rest)) {
+        if ('assistant' in step) {
+          session.recordAssistantSpeech(resolveSpeech(step.assistant));
+        } else {
+          session.recordOwnerSpeech(step.owner);
+        }
+      }
+
+      const result = await confirmYes(call);
+
+      expect({
+        name: testCase.name,
+        ok: result.ok,
+      }).toEqual({
+        name: testCase.name,
+        ok: testCase.accepted,
+      });
+    }
+  });
+
+  it('refuses はい spoken before the read-back completes and accepts a later はい after it completes', async () => {
+    const { call, session } = await openSession();
+    const prepared = await call('prepare_ok');
+    const readBack = String(prepared.readBack);
+    const titleEnd = readBack.indexOf(ITEM_TITLE) + ITEM_TITLE.length;
+
+    session.recordAssistantSpeech(readBack.slice(0, titleEnd));
+    session.recordOwnerSpeech('はい');
+    const early = await confirmYes(call);
+
+    session.recordAssistantSpeech(readBack.slice(titleEnd));
+    session.recordOwnerSpeech('はい');
+    const late = await confirmYes(call);
+
+    expect({ earlyOk: early.ok, lateOk: late.ok }).toEqual({
+      earlyOk: false,
+      lateOk: true,
+    });
+  });
+});
+
+describe('VoiceConsoleSession navigation cancels a staged write', () => {
+  it('clears the staged action on navigation and reports the cancellation in the tool output', async () => {
+    const cases = [
+      {
+        name: 'next_task',
+        openPosition: 1,
+        navigate: { tool: 'next_task', args: {} },
+      },
+      {
+        name: 'previous_task',
+        openPosition: 2,
+        navigate: { tool: 'previous_task', args: {} },
+      },
+      {
+        name: 'jump_to_task',
+        openPosition: 1,
+        navigate: { tool: 'jump_to_task', args: { position: 2 } },
+      },
+      {
+        name: 'repeat_current_task',
+        openPosition: 1,
+        navigate: { tool: 'repeat_current_task', args: {} },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession({
+        position: testCase.openPosition,
+      });
+      const prepared = await call('prepare_ok');
+      const readBack = String(prepared.readBack);
+
+      const navigated = await call(
+        testCase.navigate.tool,
+        testCase.navigate.args,
+      );
+      session.recordAssistantSpeech(readBack);
+      session.recordOwnerSpeech('はい');
+      const confirmed = await confirmYes(call);
+
+      expect({
+        name: testCase.name,
+        cancellationReported: navigated.stagedActionCancelled === true,
+        confirmOk: confirmed.ok,
+      }).toEqual({
+        name: testCase.name,
+        cancellationReported: true,
+        confirmOk: false,
+      });
+    }
+  });
+});
+
+describe('VoiceConsoleSession request_changes removes the item from the queue', () => {
+  it('removes the item after a completing pull request review is confirmed', async () => {
+    const cases = [
+      {
+        name: 'request_changes removes the item',
+        args: { action: 'request_changes', comment_text: 'Z' },
+        keepsItem: false,
+      },
+      {
+        name: 'approve_and_merge removes the item',
+        args: { action: 'approve_and_merge' },
+        keepsItem: false,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, session } = await openSession({ position: 4 });
+      const before = await call('queue_overview');
+      expect(collectNumbers(before)).toContain(4);
+
+      const prepared = await call('prepare_pull_request_review', testCase.args);
+      session.recordAssistantSpeech(String(prepared.readBack));
+      session.recordOwnerSpeech('はい');
+      const confirmed = await confirmYes(call);
+      const after = await call('queue_overview');
+
+      expect({
+        name: testCase.name,
+        ok: confirmed.ok,
+        itemStillQueued: collectNumbers(after).includes(4),
+      }).toEqual({
+        name: testCase.name,
+        ok: true,
+        itemStillQueued: testCase.keepsItem,
+      });
+    }
+  });
+});
+
+describe('VoiceConsoleSession staged write survives a failed navigation', () => {
+  it('keeps the staged write when the navigation moves nothing and confirms it after はい', async () => {
+    const { call, session } = await openSession({ position: 4 });
+    const prepared = await call('prepare_ok');
+    const navigated = await call('next_task');
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('はい');
+    const confirmed = await confirmYes(call);
+
+    expect({
+      navigationOk: navigated.ok,
+      navigationError: navigated.error,
+      stagedActionCancelled: navigated.stagedActionCancelled,
+      confirmOk: confirmed.ok,
+    }).toEqual({
+      navigationOk: false,
+      navigationError: 'end_of_queue',
+      stagedActionCancelled: undefined,
+      confirmOk: true,
+    });
+  });
+});
+
+describe('VoiceConsoleSession read-back gate ignores quotation marks and URLs', () => {
+  it('opens the window when the read-back is spoken without the quotation marks or the pull request URL', async () => {
+    const { call, session } = await openSession({ position: 4 });
+    const prepared = await call('prepare_pull_request_review', {
+      action: 'approve_and_merge',
+    });
+    const spoken = String(prepared.readBack)
+      .replace(/[「」]/g, '')
+      .replace(/https?:\/\/\S+/g, '');
+    session.recordAssistantSpeech(spoken);
+    session.recordOwnerSpeech('はい');
+
+    const confirmed = await confirmYes(call);
+
+    expect({ ok: confirmed.ok, error: confirmed.error }).toEqual({
+      ok: true,
+      error: undefined,
+    });
   });
 });

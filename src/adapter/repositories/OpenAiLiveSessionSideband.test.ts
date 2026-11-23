@@ -3,11 +3,16 @@ import {
   type VoiceConsoleSocket,
 } from './OpenAiLiveSessionSideband';
 
-type SocketEventType = 'message' | 'close' | 'error';
+type SocketEventType = 'open' | 'message' | 'close' | 'error';
 type SocketListener = (event: { data?: unknown }) => void;
 
 class FakeSocket implements VoiceConsoleSocket {
   readonly sent: string[] = [];
+  closed = false;
+
+  close(): void {
+    this.closed = true;
+  }
   private readonly listeners = new Map<SocketEventType, SocketListener[]>();
 
   send(data: string): void {
@@ -37,7 +42,7 @@ const createRecordingHandler = () =>
   );
 
 const createHarness = (
-  options: { readApiKey?: () => string | undefined } = {},
+  options: { readApiKey?: () => string | undefined; opens?: boolean } = {},
 ) => {
   const socket = new FakeSocket();
   const createSocket = jest.fn(
@@ -45,6 +50,11 @@ const createHarness = (
       socket,
   );
   const logError = jest.fn();
+  if (options.opens !== false) {
+    queueMicrotask(() => {
+      socket.emit('open', {});
+    });
+  }
   const readApiKey = options.readApiKey ?? (() => 'key-1');
   const sideband = new OpenAiLiveSessionSideband(
     createSocket,
@@ -119,7 +129,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   it('opens one socket to the attach URL with the bearer key header', () => {
     const { createSocket, sideband } = createHarness();
 
-    sideband.attach('live_123', () => Promise.resolve());
+    void sideband.attach('live_123', () => Promise.resolve());
 
     expect(createSocket).toHaveBeenCalledTimes(1);
     expect(createSocket).toHaveBeenCalledWith(
@@ -131,7 +141,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   it('parses each message and passes it with a send function that writes JSON to the socket', () => {
     const { socket, sideband } = createHarness();
     const handleServerEvent = createRecordingHandler();
-    sideband.attach('live_123', handleServerEvent);
+    void sideband.attach('live_123', handleServerEvent);
 
     const serverEvent = {
       type: 'response.event',
@@ -157,19 +167,21 @@ describe('OpenAiLiveSessionSideband.attach', () => {
   it('logs a malformed message without throwing and does not pass it on', () => {
     const { socket, logError, sideband } = createHarness();
     const handleServerEvent = createRecordingHandler();
-    sideband.attach('live_123', handleServerEvent);
+    void sideband.attach('live_123', handleServerEvent);
 
     expect(() => socket.emit('message', { data: '{not json' })).not.toThrow();
     expect(handleServerEvent).not.toHaveBeenCalled();
     expect(logError).toHaveBeenCalledTimes(1);
   });
 
-  it('logs close and error events', () => {
+  it('logs close and error events after the socket has opened', async () => {
     const cases = [{ type: 'close' as const }, { type: 'error' as const }];
 
     for (const testCase of cases) {
       const { socket, logError, sideband } = createHarness();
-      sideband.attach('live_123', () => Promise.resolve());
+      const attached = sideband.attach('live_123', () => Promise.resolve());
+      socket.emit('open', {});
+      await attached;
 
       socket.emit(testCase.type, {});
 
@@ -182,7 +194,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
 
   it('logs a failure of the server event handler instead of dropping it', async () => {
     const { socket, logError, sideband } = createHarness();
-    sideband.attach('live_123', () =>
+    void sideband.attach('live_123', () =>
       Promise.reject(new Error('handler boom')),
     );
 
@@ -190,5 +202,53 @@ describe('OpenAiLiveSessionSideband.attach', () => {
     await flushPromises();
 
     expect(logError.mock.calls.flat().join('\n')).toContain('handler boom');
+  });
+
+  it('resolves the attach once the socket opens and rejects when it fails before opening', async () => {
+    const cases = [
+      { name: 'opens', event: 'open' as const, expectedResult: 'resolved' },
+      {
+        name: 'closes first',
+        event: 'close' as const,
+        expectedResult: 'rejected',
+      },
+      {
+        name: 'errors first',
+        event: 'error' as const,
+        expectedResult: 'rejected',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { socket, sideband } = createHarness();
+      const attached = sideband.attach('live_123', () => Promise.resolve());
+      socket.emit(testCase.event, {});
+
+      const outcome = await attached.then(
+        () => 'resolved',
+        () => 'rejected',
+      );
+
+      expect({ name: testCase.name, outcome }).toEqual({
+        name: testCase.name,
+        outcome: testCase.expectedResult,
+      });
+    }
+  });
+
+  it('rejects and closes the socket when it does not open within the timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      const { socket, sideband } = createHarness({ opens: false });
+      const attached = sideband.attach('live_123', () => Promise.resolve());
+      jest.advanceTimersByTime(10_000);
+
+      await expect(attached).rejects.toThrow(
+        'OpenAI live session live_123 sideband did not open within 10000 ms',
+      );
+      expect(socket.closed).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

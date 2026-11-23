@@ -2,13 +2,16 @@ import type { VoiceConsoleSendEvent } from '../voice-console/voiceConsoleSideban
 
 const OPENAI_LIVE_SESSIONS_ORIGIN = 'wss://api.openai.com/v1/live/sessions';
 const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const SIDEBAND_OPEN_TIMEOUT_MS = 10_000;
 
-export type VoiceConsoleSocketEventType = 'message' | 'close' | 'error';
+export type VoiceConsoleSocketEventType =
+  'open' | 'message' | 'close' | 'error';
 
 export type VoiceConsoleSocketListener = (event: { data?: unknown }) => void;
 
 export type VoiceConsoleSocket = {
   send(data: string): void;
+  close(): void;
   addEventListener(
     type: VoiceConsoleSocketEventType,
     listener: VoiceConsoleSocketListener,
@@ -71,7 +74,7 @@ export class OpenAiLiveSessionSideband {
   attach(
     sessionId: string,
     handleServerEvent: VoiceConsoleServerEventHandler,
-  ): void {
+  ): Promise<void> {
     const url = OpenAiLiveSessionSideband.attachUrl(sessionId);
     const apiKey = this.readApiKey();
     if (apiKey === undefined || apiKey === '') {
@@ -79,40 +82,65 @@ export class OpenAiLiveSessionSideband {
         'OPENAI_API_KEY is not set for the live session sideband',
       );
     }
-    const socket = this.createSocket(url, {
-      Authorization: `Bearer ${apiKey}`,
-    });
-    const send: VoiceConsoleSendEvent = (event) => {
-      socket.send(JSON.stringify(event));
-    };
+    return new Promise<void>((resolve, reject) => {
+      const socket = this.createSocket(url, {
+        Authorization: `Bearer ${apiKey}`,
+      });
+      const send: VoiceConsoleSendEvent = (event) => {
+        socket.send(JSON.stringify(event));
+      };
+      const openTimer = setTimeout(() => {
+        const message = `OpenAI live session ${sessionId} sideband did not open within ${SIDEBAND_OPEN_TIMEOUT_MS} ms`;
+        this.logError(message);
+        socket.close();
+        reject(new Error(message));
+      }, SIDEBAND_OPEN_TIMEOUT_MS);
+      openTimer.unref();
 
-    socket.addEventListener('message', (event) => {
-      if (typeof event.data !== 'string') {
-        this.logError(
-          `OpenAI live session ${sessionId} received a non-text message`,
-        );
-        return;
-      }
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(event.data);
-      } catch (error) {
-        this.logError(
-          `OpenAI live session ${sessionId} received a malformed message: ${describeError(error)}`,
-        );
-        return;
-      }
-      handleServerEvent(parsed, send).catch((error: unknown) => {
-        this.logError(
-          `OpenAI live session ${sessionId} event handling failed: ${describeError(error)}`,
+      socket.addEventListener('open', () => {
+        clearTimeout(openTimer);
+        resolve();
+      });
+      socket.addEventListener('message', (event) => {
+        if (typeof event.data !== 'string') {
+          this.logError(
+            `OpenAI live session ${sessionId} received a non-text message`,
+          );
+          return;
+        }
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(event.data);
+        } catch (error) {
+          this.logError(
+            `OpenAI live session ${sessionId} received a malformed message: ${describeError(error)}`,
+          );
+          return;
+        }
+        handleServerEvent(parsed, send).catch((error: unknown) => {
+          this.logError(
+            `OpenAI live session ${sessionId} event handling failed: ${describeError(error)}`,
+          );
+        });
+      });
+      socket.addEventListener('close', () => {
+        clearTimeout(openTimer);
+        this.logError(`OpenAI live session ${sessionId} sideband closed`);
+        reject(
+          new Error(
+            `OpenAI live session ${sessionId} sideband closed before it opened`,
+          ),
         );
       });
-    });
-    socket.addEventListener('close', () => {
-      this.logError(`OpenAI live session ${sessionId} sideband closed`);
-    });
-    socket.addEventListener('error', () => {
-      this.logError(`OpenAI live session ${sessionId} sideband error`);
+      socket.addEventListener('error', () => {
+        clearTimeout(openTimer);
+        this.logError(`OpenAI live session ${sessionId} sideband error`);
+        reject(
+          new Error(
+            `OpenAI live session ${sessionId} sideband error before it opened`,
+          ),
+        );
+      });
     });
   }
 }

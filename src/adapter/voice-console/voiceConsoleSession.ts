@@ -116,6 +116,11 @@ const failure = (error: string): ToolResult => ({ ok: false, error });
 const ownerSpeechSaysYes = (speech: string): boolean =>
   normalizeSpeech(speech) === OWNER_CONFIRMATION_REPLY;
 
+const readBackSpeechKey = (text: string): string =>
+  normalizeSpeech(
+    text.replace(/https?:\/\/\S+/g, '').replace(/[「」『』]/g, ''),
+  );
+
 const parseToolArguments = (argumentsJson: string): ToolArguments => {
   if (argumentsJson.trim() === '') {
     return {};
@@ -367,24 +372,21 @@ export class VoiceConsoleSession {
   private pendingTargetKey: string | null = null;
   private ownerSpeech = '';
   private assistantSpeech = '';
-  private pendingTargetTitle: string | null = null;
+  private pendingReadBack: string | null = null;
   // 'idle': no prepare yet. 'awaiting': prepared, read-back not yet spoken.
-  // 'open': the assistant has spoken the prepared item's title, owner speech counts.
   private readBackState: 'idle' | 'awaiting' | 'open' = 'idle';
 
   constructor(private readonly deps: VoiceConsoleSessionDeps) {}
 
   // Fed by the sideband with the assistant's output transcript deltas. The
-  // read-back window opens once the accumulated assistant speech since the
-  // prepare contains the prepared item's normalised title.
   recordAssistantSpeech(delta: string): void {
-    if (this.readBackState !== 'awaiting' || this.pendingTargetTitle === null) {
+    if (this.readBackState !== 'awaiting' || this.pendingReadBack === null) {
       return;
     }
     this.assistantSpeech += delta;
     if (
-      normalizeSpeech(this.assistantSpeech).includes(
-        normalizeSpeech(this.pendingTargetTitle),
+      readBackSpeechKey(this.assistantSpeech).includes(
+        readBackSpeechKey(this.pendingReadBack),
       )
     ) {
       this.readBackState = 'open';
@@ -434,7 +436,9 @@ export class VoiceConsoleSession {
       case 'current_task_summary':
         return this.currentTaskSummary(args);
       case 'repeat_current_task':
-        return this.currentTaskSummary(args);
+        return this.clearStagedActionOnNavigation(
+          await this.currentTaskSummary(args),
+        );
       case 'current_task_detail':
         return this.currentTaskDetail(args);
       case 'read_github_url':
@@ -446,11 +450,11 @@ export class VoiceConsoleSession {
       case 'search_issues':
         return this.searchIssuesTool(args);
       case 'next_task':
-        return this.moveToNextTask();
+        return this.clearStagedActionOnNavigation(this.moveToNextTask());
       case 'previous_task':
-        return this.moveToPreviousTask();
+        return this.clearStagedActionOnNavigation(this.moveToPreviousTask());
       case 'jump_to_task':
-        return this.jumpToTask(args);
+        return this.clearStagedActionOnNavigation(this.jumpToTask(args));
       case 'prepare_ok':
         return this.prepareOk();
       case 'prepare_comment_and_move_to_awaiting_workspace':
@@ -755,7 +759,7 @@ export class VoiceConsoleSession {
     };
     this.pendingActions.prepare(action);
     this.pendingTargetKey = queueEntryKey(entry);
-    this.pendingTargetTitle = entry.item.title;
+    this.pendingReadBack = draft.readBack;
     this.ownerSpeech = '';
     this.assistantSpeech = '';
     this.readBackState = 'awaiting';
@@ -961,7 +965,7 @@ export class VoiceConsoleSession {
         requestPath: '/api/review',
         body: { ...baseBody, action, commentBody: commentText },
         readBack: `「${entry.item.title}」のプルリクエスト ${prUrl} に変更依頼「${commentText}」を出します。`,
-        removesFromQueue: false,
+        removesFromQueue: true,
       });
     }
     if (action === 'unnecessary') {
@@ -1031,9 +1035,25 @@ export class VoiceConsoleSession {
   }
 
   private cancelPendingAction(): ToolResult {
+    this.clearStagedAction();
+    return { ok: true };
+  }
+
+  private clearStagedActionOnNavigation(result: ToolResult): ToolResult {
+    if (!result.ok || this.pendingActions.current() === null) {
+      return result;
+    }
+    this.clearStagedAction();
+    return { ...result, stagedActionCancelled: true };
+  }
+
+  private clearStagedAction(): void {
     this.pendingActions.cancel();
     this.pendingTargetKey = null;
-    return { ok: true };
+    this.pendingReadBack = null;
+    this.readBackState = 'idle';
+    this.ownerSpeech = '';
+    this.assistantSpeech = '';
   }
 }
 

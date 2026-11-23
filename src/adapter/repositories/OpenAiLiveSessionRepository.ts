@@ -9,6 +9,11 @@ import {
 
 const OPENAI_LIVE_SESSIONS_URL = 'https://api.openai.com/v1/live/sessions';
 
+const LIVE_SESSION_CLOSE_TIMEOUT_MS = 10_000;
+
+const liveSessionUrl = (sessionId: string): string =>
+  `${OPENAI_LIVE_SESSIONS_URL}/${encodeURIComponent(sessionId)}`;
+
 const buildLiveSessionRequestBody = (sdpOffer: string): string =>
   JSON.stringify({
     session: {
@@ -146,5 +151,23 @@ export class OpenAiLiveSessionRepository implements LiveSessionRepository {
       sdpAnswer: fields.sdpAnswer,
       sessionId: fields.sessionId,
     };
+  }
+
+  async close(sessionId: string): Promise<void> {
+    const apiKey = this.readApiKey();
+    if (apiKey === undefined || apiKey === '') {
+      throw new Error('OPENAI_API_KEY is not set; live session not closed');
+    }
+    const response = await this.fetchImplementation(liveSessionUrl(sessionId), {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(LIVE_SESSION_CLOSE_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(
+        `OpenAI live session close failed with status ${response.status}: ${readErrorMessage(body)}`,
+      );
+    }
   }
 }

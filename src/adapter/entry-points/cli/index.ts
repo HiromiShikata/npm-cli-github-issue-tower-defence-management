@@ -1492,6 +1492,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const workflowImprovementIssueUrl =
     loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
   const fleetTaskCreateUrl = loadFleetTaskCreateUrl(fleetConfigFilePath);
+  const liveSessionRepositoryInstance = new OpenAiLiveSessionRepository();
 
   const consoleErrorReporter = buildConsoleErrorReporter(
     workflowImprovementIssueUrl,
@@ -1513,7 +1514,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     resolveGithubToken,
     resolveGithubTokenByRepository,
     issueRepository,
-    liveSessionRepository: new OpenAiLiveSessionRepository(),
+    liveSessionRepository: liveSessionRepositoryInstance,
+    liveSessionCloser: liveSessionRepositoryInstance,
     liveSessionToolCalls: new LiveSessionToolCallUseCase({
       localHomeDirectory: os.homedir(),
       ownerCalls: new FileOwnerCallFileRepository(inTmuxDataDir),
