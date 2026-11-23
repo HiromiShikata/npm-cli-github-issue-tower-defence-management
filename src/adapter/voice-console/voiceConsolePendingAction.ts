@@ -1,5 +1,12 @@
 export const OWNER_CONFIRMATION_REPLY = 'はい';
 
+// Speech is compared after removing whitespace and these punctuation marks,
+// so that a split or punctuated transcript of はい still counts.
+const SPEECH_IGNORED_PATTERN = /[\s。、.,!?！？]/g;
+
+export const normalizeSpeech = (speech: string): string =>
+  speech.replace(SPEECH_IGNORED_PATTERN, '');
+
 export type PreparedVoiceAction = {
   actionId: string;
   requestPath: string;

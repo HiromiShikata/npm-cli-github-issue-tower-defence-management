@@ -7,6 +7,7 @@ import type {
 } from '../../domain/usecases/adapter-interfaces/IssueRepository';
 import { paginateText } from './voiceConsolePaging';
 import {
+  normalizeSpeech,
   OWNER_CONFIRMATION_REPLY,
   VoiceConsolePendingActionStore,
   type PreparedVoiceAction,
@@ -111,12 +112,9 @@ const describeError = (error: unknown): string =>
 
 const failure = (error: string): ToolResult => ({ ok: false, error });
 
-// Owner speech is matched with whitespace and these punctuation marks removed,
-// so that a split or punctuated transcript of はい still counts.
-const SPEECH_IGNORED_PATTERN = /[\s。、.,!?！？]/g;
-
+// The owner's speech counts as yes only when the whole normalised utterance is はい.
 const ownerSpeechSaysYes = (speech: string): boolean =>
-  speech.replace(SPEECH_IGNORED_PATTERN, '').includes(OWNER_CONFIRMATION_REPLY);
+  normalizeSpeech(speech) === OWNER_CONFIRMATION_REPLY;
 
 const parseToolArguments = (argumentsJson: string): ToolArguments => {
   if (argumentsJson.trim() === '') {
@@ -368,20 +366,30 @@ export class VoiceConsoleSession {
   private readonly pendingActions = new VoiceConsolePendingActionStore();
   private pendingTargetKey: string | null = null;
   private ownerSpeech = '';
-  // 'idle': no prepare yet. 'awaiting': prepared, read-back not started.
-  // 'open': the assistant has started the read-back, owner speech counts.
+  private assistantSpeech = '';
+  private pendingTargetTitle: string | null = null;
+  // 'idle': no prepare yet. 'awaiting': prepared, read-back not yet spoken.
+  // 'open': the assistant has spoken the prepared item's title, owner speech counts.
   private readBackState: 'idle' | 'awaiting' | 'open' = 'idle';
 
   constructor(private readonly deps: VoiceConsoleSessionDeps) {}
 
   // Fed by the sideband with the assistant's output transcript deltas. The
-  // first delta after a prepare opens the read-back window.
-  recordAssistantSpeech(_delta: string): void {
-    if (this.readBackState !== 'awaiting') {
+  // read-back window opens once the accumulated assistant speech since the
+  // prepare contains the prepared item's normalised title.
+  recordAssistantSpeech(delta: string): void {
+    if (this.readBackState !== 'awaiting' || this.pendingTargetTitle === null) {
       return;
     }
-    this.readBackState = 'open';
-    this.ownerSpeech = '';
+    this.assistantSpeech += delta;
+    if (
+      normalizeSpeech(this.assistantSpeech).includes(
+        normalizeSpeech(this.pendingTargetTitle),
+      )
+    ) {
+      this.readBackState = 'open';
+      this.ownerSpeech = '';
+    }
   }
 
   // Fed by the sideband with the owner's input transcript deltas. Ignored
@@ -747,7 +755,9 @@ export class VoiceConsoleSession {
     };
     this.pendingActions.prepare(action);
     this.pendingTargetKey = queueEntryKey(entry);
+    this.pendingTargetTitle = entry.item.title;
     this.ownerSpeech = '';
+    this.assistantSpeech = '';
     this.readBackState = 'awaiting';
     return {
       ok: true,
@@ -983,7 +993,7 @@ export class VoiceConsoleSession {
 
   private async confirmPendingAction(args: ToolArguments): Promise<ToolResult> {
     const actionId = readString(args, 'action_id');
-    const ownerReply = readString(args, 'owner_reply');
+    const ownerReply = normalizeSpeech(readString(args, 'owner_reply'));
     const confirmed = this.pendingActions.confirm(actionId, ownerReply);
     if (!confirmed.ok) {
       return failure(confirmed.error);
@@ -993,6 +1003,8 @@ export class VoiceConsoleSession {
       !ownerSpeechSaysYes(this.ownerSpeech)
     ) {
       // Keep the pending action so that a later spoken はい can confirm it.
+      // The speech heard so far is consumed, so the next はい is judged alone.
+      this.ownerSpeech = '';
       this.pendingActions.prepare(confirmed.action);
       return failure('owner_speech_not_heard');
     }
