@@ -457,7 +457,10 @@ describe('useConsoleItemDetailData related pull request read retry', () => {
       const fetchPrFiles = jest
         .fn(async (): Promise<ConsoleChangedFile[]> => changedFileFixture)
         .mockRejectedValueOnce(new ConsoleNetworkError(networkFailureMessage));
-      const caches = buildRelatedReadCaches(fetchPrFiles, async () => commitFixture);
+      const caches = buildRelatedReadCaches(
+        fetchPrFiles,
+        async () => commitFixture,
+      );
       const { result, unmount } = renderHook(() =>
         useConsoleItemDetailData(caches, issueItem),
       );
@@ -471,7 +474,9 @@ describe('useConsoleItemDetailData related pull request read retry', () => {
       });
       await advanceTimersBy(0);
 
-      expect(fetchPrFiles).toHaveBeenCalledTimes(visibilityCase.expectedFetchCalls);
+      expect(fetchPrFiles).toHaveBeenCalledTimes(
+        visibilityCase.expectedFetchCalls,
+      );
       unmount();
       Reflect.deleteProperty(document, 'visibilityState');
     }
@@ -505,7 +510,10 @@ describe('useConsoleItemDetailData related pull request read retry', () => {
     const fetchPrFiles = jest
       .fn(async (): Promise<ConsoleChangedFile[]> => changedFileFixture)
       .mockRejectedValue(new ConsoleNetworkError(networkFailureMessage));
-    const caches = buildRelatedReadCaches(fetchPrFiles, async () => commitFixture);
+    const caches = buildRelatedReadCaches(
+      fetchPrFiles,
+      async () => commitFixture,
+    );
     const { unmount } = renderHook(() =>
       useConsoleItemDetailData(caches, issueItem),
     );
@@ -526,7 +534,10 @@ describe('useConsoleItemDetailData related pull request read retry', () => {
     const fetchPrFiles = jest
       .fn(async (): Promise<ConsoleChangedFile[]> => changedFileFixture)
       .mockRejectedValue(new ConsoleNetworkError(networkFailureMessage));
-    const caches = buildRelatedReadCaches(fetchPrFiles, async () => commitFixture);
+    const caches = buildRelatedReadCaches(
+      fetchPrFiles,
+      async () => commitFixture,
+    );
     const { rerender } = renderHook(
       ({ item }: { item: ConsoleListItem }) =>
         useConsoleItemDetailData(caches, item),

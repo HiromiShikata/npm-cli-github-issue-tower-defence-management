@@ -156,7 +156,8 @@ export const useConsoleItemDetailData = (
           onFailure: (cause) =>
             updateView(pullRequest.url, {
               filesAreLoading: false,
-              filesError: cause instanceof Error ? cause.message : String(cause),
+              filesError:
+                cause instanceof Error ? cause.message : String(cause),
             }),
         }),
       );
