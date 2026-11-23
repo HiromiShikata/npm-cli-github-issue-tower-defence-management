@@ -74,7 +74,7 @@ describe('FileOwnerCallFileRepository.listPendingOwnerCalls', () => {
     ).toEqual([]);
   });
 
-  it('fails with every unreadable owner call document named, not just the first', () => {
+  it('fails with every unreadable owner call file named, not just the first', () => {
     writeOwnerCall('NA', 'broken-one.yaml', 'sessionName: 3\n');
     writeOwnerCall('NA', 'broken-two.yaml', 'calledAt: 1\n');
     writeOwnerCall(
@@ -85,7 +85,7 @@ describe('FileOwnerCallFileRepository.listPendingOwnerCalls', () => {
     expect(() =>
       new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
     ).toThrow(
-      /owner call files could not be read: NA\/broken-one\.yaml document 0: .*; NA\/broken-two\.yaml document 0: /,
+      /owner call files could not be read: NA\/broken-one\.yaml: .*; NA\/broken-two\.yaml: /,
     );
   });
 
@@ -136,7 +136,7 @@ describe('FileOwnerCallFileRepository.listPendingOwnerCalls', () => {
     );
     expect(() =>
       new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
-    ).toThrow(/NA\/partly-broken\.yaml document 1: /);
+    ).toThrow(/NA\/partly-broken\.yaml: document 1: /);
   });
 
   it('names a document without a calledAt in a multi-document file', () => {
@@ -151,7 +151,7 @@ describe('FileOwnerCallFileRepository.listPendingOwnerCalls', () => {
     expect(() =>
       new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
     ).toThrow(
-      'owner call files could not be read: NA/missing-time.yaml document 1: sessionName or calledAt is missing or not a string',
+      'owner call files could not be read: NA/missing-time.yaml: document 1: sessionName or calledAt is missing or not a string',
     );
   });
 });

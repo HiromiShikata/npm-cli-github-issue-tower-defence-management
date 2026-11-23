@@ -542,6 +542,153 @@ describe('LiveSessionToolCallUseCase session_task_issue_read', () => {
 describe('LiveSessionToolCallUseCase session_file_read', () => {
   const FOLDER = '/work/project';
   const TRACKED = [
+    'src/index.ts',
+    'src/alpha.ts',
+    'src/beta/x',
+    'src/zeta/y',
+    'bin/tool',
+    'pipe',
+    'link-in-folder.ts',
+  ];
+
+  const fileRespond =
+    (
+      overrides: Partial<{
+        panePath: SessionReadCommandResult;
+        folderReal: SessionReadCommandResult;
+        targetReal: SessionReadCommandResult;
+        fileType: SessionReadCommandResult;
+        content: SessionReadCommandResult;
+        listing: SessionReadCommandResult;
+      }>,
+    ): CommandResponder =>
+    (_host, command) => {
+      switch (command.kind) {
+        case 'tmuxHasSession':
+          return exited('');
+        case 'tmuxPanePath':
+          return overrides.panePath ?? exited(`${FOLDER}\n`);
+        case 'gitTopLevel':
+          return exited(`${FOLDER}\n`);
+        case 'gitTrackedFiles':
+          return exited(`${TRACKED.join('\u0000')}\u0000`);
+        case 'realPath':
+          if (command.path === HOME) {
+            return exited(`${HOME}\n`);
+          }
+          return command.path === FOLDER
+            ? (overrides.folderReal ?? exited(`${FOLDER}\n`))
+            : (overrides.targetReal ?? exited(`${FOLDER}/src/index.ts\n`));
+        case 'fileType':
+          return overrides.fileType ?? exited('regular file\n');
+        case 'readFileHead':
+          return overrides.content ?? exited('console.log(1);\n');
+        case 'listDirectory':
+          return overrides.listing ?? exited('zeta/\nalpha.ts\nbeta/\n');
+        case 'tmuxCapturePane':
+          return exited('');
+      }
+    };
+
+  it.each([
+    {
+      name: 'reads a text file inside the session folder',
+      overrides: {},
+      path: 'src/index.ts',
+      expected: 'console.log(1);\n',
+    },
+    {
+      name: 'lists a folder as a sorted listing',
+      overrides: {
+        fileType: exited('directory\n'),
+        targetReal: exited(`${FOLDER}/src\n`),
+      },
+      path: 'src',
+      expected: 'alpha.ts\nbeta/\nindex.ts\nzeta/',
+    },
+    {
+      name: 'refuses a binary file',
+      overrides: { content: exited('ELF\u0000binary') },
+      path: 'bin/tool',
+      expected: 'バイナリファイルのため内容は表示できません。',
+    },
+    {
+      name: 'reads a symlink inside the folder that points to a file inside the folder',
+      overrides: { targetReal: exited(`${FOLDER}/src/index.ts\n`) },
+      path: 'link-in-folder.ts',
+      expected: 'console.log(1);\n',
+    },
+    {
+      name: 'refuses a path that escapes the folder through a symlink',
+      overrides: { targetReal: exited('/etc/hosts\n') },
+      path: 'link-to-hosts',
+      expected:
+        '指定されたパスはセッションの作業フォルダの外にあるため、読めません。',
+    },
+    {
+      name: 'refuses an absolute path outside the folder',
+      overrides: { targetReal: exited('/etc/hosts\n') },
+      path: '/etc/hosts',
+      expected:
+        '指定されたパスはセッションの作業フォルダの外にあるため、読めません。',
+    },
+    {
+      name: 'answers a missing file with a clear text',
+      overrides: { targetReal: exited('', 1) },
+      path: 'missing.txt',
+      expected: 'ファイルまたはフォルダが見つかりません。',
+    },
+    {
+      name: 'answers a file of an unsupported type with a clear text',
+      overrides: { fileType: exited('fifo\n') },
+      path: 'pipe',
+      expected: '通常のファイルでもフォルダでもないため、読めません。',
+    },
+    {
+      name: 'answers when the session folder cannot be read',
+      overrides: { panePath: exited('', 1) },
+      path: 'src/index.ts',
+      expected: 'セッションの作業フォルダを取得できませんでした。',
+    },
+  ])('$name', async ({ overrides, path, expected }) => {
+    const { useCase } = buildHarness({
+      respond: fileRespond(overrides),
+    });
+    const outcome = await useCase.run(
+      call(
+        LIVE_SESSION_TOOL_NAMES.sessionFileRead,
+        { path },
+        PLAIN_SESSION_NAME,
+      ),
+    );
+    expect(outputOf(outcome)).toBe(expected);
+  });
+
+  it('passes the byte limit plus one to the head read so truncation is detectable', async () => {
+    const { useCase, commands } = buildHarness({
+      respond: fileRespond({}),
+    });
+    await useCase.run(
+      call(
+        LIVE_SESSION_TOOL_NAMES.sessionFileRead,
+        { path: 'src/index.ts' },
+        PLAIN_SESSION_NAME,
+      ),
+    );
+    expect(
+      commands.executed.find((entry) => entry.command.kind === 'readFileHead')
+        ?.command,
+    ).toEqual({
+      kind: 'readFileHead',
+      path: `${FOLDER}/src/index.ts`,
+      byteLimit: LIVE_SESSION_TOOL_OUTPUT_LIMIT_BYTES + 1,
+    });
+  });
+});
+
+describe('LiveSessionToolCallUseCase session_file_read allow-list rules', () => {
+  const FOLDER = '/work/project';
+  const TRACKED = [
     'README.md',
     'src/index.ts',
     '.dockerignore',

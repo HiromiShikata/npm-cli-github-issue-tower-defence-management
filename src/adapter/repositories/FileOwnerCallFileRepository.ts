@@ -52,7 +52,7 @@ const readCallsOfFile = (text: string, label: string): FileCallsReading => {
   YAML.parseAllDocuments(text).forEach((document, index) => {
     if (document.errors.length > 0) {
       failures.push(
-        `${label} document ${index}: ${document.errors[0].message}`,
+        `${label}: document ${index}: ${document.errors[0].message}`,
       );
       return;
     }
@@ -64,7 +64,7 @@ const readCallsOfFile = (text: string, label: string): FileCallsReading => {
       calls.push(callOfDocument(value));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      failures.push(`${label} document ${index}: ${reason}`);
+      failures.push(`${label}: document ${index}: ${reason}`);
     }
   });
   return { calls, failures };
