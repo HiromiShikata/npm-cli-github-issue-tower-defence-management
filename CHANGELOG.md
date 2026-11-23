@@ -1,3 +1,10 @@
+# [2.203.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.202.1...v2.203.0) (2026-11-23)
+
+
+### Features
+
+* **console:** edit depended issue URLs in the rare actions field ([#3758](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3758)) ([e933258](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e93325868eee12f13956bad26da7cd5eed6b0819))
+
 ## [2.202.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.202.0...v2.202.1) (2026-11-23)
 
 
