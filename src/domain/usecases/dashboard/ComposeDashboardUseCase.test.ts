@@ -682,88 +682,119 @@ describe('formatProjectTotalLine', () => {
   });
 });
 
+describe('token column constants', () => {
+  it('places the seven day utilization column at 5 and the session total column at 16', () => {
+    expect(SEVEN_DAY_UTILIZATION_COLUMN_START).toBe(5);
+    expect(TOKEN_SESSION_COLUMN_START).toBe(16);
+  });
+});
+
 describe('formatTokenRowLine', () => {
-  it('renders a token row with the last two name chars, utilization without percent, reset countdown, prep and hum', () => {
-    expect(
-      formatTokenRowLine(
-        tokenStatus({
-          name: 'alice',
-          fiveHourUtilizationPercent: 10,
-          fiveHourResetSeconds: 3600,
-          sevenDayUtilizationPercent: 12,
-          sevenDayResetSeconds: 86400 * 5,
-          color: 'G',
-          prep: 2,
-          hum: 1,
-        }),
-      ),
-    ).toBe('🟢ce 10 0d01h00 12 5d00h00  2 1');
-  });
+  const cases: {
+    name: string;
+    token: Partial<TokenStatus>;
+    expected: string;
+  }[] = [
+    {
+      name: 'renders dot, two name chars, seven day utilization, seven day reset, prep and hum with single-space separators',
+      token: {
+        name: 'alice',
+        sevenDayUtilizationPercent: 12,
+        sevenDayResetSeconds: 86400 * 5,
+        color: 'G',
+        prep: 2,
+        hum: 1,
+      },
+      expected: '🟢ce 12 5d00h00  2 1',
+    },
+    {
+      name: 'uses the last two characters of the name and caps utilization at 99',
+      token: {
+        name: 'bob',
+        sevenDayUtilizationPercent: 100,
+        sevenDayResetSeconds: 7200,
+        color: 'K',
+        prep: 0,
+        hum: 0,
+      },
+      expected: '⚪ob 99 0d02h00  0 0',
+    },
+    {
+      name: 'renders question marks for utilization and reset when window data is unavailable',
+      token: {
+        name: 'carolxx',
+        sevenDayUtilizationPercent: null,
+        sevenDayResetSeconds: null,
+        color: 'Y',
+        prep: 1,
+        hum: 0,
+      },
+      expected: '🟡xx  ? ?  1 0',
+    },
+    {
+      name: 'renders a double dash padded to the reset width when only the reset is unknown',
+      token: {
+        name: 'alice',
+        sevenDayUtilizationPercent: 12,
+        sevenDayResetSeconds: null,
+        color: 'G',
+        prep: 2,
+        hum: 1,
+      },
+      expected: `🟢ce 12 ${'--'.padEnd(7)}  2 1`,
+    },
+    {
+      name: 'renders a question mark for utilization when only utilization is unknown',
+      token: {
+        name: 'alice',
+        sevenDayUtilizationPercent: null,
+        sevenDayResetSeconds: 86400,
+        color: 'G',
+        prep: 2,
+        hum: 1,
+      },
+      expected: '🟢ce  ? 1d00h00  2 1',
+    },
+    {
+      name: 'renders a zero reset as the zero countdown',
+      token: {
+        name: 'alice',
+        sevenDayUtilizationPercent: 12,
+        sevenDayResetSeconds: 0,
+        color: 'G',
+        prep: 2,
+        hum: 1,
+      },
+      expected: '🟢ce 12 0d00h00  2 1',
+    },
+    {
+      name: 'caps prep at 99 when above 99',
+      token: {
+        name: 'alice',
+        sevenDayUtilizationPercent: 12,
+        sevenDayResetSeconds: 86400,
+        color: 'G',
+        prep: 100,
+        hum: 0,
+      },
+      expected: '🟢ce 12 1d00h00 99 0',
+    },
+    {
+      name: 'caps hum at 99 when above 99',
+      token: {
+        name: 'alice',
+        sevenDayUtilizationPercent: 12,
+        sevenDayResetSeconds: 86400,
+        color: 'G',
+        prep: 0,
+        hum: 100,
+      },
+      expected: '🟢ce 12 1d00h00  0 99',
+    },
+  ];
 
-  it('uses last two characters of the name and caps utilization at 99', () => {
-    expect(
-      formatTokenRowLine(
-        tokenStatus({
-          name: 'bob',
-          fiveHourUtilizationPercent: 100,
-          fiveHourResetSeconds: 0,
-          sevenDayUtilizationPercent: 95,
-          sevenDayResetSeconds: 7200,
-          color: 'K',
-        }),
-      ),
-    ).toBe('⚪ob 99 0d00h00 95 0d02h00  0 0');
-  });
-
-  it('renders question marks when window data is unavailable', () => {
-    expect(
-      formatTokenRowLine(
-        tokenStatus({
-          name: 'carolxx',
-          fiveHourUtilizationPercent: null,
-          fiveHourResetSeconds: null,
-          sevenDayUtilizationPercent: null,
-          sevenDayResetSeconds: null,
-          color: 'Y',
-          prep: 1,
-          hum: 0,
-        }),
-      ),
-    ).toBe('🟡xx  ? ?  ? ?  1 0');
-  });
-
-  it('caps prep at 99 when above 99', () => {
-    expect(
-      formatTokenRowLine(
-        tokenStatus({
-          name: 'alice',
-          fiveHourUtilizationPercent: 10,
-          fiveHourResetSeconds: 3600,
-          sevenDayUtilizationPercent: 12,
-          sevenDayResetSeconds: 86400,
-          color: 'G',
-          prep: 100,
-          hum: 0,
-        }),
-      ),
-    ).toBe('🟢ce 10 0d01h00 12 1d00h00 99 0');
-  });
-
-  it('caps hum at 99 when above 99', () => {
-    expect(
-      formatTokenRowLine(
-        tokenStatus({
-          name: 'alice',
-          fiveHourUtilizationPercent: 10,
-          fiveHourResetSeconds: 3600,
-          sevenDayUtilizationPercent: 12,
-          sevenDayResetSeconds: 86400,
-          color: 'G',
-          prep: 0,
-          hum: 100,
-        }),
-      ),
-    ).toBe('🟢ce 10 0d01h00 12 1d00h00  0 99');
+  it.each(cases)('$name', ({ token, expected }) => {
+    expect(formatTokenRowLine(tokenStatus(token))).toBe(expected);
   });
 });
 
@@ -840,9 +871,9 @@ describe('ComposeDashboardUseCase', () => {
     '<tt>' +
     '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
     '3&nbsp;1</tt><br>\n' +
-    '<tt>⚪ob&nbsp;99&nbsp;0d00h00&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;0</tt><br>\n' +
-    '<tt>🟢ce&nbsp;10&nbsp;0d01h00&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
-    '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;1&nbsp;0</tt><br>\n';
+    '<tt>⚪ob&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;0</tt><br>\n' +
+    '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
+    '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;1&nbsp;0</tt><br>\n';
 
   it('composes byte-identical dashboard text for representative inputs', () => {
     expect(new ComposeDashboardUseCase().run(representativeInput)).toBe(
@@ -850,33 +881,11 @@ describe('ComposeDashboardUseCase', () => {
     );
   });
 
-  it('keeps token columns aligned when reset values are known or unknown', () => {
+  it('keeps token columns aligned when seven day reset values are known or unknown', () => {
     const resetCases = [
-      {
-        name: 'both resets unknown',
-        fiveHourResetSeconds: null,
-        sevenDayResetSeconds: null,
-      },
-      {
-        name: 'five hour reset unknown',
-        fiveHourResetSeconds: null,
-        sevenDayResetSeconds: 86400,
-      },
-      {
-        name: 'seven day reset unknown',
-        fiveHourResetSeconds: 3600,
-        sevenDayResetSeconds: null,
-      },
-      {
-        name: 'both resets known',
-        fiveHourResetSeconds: 3600,
-        sevenDayResetSeconds: 86400,
-      },
-    ] satisfies Array<{
-      name: string;
-      fiveHourResetSeconds: number | null;
-      sevenDayResetSeconds: number | null;
-    }>;
+      { name: 'seven day reset unknown', sevenDayResetSeconds: null },
+      { name: 'seven day reset known', sevenDayResetSeconds: 86400 },
+    ] satisfies Array<{ name: string; sevenDayResetSeconds: number | null }>;
     const codePointIndexOf = (value: string, search: string): number => {
       const valueCharacters = [...value];
       const searchCharacters = [...search];
@@ -893,8 +902,6 @@ describe('ComposeDashboardUseCase', () => {
         tokens: [
           tokenStatus({
             name: 'alice',
-            fiveHourUtilizationPercent: 10,
-            fiveHourResetSeconds: resetCase.fiveHourResetSeconds,
             sevenDayUtilizationPercent: 12,
             sevenDayResetSeconds: resetCase.sevenDayResetSeconds,
             color: 'G',
@@ -917,8 +924,7 @@ describe('ComposeDashboardUseCase', () => {
       }
       return { ...resetCase, tokenRow };
     });
-    const knownTokenRow = tokenRows[3].tokenRow;
-    const fiveHourResetColumnStart = codePointIndexOf(knownTokenRow, '0d01h00');
+    const knownTokenRow = tokenRows[1].tokenRow;
     const sevenDayResetColumnStart = codePointIndexOf(knownTokenRow, '1d00h00');
     const sevenDayUtilizationColumnStarts = tokenRows.map(({ tokenRow }) =>
       codePointIndexOf(tokenRow, '12'),
@@ -929,26 +935,11 @@ describe('ComposeDashboardUseCase', () => {
 
     expect(new Set(sevenDayUtilizationColumnStarts).size).toBe(1);
     expect(new Set(tokenRowLengths).size).toBe(1);
-    for (const {
-      fiveHourResetSeconds,
-      sevenDayResetSeconds,
-      tokenRow,
-    } of tokenRows) {
-      if (fiveHourResetSeconds === null) {
-        expect(
-          [...tokenRow]
-            .slice(fiveHourResetColumnStart, fiveHourResetColumnStart + 7)
-            .join(''),
-        ).toBe('--     ');
-      }
-      if (sevenDayResetSeconds === null) {
-        expect(
-          [...tokenRow]
-            .slice(sevenDayResetColumnStart, sevenDayResetColumnStart + 7)
-            .join(''),
-        ).toBe('--     ');
-      }
-    }
+    expect(
+      [...tokenRows[0].tokenRow]
+        .slice(sevenDayResetColumnStart, sevenDayResetColumnStart + 7)
+        .join(''),
+    ).toBe('--     ');
   });
 
   it('sorts token rows by seven day reset ascending with null resets last', () => {
@@ -1242,41 +1233,95 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
 });
 
 describe('formatTokenSessionTotalLine', () => {
-  it('returns null when there are no tokens', () => {
-    expect(formatTokenSessionTotalLine([])).toBeNull();
-  });
+  const cases: {
+    name: string;
+    tokens: Partial<TokenStatus>[];
+    runningCodexWorkerCount: number | null;
+    expected: string | null;
+  }[] = [
+    {
+      name: 'returns null when there are no tokens and the Codex worker count is null',
+      tokens: [],
+      runningCodexWorkerCount: null,
+      expected: null,
+    },
+    {
+      name: 'returns null when there are no tokens and no Codex worker is running',
+      tokens: [],
+      runningCodexWorkerCount: 0,
+      expected: null,
+    },
+    {
+      name: 'shows only the running Codex worker count in the prep total when there are no Claude tokens',
+      tokens: [],
+      runningCodexWorkerCount: 2,
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '2 0',
+    },
+    {
+      name: 'sums prep and hum across tokens at the session column start position',
+      tokens: [
+        { name: 'alice', prep: 2, hum: 1 },
+        { name: 'bob', prep: 0, hum: 0 },
+        { name: 'carolxx', prep: 1, hum: 0 },
+      ],
+      runningCodexWorkerCount: null,
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '3 1',
+    },
+    {
+      name: 'adds the running Codex worker count to the prep total and leaves the hum total unchanged',
+      tokens: [
+        { name: 'alice', prep: 2, hum: 1 },
+        { name: 'bob', prep: 0, hum: 0 },
+        { name: 'carolxx', prep: 1, hum: 0 },
+      ],
+      runningCodexWorkerCount: 2,
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '5 1',
+    },
+    {
+      name: 'renders zero totals when all tokens have no assigned sessions and no Codex worker is running',
+      tokens: [
+        { name: 'alice', prep: 0, hum: 0 },
+        { name: 'bob', prep: 0, hum: 0 },
+      ],
+      runningCodexWorkerCount: 0,
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 0',
+    },
+    {
+      name: 'caps total prep at 99 when the sum including the Codex count exceeds 99',
+      tokens: [
+        { name: 'alice', prep: 90, hum: 0 },
+        { name: 'bob', prep: 0, hum: 0 },
+      ],
+      runningCodexWorkerCount: 20,
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0',
+    },
+    {
+      name: 'caps total prep at 99 when the Claude sum exceeds 99',
+      tokens: [
+        { name: 'alice', prep: 50, hum: 0 },
+        { name: 'bob', prep: 51, hum: 0 },
+      ],
+      runningCodexWorkerCount: 0,
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0',
+    },
+    {
+      name: 'caps total hum at 99 when the sum exceeds 99',
+      tokens: [
+        { name: 'alice', prep: 0, hum: 60 },
+        { name: 'bob', prep: 0, hum: 60 },
+      ],
+      runningCodexWorkerCount: null,
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 99',
+    },
+  ];
 
-  it('sums prep and hum across all tokens at the session column start position', () => {
-    const result = formatTokenSessionTotalLine([
-      tokenStatus({ name: 'alice', prep: 2, hum: 1 }),
-      tokenStatus({ name: 'bob', prep: 0, hum: 0 }),
-      tokenStatus({ name: 'carolxx', prep: 1, hum: 0 }),
-    ]);
-    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '3 1');
-  });
-
-  it('renders zero totals when all tokens have no assigned sessions', () => {
-    const result = formatTokenSessionTotalLine([
-      tokenStatus({ name: 'alice', prep: 0, hum: 0 }),
-      tokenStatus({ name: 'bob', prep: 0, hum: 0 }),
-    ]);
-    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 0');
-  });
-
-  it('caps total prep at 99 when the sum exceeds 99', () => {
-    const result = formatTokenSessionTotalLine([
-      tokenStatus({ name: 'alice', prep: 50, hum: 0 }),
-      tokenStatus({ name: 'bob', prep: 51, hum: 0 }),
-    ]);
-    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0');
-  });
-
-  it('caps total hum at 99 when the sum exceeds 99', () => {
-    const result = formatTokenSessionTotalLine([
-      tokenStatus({ name: 'alice', prep: 0, hum: 60 }),
-      tokenStatus({ name: 'bob', prep: 0, hum: 60 }),
-    ]);
-    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 99');
+  it.each(cases)('$name', ({ tokens, runningCodexWorkerCount, expected }) => {
+    expect(
+      formatTokenSessionTotalLine(
+        tokens.map((token) => tokenStatus(token)),
+        runningCodexWorkerCount,
+      ),
+    ).toBe(expected);
   });
 });
 
