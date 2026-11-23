@@ -10,8 +10,22 @@ import {
   PendingOwnerCall,
 } from '../../domain/usecases/adapter-interfaces/LiveSessionToolRepository';
 
-const listEntryNames = (directory: string): string[] =>
-  fs.existsSync(directory) ? fs.readdirSync(directory) : [];
+const listEntryNamesOfKind = (
+  directory: string,
+  isWantedKind: (entry: fs.Dirent) => boolean,
+): string[] =>
+  fs.existsSync(directory)
+    ? fs
+        .readdirSync(directory, { withFileTypes: true })
+        .filter(isWantedKind)
+        .map((entry) => entry.name)
+    : [];
+
+const listProjectDirectoryNames = (ownerCallRoot: string): string[] =>
+  listEntryNamesOfKind(ownerCallRoot, (entry) => entry.isDirectory());
+
+const listOwnerCallFileNames = (projectPath: string): string[] =>
+  listEntryNamesOfKind(projectPath, (entry) => entry.isFile());
 
 const readPendingOwnerCall = (text: string): PendingOwnerCall => {
   const parsed: unknown = YAML.parse(text);
@@ -38,9 +52,9 @@ export class FileOwnerCallFileRepository implements OwnerCallFileRepository {
     );
     const calls: PendingOwnerCall[] = [];
     const failures: string[] = [];
-    for (const projectDirectory of listEntryNames(ownerCallRoot)) {
+    for (const projectDirectory of listProjectDirectoryNames(ownerCallRoot)) {
       const projectPath = path.join(ownerCallRoot, projectDirectory);
-      for (const fileName of listEntryNames(projectPath)) {
+      for (const fileName of listOwnerCallFileNames(projectPath)) {
         if (!fileName.endsWith(OWNER_CALL_FILE_EXTENSION)) {
           continue;
         }

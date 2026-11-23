@@ -729,15 +729,16 @@ describe('LiveSessionToolCallUseCase with a dotted repository name', () => {
     expect(hosts.requestedIssueUrls).toEqual([DOTTED_URL]);
   });
 
-  it('falls back to deriving the URL from the name when no known URL maps to it', async () => {
+  it('does not guess a URL for an ambiguous underscore when no known URL maps to the name', async () => {
     const { useCase, hosts } = buildHarness({
       knownIssueUrls: ['https://github.com/example-org/another-repo/issues/3'],
     });
-    await useCase.run(
-      call(LIVE_SESSION_TOOL_NAMES.sessionScreenRead, {}, DOTTED_SESSION),
+    const outcome = await useCase.run(
+      call(LIVE_SESSION_TOOL_NAMES.sessionTaskIssueRead, {}, DOTTED_SESSION),
     );
-    expect(hosts.requestedIssueUrls).toEqual([
-      'https://github.com/example-org/example_repo/issues/12',
-    ]);
+    expect(outputOf(outcome)).toBe(
+      'セッション名からタスク Issue の URL を特定できません。',
+    );
+    expect(hosts.requestedIssueUrls).toEqual([]);
   });
 });

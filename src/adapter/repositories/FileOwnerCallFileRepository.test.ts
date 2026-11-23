@@ -89,3 +89,40 @@ describe('FileOwnerCallFileRepository.listPendingOwnerCalls', () => {
     );
   });
 });
+
+describe('FileOwnerCallFileRepository with stray entries', () => {
+  let dataDir: string;
+
+  beforeEach(() => {
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'owner-call-stray-test-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it('skips a regular file directly under the owner call root and still returns the calls', () => {
+    const root = path.join(dataDir, 'call-to-user');
+    fs.mkdirSync(path.join(root, 'NA'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'NA', 'plain-session.yaml'),
+      ownerCallDocument('plain-session', '2026-11-23T05:00:00Z'),
+    );
+    fs.writeFileSync(path.join(root, 'stray-note.txt'), 'not a project folder');
+    expect(
+      new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
+    ).toEqual([
+      { sessionName: 'plain-session', calledAt: '2026-11-23T05:00:00Z' },
+    ]);
+  });
+
+  it('skips a directory named like an owner call file inside a project folder', () => {
+    const projectPath = path.join(dataDir, 'call-to-user', 'NA');
+    fs.mkdirSync(path.join(projectPath, 'looks-like-a-call.yaml'), {
+      recursive: true,
+    });
+    expect(
+      new FileOwnerCallFileRepository(dataDir).listPendingOwnerCalls(),
+    ).toEqual([]);
+  });
+});

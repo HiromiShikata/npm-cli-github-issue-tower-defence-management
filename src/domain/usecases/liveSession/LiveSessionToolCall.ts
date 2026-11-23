@@ -80,6 +80,9 @@ export const issueUrlOfSessionName = (
     return null;
   }
   const [, owner, repo, kind, number] = match;
+  if (owner.includes('_') || repo.includes('_')) {
+    return null;
+  }
   return `https://github.com/${owner}/${repo}/${kind}/${number}`;
 };
 

@@ -220,10 +220,22 @@ describe('issueUrlOfSessionName with known issue URLs', () => {
       expected: 'https://github.com/example-org/example.repo/issues/12',
     },
     {
-      name: 'falls back to the name when no known URL maps to it',
+      name: 'returns null instead of a guessed URL when the repository part has an underscore that may be a dot',
       sessionName: 'https_//github_com/example-org/example_repo/issues/12',
       knownIssueUrls: ['https://github.com/example-org/other-repo/issues/12'],
-      expected: 'https://github.com/example-org/example_repo/issues/12',
+      expected: null,
+    },
+    {
+      name: 'returns null when the owner part has an underscore that may be a dot',
+      sessionName: 'https_//github_com/example_org/example-repo/issues/12',
+      knownIssueUrls: [],
+      expected: null,
+    },
+    {
+      name: 'derives the URL from the name when neither part has an underscore and no known URL matches',
+      sessionName: 'https_//github_com/example-org/example-repo/issues/12',
+      knownIssueUrls: ['https://github.com/example-org/other-repo/issues/12'],
+      expected: 'https://github.com/example-org/example-repo/issues/12',
     },
     {
       name: 'returns null for a non-issue name with no known URL',
