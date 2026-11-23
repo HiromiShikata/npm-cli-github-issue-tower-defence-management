@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ConsoleCommentComposer,
   type ConsoleCommentSubmitResult,
@@ -347,6 +347,13 @@ export const ConsoleItemDetailContainer = ({
   const [bodyOverride, setBodyOverride] = useState<string | null>(null);
   const [savedDependedIssueUrls, setSavedDependedIssueUrls] =
     useState<SavedDependedIssueUrls | null>(null);
+  useEffect(() => {
+    setSavedDependedIssueUrls((saved) =>
+      saved !== null && !isSameUrlList(saved.baseUrls, item.dependedIssueUrls)
+        ? null
+        : saved,
+    );
+  }, [item.dependedIssueUrls]);
   const savedDependedIssueUrlsOverride =
     savedDependedIssueUrls !== null &&
     savedDependedIssueUrls.projectItemId === item.projectItemId &&
@@ -616,10 +623,17 @@ export const ConsoleItemDetailContainer = ({
                   const commitRun = consoleActionStepsRun(
                     [
                       () =>
-                        operations.replaceDependedIssueUrl(
-                          item,
-                          dependedIssueUrl,
-                        ),
+                        operations
+                          .replaceDependedIssueUrl(item, dependedIssueUrl)
+                          .then(() =>
+                            setSavedDependedIssueUrls({
+                              projectItemId: item.projectItemId,
+                              baseUrls: item.dependedIssueUrls,
+                              urls: parseDependedIssueUrlsInput(
+                                dependedIssueUrl,
+                              ),
+                            }),
+                          ),
                       () => operations.setStatus(item, option),
                     ],
                     sentStepCount,
