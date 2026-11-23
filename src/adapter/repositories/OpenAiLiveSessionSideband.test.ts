@@ -92,7 +92,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
       const { createSocket, sideband } = createHarness();
 
       await expect(
-        void sideband.attach(testCase.sessionId, () => Promise.resolve()),
+        sideband.attach(testCase.sessionId, () => Promise.resolve()),
       ).rejects.toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
@@ -113,7 +113,7 @@ describe('OpenAiLiveSessionSideband.attach', () => {
       });
 
       await expect(
-        void sideband.attach('live_123', () => Promise.resolve()),
+        sideband.attach('live_123', () => Promise.resolve()),
       ).rejects.toThrow(Error);
       expect(createSocket).not.toHaveBeenCalled();
     }
