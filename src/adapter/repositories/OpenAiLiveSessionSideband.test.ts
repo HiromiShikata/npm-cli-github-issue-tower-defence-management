@@ -45,6 +45,9 @@ const createHarness = (
       socket,
   );
   const logError = jest.fn();
+  queueMicrotask(() => {
+    socket.emit('open', {});
+  });
   const readApiKey = options.readApiKey ?? (() => 'key-1');
   const sideband = new OpenAiLiveSessionSideband(
     createSocket,
