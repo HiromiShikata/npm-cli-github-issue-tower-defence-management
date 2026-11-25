@@ -70,6 +70,74 @@ function extractCssRuleBlock(
   return match ? match[1] : null;
 }
 
+function extractAllCssRuleBlocks(
+  cssContent: string,
+  selector: string,
+): string[] {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return [
+    ...cssContent.matchAll(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`, 'g')),
+  ].map((m) => m[1]);
+}
+
+const REQUIRED_FILE_PREVIEW_DECLARATIONS = [
+  {
+    selector: '.console-task-create-dialog-file-preview',
+    declaration: 'max-height: 45dvh',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview',
+    declaration: 'overflow-y: auto',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-bar',
+    declaration: 'position: sticky',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-bar',
+    declaration: 'top: 0',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-image',
+    declaration: 'width: 100%',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-image',
+    declaration: 'height: auto',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-image',
+    declaration: 'display: block',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-image',
+    declaration: 'border-radius: 4px',
+  },
+];
+
+const FORBIDDEN_FILE_PREVIEW_DECLARATIONS = [
+  {
+    selector: '.console-task-create-dialog-file-preview-image',
+    declaration: 'max-height:',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-image',
+    declaration: 'object-fit:',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview',
+    declaration: '45vh',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-bar',
+    declaration: '45vh',
+  },
+  {
+    selector: '.console-task-create-dialog-file-preview-image',
+    declaration: '45vh',
+  },
+];
+
 describe('console CSS class contract', () => {
   it('sets margin-left: 4rem on console-tab-pjname to add visual breathing room to the left of the project selector equal to its own approximate width', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
@@ -230,5 +298,27 @@ describe('console CSS class contract', () => {
     }
 
     expect(missingEntries).toEqual([]);
+  });
+
+  it('declares every required file preview declaration on its own rule so the preview caps its height and scrolls, the close bar sticks to the top, and the image fills the width', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const missingDeclarations = REQUIRED_FILE_PREVIEW_DECLARATIONS.filter(
+      ({ selector, declaration }) => {
+        const ruleBlock = extractCssRuleBlock(css, selector);
+        return ruleBlock === null || !ruleBlock.includes(declaration);
+      },
+    );
+    expect(missingDeclarations).toEqual([]);
+  });
+
+  it('declares no forbidden file preview declaration in any rule for its selector so the image is not shrunk to a height cap and no rule uses the 45vh value', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const forbiddenDeclarations = FORBIDDEN_FILE_PREVIEW_DECLARATIONS.filter(
+      ({ selector, declaration }) =>
+        extractAllCssRuleBlocks(css, selector).some((ruleBlock) =>
+          ruleBlock.includes(declaration),
+        ),
+    );
+    expect(forbiddenDeclarations).toEqual([]);
   });
 });
