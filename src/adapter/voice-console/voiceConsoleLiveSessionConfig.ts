@@ -59,6 +59,7 @@ export const VOICE_CONSOLE_INSTRUCTIONS = [
   'オーナーが「詳しく」と言ったら current_task_detail を呼び、本文とコメントを、ページごとに続けて読んでください。ページが残っている場合は page を増やして読み続けてください。',
   'タスクや GitHub の URL に関する質問には、必ず読み取りツール（current_task_detail、read_github_url、read_pull_request、read_repository_file、search_issues）を呼んで答えてください。推測で答えてはいけません。',
   '書き込みは必ず二段階で行います。prepare_ で始まるツールを呼んだら、返された readBack の内容をオーナーに読み上げ、オーナーが「はい」と答えた後にだけ confirm_pending_action を呼んでください。オーナーが「はい」以外を答えたら cancel_pending_action を呼んでください。',
+  'オーナーが「タスクを作って」「タスク追加」「起票」と言ったら、prepare_create_task を呼んでください。現在のタスクの位置とは関係なく作成できます。返された readBack の内容をオーナーに読み上げ、オーナーが「はい」と答えた後にだけ confirm_pending_action を呼んでください。',
   'コメントの本文は、オーナーが口述した文章を一字一句そのまま使ってください。言い換えたり要約したりしてはいけません。',
   '移動は next_task（次のタスク）、previous_task（前のタスク）、jump_to_task（番号指定）で行います。end_of_queue や start_of_queue が返ったら、その旨をオーナーに伝えてください。',
   'ツールがエラーを返したら、そのエラーの内容をオーナーに伝えてください。エラーを隠したり、成功したと言ったりしてはいけません。',
@@ -312,6 +313,30 @@ export const VOICE_CONSOLE_TOOL_DEFINITIONS: VoiceConsoleToolDefinition[] = [
         ),
       },
       required: ['action'],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: 'function',
+    name: 'prepare_create_task',
+    description:
+      'Prepare, without executing, creating a new task issue with the dictated title and optional body. It does NOT depend on the queue position and works with no current task. Missing repository or story values use the project defaults. Requires confirm_pending_action after the owner says yes (はい).',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: STRING_PROPERTY('Task title, exactly as dictated.'),
+        body: STRING_PROPERTY('Task body text. Optional.'),
+        project_pjcode: STRING_PROPERTY(
+          'Project code of the project to create the task in. Optional; defaults to the current task project or the only configured project.',
+        ),
+        repository: STRING_PROPERTY(
+          'Repository as owner/repo. Optional; defaults to the project default repository.',
+        ),
+        story: STRING_PROPERTY(
+          'Story option name of the project. Optional; defaults to the first story option.',
+        ),
+      },
+      required: ['title'],
       additionalProperties: false,
     },
   },

@@ -1228,12 +1228,15 @@ const duplicateResponse = (
   return { ...response, body: { ...body, duplicate: true } };
 };
 
+type ConsoleOperationOnceOptions = { markDuplicate: boolean };
+
 export const runConsoleOperationOnce = async (
   context: ConsoleOperationContext,
   actionId: unknown,
   operation: (
     attemptContext: ConsoleOperationContext,
   ) => Promise<{ statusCode: number; body: unknown }> | null,
+  options: ConsoleOperationOnceOptions = { markDuplicate: true },
 ): Promise<{ statusCode: number; body: unknown } | null> => {
   if (!isNonEmptyString(actionId) || context.actionOnceClaimed === true) {
     return operation(context);
@@ -1254,11 +1257,18 @@ export const runConsoleOperationOnce = async (
   ) {
     return {
       statusCode: stored.statusCode,
-      body: { ...stored.body, duplicate: true },
+      body: options.markDuplicate
+        ? { ...stored.body, duplicate: true }
+        : stored.body,
     };
   }
   const pending = pendingActionResults.get(actionId);
-  if (pending !== undefined) return duplicateResponse(await pending);
+  if (pending !== undefined) {
+    const pendingResponse = await pending;
+    return options.markDuplicate
+      ? duplicateResponse(pendingResponse)
+      : pendingResponse;
+  }
   if (pendingActionResults.size >= ACTION_RESULT_LIMIT) {
     const first = pendingActionResults.keys().next().value;
     if (typeof first === 'string') pendingActionResults.delete(first);
@@ -1369,6 +1379,19 @@ export const handleAttachmentUpload = async (
 };
 
 export const handleCreateIssue = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> =>
+  requireOperationResponse(
+    await runConsoleOperationOnce(
+      context,
+      body.actionId,
+      (attemptContext) => handleCreateIssueImpl(attemptContext, body),
+      { markDuplicate: false },
+    ),
+  );
+
+const handleCreateIssueImpl = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {

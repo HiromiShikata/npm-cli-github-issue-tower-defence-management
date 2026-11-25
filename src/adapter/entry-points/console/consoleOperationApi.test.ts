@@ -4236,6 +4236,43 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('creates the issue once and returns the first result when the same actionId is posted again', async () => {
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+      const operationContext = contextWithCreateIssueProjectRepository(() => ({
+        getProject: jest.fn().mockResolvedValue(projectWithStory()),
+        updateStoryList: jest.fn(),
+      }));
+      const body = {
+        pjcode: 'acme',
+        title: 'New task title',
+        storyName: 'Portal redesign',
+        nameWithOwner: 'acme-labs/portal',
+        actionId: 'create-issue-once-1',
+      };
+
+      const first = await handleCreateIssue(operationContext, body);
+      await first.backgroundTask;
+      const second = await handleCreateIssue(operationContext, body);
+      await second.backgroundTask;
+
+      expect({
+        createCalls: issueRepository.createNewIssue.mock.calls.length,
+        firstStatus: first.statusCode,
+        secondStatus: second.statusCode,
+        secondBody: second.body,
+      }).toEqual({
+        createCalls: 1,
+        firstStatus: 200,
+        secondStatus: 200,
+        secondBody: first.body,
+      });
+    });
+
     it('uses the fresh story fieldId when the cached fieldId is stale', async () => {
       const cachedProject: Project = {
         ...projectWithStory(),

@@ -23,6 +23,7 @@ const requiredToolNames = [
   'prepare_set_status',
   'prepare_move_to_in_tmux_by_human',
   'prepare_pull_request_review',
+  'prepare_create_task',
   'confirm_pending_action',
   'cancel_pending_action',
   'repeat_current_task',
@@ -53,9 +54,26 @@ const expectedPrepareToolNames = [
   'prepare_set_status',
   'prepare_move_to_in_tmux_by_human',
   'prepare_pull_request_review',
+  'prepare_create_task',
 ];
 
 describe('VOICE_CONSOLE_INSTRUCTIONS', () => {
+  it('tells the assistant to use prepare_create_task for the owner trigger phrases', () => {
+    const cases = [
+      { word: 'prepare_create_task' },
+      { word: 'タスクを作って' },
+      { word: 'タスク追加' },
+      { word: '起票' },
+    ];
+
+    for (const testCase of cases) {
+      expect({
+        word: testCase.word,
+        mentioned: VOICE_CONSOLE_INSTRUCTIONS.includes(testCase.word),
+      }).toEqual({ word: testCase.word, mentioned: true });
+    }
+  });
+
   it('is a non-empty Japanese instruction text containing the wording the assistant must use', () => {
     const cases = [
       { word: 'はい' },
@@ -112,7 +130,7 @@ describe('VOICE_CONSOLE_TOOL_NAMES', () => {
     );
   });
 
-  it('has the eight prepare_ tools and no prepare_ or confirm_ tool named like a read tool', () => {
+  it('has the prepare_ tools including prepare_create_task and no prepare_ or confirm_ tool named like a read tool', () => {
     const preparedNames = VOICE_CONSOLE_TOOL_NAMES.filter((name) =>
       name.startsWith('prepare_'),
     );
@@ -146,6 +164,28 @@ describe('VOICE_CONSOLE_TOOL_DEFINITIONS', () => {
       expect(testCase.definition.description.length).toBeGreaterThan(0);
       expect(testCase.definition.parameters).toMatchObject({ type: 'object' });
     }
+  });
+});
+
+describe('prepare_create_task definition', () => {
+  it('declares a required title and the optional body, project_pjcode, repository and story arguments with no other properties', () => {
+    const definition = VOICE_CONSOLE_TOOL_DEFINITIONS.find(
+      (candidate) => candidate.name === 'prepare_create_task',
+    );
+
+    expect({
+      found: definition !== undefined,
+      required: definition?.parameters.required,
+      additionalProperties: definition?.parameters.additionalProperties,
+      propertyNames: Object.keys(
+        definition?.parameters.properties ?? {},
+      ).sort(),
+    }).toEqual({
+      found: true,
+      required: ['title'],
+      additionalProperties: false,
+      propertyNames: ['body', 'project_pjcode', 'repository', 'story', 'title'],
+    });
   });
 });
 

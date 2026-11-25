@@ -12,6 +12,12 @@ import type { VoiceConsoleServerEventHandler } from '../../repositories/OpenAiLi
 import { GitHubRepositoryFileReader } from '../../repositories/GitHubRepositoryFileReader';
 import { VoiceConsoleSession } from '../../voice-console/voiceConsoleSession';
 import { VoiceConsoleSidebandHandler } from '../../voice-console/voiceConsoleSideband';
+import {
+  type CreateTaskDefaults,
+  createStoriesListJsonPath,
+  NO_CREATE_TASK_DEFAULTS,
+  readCreateTaskDefaultsFromFile,
+} from '../../voice-console/voiceConsoleCreateTaskDefaults';
 import { Project } from '../../../domain/entities/Project';
 import type {
   ConsoleFieldOption,
@@ -569,6 +575,23 @@ const parseRequestBody = (raw: string): Record<string, unknown> | null => {
   return parsed;
 };
 
+const readCreateTaskDefaults = async (
+  consoleDataOutputDir: string | null,
+  pjcode: string,
+): Promise<CreateTaskDefaults> => {
+  if (consoleDataOutputDir === null) {
+    return NO_CREATE_TASK_DEFAULTS;
+  }
+  return readCreateTaskDefaultsFromFile({
+    storiesListJsonPath: createStoriesListJsonPath({
+      consoleDataOutputDir,
+      pjcode,
+    }),
+    readTextFile: (filePath) => fs.promises.readFile(filePath, 'utf-8'),
+    logError: (message, error) => console.error(message, error),
+  });
+};
+
 const buildNameWithOwnerByPjcode = (
   options: WebServerOptions,
 ): Record<string, string> => {
@@ -577,12 +600,10 @@ const buildNameWithOwnerByPjcode = (
     return nameWithOwnerByPjcode;
   }
   for (const pjcode of options.dashboardProjectNames) {
-    const storiesPath = path.join(
-      options.consoleDataOutputDir,
+    const storiesPath = createStoriesListJsonPath({
+      consoleDataOutputDir: options.consoleDataOutputDir,
       pjcode,
-      'stories',
-      'list.json',
-    );
+    });
     try {
       const raw = fs.readFileSync(storiesPath, 'utf-8');
       const data: unknown = JSON.parse(raw);
@@ -1103,6 +1124,8 @@ const buildVoiceConsoleSession = (
       },
     newActionId: () => randomUUID(),
     logError: (message) => console.error(message),
+    resolveCreateTaskDefaults: (pjcode) =>
+      readCreateTaskDefaults(options.consoleDataOutputDir, pjcode),
   });
 };
 
