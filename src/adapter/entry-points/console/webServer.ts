@@ -7,17 +7,24 @@ import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/LiveSessionRepository';
-import type { LiveSessionToolCallRunner } from '../../../domain/usecases/liveSession/LiveSessionToolCall';
 import type { VoiceConsoleServerEventHandler } from '../../repositories/OpenAiLiveSessionSideband';
-import { GitHubRepositoryFileReader } from '../../repositories/GitHubRepositoryFileReader';
-import { VoiceConsoleSession } from '../../voice-console/voiceConsoleSession';
-import { VoiceConsoleSidebandHandler } from '../../voice-console/voiceConsoleSideband';
 import {
-  type CreateTaskDefaults,
-  createStoriesListJsonPath,
-  NO_CREATE_TASK_DEFAULTS,
-  readCreateTaskDefaultsFromFile,
-} from '../../voice-console/voiceConsoleCreateTaskDefaults';
+  loadLiveSessionOauthTokenSelectionSettings,
+  resolveFleetConfigFilePath,
+} from '../cli/fleetConfig';
+import {
+  attachVoiceConsoleBackendWithEnvironment,
+  createClaudeChildSpawn,
+  createClaudeEffortFlagSupportCheck,
+  runClaudeHelp,
+  type VoiceConsoleBackendEnvironment,
+} from '../../voice-console/voiceConsoleBackendWiring';
+import { ensureProxyRunning } from '../../proxy/ensureProxyRunning';
+import { PROXY_PORT } from '../../proxy/RateLimitCache';
+import {
+  resolveCacheDirectory,
+  resolveTokenListJsonPath,
+} from '../handlers/OauthTokenSelectHandler';
 import { Project } from '../../../domain/entities/Project';
 import type {
   ConsoleFieldOption,
@@ -272,6 +279,7 @@ export type LiveSessionSidebandConnector = {
   attach(
     sessionId: string,
     handleServerEvent: VoiceConsoleServerEventHandler,
+    handleClosed?: () => void,
   ): Promise<void>;
 };
 
@@ -295,7 +303,6 @@ export type WebServerOptions = {
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
   liveSessionRepository?: LiveSessionRepository | null;
-  liveSessionToolCalls?: LiveSessionToolCallRunner | null;
   liveSessionSideband?: LiveSessionSidebandConnector | null;
   liveSessionCloser?: LiveSessionCloser | null;
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
@@ -575,22 +582,11 @@ const parseRequestBody = (raw: string): Record<string, unknown> | null => {
   return parsed;
 };
 
-const readCreateTaskDefaults = async (
-  consoleDataOutputDir: string | null,
-  pjcode: string,
-): Promise<CreateTaskDefaults> => {
-  if (consoleDataOutputDir === null) {
-    return NO_CREATE_TASK_DEFAULTS;
-  }
-  return readCreateTaskDefaultsFromFile({
-    storiesListJsonPath: createStoriesListJsonPath({
-      consoleDataOutputDir,
-      pjcode,
-    }),
-    readTextFile: (filePath) => fs.promises.readFile(filePath, 'utf-8'),
-    logError: (message, error) => console.error(message, error),
-  });
-};
+const createStoriesListJsonPath = (input: {
+  consoleDataOutputDir: string;
+  pjcode: string;
+}): string =>
+  path.join(input.consoleDataOutputDir, input.pjcode, 'stories', 'list.json');
 
 const buildNameWithOwnerByPjcode = (
   options: WebServerOptions,
@@ -1090,43 +1086,25 @@ const resolveAirplaneSyncDeps = (
 
 const LIVE_SESSIONS_REQUEST_PATH = '/api/live/sessions';
 
-const buildVoiceConsoleSession = (
-  options: WebServerOptions,
-): VoiceConsoleSession => {
-  const requireIssueRepository = (): IssueRepository => {
-    const repository = options.issueRepository ?? null;
-    if (repository === null) {
-      throw new Error(
-        'issue repository is not configured for the voice console',
-      );
-    }
-    return repository;
-  };
-  const resolveIssueRepository: ConsoleIssueRepositoryResolver =
-    options.resolveIssueRepository ?? (() => requireIssueRepository());
-  const repositoryFileReader = new GitHubRepositoryFileReader(
-    fetch,
-    (owner) => options.resolveGithubToken?.(owner) ?? '',
-  );
-  return new VoiceConsoleSession({
-    consoleDataOutputDir: options.consoleDataOutputDir,
-    projectPjcodes: options.dashboardProjectNames,
-    resolveIssueRepository,
-    searchIssues: (query) => requireIssueRepository().searchIssues(query),
-    getAuthenticatedUserLogin: () =>
-      requireIssueRepository().getAuthenticatedUserLogin(),
-    readRepositoryFile: (owner, repo, ref, filePath) =>
-      repositoryFileReader.readFile(owner, repo, ref, filePath),
-    runOperation: async (requestPath, body) =>
-      (await handleOperationApi(options, requestPath, body)) ?? {
-        statusCode: 503,
-        body: { error: 'operation_unavailable' },
-      },
-    newActionId: () => randomUUID(),
-    logError: (message) => console.error(message),
-    resolveCreateTaskDefaults: (pjcode) =>
-      readCreateTaskDefaults(options.consoleDataOutputDir, pjcode),
-  });
+const voiceConsoleLogError = (message: string): void => {
+  console.error(message);
+};
+
+const voiceConsoleEnvironment: VoiceConsoleBackendEnvironment = {
+  resolveFleetConfigFilePath,
+  loadSelectionSettings: loadLiveSessionOauthTokenSelectionSettings,
+  resolveTokenListJsonPath,
+  resolveCacheDirectory,
+  readNowEpochSeconds: () => Date.now() / 1000,
+  ensureProxyRunning,
+  proxyPort: PROXY_PORT,
+  effortFlagSupported: createClaudeEffortFlagSupportCheck(
+    runClaudeHelp,
+    voiceConsoleLogError,
+  ),
+  baseEnv: process.env,
+  spawn: createClaudeChildSpawn(),
+  logError: voiceConsoleLogError,
 };
 
 const attachVoiceConsoleSideband = async (
@@ -1137,18 +1115,12 @@ const attachVoiceConsoleSideband = async (
   if (sideband === null) {
     return;
   }
-  const session = buildVoiceConsoleSession(options);
-  const handlerHolder: { handler: VoiceConsoleSidebandHandler | null } = {
-    handler: null,
-  };
-  await sideband.attach(sessionId, (event, send) => {
-    const handler =
-      handlerHolder.handler ??
-      new VoiceConsoleSidebandHandler(session, send, (message) =>
-        console.error(message),
-      );
-    handlerHolder.handler = handler;
-    return handler.handleServerEvent(event);
+  await attachVoiceConsoleBackendWithEnvironment({
+    sideband,
+    sessionId,
+    environment: voiceConsoleEnvironment,
+    newEventId: randomUUID,
+    logError: voiceConsoleLogError,
   });
 };
 
@@ -1227,77 +1199,6 @@ const handleLiveSessionCreate = async (
   });
 };
 
-const LIVE_TOOL_CALLS_REQUEST_PATH = '/api/live/tool-calls';
-
-const parseLiveToolCallBody = (
-  raw: string,
-): {
-  name: string;
-  arguments: Record<string, unknown>;
-  sessionName: string | null;
-} | null => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!isRecord(parsed)) {
-    return null;
-  }
-  const { name, arguments: toolArguments, sessionName } = parsed;
-  if (typeof name !== 'string' || !isRecord(toolArguments)) {
-    return null;
-  }
-  if (
-    sessionName !== undefined &&
-    sessionName !== null &&
-    typeof sessionName !== 'string'
-  ) {
-    return null;
-  }
-  return {
-    name,
-    arguments: toolArguments,
-    sessionName: typeof sessionName === 'string' ? sessionName : null,
-  };
-};
-
-const handleLiveToolCall = async (
-  toolCalls: LiveSessionToolCallRunner,
-  request: http.IncomingMessage,
-  response: http.ServerResponse,
-): Promise<void> => {
-  const mediaType = (request.headers['content-type'] ?? '')
-    .split(';')[0]
-    .trim()
-    .toLowerCase();
-  const raw = await readRequestBody(request);
-  const call =
-    mediaType === 'application/json' ? parseLiveToolCallBody(raw) : null;
-  if (call === null) {
-    sendJson(response, 400, { error: 'invalid_arguments' });
-    return;
-  }
-  try {
-    const outcome = await toolCalls.run(call);
-    if (outcome.kind === 'unknownTool') {
-      sendJson(response, 400, { error: 'unknown_tool' });
-      return;
-    }
-    if (outcome.kind === 'invalidArguments') {
-      sendJson(response, 400, { error: 'invalid_arguments' });
-      return;
-    }
-    sendJson(response, 200, { output: outcome.output });
-  } catch (error) {
-    sendJson(response, 500, {
-      error: 'tool_failed',
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-};
-
 const handleTokenedRequest = async (
   options: WebServerOptions,
   request: http.IncomingMessage,
@@ -1319,14 +1220,6 @@ const handleTokenedRequest = async (
         request,
         response,
       );
-      return;
-    }
-    if (requestPath === LIVE_TOOL_CALLS_REQUEST_PATH && method === 'POST') {
-      if (options.liveSessionToolCalls == null) {
-        sendNotFound(response);
-        return;
-      }
-      await handleLiveToolCall(options.liveSessionToolCalls, request, response);
       return;
     }
     if (method === 'GET') {

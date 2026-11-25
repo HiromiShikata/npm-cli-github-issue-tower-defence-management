@@ -81,6 +81,7 @@ export class OpenAiLiveSessionSideband {
   attach(
     sessionId: string,
     handleServerEvent: VoiceConsoleServerEventHandler,
+    handleClosed?: () => void,
   ): Promise<void> {
     const url = OpenAiLiveSessionSideband.attachUrl(sessionId);
     const apiKey = this.readApiKey();
@@ -138,6 +139,7 @@ export class OpenAiLiveSessionSideband {
             `OpenAI live session ${sessionId} sideband closed before it opened`,
           ),
         );
+        handleClosed?.();
       });
       socket.addEventListener('error', () => {
         clearTimeout(openTimer);
@@ -147,6 +149,7 @@ export class OpenAiLiveSessionSideband {
             `OpenAI live session ${sessionId} sideband error before it opened`,
           ),
         );
+        handleClosed?.();
       });
     });
   }

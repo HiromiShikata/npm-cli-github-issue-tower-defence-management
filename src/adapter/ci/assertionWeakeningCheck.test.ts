@@ -290,6 +290,16 @@ describe('assertion weakening check script', () => {
       expect(result.output).toContain('no linked closing issue');
     });
 
+    it('fails when the linked closing issue body is empty', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody: 'Closes #7',
+        issueBody: '',
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain('no linked closing issue');
+    });
+
     it('fails when an entire test file is deleted and the issue lacks acceptance criteria', () => {
       const result = runCheck({
         diffContent: diffWithDeletedTestFile,
@@ -625,5 +635,109 @@ index abc..def 100644
         expect(result.output).toContain(expectedOutputSubstring);
       },
     );
+  });
+});
+
+describe('acceptance criteria in the PR body when no linked issue supplies them', () => {
+  const prBodyWithSuccessCriteria = `This PR changes behavior.
+
+## Success Criteria
+
+1. The dialog opens when the button is clicked
+2. The callback receives the expected parameters
+`;
+
+  const prBodyWithJapaneseReceiptCriteria = `変更の説明。
+
+## 受入基準
+
+1. 画面が正しく表示される
+`;
+
+  const prBodyWithHeadingOnly = `This PR changes behavior.
+
+## Success Criteria
+
+The behaviour changes as described above.
+`;
+
+  const prBodyWithoutCriteria = 'This PR changes behavior.';
+
+  it.each([
+    {
+      description:
+        'the PR body has a criteria section and no closing reference',
+      prBody: prBodyWithSuccessCriteria,
+      issueBody: undefined,
+      expectedExitStatus: 0,
+    },
+    {
+      description:
+        'the PR body has a Japanese criteria section and the linked issue body is empty',
+      prBody: `Closes #7\n\n${prBodyWithJapaneseReceiptCriteria}`,
+      issueBody: '',
+      expectedExitStatus: 0,
+    },
+    {
+      description: 'the PR body has the criteria heading with no numbered item',
+      prBody: prBodyWithHeadingOnly,
+      issueBody: undefined,
+      expectedExitStatus: 1,
+    },
+    {
+      description: 'neither the linked issue nor the PR body has criteria',
+      prBody: `Closes #7\n\n${prBodyWithoutCriteria}`,
+      issueBody: issueBodyWithoutAcceptanceCriteria,
+      expectedExitStatus: 1,
+    },
+    {
+      description:
+        'the linked issue has criteria and the PR body has a different section',
+      prBody: `Closes #7\n\n${prBodyWithoutCriteria}`,
+      issueBody: issueBodyWithAcceptanceCriteria,
+      expectedExitStatus: 0,
+    },
+    {
+      description:
+        'the linked issue has criteria and the PR body has a heading with no numbered item',
+      prBody: `Closes #7\n\n${prBodyWithHeadingOnly}`,
+      issueBody: issueBodyWithSuccessCriteria,
+      expectedExitStatus: 0,
+    },
+  ])(
+    'returns exit status $expectedExitStatus when $description',
+    ({ prBody, issueBody, expectedExitStatus }) => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody,
+        issueBody,
+      });
+
+      expect(result.exitStatus).toBe(expectedExitStatus);
+    },
+  );
+
+  it('reports the criteria error, not a missing linked issue, when the PR body has the heading with no numbered item', () => {
+    const result = runCheck({
+      diffContent: diffWithDeletedAssertion,
+      prBody: prBodyWithHeadingOnly,
+    });
+
+    expect({
+      exitStatus: result.exitStatus,
+      blamesMissingLinkedIssue: result.output.includes(
+        'no linked closing issue',
+      ),
+    }).toEqual({ exitStatus: 1, blamesMissingLinkedIssue: false });
+  });
+
+  it('reports the error when neither the linked issue nor the PR body has criteria', () => {
+    const result = runCheck({
+      diffContent: diffWithDeletedAssertion,
+      prBody: `Closes #7\n\n${prBodyWithoutCriteria}`,
+      issueBody: issueBodyWithoutAcceptanceCriteria,
+    });
+
+    expect(result.output).toContain('ERROR:');
   });
 });

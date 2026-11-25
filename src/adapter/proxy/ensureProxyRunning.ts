@@ -28,8 +28,8 @@ const sleep = (ms: number): Promise<void> =>
 
 export const ensureProxyRunning = async (
   port: number = PROXY_PORT,
-): Promise<void> => {
-  if (await isProxyResponding(port)) return;
+): Promise<boolean> => {
+  if (await isProxyResponding(port)) return true;
   const entryPath = path.resolve(__dirname, 'proxyEntry.js');
   const child = spawn(process.execPath, [entryPath], {
     detached: true,
@@ -38,4 +38,5 @@ export const ensureProxyRunning = async (
   });
   child.unref();
   await sleep(STARTUP_WAIT_MS);
+  return isProxyResponding(port);
 };
