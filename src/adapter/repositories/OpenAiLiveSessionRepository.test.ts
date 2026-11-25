@@ -44,7 +44,7 @@ describe('OpenAiLiveSessionRepository', () => {
       session: {
         model: 'gpt-live-1',
         instructions: VOICE_CONSOLE_INSTRUCTIONS,
-        audio: { output: { voice: 'harema' } },
+        audio: { output: { voice: 'marin' } },
         delegation: {
           type: 'responses',
           responses: {
