@@ -88,7 +88,9 @@ describe('ComposeDashboardUseCase remote machine output', () => {
       tokens: [],
     };
     expect(new ComposeDashboardUseCase().run(input)).toMatch(
-      new RegExp(`^<tt>${' '.repeat(12)}M  C  D  S cy LA<\\/tt><br>\\n<tt>`),
+      new RegExp(
+        `^<tt>${'&nbsp;'.repeat(12)}M&nbsp;&nbsp;C&nbsp;&nbsp;D&nbsp;&nbsp;S&nbsp;cy&nbsp;LA<\\/tt><br>\\n<tt>`,
+      ),
     );
   });
 });
