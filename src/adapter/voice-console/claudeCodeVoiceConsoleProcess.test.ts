@@ -273,10 +273,7 @@ describe('ClaudeCodeVoiceConsoleProcess failures', () => {
       await expect(turn).rejects.toThrow(testCase.expectedFragment);
       await expect(turn).rejects.toThrow('line two');
       const logged = logError.mock.calls.map((call) => call[0]).join('\n');
-      expect({ name: testCase.name, logged }).toEqual({
-        name: testCase.name,
-        logged: expect.stringContaining(testCase.expectedFragment),
-      });
+      expect(logged).toContain(testCase.expectedFragment);
       expect(logged).toContain('line two');
     }
   });
