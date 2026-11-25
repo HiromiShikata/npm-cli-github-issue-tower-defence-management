@@ -1,4 +1,10 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import {
   type IssueCreateDraft,
@@ -1450,5 +1456,361 @@ describe('IssueCreateModalDialog', () => {
     expect(textarea.value).toBe('- ');
     expect(textarea.selectionStart).toBe(2);
     expect(textarea.selectionEnd).toBe(2);
+  });
+
+  describe('pinned current behavior for attachments and text fields', () => {
+    it('lists one thumbnail img per selected image file, alt set to the file name, and skips non-image files', async () => {
+      const cases: {
+        label: string;
+        files: { name: string; type: string }[];
+        expectedAlts: string[];
+      }[] = [
+        {
+          label: 'one image',
+          files: [{ name: 'a.png', type: 'image/png' }],
+          expectedAlts: ['a.png'],
+        },
+        {
+          label: 'two images',
+          files: [
+            { name: 'a.png', type: 'image/png' },
+            { name: 'b.jpg', type: 'image/jpeg' },
+          ],
+          expectedAlts: ['a.png', 'b.jpg'],
+        },
+        {
+          label: 'image mixed with a text file',
+          files: [
+            { name: 'a.png', type: 'image/png' },
+            { name: 'notes.txt', type: 'text/plain' },
+          ],
+          expectedAlts: ['a.png'],
+        },
+        {
+          label: 'non-image file only',
+          files: [{ name: 'doc.pdf', type: 'application/pdf' }],
+          expectedAlts: [],
+        },
+      ];
+      for (const testCase of cases) {
+        const { unmount } = render(<IssueCreateModalDialog {...baseProps} />);
+        const fileInput = document.body.querySelector(
+          'input[type="file"]',
+        ) as HTMLInputElement;
+        const files = testCase.files.map(
+          ({ name, type }) => new File(['data'], name, { type }),
+        );
+        await act(async () => {
+          fireEvent.change(fileInput, { target: { files } });
+        });
+        const thumbnailAlts = [
+          ...document.body.querySelectorAll<HTMLImageElement>(
+            '.console-task-create-dialog-file-thumbnail',
+          ),
+        ].map((img) => img.alt);
+        expect({ label: testCase.label, thumbnailAlts }).toEqual({
+          label: testCase.label,
+          thumbnailAlts: testCase.expectedAlts,
+        });
+        unmount();
+      }
+    });
+
+    it('removes the thumbnail of an image attachment when its remove button is clicked', async () => {
+      const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const files = [
+        new File(['data'], 'a.png', { type: 'image/png' }),
+        new File(['data'], 'b.jpg', { type: 'image/jpeg' }),
+      ];
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files } });
+      });
+      await act(async () => {
+        fireEvent.click(getByRole('button', { name: 'Remove a.png' }));
+      });
+      const thumbnailAlts = [
+        ...document.body.querySelectorAll<HTMLImageElement>(
+          '.console-task-create-dialog-file-thumbnail',
+        ),
+      ].map((img) => img.alt);
+      expect(thumbnailAlts).toEqual(['b.jpg']);
+    });
+
+    it('accepts typed text in the Title and Body textareas', () => {
+      const cases = [
+        { field: 'Title', value: 'Typed title' },
+        { field: 'Body', value: 'Typed body' },
+      ];
+      for (const { field, value } of cases) {
+        const { getByRole, unmount } = render(
+          <IssueCreateModalDialog {...baseProps} />,
+        );
+        const textarea = getByRole('textbox', { name: field });
+        fireEvent.change(textarea, { target: { value } });
+        expect(textarea).toHaveValue(value);
+        unmount();
+      }
+    });
+  });
+
+  describe('screenshot preview in the attachments list', () => {
+    const PREVIEW_TEST_ID = 'console-task-create-dialog-file-preview';
+    const THUMBNAIL_BUTTON_CLASS =
+      'console-task-create-dialog-file-thumbnail-button';
+
+    const imageFiles = (): File[] => [
+      new File(['data'], 'a.png', { type: 'image/png' }),
+      new File(['data'], 'b.jpg', { type: 'image/jpeg' }),
+    ];
+
+    const renderWithFiles = async (files: File[]) => {
+      const result = render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files } });
+      });
+      return result;
+    };
+
+    const thumbnailButtonsFor = (fileName: string): HTMLElement[] =>
+      screen
+        .queryAllByRole('button', {
+          name: (accessibleName) => accessibleName.includes(fileName),
+        })
+        .filter((button) =>
+          button.classList.contains(THUMBNAIL_BUTTON_CLASS),
+        );
+
+    const thumbnailButtonFor = (fileName: string): HTMLElement => {
+      const buttons = thumbnailButtonsFor(fileName);
+      expect(buttons).toHaveLength(1);
+      const [button] = buttons;
+      if (button === undefined) {
+        throw new Error(`No thumbnail button for ${fileName}`);
+      }
+      return button;
+    };
+
+    const readPreview = (): {
+      imageCount: number;
+      alt: string | null;
+      src: string | null;
+    } | null => {
+      const preview = screen.queryByTestId(PREVIEW_TEST_ID);
+      if (preview === null) {
+        return null;
+      }
+      const images = preview.querySelectorAll('img');
+      return {
+        imageCount: images.length,
+        alt: images.item(0)?.getAttribute('alt') ?? null,
+        src: images.item(0)?.getAttribute('src') ?? null,
+      };
+    };
+
+    it('shows the clicked thumbnail file large in the preview, with the thumbnail URL and the file name as alt', async () => {
+      const cases = [
+        { label: 'a.png', fileName: 'a.png' },
+        { label: 'b.jpg', fileName: 'b.jpg' },
+      ];
+      for (const { label, fileName } of cases) {
+        const { unmount } = await renderWithFiles(imageFiles());
+        const thumbnail = thumbnailButtonFor(fileName);
+        const thumbnailSrc =
+          thumbnail.querySelector('img')?.getAttribute('src') ?? null;
+        fireEvent.click(thumbnail);
+        expect({ label, preview: readPreview() }).toEqual({
+          label,
+          preview: { imageCount: 1, alt: fileName, src: thumbnailSrc },
+        });
+        unmount();
+      }
+    });
+
+    it('toggles the preview by thumbnail: same thumbnail hides it, another thumbnail switches to it', async () => {
+      const cases: {
+        label: string;
+        initiallyPreviewed: string | null;
+        clicked: string;
+        expectedAlt: string | null;
+      }[] = [
+        {
+          label: 'no preview, click a.png',
+          initiallyPreviewed: null,
+          clicked: 'a.png',
+          expectedAlt: 'a.png',
+        },
+        {
+          label: 'no preview, click b.jpg',
+          initiallyPreviewed: null,
+          clicked: 'b.jpg',
+          expectedAlt: 'b.jpg',
+        },
+        {
+          label: 'a.png previewed, click a.png again',
+          initiallyPreviewed: 'a.png',
+          clicked: 'a.png',
+          expectedAlt: null,
+        },
+        {
+          label: 'a.png previewed, click b.jpg',
+          initiallyPreviewed: 'a.png',
+          clicked: 'b.jpg',
+          expectedAlt: 'b.jpg',
+        },
+        {
+          label: 'b.jpg previewed, click a.png',
+          initiallyPreviewed: 'b.jpg',
+          clicked: 'a.png',
+          expectedAlt: 'a.png',
+        },
+        {
+          label: 'b.jpg previewed, click b.jpg again',
+          initiallyPreviewed: 'b.jpg',
+          clicked: 'b.jpg',
+          expectedAlt: null,
+        },
+      ];
+      for (const testCase of cases) {
+        const { unmount } = await renderWithFiles(imageFiles());
+        if (testCase.initiallyPreviewed !== null) {
+          fireEvent.click(thumbnailButtonFor(testCase.initiallyPreviewed));
+        }
+        fireEvent.click(thumbnailButtonFor(testCase.clicked));
+        expect({
+          label: testCase.label,
+          previewAlt: readPreview()?.alt ?? null,
+        }).toEqual({
+          label: testCase.label,
+          previewAlt: testCase.expectedAlt,
+        });
+        unmount();
+      }
+    });
+
+    it('keeps the preview open while typing in Title or Body', async () => {
+      const cases = [
+        { field: 'Title', value: 'Typed while previewing' },
+        { field: 'Body', value: 'Typed body while previewing' },
+      ];
+      for (const { field, value } of cases) {
+        const { unmount } = await renderWithFiles(imageFiles());
+        fireEvent.click(thumbnailButtonFor('a.png'));
+        const textarea = screen.getByRole('textbox', { name: field });
+        act(() => {
+          textarea.focus();
+        });
+        expect(document.activeElement).toBe(textarea);
+        fireEvent.change(textarea, { target: { value } });
+        expect({ field, preview: readPreview() }).toEqual({
+          field,
+          preview: { imageCount: 1, alt: 'a.png', src: expect.any(String) },
+        });
+        unmount();
+      }
+    });
+
+    it('hides the preview when the Close preview button is clicked', async () => {
+      const { unmount } = await renderWithFiles(imageFiles());
+      fireEvent.click(thumbnailButtonFor('a.png'));
+      expect(readPreview()).not.toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+      expect(readPreview()).toBeNull();
+      unmount();
+    });
+
+    it('hides the preview when the previewed file is removed, and keeps it when another file is removed', async () => {
+      const cases: {
+        label: string;
+        removed: string;
+        expectedAlt: string | null;
+      }[] = [
+        {
+          label: 'remove the previewed a.png',
+          removed: 'a.png',
+          expectedAlt: null,
+        },
+        {
+          label: 'remove the other b.jpg',
+          removed: 'b.jpg',
+          expectedAlt: 'a.png',
+        },
+      ];
+      for (const testCase of cases) {
+        const { unmount } = await renderWithFiles(imageFiles());
+        fireEvent.click(thumbnailButtonFor('a.png'));
+        fireEvent.click(
+          screen.getByRole('button', { name: `Remove ${testCase.removed}` }),
+        );
+        expect({
+          label: testCase.label,
+          previewAlt: readPreview()?.alt ?? null,
+        }).toEqual({
+          label: testCase.label,
+          previewAlt: testCase.expectedAlt,
+        });
+        unmount();
+      }
+    });
+
+    it('renders each thumbnail as a type=button button that contains the image, is focusable, and has the file name in its accessible name', async () => {
+      const cases = [{ fileName: 'a.png' }, { fileName: 'b.jpg' }];
+      for (const { fileName } of cases) {
+        const { unmount } = await renderWithFiles(imageFiles());
+        const button = thumbnailButtonFor(fileName);
+        button.focus();
+        expect({
+          fileName,
+          tagName: button.tagName,
+          type: button.getAttribute('type'),
+          containsImg: button.querySelector('img') !== null,
+          foundByFileNameInAccessibleName: thumbnailButtonsFor(
+            fileName,
+          ).includes(button),
+          focused: document.activeElement === button,
+        }).toEqual({
+          fileName,
+          tagName: 'BUTTON',
+          type: 'button',
+          containsImg: true,
+          foundByFileNameInAccessibleName: true,
+          focused: true,
+        });
+        unmount();
+      }
+    });
+
+    it('submits the title and the attached image files unchanged while the preview is open', async () => {
+      const onSubmitProject = jest.fn().mockResolvedValue(undefined);
+      const files = imageFiles();
+      const { unmount } = render(
+        <IssueCreateModalDialog
+          {...baseProps}
+          onSubmitProject={onSubmitProject}
+        />,
+      );
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files } });
+      });
+      fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'Preview task' },
+      });
+      fireEvent.click(thumbnailButtonFor('b.jpg'));
+      fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
+      await waitFor(() =>
+        expect(onSubmitProject).toHaveBeenCalledWith<[IssueCreateParams]>(
+          expect.objectContaining({ title: 'Preview task', files }),
+        ),
+      );
+      unmount();
+    });
   });
 });
