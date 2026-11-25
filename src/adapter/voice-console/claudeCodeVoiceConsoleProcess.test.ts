@@ -16,7 +16,6 @@ const flush = (): Promise<void> =>
 const resultLine = (fields: Record<string, unknown>): string =>
   `${JSON.stringify({ type: 'result', subtype: 'success', is_error: false, ...fields })}\n`;
 
-// The fake child is built from in-memory emitters: no process is started.
 const createFakeChild = () => {
   const written: string[] = [];
   const stdout = new EventEmitter();
