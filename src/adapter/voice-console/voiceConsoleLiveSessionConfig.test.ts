@@ -1,5 +1,6 @@
 import {
-  VOICE_CONSOLE_INSTRUCTIONS,
+  VOICE_CONSOLE_BACKEND_INSTRUCTIONS,
+  VOICE_CONSOLE_LIVE_INSTRUCTIONS,
   VOICE_CONSOLE_TOOL_DEFINITIONS,
   VOICE_CONSOLE_TOOL_NAMES,
 } from './voiceConsoleLiveSessionConfig';
@@ -57,8 +58,8 @@ const expectedPrepareToolNames = [
   'prepare_create_task',
 ];
 
-describe('VOICE_CONSOLE_INSTRUCTIONS', () => {
-  it('tells the assistant to use prepare_create_task for the owner trigger phrases', () => {
+describe('VOICE_CONSOLE_BACKEND_INSTRUCTIONS', () => {
+  it('tells the backend to use prepare_create_task for the owner trigger phrases', () => {
     const cases = [
       { word: 'prepare_create_task' },
       { word: 'タスクを作って' },
@@ -69,41 +70,80 @@ describe('VOICE_CONSOLE_INSTRUCTIONS', () => {
     for (const testCase of cases) {
       expect({
         word: testCase.word,
-        mentioned: VOICE_CONSOLE_INSTRUCTIONS.includes(testCase.word),
+        mentioned: VOICE_CONSOLE_BACKEND_INSTRUCTIONS.includes(testCase.word),
       }).toEqual({ word: testCase.word, mentioned: true });
     }
   });
 
-  it('is a non-empty Japanese instruction text containing the wording the assistant must use', () => {
-    const cases = [
-      { word: 'はい' },
-      { word: '詳しく' },
-      { word: '最も速いペース' },
-    ];
-
-    for (const testCase of cases) {
-      expect(VOICE_CONSOLE_INSTRUCTIONS.length).toBeGreaterThan(0);
-      expect(VOICE_CONSOLE_INSTRUCTIONS).toContain(testCase.word);
-    }
-  });
-
-  it('tells the assistant to speak at the fastest clear pace on the second line of the instructions', () => {
-    const secondLine = VOICE_CONSOLE_INSTRUCTIONS.split('\n')[1];
+  it('states that writes go only through prepare_ and then confirm_pending_action, with cancel_pending_action for a refusal', () => {
+    const prepareIndex = VOICE_CONSOLE_BACKEND_INSTRUCTIONS.indexOf('prepare_');
+    const confirmIndex = VOICE_CONSOLE_BACKEND_INSTRUCTIONS.indexOf(
+      'confirm_pending_action',
+    );
 
     expect({
-      secondLineMentionsFastestPace: secondLine.includes('最も速いペース'),
-    }).toEqual({ secondLineMentionsFastestPace: true });
+      hasCancel: VOICE_CONSOLE_BACKEND_INSTRUCTIONS.includes(
+        'cancel_pending_action',
+      ),
+      prepareBeforeConfirm: prepareIndex >= 0 && prepareIndex < confirmIndex,
+    }).toEqual({ hasCancel: true, prepareBeforeConfirm: true });
   });
 
-  it('tells the assistant to read decision questions with their options', () => {
-    const cases = [{ word: '判断' }, { word: '選択肢' }];
+  it('mentions the read-back and the はい rule that gates every write', () => {
+    const cases = [{ word: 'readBack' }, { word: 'はい' }];
 
     for (const testCase of cases) {
       expect({
         word: testCase.word,
-        mentioned: VOICE_CONSOLE_INSTRUCTIONS.includes(testCase.word),
+        mentioned: VOICE_CONSOLE_BACKEND_INSTRUCTIONS.includes(testCase.word),
       }).toEqual({ word: testCase.word, mentioned: true });
     }
+  });
+
+  it('names the read tools for task and URL questions', () => {
+    const cases = [
+      { word: 'current_task_detail' },
+      { word: 'read_github_url' },
+      { word: 'read_pull_request' },
+      { word: 'read_repository_file' },
+      { word: 'search_issues' },
+    ];
+
+    for (const testCase of cases) {
+      expect({
+        word: testCase.word,
+        mentioned: VOICE_CONSOLE_BACKEND_INSTRUCTIONS.includes(testCase.word),
+      }).toEqual({ word: testCase.word, mentioned: true });
+    }
+  });
+});
+
+describe('VOICE_CONSOLE_LIVE_INSTRUCTIONS', () => {
+  it('is a non-empty voice-role text that tells GPT-Live to speak at the fastest clear pace', () => {
+    expect({
+      nonEmpty: VOICE_CONSOLE_LIVE_INSTRUCTIONS.length > 0,
+      mentionsFastestPace:
+        VOICE_CONSOLE_LIVE_INSTRUCTIONS.includes('最も速いペース'),
+    }).toEqual({ nonEmpty: true, mentionsFastestPace: true });
+  });
+
+  it('tells GPT-Live to speak the backend results faithfully and to read decisions with their options in full', () => {
+    const cases = [{ word: '結果' }, { word: '判断' }, { word: '選択肢' }];
+
+    for (const testCase of cases) {
+      expect({
+        word: testCase.word,
+        mentioned: VOICE_CONSOLE_LIVE_INSTRUCTIONS.includes(testCase.word),
+      }).toEqual({ word: testCase.word, mentioned: true });
+    }
+  });
+
+  it('names none of the voice tools, because tool selection belongs to the backend', () => {
+    const named = VOICE_CONSOLE_TOOL_NAMES.filter((name) =>
+      VOICE_CONSOLE_LIVE_INSTRUCTIONS.includes(name),
+    );
+
+    expect(named).toEqual([]);
   });
 });
 
@@ -192,7 +232,8 @@ describe('prepare_create_task definition', () => {
 describe('voice console live session wording', () => {
   it('names the queue tabs with the owner terms in the instructions and tool descriptions', () => {
     const spokenText = [
-      VOICE_CONSOLE_INSTRUCTIONS,
+      VOICE_CONSOLE_LIVE_INSTRUCTIONS,
+      VOICE_CONSOLE_BACKEND_INSTRUCTIONS,
       JSON.stringify(VOICE_CONSOLE_TOOL_DEFINITIONS),
     ].join('\n');
 
@@ -207,5 +248,19 @@ describe('voice console live session wording', () => {
       hasInternalPrsName: false,
       hasInternalTabValue: false,
     });
+  });
+});
+
+describe('VOICE_CONSOLE_TOOL_NAMES exact list', () => {
+  it('is exactly the voice tool names that the backend is given', () => {
+    expect([...VOICE_CONSOLE_TOOL_NAMES].sort()).toEqual(
+      [...requiredToolNames].sort(),
+    );
+  });
+
+  it('matches the names of VOICE_CONSOLE_TOOL_DEFINITIONS one to one', () => {
+    expect(VOICE_CONSOLE_TOOL_NAMES).toEqual(
+      VOICE_CONSOLE_TOOL_DEFINITIONS.map((definition) => definition.name),
+    );
   });
 });

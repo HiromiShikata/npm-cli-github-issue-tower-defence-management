@@ -1,3 +1,5 @@
+import { mock } from 'jest-mock-extended';
+import type { VoiceConsoleDelegationBridge } from './voiceConsoleDelegationBridge';
 import { VoiceConsoleSidebandHandler } from './voiceConsoleSideband';
 
 const TOOL_RESULT = '{"ok":true,"text":"日本語の結果"}';
@@ -11,12 +13,6 @@ const delegated = (
   delegation_id: 'delegation_1',
   event,
 });
-
-const responseCreated = (eventId: string, responseId: string) =>
-  delegated(eventId, {
-    type: 'response.created',
-    response: { id: responseId },
-  });
 
 const functionCallDone = (
   eventId: string,
@@ -34,25 +30,10 @@ const functionCallDone = (
     },
   });
 
-const responseCompleted = (eventId: string, responseId?: string) =>
-  delegated(eventId, {
-    type: 'response.completed',
-    response: responseId === undefined ? {} : { id: responseId },
-  });
-
-const outputItemEvent = (callId: string) => ({
-  type: 'response.item.create',
-  event_id: `voice_tool_result_${callId}`,
-  item: {
-    type: 'function_call_output',
-    call_id: callId,
-    output: TOOL_RESULT,
-  },
-});
-
-const continueEvent = (responseId: string) => ({
-  type: 'response.create',
-  event_id: `voice_continue_${responseId}`,
+const delegationCreated = (eventId: string, delegation: unknown) => ({
+  type: 'session.delegation.created',
+  event_id: eventId,
+  delegation,
 });
 
 const createFakeSession = () => {
@@ -70,167 +51,22 @@ const createFakeSession = () => {
   };
 };
 
-describe('VoiceConsoleSidebandHandler', () => {
-  it('submits the collected function call outputs and one continue after each completed response', async () => {
-    const scenarios: {
-      name: string;
-      events: unknown[];
-      expectedCalls: [string, string][];
-      expectedSent: Record<string, unknown>[];
-    }[] = [
-      {
-        name: 'one call is executed and its output sent after completed',
-        events: [
-          responseCreated('e1', 'resp_1'),
-          functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-          responseCompleted('e3', 'resp_1'),
-        ],
-        expectedCalls: [['queue_overview', '{}']],
-        expectedSent: [outputItemEvent('call_1'), continueEvent('resp_1')],
-      },
-      {
-        name: 'two calls in one response give two outputs and exactly one continue',
-        events: [
-          responseCreated('e1', 'resp_1'),
-          functionCallDone('e2', 'call_1', 'next_task', '{}'),
-          functionCallDone('e3', 'call_2', 'queue_overview', '{}'),
-          responseCompleted('e4', 'resp_1'),
-        ],
-        expectedCalls: [
-          ['next_task', '{}'],
-          ['queue_overview', '{}'],
-        ],
-        expectedSent: [
-          outputItemEvent('call_1'),
-          outputItemEvent('call_2'),
-          continueEvent('resp_1'),
-        ],
-      },
-      {
-        name: 'a function call replayed with the same call_id runs once',
-        events: [
-          responseCreated('e1', 'resp_1'),
-          functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-          functionCallDone('e3', 'call_1', 'queue_overview', '{}'),
-          responseCompleted('e4', 'resp_1'),
-        ],
-        expectedCalls: [['queue_overview', '{}']],
-        expectedSent: [outputItemEvent('call_1'), continueEvent('resp_1')],
-      },
-      {
-        name: 'a replayed completed event is not submitted again',
-        events: [
-          responseCreated('e1', 'resp_1'),
-          functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-          responseCompleted('e3', 'resp_1'),
-          responseCompleted('e4', 'resp_1'),
-        ],
-        expectedCalls: [['queue_overview', '{}']],
-        expectedSent: [outputItemEvent('call_1'), continueEvent('resp_1')],
-      },
-      {
-        name: 'a server event with an event_id already seen is ignored entirely',
-        events: [
-          responseCreated('e1', 'resp_1'),
-          functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-          functionCallDone('e2', 'call_2', 'next_task', '{}'),
-          responseCompleted('e3', 'resp_1'),
-        ],
-        expectedCalls: [['queue_overview', '{}']],
-        expectedSent: [outputItemEvent('call_1'), continueEvent('resp_1')],
-      },
-      {
-        name: 'a completed event without a response id uses the current response id',
-        events: [
-          responseCreated('e1', 'resp_1'),
-          functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-          responseCompleted('e3'),
-        ],
-        expectedCalls: [['queue_overview', '{}']],
-        expectedSent: [outputItemEvent('call_1'), continueEvent('resp_1')],
-      },
-      {
-        name: 'calls of two responses are submitted with their own completed event',
-        events: [
-          responseCreated('e1', 'resp_1'),
-          functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-          responseCreated('e3', 'resp_2'),
-          functionCallDone('e4', 'call_2', 'next_task', '{}'),
-          responseCompleted('e5', 'resp_1'),
-          responseCompleted('e6', 'resp_2'),
-        ],
-        expectedCalls: [
-          ['queue_overview', '{}'],
-          ['next_task', '{}'],
-        ],
-        expectedSent: [
-          outputItemEvent('call_1'),
-          continueEvent('resp_1'),
-          outputItemEvent('call_2'),
-          continueEvent('resp_2'),
-        ],
-      },
-      {
-        name: 'other event types are ignored and never executed or sent',
-        events: [
-          { type: 'session.updated', session: {} },
-          delegated('e1', { type: 'response.output_text.delta', delta: 'x' }),
-          delegated('e2', {
-            type: 'response.output_item.added',
-            item: {
-              type: 'function_call',
-              call_id: 'call_1',
-              name: 'queue_overview',
-              arguments: '{}',
-            },
-          }),
-        ],
-        expectedCalls: [],
-        expectedSent: [],
-      },
-    ];
-
-    for (const scenario of scenarios) {
-      const { callTool, session } = createFakeSession();
-      const send = jest.fn(
-        (_event: Record<string, unknown>): void => undefined,
-      );
-      const logError = jest.fn();
-      const handler = new VoiceConsoleSidebandHandler(session, send, logError);
-
-      for (const event of scenario.events) {
-        await handler.handleServerEvent(event);
-      }
-
-      expect({
-        name: scenario.name,
-        calls: callTool.mock.calls.map((call) => [call[0], call[1]]),
-        sent: send.mock.calls.map((call) => call[0]),
-      }).toEqual({
-        name: scenario.name,
-        calls: scenario.expectedCalls,
-        sent: scenario.expectedSent,
-      });
-    }
-  });
-
-  it('executes a function call on output_item.done but sends nothing before the completed event', async () => {
-    const { callTool, session } = createFakeSession();
-    const send = jest.fn((_event: Record<string, unknown>): void => undefined);
-    const handler = new VoiceConsoleSidebandHandler(session, send, jest.fn());
-
-    await handler.handleServerEvent(responseCreated('e1', 'resp_1'));
-    await handler.handleServerEvent(
-      functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-    );
-
-    expect(callTool).toHaveBeenCalledTimes(1);
-    expect(send).not.toHaveBeenCalled();
-  });
-});
+const createHandler = () => {
+  const fake = createFakeSession();
+  const bridge = mock<VoiceConsoleDelegationBridge>();
+  const send = jest.fn((_event: Record<string, unknown>): void => undefined);
+  const logError = jest.fn((_message: string): void => undefined);
+  const handler = new VoiceConsoleSidebandHandler(
+    fake.session,
+    bridge,
+    send,
+    logError,
+  );
+  return { ...fake, bridge, send, logError, handler };
+};
 
 describe('VoiceConsoleSidebandHandler owner speech', () => {
-  it('forwards only owner input transcript deltas to recordOwnerSpeech', async () => {
+  it('forwards only owner input transcript deltas to recordOwnerSpeech and the bridge', async () => {
     const cases = [
       {
         name: 'an input transcript delta is forwarded with its text',
@@ -267,19 +103,21 @@ describe('VoiceConsoleSidebandHandler owner speech', () => {
     ];
 
     for (const testCase of cases) {
-      const { recordOwnerSpeech, session } = createFakeSession();
-      const handler = new VoiceConsoleSidebandHandler(
-        session,
-        jest.fn(),
-        jest.fn(),
-      );
+      const { recordOwnerSpeech, bridge, handler } = createHandler();
 
       await handler.handleServerEvent(testCase.event);
 
       expect({
         name: testCase.name,
         forwarded: recordOwnerSpeech.mock.calls.map((call) => call[0]),
-      }).toEqual({ name: testCase.name, forwarded: testCase.forwarded });
+        bridged: bridge.handleOwnerTranscriptDelta.mock.calls.map(
+          (call) => call[0],
+        ),
+      }).toEqual({
+        name: testCase.name,
+        forwarded: testCase.forwarded,
+        bridged: testCase.forwarded,
+      });
     }
   });
 });
@@ -320,13 +158,8 @@ describe('VoiceConsoleSidebandHandler assistant speech', () => {
     ];
 
     for (const testCase of cases) {
-      const { recordAssistantSpeech, recordOwnerSpeech, session } =
-        createFakeSession();
-      const handler = new VoiceConsoleSidebandHandler(
-        session,
-        jest.fn(),
-        jest.fn(),
-      );
+      const { recordAssistantSpeech, recordOwnerSpeech, handler } =
+        createHandler();
 
       await handler.handleServerEvent(testCase.event);
 
@@ -340,5 +173,85 @@ describe('VoiceConsoleSidebandHandler assistant speech', () => {
         owner: testCase.ownerForwarded,
       });
     }
+  });
+});
+
+describe('VoiceConsoleSidebandHandler function calls', () => {
+  it('no longer runs a tool or sends any event for a function call', async () => {
+    const { callTool, send, logError, bridge, handler } = createHandler();
+
+    await handler.handleServerEvent(
+      delegated('c0', { type: 'response.created', response: { id: 'resp_1' } }),
+    );
+    await handler.handleServerEvent(
+      functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
+    );
+    await handler.handleServerEvent(
+      delegated('e3', {
+        type: 'response.completed',
+        response: { id: 'resp_1' },
+      }),
+    );
+
+    expect({
+      callTool: callTool.mock.calls.length,
+      sent: send.mock.calls.length,
+      logged: logError.mock.calls.length,
+      bridged: bridge.handleDelegationCreated.mock.calls.length,
+    }).toEqual({ callTool: 0, sent: 0, logged: 0, bridged: 0 });
+  });
+});
+
+describe('VoiceConsoleSidebandHandler delegation', () => {
+  it('hands the delegation id of a created delegation to the bridge', async () => {
+    const { bridge, send, handler } = createHandler();
+
+    await handler.handleServerEvent(
+      delegationCreated('d1', { id: 'delegation_1', type: 'client' }),
+    );
+
+    expect({
+      delegationIds: bridge.handleDelegationCreated.mock.calls.map(
+        (call) => call[0],
+      ),
+      sent: send.mock.calls.length,
+    }).toEqual({ delegationIds: ['delegation_1'], sent: 0 });
+  });
+
+  it('logs and does not call the bridge for a created delegation without a string id', async () => {
+    const cases = [
+      { name: 'no delegation object', delegation: undefined },
+      { name: 'delegation without id', delegation: { type: 'client' } },
+      { name: 'non-string id', delegation: { id: 5 } },
+    ];
+
+    for (const testCase of cases) {
+      const { bridge, logError, handler } = createHandler();
+
+      await handler.handleServerEvent(
+        delegationCreated('d2', testCase.delegation),
+      );
+
+      expect({
+        name: testCase.name,
+        bridged: bridge.handleDelegationCreated.mock.calls.length,
+        logged: logError.mock.calls.length,
+      }).toEqual({ name: testCase.name, bridged: 0, logged: 1 });
+    }
+  });
+
+  it('ignores other delegation events', async () => {
+    const { bridge, logError, handler } = createHandler();
+
+    await handler.handleServerEvent({
+      type: 'session.delegation.updated',
+      event_id: 'd3',
+      delegation: { id: 'delegation_1' },
+    });
+
+    expect({
+      bridged: bridge.handleDelegationCreated.mock.calls.length,
+      logged: logError.mock.calls.length,
+    }).toEqual({ bridged: 0, logged: 0 });
   });
 });

@@ -1,7 +1,10 @@
-import { OpenAiLiveSessionRepository } from './OpenAiLiveSessionRepository';
 import {
-  VOICE_CONSOLE_INSTRUCTIONS,
-  VOICE_CONSOLE_TOOL_DEFINITIONS,
+  buildLiveSessionRequestBody,
+  OpenAiLiveSessionRepository,
+} from './OpenAiLiveSessionRepository';
+import {
+  VOICE_CONSOLE_LIVE_INSTRUCTIONS,
+  VOICE_CONSOLE_TOOL_NAMES,
 } from '../voice-console/voiceConsoleLiveSessionConfig';
 
 const responseWithJson = (status: number, body: unknown): Response =>
@@ -40,18 +43,10 @@ describe('OpenAiLiveSessionRepository', () => {
     if (typeof requestBody !== 'string') {
       throw new Error('request body was not serialized as JSON');
     }
-    expect(JSON.parse(requestBody)).toEqual({
+    expect(JSON.parse(requestBody)).toMatchObject({
       session: {
         model: 'gpt-live-1',
-        instructions: VOICE_CONSOLE_INSTRUCTIONS,
         audio: { output: { voice: 'harema' } },
-        delegation: {
-          type: 'responses',
-          responses: {
-            model: 'gpt-6.2-astra',
-            tools: VOICE_CONSOLE_TOOL_DEFINITIONS,
-          },
-        },
       },
       transport: { type: 'webrtc', sdp: 'OFFER-SDP' },
     });
@@ -277,6 +272,58 @@ describe('OpenAiLiveSessionRepository', () => {
     expect(logError).toHaveBeenCalledWith(expect.stringContaining('502'));
     expect(logError.mock.calls.flat().join('\n')).not.toContain(
       'secret-api-key',
+    );
+  });
+});
+
+describe('buildLiveSessionRequestBody', () => {
+  it('requests GPT-Live with client delegation and the voice-role instructions only', () => {
+    expect(JSON.parse(buildLiveSessionRequestBody('OFFER-SDP'))).toEqual({
+      session: {
+        model: 'gpt-live-1',
+        instructions: VOICE_CONSOLE_LIVE_INSTRUCTIONS,
+        audio: { output: { voice: 'harema' } },
+        delegation: { type: 'client' },
+      },
+      transport: { type: 'webrtc', sdp: 'OFFER-SDP' },
+    });
+  });
+
+  it('sends no OpenAI Responses model, no responses key and no tool name anywhere in the body', () => {
+    const body = buildLiveSessionRequestBody('OFFER-SDP');
+    const forbiddenTerms = [
+      'gpt-6.2-astra',
+      '"responses"',
+      '"tools"',
+      ...VOICE_CONSOLE_TOOL_NAMES,
+    ];
+
+    for (const term of forbiddenTerms) {
+      expect({ term, present: body.includes(term) }).toEqual({
+        term,
+        present: false,
+      });
+    }
+  });
+
+  it('is the body that the repository posts to the live session endpoint', async () => {
+    const fetchImplementation: jest.MockedFunction<typeof fetch> = jest.fn();
+    fetchImplementation.mockResolvedValue(
+      responseWithJson(201, {
+        session: { id: 'live_123' },
+        transport: { type: 'webrtc', sdp: 'ANSWER-SDP' },
+      }),
+    );
+    const repository = new OpenAiLiveSessionRepository(
+      fetchImplementation,
+      () => 'secret-api-key',
+      jest.fn(),
+    );
+
+    await repository.createFromSdpOffer('OFFER-SDP');
+
+    expect(fetchImplementation.mock.calls[0]?.[1]?.body).toBe(
+      buildLiveSessionRequestBody('OFFER-SDP'),
     );
   });
 });
