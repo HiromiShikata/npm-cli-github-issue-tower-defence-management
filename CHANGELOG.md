@@ -1,3 +1,10 @@
+# [2.208.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.207.1...v2.208.0) (2026-11-25)
+
+
+### Features
+
+* **voice-console:** instruct the live assistant to speak at the fastest clear pace ([#3770](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3770)) ([ad75090](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ad75090b9558b3d3a317c058109d84fedd16adca))
+
 ## [2.207.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.207.0...v2.207.1) (2026-11-25)
 
 
