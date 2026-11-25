@@ -1,4 +1,5 @@
 import { execFile } from 'child_process';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import YAML from 'yaml';
@@ -140,6 +141,31 @@ export type RemoteMachineStatusFile = {
   machines: RemoteMachineStatusEntry[];
 };
 
+const writeJsonAtomically = (
+  outputPath: string,
+  content: string,
+  reportError?: (message: string) => void,
+): void => {
+  const temporaryPath = `${outputPath}.${process.pid}.${crypto.randomBytes(16).toString('hex')}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, content);
+    fs.renameSync(temporaryPath, outputPath);
+  } catch (error) {
+    try {
+      fs.rmSync(temporaryPath, { force: true });
+    } catch (cleanupError) {
+      const message =
+        cleanupError instanceof Error
+          ? cleanupError.message
+          : String(cleanupError);
+      reportError?.(
+        `could not remove temporary remote machine status file: ${message}`,
+      );
+    }
+    throw error;
+  }
+};
+
 export const writeRemoteMachineStatus = async (params: {
   dashboardDataDir: string | null | undefined;
   workerHostsPath: string | null | undefined;
@@ -199,15 +225,14 @@ export const writeRemoteMachineStatus = async (params: {
       capturedAt,
     }));
     fs.mkdirSync(params.dashboardDataDir, { recursive: true });
-    const temporaryPath = `${outputPath}.tmp`;
-    fs.writeFileSync(
-      temporaryPath,
+    writeJsonAtomically(
+      outputPath,
       JSON.stringify({
         capturedAt,
         machines,
       } satisfies RemoteMachineStatusFile),
+      params.reportError,
     );
-    fs.renameSync(temporaryPath, outputPath);
     return;
   }
   const runRemoteCommand =
@@ -243,11 +268,10 @@ export const writeRemoteMachineStatus = async (params: {
       });
     }
   }
-  const temporaryPath = `${outputPath}.tmp`;
   fs.mkdirSync(params.dashboardDataDir, { recursive: true });
-  fs.writeFileSync(
-    temporaryPath,
+  writeJsonAtomically(
+    outputPath,
     JSON.stringify({ capturedAt, machines } satisfies RemoteMachineStatusFile),
+    params.reportError,
   );
-  fs.renameSync(temporaryPath, outputPath);
 };
