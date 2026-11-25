@@ -43,6 +43,7 @@ import {
 import {
   buildLegoDockerArgs,
   CERTIFICATE_RENEWAL_INTERVAL_MS,
+  LETS_ENCRYPT_STAGING_DIRECTORY_URL,
 } from './dockerLegoCertificate';
 import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
@@ -5299,7 +5300,7 @@ describe('webServer HTTPS certificate handling', () => {
         buildLegoDockerArgs({
           mode: 'renew',
           acmeDataDirectory,
-          acmeServerUrl: 'https://acme-v02.api.letsencrypt.org/directory',
+          acmeServerUrl: LETS_ENCRYPT_STAGING_DIRECTORY_URL,
           acmeIpAddress: '127.0.0.1',
           hostUserId: process.getuid?.() ?? 0,
           hostGroupId: process.getgid?.() ?? 0,
