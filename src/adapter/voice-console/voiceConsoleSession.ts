@@ -1054,8 +1054,10 @@ export class VoiceConsoleSession {
   }
 
   private createTaskProjectPjcode(args: ToolArguments): string {
-    const projectArgument = readOptionalString(args, 'project_pjcode');
-    if (projectArgument !== undefined) {
+    const projectArgument = nonEmptyArgumentOrNull(
+      readOptionalString(args, 'project_pjcode'),
+    );
+    if (projectArgument !== null) {
       if (!this.deps.projectPjcodes.includes(projectArgument)) {
         throw new VoiceConsoleRejection('unknown_project');
       }
