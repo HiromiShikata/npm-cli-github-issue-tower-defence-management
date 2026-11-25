@@ -1,3 +1,10 @@
+## [2.212.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.212.1...v2.212.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **console:** run lego HTTP-01 on host network and hand certificate files back to console user ([#3780](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3780)) ([81d7739](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/81d773999626eeb56fb9bf13199c21da1eb93dca))
+
 ## [2.212.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.212.0...v2.212.1) (2026-11-25)
 
 
