@@ -15,6 +15,7 @@ import {
   ComposeDashboardDisk,
   ComposeDashboardInput,
   ComposeDashboardMachineStatus,
+  ComposeDashboardRemoteMachine,
   ComposeDashboardProject,
 } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
 import { assignDashboardDisplayLabels } from '../../../domain/usecases/dashboard/DashboardProjectCode';
@@ -34,6 +35,28 @@ export type DashboardComposeOptions = {
   projectNames: string[];
   consoleDataOutputDir?: string | null;
   nowMs?: number;
+};
+
+export const readRemoteMachineStatus = (
+  dashboardDataDir: string,
+): ComposeDashboardRemoteMachine[] | null => {
+  const raw = readJsonFile(
+    path.join(dashboardDataDir, 'remote-machine-status.json'),
+  );
+  if (!isRecord(raw) || !Array.isArray(raw.machines)) return null;
+  const machines: ComposeDashboardRemoteMachine[] = [];
+  for (const entry of raw.machines) {
+    if (!isRecord(entry) || typeof entry.name !== 'string') continue;
+    machines.push({
+      name: entry.name,
+      reachable: entry.reachable === true,
+      memPct: asFiniteNumber(entry.memPct),
+      cpuPct: asFiniteNumber(entry.cpuPct),
+      diskPct: asFiniteNumber(entry.diskPct),
+      load: parseLoad(entry.load),
+    });
+  }
+  return machines;
 };
 
 const NO_CLOSE_EVENTS: CloseEventCounts = { h1: 0, h3: 0, h5: 0 };
@@ -540,6 +563,7 @@ export const buildComposeDashboardInput = (
   return {
     projects,
     machineStatus: readMachineStatus(options.dashboardDataDir),
+    remoteMachines: readRemoteMachineStatus(options.dashboardDataDir),
     tokens: tokenStatusFile.tokens,
     sevenDayWindowAggregate: tokenStatusFile.sevenDayWindowAggregate,
     codexSevenDayWindows:
