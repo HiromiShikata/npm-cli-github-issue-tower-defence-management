@@ -1,3 +1,10 @@
+## [2.211.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.211.1...v2.211.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **console:** log and continue when the queued status changed before the write ([#3776](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3776)) ([9ae305a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9ae305a52699c905d864ed67906509f9a551447e))
+
 ## [2.211.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.211.0...v2.211.1) (2026-11-25)
 
 
