@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import fs from 'fs';
+import {
+  isIpv4Address,
+  LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
+} from '../console/dockerLegoCertificate';
 
 export {
   ConfigFile,
@@ -43,7 +47,10 @@ import {
 import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalCommandIssueAttachmentRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
-import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
+import {
+  projectCacheDirectory,
+  tdpmCacheDirectory,
+} from '../../repositories/localStorageCacheDirectory';
 import { ProjectIssuesCacheRepository } from '../../repositories/ProjectIssuesCacheRepository';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
@@ -267,6 +274,10 @@ type CheckIssueReviewReadinessOptions = {
 type ServeWebOptions = {
   configFilePath: string;
   port?: string;
+  httpsPort?: string;
+  acmeIpAddress?: string;
+  acmeDataDirectory?: string;
+  acmeServerUrl?: string;
   consoleDataOutputDir?: string;
   inTmuxDataDir?: string;
   dashboardDir?: string;
@@ -1282,6 +1293,48 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     port = parsedPort;
   }
 
+  const hasHttpsPort = options.httpsPort !== undefined;
+  const hasAcmeIpAddress = options.acmeIpAddress !== undefined;
+  if (hasHttpsPort !== hasAcmeIpAddress) {
+    console.error('--httpsPort and --acmeIpAddress must be provided together.');
+    process.exit(1);
+  }
+  let httpsPort: number | undefined;
+  if (options.httpsPort !== undefined) {
+    if (!/^[0-9]+$/.test(options.httpsPort)) {
+      console.error(
+        'Invalid value for --httpsPort. It must be a positive integer between 1 and 65535.',
+      );
+      process.exit(1);
+    }
+    const parsedHttpsPort = Number(options.httpsPort);
+    if (
+      !Number.isFinite(parsedHttpsPort) ||
+      !Number.isInteger(parsedHttpsPort) ||
+      parsedHttpsPort <= 0 ||
+      parsedHttpsPort > 65535
+    ) {
+      console.error(
+        'Invalid value for --httpsPort. It must be a positive integer between 1 and 65535.',
+      );
+      process.exit(1);
+    }
+    httpsPort = parsedHttpsPort;
+    if (httpsPort === port) {
+      console.error('--httpsPort and --port must be different.');
+      process.exit(1);
+    }
+  }
+  if (
+    options.acmeIpAddress !== undefined &&
+    !isIpv4Address(options.acmeIpAddress)
+  ) {
+    console.error(
+      'Invalid value for --acmeIpAddress. It must be a valid IPv4 address.',
+    );
+    process.exit(1);
+  }
+
   const token = process.env.GH_TOKEN;
   if (!token) {
     console.error('GH_TOKEN environment variable is required');
@@ -1525,6 +1578,12 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     pullRequestStatusCache: new PullRequestStatusCache(),
     consoleErrorReporter,
     port,
+    httpsPort,
+    acmeIpAddress: options.acmeIpAddress,
+    acmeDataDirectory:
+      options.acmeDataDirectory ?? path.join(tdpmCacheDirectory(), 'acme'),
+    acmeServerUrl:
+      options.acmeServerUrl ?? LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
   });
   console.log(`TDPM web server listening on port ${port}`);
 };
@@ -1538,6 +1597,19 @@ const addServeWebOptions = (command: Command): Command =>
     .option(
       '--port <number>',
       `Port for the web HTTP server (default: ${DEFAULT_WEB_PORT})`,
+    )
+    .option('--httpsPort <port>', 'Port for the opt-in HTTPS server')
+    .option(
+      '--acmeIpAddress <ipv4>',
+      "IPv4 address for the Let's Encrypt certificate",
+    )
+    .option(
+      '--acmeDataDirectory <dir>',
+      "Directory for Let's Encrypt certificate data",
+    )
+    .option(
+      '--acmeServerUrl <url>',
+      `ACME directory URL (default: ${LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL})`,
     )
     .option(
       '--consoleDataOutputDir <path>',
