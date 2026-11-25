@@ -5599,7 +5599,198 @@ describe('webServer HTTPS certificate handling', () => {
           request.end();
         },
       );
+      expect(httpsResponse.statusCode).toBe(302);
+      expect(httpsResponse.headers['set-cookie']).toBeDefined();
+      expect(httpsResponse.headers['set-cookie']?.[0]).toContain('Secure');
+      httpsResponse.resume();
+    } finally {
+      await stopWebServer(server);
+      consoleErrorSpy.mockRestore();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { name: 'obtaining', filesPresent: false, renewArguments: false },
+    { name: 'renewing', filesPresent: true, renewArguments: true },
+  ])(
+    'selects $name arguments at startup based on certificate files',
+    async ({ filesPresent, renewArguments }) => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-mode-'));
+      const acmeDataDirectory = path.join(tmpDir, 'acme');
+      if (filesPresent) writeCertificateFiles(acmeDataDirectory);
+      const runLegoCommand = jest
+        .fn()
+        .mockResolvedValue({ exitCode: 1, output: '' });
+      const server = await startWebServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: null,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: [],
+        port: 0,
+        httpsPort: 0,
+        acmeIpAddress: '127.0.0.1',
+        acmeDataDirectory,
+        runLegoCommand,
+      });
+      try {
+        if (renewArguments) {
+          expect(runLegoCommand).toHaveBeenCalledWith(
+            expect.arrayContaining(['--renew-days', '3']),
+          );
+        } else {
+          expect(runLegoCommand).toHaveBeenCalledWith(
+            expect.not.arrayContaining(['--renew-days']),
+          );
+        }
+      } finally {
+        await stopWebServer(server);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('starts HTTPS after the first successful renewal tick', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-first-issuance-'),
+    );
+    const acmeDataDirectory = path.join(tmpDir, 'acme');
+    const runLegoCommand = jest
+      .fn()
+      .mockResolvedValueOnce({ exitCode: 1, output: 'startup failed' })
+      .mockImplementationOnce(() => {
+        writeCertificateFiles(acmeDataDirectory);
+        return Promise.resolve({ exitCode: 0, output: '' });
+      });
+    const intervalSpy = jest.spyOn(global, 'setInterval');
+    const httpsPort = await new Promise<number>((resolve, reject) => {
+      const probe = net.createServer();
+      probe.listen(0, '127.0.0.1', () => {
+        const address = probe.address();
+        if (address === null || typeof address === 'string') {
+          reject(new Error('HTTPS port probe did not return an address'));
+          return;
+        }
+        probe.close(() => resolve(address.port));
+      });
+      probe.on('error', reject);
+    });
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+      httpsPort,
+      acmeIpAddress: '127.0.0.1',
+      acmeDataDirectory,
+      runLegoCommand,
+    });
+    try {
+      const renewalCallback = intervalSpy.mock.calls[0][0];
+      if (typeof renewalCallback !== 'function') {
+        throw new Error('renewal callback was not registered');
+      }
+      renewalCallback();
+      await Promise.resolve();
+      await Promise.resolve();
+      const httpsResponse = await new Promise<http.IncomingMessage>(
+        (resolve, reject) => {
+          const request = https.request(
+            {
+              host: '127.0.0.1',
+              port: httpsPort,
+              path: '/',
+              ca: certificate,
+            },
+            resolve,
+          );
+          request.on('error', reject);
+          request.end();
+        },
+      );
       expect(httpsResponse.statusCode).toBe(200);
+      httpsResponse.resume();
+    } finally {
+      await stopWebServer(server);
+      intervalSpy.mockRestore();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps HTTP working when the HTTPS listener cannot listen', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-listen-failure-'),
+    );
+    const acmeDataDirectory = path.join(tmpDir, 'acme');
+    writeCertificateFiles(acmeDataDirectory);
+    const occupiedServer = net.createServer();
+    await new Promise<void>((resolve, reject) => {
+      occupiedServer.listen(0, '127.0.0.1', () => resolve());
+      occupiedServer.on('error', reject);
+    });
+    const occupiedPort = listeningPort(occupiedServer.address());
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+      httpsPort: occupiedPort,
+      acmeIpAddress: '127.0.0.1',
+      acmeDataDirectory,
+      runLegoCommand: jest.fn().mockResolvedValue({ exitCode: 1, output: '' }),
+    });
+    try {
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(200);
+    } finally {
+      await stopWebServer(server);
+      await new Promise<void>((resolve, reject) =>
+        occupiedServer.close((error) => (error ? reject(error) : resolve())),
+      );
+      consoleErrorSpy.mockRestore();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps HTTP working when the ACME data directory cannot be created', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-mkdir-failure-'),
+    );
+    const parentFile = path.join(tmpDir, 'acme-parent');
+    fs.writeFileSync(parentFile, 'not a directory');
+    const acmeDataDirectory = path.join(parentFile, 'acme');
+    const runLegoCommand = jest.fn();
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+      httpsPort: 0,
+      acmeIpAddress: '127.0.0.1',
+      acmeDataDirectory,
+      runLegoCommand,
+    });
+    try {
+      expect(runLegoCommand).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(200);
     } finally {
       await stopWebServer(server);
       consoleErrorSpy.mockRestore();

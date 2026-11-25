@@ -151,6 +151,7 @@ import * as ensureConsoleRunningModule from '../console/ensureConsoleRunning';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
 
 import type { StartWebServerOptions } from '../console/webServer';
+import { LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL } from '../console/dockerLegoCertificate';
 
 const mockStartWebServer = jest
   .fn<Promise<unknown>, [StartWebServerOptions]>()
@@ -5155,7 +5156,7 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       logSpy.mockRestore();
     });
 
-    it('should use the production ACME server and cache ACME directory by default', async () => {
+    it('should use the staging ACME server and cache ACME directory by default', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
@@ -5176,7 +5177,36 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       expect(mockStartWebServer.mock.calls[0][0]).toEqual(
         expect.objectContaining({
           acmeDataDirectory: path.join(cacheHomeDir, 'tdpm', 'acme'),
-          acmeServerUrl: 'https://acme-v02.api.letsencrypt.org/directory',
+          acmeServerUrl:
+            'https://acme-staging-v02.api.letsencrypt.org/directory',
+        }),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('should pass an explicitly selected production ACME server through', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveWeb',
+        '--configFilePath',
+        configFilePath,
+        '--httpsPort',
+        '8443',
+        '--acmeIpAddress',
+        '127.0.0.1',
+        '--acmeServerUrl',
+        LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
+        '--dashboardProjectNames',
+        'acme',
+      ]);
+
+      expect(mockStartWebServer.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          acmeServerUrl: LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
         }),
       );
       logSpy.mockRestore();

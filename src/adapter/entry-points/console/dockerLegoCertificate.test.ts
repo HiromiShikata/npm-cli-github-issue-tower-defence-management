@@ -21,6 +21,7 @@ import {
   CERTIFICATE_RENEWAL_INTERVAL_MS,
   CERTIFICATE_RENEWAL_THRESHOLD_DAYS,
   LEGO_DOCKER_IMAGE,
+  LETS_ENCRYPT_STAGING_DIRECTORY_URL,
   LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
   certificateFilePaths,
   isIpv4Address,
@@ -47,6 +48,9 @@ describe('docker lego certificate', () => {
     expect(CERTIFICATE_RENEWAL_INTERVAL_MS).toBe(6 * 60 * 60 * 1000);
     expect(LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL).toBe(
       'https://acme-v02.api.letsencrypt.org/directory',
+    );
+    expect(LETS_ENCRYPT_STAGING_DIRECTORY_URL).toBe(
+      'https://acme-staging-v02.api.letsencrypt.org/directory',
     );
   });
 
