@@ -4911,6 +4911,10 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       expect(helpText).toContain('serveWeb');
     });
 
+    it('should include the HTTP token authentication disable option in help output', () => {
+      expect(program.helpInformation()).toContain('--httpTokenAuthDisabled');
+    });
+
     it('should start the server on the default port 9980 when --port is omitted', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();

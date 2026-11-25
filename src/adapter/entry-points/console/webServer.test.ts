@@ -33,6 +33,9 @@ import {
   isConsoleAppRoute,
   extractProvidedToken,
   extractCookieToken,
+  CONSOLE_HTTPS_ENDPOINT_PATH,
+  httpsBaseUrlFor,
+  handleWebRequest,
   isOwnerCallFileRequestPath,
   resolveFlatInTmuxFilePath,
   resolveDashboardFilePath,
@@ -661,6 +664,250 @@ describe('webServer integration', () => {
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('HTTPS endpoint and HTTP redirect integration', () => {
+  const accessToken = 'integration-test-token-value';
+  const httpsPort = 8443;
+  const acmeIpAddress = '127.0.0.1';
+
+  type TestWebServerOptions = {
+    accessToken: string;
+    uiDistDir: string;
+    consoleDataOutputDir: null;
+    inTmuxDataDir: null;
+    dashboardDir: null;
+    dashboardDataDir: null;
+    dashboardProjectNames: string[];
+    port: number;
+    httpsPort?: number;
+    acmeIpAddress?: string;
+    httpTokenAuthDisabled: boolean;
+  };
+
+  const buildOptions = (
+    httpTokenAuthDisabled = false,
+  ): TestWebServerOptions => ({
+    accessToken,
+    uiDistDir: path.join(os.tmpdir(), 'missing-console-ui-dist'),
+    consoleDataOutputDir: null,
+    inTmuxDataDir: null,
+    dashboardDir: null,
+    dashboardDataDir: null,
+    dashboardProjectNames: [],
+    port: 0,
+    httpsPort,
+    acmeIpAddress,
+    httpTokenAuthDisabled,
+  });
+
+  const requestServer = (
+    server: http.Server,
+    requestPath: string,
+    method = 'GET',
+    headers: http.OutgoingHttpHeaders = {},
+  ): Promise<{
+    statusCode: number;
+    body: string;
+    location: string | undefined;
+    cacheControl: string | undefined;
+    contentType: string | undefined;
+  }> => {
+    const port = listeningPort(server.address());
+    return new Promise((resolve, reject) => {
+      const request = http.request(
+        { host: '127.0.0.1', port, path: requestPath, method, headers },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () =>
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+              location: response.headers.location,
+              cacheControl: response.headers['cache-control'],
+              contentType: response.headers['content-type'],
+            }),
+          );
+        },
+      );
+      request.on('error', reject);
+      request.end();
+    });
+  };
+
+  const createSecureTestServer = (
+    options: ReturnType<typeof buildOptions>,
+  ): Promise<http.Server> => {
+    const server = http.createServer((request, response) =>
+      handleWebRequest(options, request, response, true),
+    );
+    return new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', () => resolve(server));
+    });
+  };
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+
+  it.each([
+    { listener: 'HTTP', secure: false },
+    { listener: 'HTTPS', secure: true },
+  ])(
+    'serves the unauthenticated endpoint on the configured $listener listener',
+    async ({ secure }) => {
+      const options = buildOptions();
+      const server = secure
+        ? await createSecureTestServer(options)
+        : createWebServer(options);
+      try {
+        const response = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
+        expect(response.statusCode).toBe(200);
+        expect(JSON.parse(response.body)).toEqual({
+          httpsBaseUrl: httpsBaseUrlFor(options),
+        });
+        expect(response.contentType).toBe('application/json; charset=utf-8');
+        expect(response.cacheControl).toBe('no-store');
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
+  it.each([
+    { listener: 'HTTP', secure: false },
+    { listener: 'HTTPS', secure: true },
+  ])(
+    'returns 404 for the endpoint on the unconfigured $listener listener',
+    async ({ secure }) => {
+      const options: TestWebServerOptions = {
+        ...buildOptions(),
+        httpsPort: undefined,
+        acmeIpAddress: undefined,
+      };
+      const server = secure
+        ? await createSecureTestServer(options)
+        : createWebServer(options);
+      try {
+        const response = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
+        expect(response.statusCode).toBe(404);
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
+  it.each([
+    { method: 'GET', requestPath: '/' },
+    { method: 'GET', requestPath: '/index.html' },
+    { method: 'GET', requestPath: '/projects/abc/prs?k=t' },
+    { method: 'HEAD', requestPath: '/assets/app.js?version=1' },
+  ])(
+    'redirects HTTP $method $requestPath to HTTPS unchanged',
+    async ({ method, requestPath }) => {
+      const server = createWebServer(buildOptions());
+      try {
+        const response = await requestServer(server, requestPath, method);
+        expect(response.statusCode).toBe(308);
+        expect(response.location).toBe(
+          `${httpsBaseUrlFor(buildOptions())}${requestPath}`,
+        );
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
+  it.each([
+    { method: 'GET', requestPath: '/api/review' },
+    { method: 'GET', requestPath: '/data/situation.json' },
+    { method: 'GET', requestPath: '/data/settings.yaml' },
+    { method: 'POST', requestPath: '/projects/abc/prs' },
+  ])(
+    'does not redirect HTTP $method $requestPath',
+    async ({ method, requestPath }) => {
+      const server = createWebServer(buildOptions());
+      try {
+        const response = await requestServer(server, requestPath, method);
+        expect(response.statusCode).not.toBe(308);
+        expect(response.location).toBeUndefined();
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
+  it.each([
+    {
+      carrier: 'query',
+      headers: {},
+      requestPath: '/api/review?k=not-validated',
+    },
+    {
+      carrier: 'header',
+      headers: { [CONSOLE_TOKEN_HEADER]: 'not-validated' },
+      requestPath: '/api/review',
+    },
+    {
+      carrier: 'cookie',
+      headers: { cookie: `${CONSOLE_TOKEN_COOKIE}=not-validated` },
+      requestPath: '/api/review',
+    },
+  ])(
+    'rejects HTTP requests carrying a $carrier token when disabled',
+    async ({ headers, requestPath }) => {
+      const server = createWebServer(buildOptions(true));
+      try {
+        const response = await requestServer(server, requestPath, 'GET', headers);
+        expect(response.statusCode).toBe(403);
+        expect(JSON.parse(response.body)).toEqual({
+          error: 'https_required',
+          httpsBaseUrl: httpsBaseUrlFor(buildOptions(true)),
+        });
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
+  it('keeps the endpoint and page redirect available when HTTP token authentication is disabled', async () => {
+    const options = buildOptions(true);
+    const server = createWebServer(options);
+    try {
+      const endpoint = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
+      expect(endpoint.statusCode).toBe(200);
+      const page = await requestServer(server, '/index.html');
+      expect(page.statusCode).toBe(308);
+      expect(page.location).toBe(`${httpsBaseUrlFor(options)}/index.html`);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it('keeps the endpoint, redirect, and token behavior unchanged when HTTPS is not configured', async () => {
+    const options = {
+      ...buildOptions(true),
+      httpsPort: undefined,
+      acmeIpAddress: undefined,
+    };
+    const server = createWebServer(options);
+    try {
+      const endpoint = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
+      expect(endpoint.statusCode).toBe(404);
+      const tokenRequest = await requestServer(
+        server,
+        `/api/review?k=${accessToken}`,
+      );
+      expect(tokenRequest.statusCode).not.toBe(403);
+      const page = await requestServer(server, '/');
+      expect(page.statusCode).not.toBe(308);
+    } finally {
+      await closeServer(server);
     }
   });
 });
