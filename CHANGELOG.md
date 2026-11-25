@@ -1,3 +1,10 @@
+# [2.211.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.210.0...v2.211.0) (2026-11-25)
+
+
+### Features
+
+* **voice-console:** run the voice backend as a fleet-style Claude Code session ([#3774](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3774)) ([9a7d79c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9a7d79cbeb81f86a677a5dffec95a85f76819938))
+
 # [2.210.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.209.2...v2.210.0) (2026-11-25)
 
 
