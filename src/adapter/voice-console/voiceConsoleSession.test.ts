@@ -309,9 +309,6 @@ const openSession = async (
     options.resolveCreateTaskDefaults ?? defaultResolveCreateTaskDefaults,
   );
 
-  // Deliberately not annotated as VoiceConsoleSessionDeps: the create-task
-  // dependency is added by the change under test, and an excess-property
-  // check on a typed literal would stop this whole file from compiling.
   const deps = {
     consoleDataOutputDir: options.consoleDataOutputDir ?? root,
     projectPjcodes: options.projectPjcodes ?? ['umino', 'xcare'],
