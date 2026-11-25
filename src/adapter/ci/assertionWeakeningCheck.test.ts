@@ -290,6 +290,16 @@ describe('assertion weakening check script', () => {
       expect(result.output).toContain('no linked closing issue');
     });
 
+    it('fails when the linked closing issue body is empty', () => {
+      const result = runCheck({
+        diffContent: diffWithDeletedAssertion,
+        prBody: 'Closes #7',
+        issueBody: '',
+      });
+      expect(result.exitStatus).toBe(1);
+      expect(result.output).toContain('no linked closing issue');
+    });
+
     it('fails when an entire test file is deleted and the issue lacks acceptance criteria', () => {
       const result = runCheck({
         diffContent: diffWithDeletedTestFile,
