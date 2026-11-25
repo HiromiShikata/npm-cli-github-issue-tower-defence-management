@@ -1,6 +1,9 @@
+import * as path from "node:path";
 import {
 	type CreateTaskDefaults,
+	createStoriesListJsonPath,
 	createTaskDefaultsFromStoriesListJson,
+	readCreateTaskDefaultsFromFile,
 	resolveCreateTaskDefaults,
 } from "./voiceConsoleCreateTaskDefaults";
 
@@ -204,6 +207,147 @@ describe("createTaskDefaultsFromStoriesListJson", () => {
 			cases.map((testCase) => ({
 				name: testCase.name,
 				result: testCase.expected,
+			})),
+		);
+	});
+});
+
+describe("createStoriesListJsonPath", () => {
+	it("joins consoleDataOutputDir, pjcode, stories and list.json for each input", () => {
+		const cases = [
+			{
+				name: "absolute data directory",
+				input: { consoleDataOutputDir: "/data/console", pjcode: "ABC" },
+				expected: path.join("/data/console", "ABC", "stories", "list.json"),
+			},
+			{
+				name: "relative data directory and a hyphenated pjcode",
+				input: { consoleDataOutputDir: "out", pjcode: "XYZ-1" },
+				expected: path.join("out", "XYZ-1", "stories", "list.json"),
+			},
+		];
+
+		const actual = cases.map((testCase) => ({
+			name: testCase.name,
+			result: createStoriesListJsonPath(testCase.input),
+		}));
+		expect(actual).toEqual(
+			cases.map((testCase) => ({
+				name: testCase.name,
+				result: testCase.expected,
+			})),
+		);
+	});
+});
+
+describe("readCreateTaskDefaultsFromFile", () => {
+	it("returns the defaults of the file for each read or parse outcome, and logs only read or parse failures with the path and the thrown error", async () => {
+		const storiesListJsonPath = path.join(
+			"/data/console",
+			"ABC",
+			"stories",
+			"list.json",
+		);
+		const enoentError = Object.assign(new Error("no such file"), {
+			code: "ENOENT",
+		});
+		const eaccesError = Object.assign(new Error("permission denied"), {
+			code: "EACCES",
+		});
+		const noDefaults: CreateTaskDefaults = {
+			nameWithOwner: null,
+			storyName: null,
+		};
+		const cases: Array<{
+			name: string;
+			readOutcome: { resolves: string } | { rejects: Error };
+			expected: {
+				result: CreateTaskDefaults;
+				logged: Array<{ messageContainsPath: boolean; error: unknown }>;
+			};
+		}> = [
+			{
+				name: "a valid stories list gives its repository and first story",
+				readOutcome: {
+					resolves: JSON.stringify({
+						pjcode: "ABC",
+						defaultNameWithOwner: "owner/repo",
+						stories: [storyEntry("Story A")],
+					}),
+				},
+				expected: {
+					result: { nameWithOwner: "owner/repo", storyName: "Story A" },
+					logged: [],
+				},
+			},
+			{
+				name: "a missing file is the first-run state and is not logged",
+				readOutcome: { rejects: enoentError },
+				expected: { result: noDefaults, logged: [] },
+			},
+			{
+				name: "a non-ENOENT read failure gives both null and is logged once",
+				readOutcome: { rejects: eaccesError },
+				expected: {
+					result: noDefaults,
+					logged: [{ messageContainsPath: true, error: eaccesError }],
+				},
+			},
+			{
+				name: "text that is not JSON gives both null and is logged once",
+				readOutcome: { resolves: "{not json" },
+				expected: {
+					result: noDefaults,
+					logged: [{ messageContainsPath: true, error: expect.any(Error) }],
+				},
+			},
+			{
+				name: "valid JSON that is an array is malformed data and is not logged",
+				readOutcome: { resolves: "[]" },
+				expected: { result: noDefaults, logged: [] },
+			},
+			{
+				name: "valid JSON null is malformed data and is not logged",
+				readOutcome: { resolves: "null" },
+				expected: { result: noDefaults, logged: [] },
+			},
+		];
+
+		const actual = await Promise.all(
+			cases.map(async (testCase) => {
+				const readTextFile = jest.fn(
+					async (_filePath: string): Promise<string> => {
+						if ("rejects" in testCase.readOutcome) {
+							throw testCase.readOutcome.rejects;
+						}
+						return testCase.readOutcome.resolves;
+					},
+				);
+				const logError = jest.fn(
+					(_message: string, _error: unknown): void => undefined,
+				);
+				const result = await readCreateTaskDefaultsFromFile({
+					storiesListJsonPath,
+					readTextFile,
+					logError,
+				});
+				return {
+					name: testCase.name,
+					result,
+					readPaths: readTextFile.mock.calls.map(([filePath]) => filePath),
+					logged: logError.mock.calls.map(([message, error]) => ({
+						messageContainsPath: message.includes(storiesListJsonPath),
+						error,
+					})),
+				};
+			}),
+		);
+		expect(actual).toEqual(
+			cases.map((testCase) => ({
+				name: testCase.name,
+				result: testCase.expected.result,
+				readPaths: [storiesListJsonPath],
+				logged: testCase.expected.logged,
 			})),
 		);
 	});
