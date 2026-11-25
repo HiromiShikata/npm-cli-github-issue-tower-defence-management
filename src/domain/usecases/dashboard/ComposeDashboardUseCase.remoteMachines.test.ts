@@ -43,7 +43,14 @@ describe('formatMachineStatusLines remote machine table', () => {
   it('renders an unreachable remote as a forced-red row of placeholders', () => {
     expect(
       formatMachineStatusLines(mainStatus, [
-        { ...reachableWorker, reachable: false, memPct: null, cpuPct: null, diskPct: null, load: null },
+        {
+          ...reachableWorker,
+          reachable: false,
+          memPct: null,
+          cpuPct: null,
+          diskPct: null,
+          load: null,
+        },
       ]),
     ).toEqual([
       '            M  C  D  S cy LA',
@@ -61,10 +68,7 @@ describe('formatMachineStatusLines remote machine table', () => {
         load: [4.5, 1.5, 2.5],
         cycleMinutes: null,
       }),
-    ).toEqual([
-      '        M  C  D  S cy LA',
-      '🔴main   99 80  1  -  -  4  2  2',
-    ]);
+    ).toEqual(['        M  C  D  S cy LA', '🔴main   99 80  1  -  -  4  2  2']);
   });
 
   it('forces all columns red when the main machine status is null', () => {
@@ -84,9 +88,7 @@ describe('ComposeDashboardUseCase remote machine output', () => {
       tokens: [],
     };
     expect(new ComposeDashboardUseCase().run(input)).toMatch(
-      new RegExp(
-        `^<tt>${' '.repeat(12)}M  C  D  S cy LA<\\/tt><br>\\n<tt>`,
-      ),
+      new RegExp(`^<tt>${' '.repeat(12)}M  C  D  S cy LA<\\/tt><br>\\n<tt>`),
     );
   });
 });

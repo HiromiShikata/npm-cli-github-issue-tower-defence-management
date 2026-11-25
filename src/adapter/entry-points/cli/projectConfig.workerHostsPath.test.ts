@@ -7,7 +7,9 @@ describe('workerHostsPath configuration', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'project-config-worker-hosts-'));
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-worker-hosts-'),
+    );
   });
 
   afterEach(() => {
@@ -16,8 +18,13 @@ describe('workerHostsPath configuration', () => {
 
   it('parses workerHostsPath from the config file', () => {
     const filePath = path.join(dir, 'config.yml');
-    fs.writeFileSync(filePath, "projectName: 'demo'\nworkerHostsPath: '/tmp/worker-hosts.yml'\n");
-    expect(loadConfigFile(filePath).workerHostsPath).toBe('/tmp/worker-hosts.yml');
+    fs.writeFileSync(
+      filePath,
+      "projectName: 'demo'\nworkerHostsPath: '/tmp/worker-hosts.yml'\n",
+    );
+    expect(loadConfigFile(filePath).workerHostsPath).toBe(
+      '/tmp/worker-hosts.yml',
+    );
   });
 
   it('merges the CLI workerHostsPath over the config file value', () => {
@@ -32,7 +39,8 @@ describe('workerHostsPath configuration', () => {
 
   it('falls back to the config file workerHostsPath', () => {
     expect(
-      mergeConfigs({ workerHostsPath: '/tmp/config-hosts.yml' }, {}, {}).workerHostsPath,
+      mergeConfigs({ workerHostsPath: '/tmp/config-hosts.yml' }, {}, {})
+        .workerHostsPath,
     ).toBe('/tmp/config-hosts.yml');
   });
 });

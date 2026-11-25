@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import fs from 'fs';
 import { execFileSync } from 'child_process';
 import path from 'path';
@@ -12,14 +12,22 @@ import {
 } from './remoteMachineStatusWriter';
 
 const makeTempDirectory = (): string =>
-  execFileSync('mktemp', ['-d', '/mnt/storage/tmp/remote-machine-status.XXXXXX'], {
-    encoding: 'utf8',
-  }).trim();
+  execFileSync(
+    'mktemp',
+    ['-d', '/mnt/storage/tmp/remote-machine-status.XXXXXX'],
+    {
+      encoding: 'utf8',
+    },
+  ).trim();
 
 const makeTempFile = (content: string): string => {
-  const filePath = execFileSync('mktemp', ['/mnt/storage/tmp/remote-hosts.XXXXXX'], {
-    encoding: 'utf8',
-  }).trim();
+  const filePath = execFileSync(
+    'mktemp',
+    ['/mnt/storage/tmp/remote-hosts.XXXXXX'],
+    {
+      encoding: 'utf8',
+    },
+  ).trim();
   fs.writeFileSync(filePath, content);
   return filePath;
 };
@@ -58,10 +66,22 @@ describe('remote machine status writer parsing', () => {
 
   it.each([
     ['hosts is missing', 'worker: []\n'],
-    ['name is empty', 'hosts:\n  - name: ""\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n'],
-    ['address is empty', 'hosts:\n  - name: worker-a\n    address: ""\n    port: 2222\n    user: worker-user\n'],
-    ['user is empty', 'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: ""\n'],
-    ['port is invalid', 'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 0\n    user: worker-user\n'],
+    [
+      'name is empty',
+      'hosts:\n  - name: ""\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+    ],
+    [
+      'address is empty',
+      'hosts:\n  - name: worker-a\n    address: ""\n    port: 2222\n    user: worker-user\n',
+    ],
+    [
+      'user is empty',
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: ""\n',
+    ],
+    [
+      'port is invalid',
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 0\n    user: worker-user\n',
+    ],
   ])('rejects %s', (_name, yaml) => {
     expect(() => parseWorkerHostsYaml(yaml)).toThrow(Error);
   });
@@ -101,7 +121,8 @@ describe('writeRemoteMachineStatus', () => {
   let workerHostsPath = '';
 
   afterEach(() => {
-    if (dashboardDataDir) fs.rmSync(dashboardDataDir, { recursive: true, force: true });
+    if (dashboardDataDir)
+      fs.rmSync(dashboardDataDir, { recursive: true, force: true });
     if (workerHostsPath) fs.rmSync(workerHostsPath, { force: true });
   });
 
@@ -129,7 +150,12 @@ describe('writeRemoteMachineStatus', () => {
       REMOTE_COMMAND_TIMEOUT_MS,
     );
     expect(
-      JSON.parse(fs.readFileSync(path.join(dashboardDataDir, 'remote-machine-status.json'), 'utf8')),
+      JSON.parse(
+        fs.readFileSync(
+          path.join(dashboardDataDir, 'remote-machine-status.json'),
+          'utf8',
+        ),
+      ),
     ).toEqual({
       capturedAt: '2026-11-25T00:00:00.000Z',
       machines: [
@@ -152,7 +178,8 @@ describe('writeRemoteMachineStatus', () => {
       'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n  - name: worker-b\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
     );
     const reportError = jest.fn();
-    const runner = jest.fn()
+    const runner = jest
+      .fn()
       .mockRejectedValueOnce(new Error('connection refused'))
       .mockResolvedValueOnce(metricsOutput);
     await writeRemoteMachineStatus({
@@ -163,7 +190,10 @@ describe('writeRemoteMachineStatus', () => {
       now: new Date('2026-11-25T00:00:00.000Z'),
     });
     const written = JSON.parse(
-      fs.readFileSync(path.join(dashboardDataDir, 'remote-machine-status.json'), 'utf8'),
+      fs.readFileSync(
+        path.join(dashboardDataDir, 'remote-machine-status.json'),
+        'utf8',
+      ),
     );
     expect(written.machines[0]).toMatchObject({
       name: 'worker-a',
