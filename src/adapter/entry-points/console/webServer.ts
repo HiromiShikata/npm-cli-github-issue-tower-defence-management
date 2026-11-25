@@ -1,8 +1,9 @@
 import * as http from 'http';
+import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
@@ -98,6 +99,15 @@ import {
 import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { GraphqlRateLimitError } from '../../repositories/issue/GraphqlProjectItemRepository';
+import {
+  CERTIFICATE_RENEWAL_INTERVAL_MS,
+  buildLegoDockerArgs,
+  certificateFilePaths,
+  LETS_ENCRYPT_STAGING_DIRECTORY_URL,
+  runDockerLegoCommand,
+  selectCertificateAcquisitionMode,
+  shouldScheduleCertificateRenewal,
+} from './dockerLegoCertificate';
 
 export const DEFAULT_WEB_PORT = 9980;
 
@@ -177,7 +187,17 @@ export const isConsoleAppRoute = (requestPath: string): boolean => {
 export const isTokenValid = (
   expectedToken: string,
   providedToken: string | null,
-): boolean => providedToken !== null && providedToken === expectedToken;
+): boolean => {
+  if (providedToken === null) {
+    return false;
+  }
+  const expectedBuffer = Buffer.from(expectedToken);
+  const providedBuffer = Buffer.from(providedToken);
+  return (
+    expectedBuffer.length === providedBuffer.length &&
+    timingSafeEqual(expectedBuffer, providedBuffer)
+  );
+};
 
 export const extractCookieToken = (
   cookieHeader: string | undefined,
@@ -226,8 +246,8 @@ export const extractProvidedToken = (
 
 export const CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
-export const buildTokenCookie = (token: string): string =>
-  `${CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS}`;
+export const buildTokenCookie = (token: string, secure = false): string =>
+  `${CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS}${secure ? '; Secure' : ''}`;
 
 export const buildKeylessLocation = (requestUrl: URL): string => {
   const params = new URLSearchParams(requestUrl.searchParams);
@@ -322,6 +342,13 @@ export type WebServerOptions = {
         requestBody?: Record<string, unknown>,
       ) => Promise<void>)
     | null;
+  httpsPort?: number;
+  acmeIpAddress?: string;
+  acmeDataDirectory?: string;
+  acmeServerUrl?: string;
+  runLegoCommand?: (
+    args: string[],
+  ) => Promise<{ exitCode: number; output: string }>;
 };
 
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
@@ -433,10 +460,11 @@ const redirectStrippingToken = (
   response: http.ServerResponse,
   requestUrl: URL,
   token: string,
+  secure = false,
 ): void => {
   response.writeHead(302, {
     Location: buildKeylessLocation(requestUrl),
-    'Set-Cookie': buildTokenCookie(token),
+    'Set-Cookie': buildTokenCookie(token, secure),
     'Referrer-Policy': 'no-referrer',
     'Cache-Control': 'no-store',
   });
@@ -1410,6 +1438,8 @@ export const handleWebRequest = async (
   options: WebServerOptions,
   request: http.IncomingMessage,
   response: http.ServerResponse,
+  secure = false,
+  redirectQueryToken = true,
 ): Promise<void> => {
   const requestUrl = new URL(request.url ?? '/', 'http://localhost');
   const requestPath = requestUrl.pathname;
@@ -1474,8 +1504,8 @@ export const handleWebRequest = async (
     isConsoleAppRoute(requestPath)
   ) {
     const queryToken = requestUrl.searchParams.get('k');
-    if (queryToken !== null && queryToken.length > 0) {
-      redirectStrippingToken(response, requestUrl, queryToken);
+    if (redirectQueryToken && queryToken !== null && queryToken.length > 0) {
+      redirectStrippingToken(response, requestUrl, queryToken, secure);
       return;
     }
     serveIndexHtml(options, response);
@@ -1511,9 +1541,21 @@ const sendInternalServerError = (response: http.ServerResponse): void => {
   response.end('Internal Server Error');
 };
 
-export const createWebServer = (options: WebServerOptions): http.Server =>
-  http.createServer((request, response) => {
-    handleWebRequest(options, request, response).catch((error: unknown) => {
+const createRequestHandler =
+  (options: WebServerOptions, secure: boolean, redirectQueryToken = true) =>
+  (request: http.IncomingMessage, response: http.ServerResponse): void => {
+    if (secure) {
+      response.setHeader('Strict-Transport-Security', 'max-age=31536000');
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('X-Frame-Options', 'DENY');
+    }
+    handleWebRequest(
+      options,
+      request,
+      response,
+      secure,
+      redirectQueryToken,
+    ).catch((error: unknown) => {
       if (
         typeof error === 'object' &&
         error !== null &&
@@ -1539,32 +1581,150 @@ export const createWebServer = (options: WebServerOptions): http.Server =>
       }
       sendInternalServerError(response);
     });
-  });
+  };
+
+export const createWebServer = (options: WebServerOptions): http.Server =>
+  http.createServer(createRequestHandler(options, false));
 
 export type StartWebServerOptions = WebServerOptions & {
   port: number;
 };
 
-export const startWebServer = (
-  options: StartWebServerOptions,
-): Promise<http.Server> =>
+type WebServerResources = {
+  httpsServer: https.Server | null;
+  renewalTimer: NodeJS.Timeout | null;
+};
+const webServerResources = new WeakMap<http.Server, WebServerResources>();
+
+const listenHttpsServer = (server: https.Server, port: number): Promise<void> =>
   new Promise((resolve, reject) => {
-    const server = createWebServer(options);
     server.once('error', reject);
-    server.listen(options.port, () => {
+    server.listen(port, () => {
       server.removeListener('error', reject);
-      resolve(server);
+      resolve();
     });
   });
 
-export const stopWebServer = (server: http.Server): Promise<void> =>
-  new Promise((resolve, reject) => {
-    server.close((error) => {
-      if (error) {
-        reject(error);
-        return;
+const certificateAcquisition = async (
+  options: StartWebServerOptions,
+  httpsServer: https.Server | null,
+): Promise<https.Server | null> => {
+  const acmeIpAddress = options.acmeIpAddress;
+  if (
+    !shouldScheduleCertificateRenewal(options) ||
+    options.acmeDataDirectory === undefined ||
+    acmeIpAddress === undefined
+  ) {
+    return httpsServer;
+  }
+  const paths = certificateFilePaths(options.acmeDataDirectory, acmeIpAddress);
+  try {
+    fs.mkdirSync(options.acmeDataDirectory, { recursive: true, mode: 0o700 });
+  } catch (error) {
+    console.error(error);
+    return httpsServer;
+  }
+  const mode = selectCertificateAcquisitionMode(
+    fs.existsSync(paths.certificatePath) && fs.existsSync(paths.keyPath),
+  );
+  const command = buildLegoDockerArgs({
+    mode,
+    acmeDataDirectory: options.acmeDataDirectory,
+    acmeServerUrl: options.acmeServerUrl ?? LETS_ENCRYPT_STAGING_DIRECTORY_URL,
+    acmeIpAddress,
+    hostUserId: process.getuid?.() ?? 0,
+    hostGroupId: process.getgid?.() ?? 0,
+  });
+  try {
+    const result = await (options.runLegoCommand ?? runDockerLegoCommand)(
+      command,
+    );
+    if (result.exitCode !== 0) {
+      console.error(result.output);
+      if (
+        httpsServer === null &&
+        fs.existsSync(paths.certificatePath) &&
+        fs.existsSync(paths.keyPath)
+      ) {
+        const credentials = {
+          key: fs.readFileSync(paths.keyPath),
+          cert: fs.readFileSync(paths.certificatePath),
+        };
+        const createdServer = https.createServer(
+          credentials,
+          createRequestHandler(options, true),
+        );
+        if (options.httpsPort === undefined) return httpsServer;
+        await listenHttpsServer(createdServer, options.httpsPort);
+        return createdServer;
       }
+      return httpsServer;
+    }
+    const credentials = {
+      key: fs.readFileSync(paths.keyPath),
+      cert: fs.readFileSync(paths.certificatePath),
+    };
+    if (httpsServer !== null) {
+      httpsServer.setSecureContext(credentials);
+      return httpsServer;
+    }
+    const createdServer = https.createServer(
+      credentials,
+      createRequestHandler(options, true),
+    );
+    if (options.httpsPort === undefined) return httpsServer;
+    await listenHttpsServer(createdServer, options.httpsPort);
+    return createdServer;
+  } catch (error) {
+    console.error(error);
+    return httpsServer;
+  }
+};
+
+export const startWebServer = async (
+  options: StartWebServerOptions,
+): Promise<http.Server> => {
+  const server = createWebServer(options);
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(options.port, () => {
+      server.removeListener('error', reject);
       resolve();
     });
-    server.closeAllConnections();
   });
+  let httpsServer: https.Server | null = null;
+  if (shouldScheduleCertificateRenewal(options)) {
+    httpsServer = await certificateAcquisition(options, httpsServer);
+  }
+  const renewalTimer = shouldScheduleCertificateRenewal(options)
+    ? setInterval(() => {
+        void certificateAcquisition(options, httpsServer).then(
+          (updatedServer) => {
+            httpsServer = updatedServer;
+            const resources = webServerResources.get(server);
+            if (resources !== undefined) resources.httpsServer = updatedServer;
+          },
+        );
+      }, CERTIFICATE_RENEWAL_INTERVAL_MS)
+    : null;
+  renewalTimer?.unref();
+  webServerResources.set(server, { httpsServer, renewalTimer });
+  return server;
+};
+
+export const stopWebServer = async (server: http.Server): Promise<void> => {
+  const resources = webServerResources.get(server);
+  if (resources?.renewalTimer !== null && resources?.renewalTimer !== undefined)
+    clearInterval(resources.renewalTimer);
+  const closeServer = (target: http.Server | https.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      target.close((error) => (error ? reject(error) : resolve()));
+      target.closeAllConnections();
+    });
+  await Promise.all([
+    closeServer(server),
+    ...(resources?.httpsServer === null || resources?.httpsServer === undefined
+      ? []
+      : [closeServer(resources.httpsServer)]),
+  ]);
+};
