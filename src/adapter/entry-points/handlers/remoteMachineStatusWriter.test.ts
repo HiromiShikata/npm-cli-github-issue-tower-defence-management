@@ -350,12 +350,17 @@ describe('writeRemoteMachineStatus', () => {
       runRemoteCommand: runner,
     });
 
-    const temporaryPathsUsed = renameSpy.mock.calls.map(([sourcePath]) => sourcePath);
+    const temporaryPathsUsed = renameSpy.mock.calls.map(
+      ([sourcePath]) => sourcePath,
+    );
     expect(temporaryPathsUsed).toHaveLength(2);
     expect(new Set(temporaryPathsUsed).size).toBe(2);
-    expect(temporaryPathsUsed.every((temporaryPath) =>
-      path.dirname(String(temporaryPath)) === dashboardDataDir,
-    )).toBe(true);
+    expect(
+      temporaryPathsUsed.every(
+        (temporaryPath) =>
+          path.dirname(String(temporaryPath)) === dashboardDataDir,
+      ),
+    ).toBe(true);
     const written = parseStatusFile(
       fs.readFileSync(
         path.join(dashboardDataDir, 'remote-machine-status.json'),
@@ -379,7 +384,13 @@ describe('writeRemoteMachineStatus', () => {
     expect(
       fs
         .readdirSync(dashboardDataDir)
-        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+        .filter(
+          (fileName) =>
+            fileName !==
+            path.basename(
+              path.join(dashboardDataDir, 'remote-machine-status.json'),
+            ),
+        ),
     ).toEqual([]);
   });
 
@@ -397,7 +408,13 @@ describe('writeRemoteMachineStatus', () => {
     expect(
       fs
         .readdirSync(dashboardDataDir)
-        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+        .filter(
+          (fileName) =>
+            fileName !==
+            path.basename(
+              path.join(dashboardDataDir, 'remote-machine-status.json'),
+            ),
+        ),
     ).toEqual([]);
   });
 
@@ -421,7 +438,13 @@ describe('writeRemoteMachineStatus', () => {
     expect(
       fs
         .readdirSync(dashboardDataDir)
-        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+        .filter(
+          (fileName) =>
+            fileName !==
+            path.basename(
+              path.join(dashboardDataDir, 'remote-machine-status.json'),
+            ),
+        ),
     ).toEqual([]);
   });
 
@@ -445,7 +468,13 @@ describe('writeRemoteMachineStatus', () => {
     expect(
       fs
         .readdirSync(dashboardDataDir)
-        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+        .filter(
+          (fileName) =>
+            fileName !==
+            path.basename(
+              path.join(dashboardDataDir, 'remote-machine-status.json'),
+            ),
+        ),
     ).toEqual([]);
   });
 });

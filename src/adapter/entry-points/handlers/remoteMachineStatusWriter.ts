@@ -155,8 +155,12 @@ const writeJsonAtomically = (
       fs.rmSync(temporaryPath, { force: true });
     } catch (cleanupError) {
       const message =
-        cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
-      reportError?.(`could not remove temporary remote machine status file: ${message}`);
+        cleanupError instanceof Error
+          ? cleanupError.message
+          : String(cleanupError);
+      reportError?.(
+        `could not remove temporary remote machine status file: ${message}`,
+      );
     }
     throw error;
   }
