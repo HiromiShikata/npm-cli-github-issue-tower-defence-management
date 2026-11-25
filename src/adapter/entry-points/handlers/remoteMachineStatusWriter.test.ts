@@ -154,6 +154,7 @@ describe('writeRemoteMachineStatus', () => {
   let workerHostsPath = '';
 
   afterEach(() => {
+    jest.restoreAllMocks();
     for (const temporaryPath of temporaryPaths.splice(0)) {
       fs.rmSync(temporaryPath, { recursive: true, force: true });
     }
@@ -328,5 +329,123 @@ describe('writeRemoteMachineStatus', () => {
         workerHostsPath: undefined,
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('uses different temporary paths for consecutive successful writes', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile(
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+    );
+    const renameSpy = jest.spyOn(fs, 'renameSync');
+    const runner = jest.fn().mockResolvedValue(metricsOutput);
+
+    await writeRemoteMachineStatus({
+      dashboardDataDir,
+      workerHostsPath,
+      runRemoteCommand: runner,
+    });
+    await writeRemoteMachineStatus({
+      dashboardDataDir,
+      workerHostsPath,
+      runRemoteCommand: runner,
+    });
+
+    const temporaryPathsUsed = renameSpy.mock.calls.map(([sourcePath]) => sourcePath);
+    expect(temporaryPathsUsed).toHaveLength(2);
+    expect(new Set(temporaryPathsUsed).size).toBe(2);
+    expect(temporaryPathsUsed.every((temporaryPath) =>
+      path.dirname(String(temporaryPath)) === dashboardDataDir,
+    )).toBe(true);
+    const written = parseStatusFile(
+      fs.readFileSync(
+        path.join(dashboardDataDir, 'remote-machine-status.json'),
+        'utf8',
+      ),
+    );
+    expect(written.machines).toHaveLength(1);
+  });
+
+  it('rethrows a rename error and removes the temporary file', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile('hosts: []\n');
+    const renameError = new Error('rename failed');
+    jest.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw renameError;
+    });
+
+    await expect(
+      writeRemoteMachineStatus({ dashboardDataDir, workerHostsPath }),
+    ).rejects.toBe(renameError);
+    expect(
+      fs
+        .readdirSync(dashboardDataDir)
+        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+    ).toEqual([]);
+  });
+
+  it('propagates a temporary-file write error and removes the temporary file', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile('hosts: []\n');
+    const writeError = new Error('write failed');
+    jest.spyOn(fs, 'writeFileSync').mockImplementationOnce(() => {
+      throw writeError;
+    });
+
+    await expect(
+      writeRemoteMachineStatus({ dashboardDataDir, workerHostsPath }),
+    ).rejects.toBe(writeError);
+    expect(
+      fs
+        .readdirSync(dashboardDataDir)
+        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+    ).toEqual([]);
+  });
+
+  it('rethrows a rename error and removes the temporary file after worker-hosts parsing fails', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile('hosts: [\n');
+    const renameError = new Error('rename failed after parse error');
+    jest.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw renameError;
+    });
+
+    await expect(
+      writeRemoteMachineStatus({
+        dashboardDataDir,
+        workerHostsPath,
+        readFile: () => {
+          throw new Error('YAML config is unreadable');
+        },
+      }),
+    ).rejects.toBe(renameError);
+    expect(
+      fs
+        .readdirSync(dashboardDataDir)
+        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+    ).toEqual([]);
+  });
+
+  it('propagates a temporary-file write error after worker-hosts parsing fails', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile('hosts: [\n');
+    const writeError = new Error('write failed after parse error');
+    jest.spyOn(fs, 'writeFileSync').mockImplementationOnce(() => {
+      throw writeError;
+    });
+
+    await expect(
+      writeRemoteMachineStatus({
+        dashboardDataDir,
+        workerHostsPath,
+        readFile: () => {
+          throw new Error('YAML config is unreadable');
+        },
+      }),
+    ).rejects.toBe(writeError);
+    expect(
+      fs
+        .readdirSync(dashboardDataDir)
+        .filter((fileName) => fileName !== path.basename(path.join(dashboardDataDir, 'remote-machine-status.json'))),
+    ).toEqual([]);
   });
 });
