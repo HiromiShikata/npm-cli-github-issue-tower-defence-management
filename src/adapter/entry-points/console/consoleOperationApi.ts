@@ -423,19 +423,20 @@ const logStaleStatusOperation = (
   );
 };
 
-type StaleStatusGate =
-  | { kind: 'proceed' }
+type StatusWriteDecision =
+  | { kind: 'write' }
+  | { kind: 'alreadyTarget' }
   | { kind: 'skipped' }
   | { kind: 'failed'; response: ConsoleOperationResponse };
 
-const gateStaleStatusBeforeComment = async (
+const decideStatusWrite = async (
   issueRepository: IssueRepository,
   issueUrl: string,
+  statusName: string,
   expectedStatusAtActionTime: ExpectedStatusAtActionTime,
-  targetStatusName: string,
-): Promise<StaleStatusGate> => {
+): Promise<StatusWriteDecision> => {
   if (!expectedStatusAtActionTime.present) {
-    return { kind: 'proceed' };
+    return { kind: 'write' };
   }
   const liveIssue = await issueRepository.getIssueByUrl(issueUrl, {
     bypassCache: true,
@@ -447,11 +448,11 @@ const gateStaleStatusBeforeComment = async (
     };
   }
   const liveStatusName = liveIssue.status;
-  if (liveStatusName?.toLowerCase() === targetStatusName.toLowerCase()) {
-    return { kind: 'proceed' };
+  if (liveStatusName?.toLowerCase() === statusName.toLowerCase()) {
+    return { kind: 'alreadyTarget' };
   }
   if (liveStatusName === expectedStatusAtActionTime.statusName) {
-    return { kind: 'proceed' };
+    return { kind: 'write' };
   }
   if (liveStatusName?.toLowerCase() === PREPARATION_STATUS_NAME) {
     logStaleStatusOperation(
@@ -459,11 +460,39 @@ const gateStaleStatusBeforeComment = async (
       issueUrl,
       expectedStatusAtActionTime.statusName,
       liveStatusName,
-      targetStatusName,
+      statusName,
     );
     return { kind: 'skipped' };
   }
-  return { kind: 'proceed' };
+  logStaleStatusOperation(
+    'overwritten',
+    issueUrl,
+    expectedStatusAtActionTime.statusName,
+    liveStatusName,
+    statusName,
+  );
+  return { kind: 'write' };
+};
+
+const writeStatusForDecision = async (
+  issueRepository: IssueRepository,
+  project: Project,
+  issueUrl: string,
+  projectItemId: string,
+  statusId: string,
+  decision: StatusWriteDecision,
+): Promise<ConsoleOperationResponse | null> => {
+  if (decision.kind === 'failed') {
+    return decision.response;
+  }
+  if (decision.kind === 'write') {
+    await issueRepository.updateStatus(
+      project,
+      projectItemReference(issueUrl, projectItemId),
+      statusId,
+    );
+  }
+  return null;
 };
 
 const updateStatusByName = async (
@@ -478,43 +507,20 @@ const updateStatusByName = async (
   if (statusId === null) {
     return badRequest(`status option "${statusName}" not found in project`);
   }
-  if (expectedStatusAtActionTime.present) {
-    const liveIssue = await issueRepository.getIssueByUrl(issueUrl, {
-      bypassCache: true,
-    });
-    if (liveIssue === null) {
-      return badGateway(`issue "${issueUrl}" could not be loaded`);
-    }
-    const liveStatusName = liveIssue.status;
-    if (liveStatusName?.toLowerCase() === statusName.toLowerCase()) {
-      return null;
-    }
-    if (liveStatusName !== expectedStatusAtActionTime.statusName) {
-      if (liveStatusName?.toLowerCase() === PREPARATION_STATUS_NAME) {
-        logStaleStatusOperation(
-          'skipped',
-          issueUrl,
-          expectedStatusAtActionTime.statusName,
-          liveStatusName,
-          statusName,
-        );
-        return null;
-      }
-      logStaleStatusOperation(
-        'overwritten',
-        issueUrl,
-        expectedStatusAtActionTime.statusName,
-        liveStatusName,
-        statusName,
-      );
-    }
-  }
-  await issueRepository.updateStatus(
-    project,
-    projectItemReference(issueUrl, projectItemId),
-    statusId,
+  const decision = await decideStatusWrite(
+    issueRepository,
+    issueUrl,
+    statusName,
+    expectedStatusAtActionTime,
   );
-  return null;
+  return writeStatusForDecision(
+    issueRepository,
+    project,
+    issueUrl,
+    projectItemId,
+    statusId,
+    decision,
+  );
 };
 
 const isMergeConflictRejectionError = (error: unknown): boolean =>
@@ -823,29 +829,31 @@ const handleTriageImpl = async (
     const commentBody = body.commentBody;
     let commentPosted = previousResult?.commentPosted === true;
     let commentFailure: string | null = null;
+    const expectedStatusAtTap = readExpectedStatusAtActionTime(body);
+    let statusDecision: StatusWriteDecision | null = null;
     if (
       isNonEmptyString(commentBody) &&
       previousResult?.commentPosted !== true
     ) {
-      const staleGate = await gateStaleStatusBeforeComment(
+      statusDecision = await decideStatusWrite(
         context.resolveIssueRepository(issueUrl),
         issueUrl,
-        readExpectedStatusAtActionTime(body),
         statusName,
+        expectedStatusAtTap,
       );
-      if (staleGate.kind === 'failed') {
-        const staleBody =
-          typeof staleGate.response.body === 'object' &&
-          staleGate.response.body !== null
-            ? staleGate.response.body
+      if (statusDecision.kind === 'failed') {
+        const failedBody =
+          typeof statusDecision.response.body === 'object' &&
+          statusDecision.response.body !== null
+            ? statusDecision.response.body
             : {};
         return {
-          ...staleGate.response,
-          body: { ...staleBody, commentPosted: false, statusSet: false },
+          ...statusDecision.response,
+          body: { ...failedBody, commentPosted: false, statusSet: false },
         };
       }
-      if (staleGate.kind === 'skipped') {
-        return { statusCode: 200, body: { ok: true } };
+      if (statusDecision.kind === 'skipped') {
+        return { statusCode: 200, body: { ok: true, statusSet: false } };
       }
       try {
         await context
@@ -874,14 +882,34 @@ const handleTriageImpl = async (
     }
     let failure: ConsoleOperationResponse | null;
     try {
-      failure = await updateStatusByName(
-        context.resolveIssueRepository(issueUrl),
-        project,
-        issueUrl,
-        projectItemId,
-        statusName,
-        readExpectedStatusAtActionTime(body),
-      );
+      if (statusDecision === null) {
+        statusDecision = await decideStatusWrite(
+          context.resolveIssueRepository(issueUrl),
+          issueUrl,
+          statusName,
+          expectedStatusAtTap,
+        );
+      }
+      if (statusDecision.kind === 'skipped') {
+        return {
+          statusCode: 200,
+          body: commentPosted
+            ? { ok: true, commentPosted: true, statusSet: false }
+            : { ok: true, statusSet: false },
+        };
+      }
+      const statusId = resolveStatusId(project, statusName);
+      failure =
+        statusId === null
+          ? badRequest(`status option "${statusName}" not found in project`)
+          : await writeStatusForDecision(
+              context.resolveIssueRepository(issueUrl),
+              project,
+              issueUrl,
+              projectItemId,
+              statusId,
+              statusDecision,
+            );
     } catch (error) {
       if (error instanceof StaleProjectItemError) {
         failure = badRequest(

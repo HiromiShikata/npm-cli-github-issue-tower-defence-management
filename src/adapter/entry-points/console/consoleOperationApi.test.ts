@@ -2031,7 +2031,7 @@ describe('consoleOperationApi', () => {
           expectedStatusName: 'Awaiting Owner',
         });
         expect(skippedResponse.statusCode).toBe(200);
-        expect(skippedResponse.body).toEqual({ ok: true });
+        expect(skippedResponse.body).toEqual({ ok: true, statusSet: false });
         expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
         expect(issueRepository.updateStatus).not.toHaveBeenCalled();
         expect(logSpy).toHaveBeenCalledTimes(1);
@@ -2041,6 +2041,7 @@ describe('consoleOperationApi', () => {
 
         logSpy.mockClear();
         issueRepository.createCommentByUrl.mockClear();
+        issueRepository.getIssueByUrl.mockClear();
         issueRepository.getIssueByUrl.mockResolvedValue({
           ...issue,
           url: issueUrl,
@@ -2066,6 +2067,7 @@ describe('consoleOperationApi', () => {
         expect(logSpy).toHaveBeenCalledWith(
           `[console-operation] stale status operation overwritten: issue=${issueUrl} statusAtTap="Awaiting Owner" current="Awaiting workspace" target="Todo by human"`,
         );
+        expect(issueRepository.getIssueByUrl).toHaveBeenCalledTimes(1);
       } finally {
         logSpy.mockRestore();
       }
