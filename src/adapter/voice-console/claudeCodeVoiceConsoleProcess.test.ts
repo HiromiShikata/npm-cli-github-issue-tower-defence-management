@@ -16,6 +16,8 @@ const LAUNCH = {
 const flush = (): Promise<void> =>
   new Promise((resolve) => setImmediate(resolve));
 
+const parseLine = (line: string): unknown => JSON.parse(line);
+
 const resultLine = (fields: Record<string, unknown>): string =>
   `${JSON.stringify({ type: 'result', subtype: 'success', is_error: false, ...fields })}\n`;
 
@@ -71,10 +73,19 @@ const createFakeChild = () => {
 };
 
 const createProcess = (options: { timers?: ClaudeCodeTurnTimers } = {}) => {
-  const fake = createFakeChild();
+  const initial = createFakeChild();
+  const children: ReturnType<typeof createFakeChild>[] = [initial];
+  let spawnCount = 0;
   const spawn = jest.fn(
-    (_command: string, _args: string[], _env: Record<string, string>) =>
-      fake.child,
+    (_command: string, _args: string[], _env: Record<string, string>) => {
+      spawnCount += 1;
+      if (spawnCount === 1) {
+        return initial.child;
+      }
+      const fake = createFakeChild();
+      children.push(fake);
+      return fake.child;
+    },
   );
   const logError = jest.fn((_message: string) => undefined);
   const process = new ClaudeCodeVoiceConsoleProcess({
@@ -82,7 +93,7 @@ const createProcess = (options: { timers?: ClaudeCodeTurnTimers } = {}) => {
     logError,
     timers: options.timers,
   });
-  return { ...fake, spawn, logError, process };
+  return { ...initial, children, spawn, logError, process };
 };
 
 describe('ClaudeCodeVoiceConsoleProcess start', () => {
@@ -388,14 +399,14 @@ describe('ClaudeCodeVoiceConsoleProcess turn timeout', () => {
     expect(CLAUDE_CODE_TURN_TIMEOUT_MS).toBe(600000);
   });
 
-  it('rejects a turn with no result within the timeout and serves the next turn', async () => {
+  it('kills the timed-out child, ignores its late result, and answers the next turn from a fresh child', async () => {
     const setTimer = jest.fn((callback: () => void, delayMs: number) =>
       setTimeout(callback, delayMs),
     );
     const clearTimer = jest.fn((handle: ClaudeCodeTurnTimerHandle) =>
       clearTimeout(handle),
     );
-    const { process, written, emitStdout } = createProcess({
+    const { process, children, spawn } = createProcess({
       timers: { setTimeout: setTimer, clearTimeout: clearTimer },
     });
     process.start(LAUNCH);
@@ -409,6 +420,10 @@ describe('ClaudeCodeVoiceConsoleProcess turn timeout', () => {
     jest.advanceTimersByTime(CLAUDE_CODE_TURN_TIMEOUT_MS);
 
     await expect(timedOut).rejects.toThrow(`${CLAUDE_CODE_TURN_TIMEOUT_MS} ms`);
+    expect(children[0]?.kill.mock.calls.length).toBe(1);
+
+    children[0]?.emitStdout(resultLine({ result: '遅れた回答' }));
+    await flush();
 
     const next = process.sendOwnerUtterance('次の質問');
     const nextOutcome = next.then(
@@ -417,10 +432,30 @@ describe('ClaudeCodeVoiceConsoleProcess turn timeout', () => {
         error instanceof Error ? `rejected: ${error.message}` : 'rejected',
     );
     await flush();
-    expect(written).toHaveLength(2);
-    emitStdout(resultLine({ result: '次の回答' }));
-    await flush();
 
+    expect({
+      spawnCalls: spawn.mock.calls.length,
+      killedChildWrites: children[0]?.written.length,
+      freshChildWrites: children[1]?.written.length,
+      freshChildContent: parseLine(children[1]?.written[0] ?? '{}'),
+    }).toEqual({
+      spawnCalls: 2,
+      killedChildWrites: 1,
+      freshChildWrites: 1,
+      freshChildContent: {
+        type: 'user',
+        message: { role: 'user', content: '次の質問' },
+      },
+    });
+
+    children[0]?.emitStdout(resultLine({ result: '殺された子の回答' }));
+    await flush();
+    expect(
+      await Promise.race([nextOutcome, flush().then(() => 'still pending')]),
+    ).toBe('still pending');
+
+    children[1]?.emitStdout(resultLine({ result: '次の回答' }));
+    await flush();
     expect(
       await Promise.race([nextOutcome, flush().then(() => 'still pending')]),
     ).toBe('次の回答');

@@ -14,10 +14,21 @@ import {
   type VoiceConsoleSidebandConnector,
   voiceConsoleProxyBaseUrl,
 } from './voiceConsoleBackendWiring';
+import { selectClaudeCodeVoiceConsoleOauthToken } from './claudeCodeVoiceConsoleToken';
+import { VOICE_CONSOLE_BACKEND_NOTE } from './voiceConsoleLiveSessionConfig';
+import {
+  attachVoiceConsoleBackendWithEnvironment,
+  buildVoiceConsoleBackendStartInput,
+  type VoiceConsoleBackendEnvironment,
+} from './voiceConsoleBackendWiring';
 import {
   startVoiceConsoleBackend,
   type VoiceConsoleBackend,
 } from './voiceConsoleBackendStarter';
+
+jest.mock('./claudeCodeVoiceConsoleToken', () => ({
+  selectClaudeCodeVoiceConsoleOauthToken: jest.fn(),
+}));
 
 const JAPANESE_CHARACTER = /[぀-ヿ一-鿿]/;
 
@@ -476,5 +487,342 @@ describe('attachVoiceConsoleBackend', () => {
       appendedContentIsJapanese: true,
       appendedCount: 1,
     });
+  });
+});
+
+const selectTokenMock = jest.mocked(selectClaudeCodeVoiceConsoleOauthToken);
+
+const createEnvironment = (
+  customize: (
+    environment: VoiceConsoleBackendEnvironment & {
+      loadSelectionSettings: jest.Mock;
+      resolveTokenListJsonPath: jest.Mock;
+      resolveCacheDirectory: jest.Mock;
+      ensureProxyRunning: jest.Mock;
+      effortFlagSupported: jest.Mock;
+      spawn: jest.Mock;
+      logError: jest.Mock;
+    },
+  ) => void = () => undefined,
+) => {
+  const child = createFakeChild();
+  const environment = {
+    resolveFleetConfigFilePath: jest.fn(
+      (_cliValue: string | null): string | null => '/etc/fleet.json',
+    ),
+    loadSelectionSettings: jest.fn(
+      (_fleetConfigFilePath: string | null) => SELECTION_SETTINGS,
+    ),
+    resolveTokenListJsonPath: jest.fn(
+      (_explicitPath: string | null): string | null => '/etc/tdpm/tokens.json',
+    ),
+    resolveCacheDirectory: jest.fn(
+      (_explicitDirectory: string | null): string => '/var/cache/tdpm',
+    ),
+    readNowEpochSeconds: jest.fn((): number => 1_800_000_000),
+    ensureProxyRunning: jest.fn((_port: number): Promise<boolean> =>
+      Promise.resolve(true),
+    ),
+    proxyPort: 8787,
+    effortFlagSupported: jest.fn((): boolean => true),
+    baseEnv: {
+      PATH: '/usr/bin',
+      ANTHROPIC_API_KEY: 'api-key',
+    } satisfies Record<string, string | undefined>,
+    spawn: jest.fn(
+      (_command: string, _args: string[], _env: Record<string, string>) =>
+        child,
+    ),
+    logError: jest.fn((_message: string): void => undefined),
+  };
+  customize(environment);
+  return environment;
+};
+
+describe('buildVoiceConsoleBackendStartInput token selection', () => {
+  beforeEach(() => {
+    selectTokenMock.mockReset();
+  });
+
+  it('loads the fleet settings and passes the token list path and cache directory to the selector', () => {
+    const cases = [
+      {
+        name: 'paths resolved',
+        tokenListJsonPath: '/etc/tdpm/tokens.json',
+        cacheDirectory: '/var/cache/tdpm',
+      },
+      {
+        name: 'paths resolved to other locations',
+        tokenListJsonPath: '/home/owner/tokens.json',
+        cacheDirectory: '/tmp/tdpm-cache',
+      },
+    ];
+
+    for (const testCase of cases) {
+      selectTokenMock.mockReset();
+      selectTokenMock.mockReturnValue({
+        token: 'token-a',
+        tokenName: 'account-a',
+      });
+      const environment = createEnvironment((env) => {
+        env.resolveTokenListJsonPath.mockReturnValue(
+          testCase.tokenListJsonPath,
+        );
+        env.resolveCacheDirectory.mockReturnValue(testCase.cacheDirectory);
+      });
+      const input = buildVoiceConsoleBackendStartInput(
+        environment,
+        jest.fn((_delegationId: string, _content: string): void => undefined),
+      );
+
+      const result = input.selectOauthToken();
+
+      expect({
+        name: testCase.name,
+        loadedFrom: environment.loadSelectionSettings.mock.calls,
+        selectorInput: selectTokenMock.mock.calls,
+        result,
+      }).toEqual({
+        name: testCase.name,
+        loadedFrom: [['/etc/fleet.json']],
+        selectorInput: [
+          [
+            {
+              tokenListJsonPath: testCase.tokenListJsonPath,
+              cacheDirectory: testCase.cacheDirectory,
+              nowEpochSeconds: 1_800_000_000,
+              selectionSettings: SELECTION_SETTINGS,
+            },
+          ],
+        ],
+        result: { token: 'token-a', tokenName: 'account-a' },
+      });
+    }
+  });
+
+  it('reports a fleet settings load failure as an error and never calls the selector', () => {
+    const environment = createEnvironment((env) => {
+      env.loadSelectionSettings.mockImplementation(() => {
+        throw new Error('fleet config unreadable');
+      });
+    });
+    const input = buildVoiceConsoleBackendStartInput(
+      environment,
+      jest.fn((_delegationId: string, _content: string): void => undefined),
+    );
+
+    const result = input.selectOauthToken();
+
+    expect({
+      hasToken: 'token' in result,
+      diagnosticsMention:
+        'error' in result &&
+        result.diagnostics.join('\n').includes('fleet config unreadable'),
+      selectorCalls: selectTokenMock.mock.calls.length,
+    }).toEqual({ hasToken: false, diagnosticsMention: true, selectorCalls: 0 });
+  });
+});
+
+describe('buildVoiceConsoleBackendStartInput proxy and environment', () => {
+  it('probes the proxy on the configured port and reports up or down', async () => {
+    const cases = [
+      { name: 'probe resolves true', probe: true },
+      { name: 'probe resolves false', probe: false },
+    ];
+
+    for (const testCase of cases) {
+      const environment = createEnvironment((env) => {
+        env.ensureProxyRunning.mockReturnValue(Promise.resolve(testCase.probe));
+      });
+      const input = buildVoiceConsoleBackendStartInput(
+        environment,
+        jest.fn((_delegationId: string, _content: string): void => undefined),
+      );
+
+      const up = await input.isProxyUp();
+
+      expect({
+        name: testCase.name,
+        up,
+        probedPorts: environment.ensureProxyRunning.mock.calls.map(
+          (call) => call[0],
+        ),
+      }).toEqual({
+        name: testCase.name,
+        up: testCase.probe,
+        probedPorts: [8787],
+      });
+    }
+  });
+
+  it('reports the proxy as down and logs when the probe rejects', async () => {
+    const environment = createEnvironment((env) => {
+      env.ensureProxyRunning.mockImplementation(() =>
+        Promise.reject(new Error('bind EADDRINUSE')),
+      );
+    });
+    const input = buildVoiceConsoleBackendStartInput(
+      environment,
+      jest.fn((_delegationId: string, _content: string): void => undefined),
+    );
+
+    const up = await input.isProxyUp();
+
+    const logged = environment.logError.mock.calls
+      .map((call) => call[0])
+      .join('\n');
+    expect({ up, loggedFragment: logged.includes('bind EADDRINUSE') }).toEqual({
+      up: false,
+      loggedFragment: true,
+    });
+  });
+
+  it('passes the proxy base URL, the effort flag, the note, the environment and the sinks through', () => {
+    const cases = [
+      { name: 'effort supported', effort: true },
+      { name: 'effort not supported', effort: false },
+    ];
+
+    for (const testCase of cases) {
+      const appendCommentary = jest.fn(
+        (_delegationId: string, _content: string): void => undefined,
+      );
+      const environment = createEnvironment((env) => {
+        env.effortFlagSupported.mockReturnValue(testCase.effort);
+      });
+
+      const input = buildVoiceConsoleBackendStartInput(
+        environment,
+        appendCommentary,
+      );
+
+      expect({
+        name: testCase.name,
+        proxyBaseUrl: input.proxyBaseUrl,
+        effortFlagSupported: input.effortFlagSupported,
+        backendNote: input.backendNote,
+        baseEnv: input.baseEnv,
+        spawnIsEnvironmentSpawn: input.spawn === environment.spawn,
+        logErrorIsEnvironmentLogError: input.logError === environment.logError,
+        appendCommentaryIsGiven: input.appendCommentary === appendCommentary,
+      }).toEqual({
+        name: testCase.name,
+        proxyBaseUrl: 'http://127.0.0.1:8787',
+        effortFlagSupported: testCase.effort,
+        backendNote: VOICE_CONSOLE_BACKEND_NOTE,
+        baseEnv: { PATH: '/usr/bin', ANTHROPIC_API_KEY: 'api-key' },
+        spawnIsEnvironmentSpawn: true,
+        logErrorIsEnvironmentLogError: true,
+        appendCommentaryIsGiven: true,
+      });
+    }
+  });
+});
+
+describe('attachVoiceConsoleBackendWithEnvironment', () => {
+  beforeEach(() => {
+    selectTokenMock.mockReset();
+  });
+
+  it('speaks a fleet settings failure through the sideband, logs it and starts no process', async () => {
+    const { sideband, captured } = createFakeSideband();
+    const environment = createEnvironment((env) => {
+      env.loadSelectionSettings.mockImplementation(() => {
+        throw new Error('fleet config unreadable');
+      });
+    });
+
+    await attachVoiceConsoleBackendWithEnvironment({
+      sideband,
+      sessionId: 'session-4',
+      environment,
+      newEventId: () => 'event-4',
+      logError: environment.logError,
+    });
+    const send = jest.fn((_event: Record<string, unknown>): void => undefined);
+    const handleServerEvent = captured.handleServerEvent;
+    if (handleServerEvent === null) {
+      throw new Error('sideband handler was not attached');
+    }
+    await handleServerEvent(
+      {
+        type: 'session.delegation.created',
+        event_id: 'delegation-event-4',
+        delegation: { id: 'delegation_4' },
+      },
+      send,
+    );
+    await flush();
+
+    const appended = send.mock.calls.map((call) => call[0]);
+    const logged = environment.logError.mock.calls
+      .map((call) => call[0])
+      .join('\n');
+    expect({
+      spawned: environment.spawn.mock.calls.length,
+      loggedReason: logged.includes('fleet config unreadable'),
+      appendedDelegation: appended[0]?.delegation_id,
+      appendedIsJapanese: JAPANESE_CHARACTER.test(String(appended[0]?.content)),
+      appendedCount: appended.length,
+    }).toEqual({
+      spawned: 0,
+      loggedReason: true,
+      appendedDelegation: 'delegation_4',
+      appendedIsJapanese: true,
+      appendedCount: 1,
+    });
+  });
+
+  it('starts claude-agent with the selected token, the proxy URL only when the proxy is up, and the effort flag only when supported', async () => {
+    const cases = [
+      { name: 'proxy up and effort supported', proxyUp: true, effort: true },
+      {
+        name: 'proxy down and effort not supported',
+        proxyUp: false,
+        effort: false,
+      },
+    ];
+
+    for (const testCase of cases) {
+      selectTokenMock.mockReset();
+      selectTokenMock.mockReturnValue({
+        token: 'token-a',
+        tokenName: 'account-a',
+      });
+      const { sideband } = createFakeSideband();
+      const environment = createEnvironment((env) => {
+        env.ensureProxyRunning.mockReturnValue(
+          Promise.resolve(testCase.proxyUp),
+        );
+        env.effortFlagSupported.mockReturnValue(testCase.effort);
+      });
+
+      await attachVoiceConsoleBackendWithEnvironment({
+        sideband,
+        sessionId: 'session-5',
+        environment,
+        newEventId: () => 'event-5',
+        logError: environment.logError,
+      });
+
+      const call = environment.spawn.mock.calls[0];
+      const args = call?.[1] ?? [];
+      const env = call?.[2] ?? {};
+      expect({
+        name: testCase.name,
+        command: call?.[0],
+        oauthToken: env.CLAUDE_CODE_OAUTH_TOKEN,
+        baseUrl: env.ANTHROPIC_BASE_URL,
+        hasEffort: args.includes('--effort'),
+        apiKeyPresent: 'ANTHROPIC_API_KEY' in env,
+      }).toEqual({
+        name: testCase.name,
+        command: 'claude-agent',
+        oauthToken: 'token-a',
+        baseUrl: testCase.proxyUp ? 'http://127.0.0.1:8787' : undefined,
+        hasEffort: testCase.effort,
+        apiKeyPresent: false,
+      });
+    }
   });
 });
