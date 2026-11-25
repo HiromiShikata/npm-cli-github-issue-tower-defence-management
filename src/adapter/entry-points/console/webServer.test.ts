@@ -41,6 +41,7 @@ import {
   stopWebServer,
 } from './webServer';
 import {
+  buildLegoChownDockerArgs,
   buildLegoDockerArgs,
   CERTIFICATE_RENEWAL_INTERVAL_MS,
   LETS_ENCRYPT_STAGING_DIRECTORY_URL,
@@ -59,6 +60,20 @@ import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHuman
 import { ownerCallFileAppend } from '../handlers/ownerCallFileStore';
 import { formatProjectRowLine } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
 import { toDashboardDisplayLabel } from '../../../domain/usecases/dashboard/DashboardProjectCode';
+
+const reserveHttpsPort = (): Promise<number> =>
+  new Promise<number>((resolve, reject) => {
+    const probe = net.createServer();
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      if (address === null || typeof address === 'string') {
+        reject(new Error('HTTPS port probe did not return an address'));
+        return;
+      }
+      probe.close(() => resolve(address.port));
+    });
+    probe.on('error', reject);
+  });
 
 describe('webServer pure helpers', () => {
   describe('DEFAULT_WEB_PORT', () => {
@@ -5241,6 +5256,111 @@ describe('webServer HTTPS certificate handling', () => {
     }
   });
 
+  it.each([
+    {
+      name: 'after a successful lego run',
+      legoResult: { exitCode: 0, output: '' },
+    },
+    {
+      name: 'after a failed lego run',
+      legoResult: { exitCode: 1, output: 'run failed' },
+    },
+  ])(
+    'hands the acme data directory back to the console user $name',
+    async ({ legoResult }) => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-chown-'));
+      const acmeDataDirectory = path.join(tmpDir, 'acme');
+      const runLegoCommand = jest
+        .fn()
+        .mockResolvedValueOnce(legoResult)
+        .mockResolvedValueOnce({ exitCode: 0, output: '' });
+      const httpsPort = await reserveHttpsPort();
+      const server = await startWebServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: null,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: [],
+        port: 0,
+        httpsPort,
+        acmeIpAddress: '127.0.0.1',
+        acmeDataDirectory,
+        runLegoCommand,
+      });
+      try {
+        expect(runLegoCommand).toHaveBeenCalledTimes(2);
+        expect(runLegoCommand).toHaveBeenLastCalledWith(
+          buildLegoChownDockerArgs({
+            acmeDataDirectory,
+            hostUserId: process.getuid?.() ?? 0,
+            hostGroupId: process.getgid?.() ?? 0,
+          }),
+        );
+      } finally {
+        await stopWebServer(server);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each([
+    {
+      name: 'the ownership command exits non-zero',
+      chownResult: { exitCode: 1, output: 'chown denied' },
+      expectedLog: 'chown denied',
+    },
+    {
+      name: 'the ownership command cannot be started',
+      chownResult: new Error('docker not found'),
+      expectedLog: 'docker not found',
+    },
+  ])(
+    'logs and keeps running when $name',
+    async ({ chownResult, expectedLog }) => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-chown-'));
+      const acmeDataDirectory = path.join(tmpDir, 'acme');
+      writeCertificateFiles(acmeDataDirectory);
+      const runLegoCommand = jest
+        .fn()
+        .mockResolvedValueOnce({ exitCode: 0, output: '' })
+        .mockImplementationOnce(() =>
+          chownResult instanceof Error
+            ? Promise.reject(chownResult)
+            : Promise.resolve(chownResult),
+        );
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const httpsPort = await reserveHttpsPort();
+      const server = await startWebServer({
+        accessToken: testToken,
+        uiDistDir: path.join(tmpDir, 'ui-dist'),
+        consoleDataOutputDir: null,
+        inTmuxDataDir: null,
+        dashboardDir: null,
+        dashboardDataDir: null,
+        dashboardProjectNames: [],
+        port: 0,
+        httpsPort,
+        acmeIpAddress: '127.0.0.1',
+        acmeDataDirectory,
+        runLegoCommand,
+      });
+      try {
+        expect(runLegoCommand).toHaveBeenCalledTimes(2);
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining(expectedLog),
+        );
+      } finally {
+        consoleErrorSpy.mockRestore();
+        await stopWebServer(server);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    },
+  );
+
   it('serves HTTPS with security headers and a Secure token cookie', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-https-'));
     const acmeDataDirectory = path.join(tmpDir, 'acme');
@@ -5358,7 +5478,8 @@ describe('webServer HTTPS certificate handling', () => {
       );
       jest.advanceTimersByTime(CERTIFICATE_RENEWAL_INTERVAL_MS);
       await Promise.resolve();
-      expect(runLegoCommand).toHaveBeenLastCalledWith(
+      expect(runLegoCommand).toHaveBeenNthCalledWith(
+        3,
         expect.arrayContaining(['--renew-days', '3']),
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith('renewal failed');
@@ -5440,8 +5561,7 @@ describe('webServer HTTPS certificate handling', () => {
         throw new Error('renewal callback was not registered');
       }
       renewalCallback();
-      await Promise.resolve();
-      await Promise.resolve();
+      await new Promise<void>((resolve) => setImmediate(resolve));
       expect(setSecureContextSpy).toHaveBeenCalledTimes(1);
       expect(setSecureContextSpy).toHaveBeenCalledWith({
         key: fs.readFileSync(
@@ -5451,8 +5571,18 @@ describe('webServer HTTPS certificate handling', () => {
           path.join(acmeDataDirectory, 'certificates', '127.0.0.1.crt'),
         ),
       });
-      expect(runLegoCommand).toHaveBeenLastCalledWith(
+      expect(runLegoCommand).toHaveBeenCalledTimes(4);
+      expect(runLegoCommand).toHaveBeenNthCalledWith(
+        3,
         expect.arrayContaining(['--renew-days', '3']),
+      );
+      expect(runLegoCommand).toHaveBeenNthCalledWith(
+        4,
+        buildLegoChownDockerArgs({
+          acmeDataDirectory,
+          hostUserId: process.getuid?.() ?? 0,
+          hostGroupId: process.getgid?.() ?? 0,
+        }),
       );
     } finally {
       await stopWebServer(server);

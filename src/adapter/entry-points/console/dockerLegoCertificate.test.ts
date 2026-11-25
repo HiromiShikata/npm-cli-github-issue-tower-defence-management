@@ -17,6 +17,7 @@ jest.mock('child_process', () => ({
 }));
 
 import {
+  buildLegoChownDockerArgs,
   buildLegoDockerArgs,
   CERTIFICATE_RENEWAL_INTERVAL_MS,
   CERTIFICATE_RENEWAL_THRESHOLD_DAYS,
@@ -65,10 +66,8 @@ describe('docker lego certificate', () => {
     const baseArguments = [
       'run',
       '--rm',
-      '--user',
-      '1000:1000',
-      '-p',
-      '80:80',
+      '--network',
+      'host',
       '-v',
       '/var/cache/tdpm/acme:/.lego',
       'goacme/lego:v5.7.0',
@@ -91,6 +90,27 @@ describe('docker lego certificate', () => {
       ...baseArguments,
       '--renew-days',
       '3',
+    ]);
+  });
+
+  it('builds the docker argument vector that hands the data directory back to the console user', () => {
+    expect(
+      buildLegoChownDockerArgs({
+        acmeDataDirectory: '/var/cache/tdpm/acme',
+        hostUserId: 1000,
+        hostGroupId: 1001,
+      }),
+    ).toEqual([
+      'run',
+      '--rm',
+      '-v',
+      '/var/cache/tdpm/acme:/.lego',
+      '--entrypoint',
+      'chown',
+      LEGO_DOCKER_IMAGE,
+      '-R',
+      '1000:1001',
+      '/.lego',
     ]);
   });
 
