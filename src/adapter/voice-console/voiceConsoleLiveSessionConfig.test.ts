@@ -57,12 +57,24 @@ const expectedPrepareToolNames = [
 
 describe('VOICE_CONSOLE_INSTRUCTIONS', () => {
   it('is a non-empty Japanese instruction text containing the wording the assistant must use', () => {
-    const cases = [{ word: 'はい' }, { word: '詳しく' }];
+    const cases = [
+      { word: 'はい' },
+      { word: '詳しく' },
+      { word: '最も速いペース' },
+    ];
 
     for (const testCase of cases) {
       expect(VOICE_CONSOLE_INSTRUCTIONS.length).toBeGreaterThan(0);
       expect(VOICE_CONSOLE_INSTRUCTIONS).toContain(testCase.word);
     }
+  });
+
+  it('tells the assistant to speak at the fastest clear pace on the second line of the instructions', () => {
+    const secondLine = VOICE_CONSOLE_INSTRUCTIONS.split('\n')[1];
+
+    expect({
+      secondLineMentionsFastestPace: secondLine.includes('最も速いペース'),
+    }).toEqual({ secondLineMentionsFastestPace: true });
   });
 
   it('tells the assistant to read decision questions with their options', () => {
