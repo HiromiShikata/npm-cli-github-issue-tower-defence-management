@@ -317,13 +317,54 @@ describe('ClaudeCodeVoiceConsoleProcess failures', () => {
     );
   });
 
-  it('rejects every utterance sent after the child has exited without writing it', async () => {
-    const { process, emitExit, written } = createProcess();
+  it('after a child exit rejects the pending turn, answers the next utterance from a fresh child, and stays stopped after stop', async () => {
+    const { process, children, spawn, logError } = createProcess();
     process.start(LAUNCH);
-    emitExit(1, null);
+    const pending = process.sendOwnerUtterance('途中の質問');
+    const pendingOutcome = pending.then(
+      () => 'resolved',
+      (error: unknown) => (error instanceof Error ? error.message : 'rejected'),
+    );
+    await flush();
 
-    await expect(process.sendOwnerUtterance('後の質問')).rejects.toThrow();
-    expect(written).toHaveLength(0);
+    children[0]?.emitExit(1, null);
+    const pendingMessage = await pendingOutcome;
+
+    const next = process.sendOwnerUtterance('次の質問');
+    const nextOutcome = next.then(
+      (value) => value,
+      (error: unknown) =>
+        error instanceof Error ? `rejected: ${error.message}` : 'rejected',
+    );
+    await flush();
+    children[1]?.emitStdout(resultLine({ result: '次の回答' }));
+    await flush();
+    const answer = await Promise.race([
+      nextOutcome,
+      flush().then(() => 'still pending'),
+    ]);
+
+    process.stop();
+    const afterStop = process.sendOwnerUtterance('停止後の質問');
+    await expect(afterStop).rejects.toThrow();
+
+    expect({
+      pendingIncludesExitDiagnostic:
+        pendingMessage.includes('exited with code 1'),
+      logged: logError.mock.calls
+        .map((call) => call[0])
+        .join('\n')
+        .includes('exited with code 1'),
+      spawnCalls: spawn.mock.calls.length,
+      answer,
+      spawnsAfterStop: spawn.mock.calls.length,
+    }).toEqual({
+      pendingIncludesExitDiagnostic: true,
+      logged: true,
+      spawnCalls: 2,
+      answer: '次の回答',
+      spawnsAfterStop: 2,
+    });
   });
 
   it('rejects an utterance sent before start', async () => {
