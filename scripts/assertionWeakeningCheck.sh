@@ -14,6 +14,23 @@ get_diff() {
     '*.spec.ts' '*.spec.tsx' '*.spec.js' '*.spec.jsx'
 }
 
+get_pr_body() {
+  if [ -n "${TEST_PR_BODY+x}" ]; then
+    printf '%s' "${TEST_PR_BODY}"
+    return
+  fi
+  if [ -n "${TEST_DIFF_CONTENT+x}" ]; then
+    printf ''
+    return
+  fi
+  local pr_number="${PR_NUMBER:-}"
+  if [ -z "${pr_number}" ]; then
+    printf ''
+    return
+  fi
+  gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}" --jq '.body // empty' 2>/dev/null || true
+}
+
 get_issue_body() {
   # Legacy simple test mode: TEST_DIFF_CONTENT set without TEST_PR_BODY bypasses all parsing.
   if [ -n "${TEST_DIFF_CONTENT+x}" ] && [ -z "${TEST_PR_BODY+x}" ]; then
@@ -22,16 +39,7 @@ get_issue_body() {
   fi
 
   local pr_body
-  if [ -n "${TEST_PR_BODY+x}" ]; then
-    pr_body="${TEST_PR_BODY}"
-  else
-    local pr_number="${PR_NUMBER:-}"
-    if [ -z "${pr_number}" ]; then
-      printf ''
-      return
-    fi
-    pr_body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}" --jq '.body // empty' 2>/dev/null || true)
-  fi
+  pr_body=$(get_pr_body)
 
   local pr_body_with_urls_normalized
   pr_body_with_urls_normalized=$(printf '%s' "${pr_body}" | sed -E 's@https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(issues|pull)/([0-9]+)@\1#\3@g')
@@ -66,6 +74,11 @@ has_acceptance_criteria() {
   printf '%s' "${body}" | grep -qiP "${ACCEPTANCE_CRITERIA_PATTERN}"
 }
 
+has_numbered_acceptance_criteria() {
+  local body="$1"
+  printf '%s' "${body}" | grep -qiPz "(?s)${ACCEPTANCE_CRITERIA_PATTERN}.*?\n[ \t]*[0-9]+\.[ \t]"
+}
+
 main() {
   local diff
   diff=$(get_diff)
@@ -86,6 +99,17 @@ main() {
   issue_body=$(get_issue_body)
 
   if [ -z "${issue_body}" ]; then
+    local pr_body
+    pr_body=$(get_pr_body)
+    if has_numbered_acceptance_criteria "${pr_body}"; then
+      echo "Acceptance criteria found in the PR body. Check passed."
+      exit 0
+    fi
+    if has_acceptance_criteria "${pr_body}"; then
+      echo "ERROR: Test assertions were deleted and the PR body has an acceptance criteria heading with no numbered items."
+      echo "The PR body or the closing issue must contain a '## Success Criteria', '## Acceptance Criteria', or '## 受入基準' section with numbered items stating the behavior change."
+      exit 1
+    fi
     echo "ERROR: Test assertions were deleted but no linked closing issue was found or the issue body is empty."
     echo "To pass this check, either:"
     echo "1. Do not delete or weaken existing test assertions, OR"
