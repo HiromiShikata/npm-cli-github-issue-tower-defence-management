@@ -39,9 +39,19 @@ export type ComposeDashboardMachineStatus = {
   cycleMinutes: number | null;
 };
 
+export type ComposeDashboardRemoteMachine = {
+  name: string;
+  reachable: boolean;
+  memPct: number | null;
+  cpuPct: number | null;
+  diskPct: number | null;
+  load: [number, number, number] | null;
+};
+
 export type ComposeDashboardInput = {
   projects: ComposeDashboardProject[];
   machineStatus: ComposeDashboardMachineStatus | null;
+  remoteMachines?: ComposeDashboardRemoteMachine[] | null;
   tokens: TokenStatus[];
   sevenDayWindowAggregate?: SevenDayWindowAggregate | null;
   codexSevenDayWindows?: CodexSevenDayWindowStatus[] | null;
@@ -167,82 +177,102 @@ export const formatResetCountdown = (totalSeconds: number): string => {
   )}`;
 };
 
-const packTokensWithinBudget = (tokens: string[]): string[] => {
-  const lines: string[] = [];
-  let current = '';
-  for (const token of tokens) {
-    const candidate = current === '' ? token : `${current} ${token}`;
-    if (current !== '' && candidate.length > PROJECT_ROW_WIDTH_BUDGET) {
-      lines.push(current);
-      current = token;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current !== '') {
-    lines.push(current);
-  }
-  return lines;
-};
+const capTwoDigits = (value: number): string =>
+  value > 99 ? '99' : String(value);
 
-const metricDot = (pct: number): '🔴' | '🟡' | '' => {
-  if (pct >= 90) return '🔴';
-  if (pct >= 80) return '🟡';
-  return '';
-};
-
-const loadDot = (load1m: number): '🔴' | '🟡' | '' => {
-  if (load1m >= 10) return '🔴';
-  if (load1m >= 5) return '🟡';
-  return '';
-};
+const padEndByCodePoint = (value: string, width: number): string =>
+  value + ' '.repeat(Math.max(0, width - [...value].length));
 
 export const formatMachineStatusLines = (
   machineStatus: ComposeDashboardMachineStatus | null,
+  remoteMachines: ComposeDashboardRemoteMachine[] | null = null,
 ): string[] => {
-  const memPct = machineStatus !== null ? machineStatus.memPct : null;
-  const cpuPct = machineStatus !== null ? machineStatus.cpuPct : null;
-  const diskPct = machineStatus !== null ? machineStatus.diskPct : null;
-  const memDot = memPct !== null ? metricDot(memPct) : '';
-  const cpuDot = cpuPct !== null ? metricDot(cpuPct) : '';
-  const diskDot = diskPct !== null ? metricDot(diskPct) : '';
-  const memText = memPct !== null ? `${memPct}%` : '?%';
-  const cpuText = cpuPct !== null ? `${cpuPct}%` : '?%';
-  const diskText = diskPct !== null ? `${diskPct}%` : '?%';
-  const load = machineStatus !== null ? machineStatus.load : null;
-  const load1m = load !== null ? load[0] : null;
-  const loadPrefix = load1m !== null ? loadDot(load1m) : '';
-  const oneMinute = load === null ? '?' : String(roundHalfToEven(load[0]));
-  const fiveMinute = load === null ? '?' : String(roundHalfToEven(load[1]));
-  const fifteenMinute = load === null ? '?' : String(roundHalfToEven(load[2]));
-  const cycle =
-    machineStatus !== null && machineStatus.cycleMinutes !== null
-      ? `cy${machineStatus.cycleMinutes}`
-      : 'cy-';
-  const loadSegment = `${loadPrefix}LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
-  const disks =
-    machineStatus !== null && machineStatus.disks ? machineStatus.disks : null;
-  if (disks !== null && disks.length > 0) {
-    const diskTokens = disks.map(
-      (disk) => `${metricDot(disk.pct)}${disk.title}${disk.pct}%`,
+  const remoteRows = remoteMachines ?? [];
+  const rowNames = ['main', ...remoteRows.map((remote) => remote.name)];
+  const nameWidth = Math.max(
+    ...rowNames.map((name) => [...name].length),
+    machineStatus?.disks?.length ? 8 : 0,
+  );
+  const header =
+    ' '.repeat(STATUS_DOT_DISPLAY_WIDTH + nameWidth) +
+    ['M', 'C', 'D', 'S', 'cy', 'LA']
+      .map((label) => ` ${padStart(label, 2)}`)
+      .join('');
+  const formatValue = (value: number | null, isLoad: boolean): string =>
+    value === null
+      ? '?'
+      : capTwoDigits(isLoad ? roundHalfToEven(value) : value);
+  const formatRow = (
+    name: string,
+    values: Array<number | string | null>,
+    forcedRed: boolean,
+  ): string => {
+    const numericValues = values
+      .map((value, index) => ({ value, index }))
+      .filter(
+        (entry): entry is { value: number; index: number } =>
+          typeof entry.value === 'number',
+      );
+    const red =
+      forcedRed ||
+      numericValues.some(
+        ({ value, index }) =>
+          (index < 4 && value >= 90) || (index === 5 && value >= 10),
+      );
+    const yellow =
+      !red &&
+      numericValues.some(
+        ({ value, index }) =>
+          (index < 4 && value >= 80) || (index === 5 && value >= 5),
+      );
+    const statusDot = red ? '🔴' : yellow ? '🟡' : '🟢';
+    const paddedName = padEndByCodePoint(name, nameWidth);
+    const formattedValues = values
+      .map((value, index) => {
+        const text =
+          typeof value === 'string' ? value : formatValue(value, index >= 5);
+        if (index === 0 && nameWidth === 4) return `   ${text}`;
+        return ` ${padStart(text, 2)}`;
+      })
+      .join('');
+    return `${statusDot}${paddedName}${formattedValues}`;
+  };
+  const mainDisk =
+    machineStatus?.disks?.find((disk) => disk.title === 'S')?.pct ?? null;
+  const mainValues =
+    machineStatus === null
+      ? Array<number | null>(8).fill(null)
+      : [
+          machineStatus.memPct,
+          machineStatus.cpuPct,
+          machineStatus.diskPct,
+          mainDisk === null ? '-' : mainDisk,
+          machineStatus.cycleMinutes === null
+            ? '-'
+            : machineStatus.cycleMinutes,
+          ...(machineStatus.load ?? [null, null, null]),
+        ];
+  const lines = [header, formatRow('main', mainValues, machineStatus === null)];
+  for (const remote of remoteRows) {
+    lines.push(
+      formatRow(
+        remote.name,
+        remote.reachable
+          ? [
+              remote.memPct,
+              remote.cpuPct,
+              remote.diskPct,
+              '-',
+              '-',
+              ...(remote.load ?? [null, null, null]),
+            ]
+          : Array<number | null>(8).fill(null),
+        !remote.reachable,
+      ),
     );
-    const singleLine = `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskTokens.join(' ')} ${cycle} ${loadSegment}`;
-    if ([...singleLine].length <= PROJECT_ROW_WIDTH_BUDGET) {
-      return [singleLine];
-    }
-    const diskLines = packTokensWithinBudget(diskTokens);
-    return [
-      `${memDot}M${memText} ${cpuDot}C${cpuText} ${cycle} ${loadSegment}`,
-      ...diskLines,
-    ];
   }
-  return [
-    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle} ${loadSegment}`,
-  ];
+  return lines;
 };
-
-const capTwoDigits = (value: number): string =>
-  value > 99 ? '99' : String(value);
 
 export const formatProjectTotalLine = (
   projects: ComposeDashboardProject[],
@@ -568,7 +598,10 @@ const wrapLine = (line: string): string =>
 export class ComposeDashboardUseCase {
   run = (input: ComposeDashboardInput): string => {
     const nowMs = input.nowMs;
-    const statsLines = formatMachineStatusLines(input.machineStatus);
+    const statsLines = formatMachineStatusLines(
+      input.machineStatus,
+      input.remoteMachines ?? null,
+    );
     const projectLines = [
       formatProjectTotalLine(input.projects),
       formatProjectHeaderLine(),

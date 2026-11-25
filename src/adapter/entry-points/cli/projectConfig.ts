@@ -31,6 +31,7 @@ export type ConfigFile = {
   changeTargetPathAliases?: Record<string, string>;
   agents?: string[];
   consoleDataOutputDir?: string;
+  workerHostsPath?: string;
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
   consoleGithubTokens?: Record<string, string>;
@@ -55,7 +56,8 @@ export type LocalOnlyConfigKey =
   | 'claudeCodeOauthTokenListJsonPath'
   | 'awLogDirectoryPath'
   | 'agentDefinitionsDirectoryPath'
-  | 'consoleDataOutputDir';
+  | 'consoleDataOutputDir'
+  | 'workerHostsPath';
 
 export type ProjectReadmeConfig = Omit<ConfigFile, LocalOnlyConfigKey>;
 
@@ -276,6 +278,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       ),
       agents: getStringArrayValue(parsed, 'agents'),
       consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
+      workerHostsPath: getStringValue(parsed, 'workerHostsPath'),
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
       consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
       consoleGithubTokens: getStringRecordValue(parsed, 'consoleGithubTokens'),
@@ -467,6 +470,7 @@ export const mergeConfigs = (
     configFile.consoleVisibleAssigneeLogins,
   consoleDataOutputDir:
     cliOverrides.consoleDataOutputDir ?? configFile.consoleDataOutputDir,
+  workerHostsPath: cliOverrides.workerHostsPath ?? configFile.workerHostsPath,
   consoleAccessToken:
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
   consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,

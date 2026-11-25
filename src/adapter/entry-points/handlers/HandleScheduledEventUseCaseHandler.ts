@@ -9,6 +9,7 @@ import {
 } from './consoleListsWriter';
 import { writeDashboardRow } from './dashboardRowWriter';
 import { writeMachineStatus } from './machineStatusWriter';
+import { writeRemoteMachineStatus } from './remoteMachineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
 import { writeCodexSevenDayWindowStatus } from './codexSevenDayWindowWriter';
 import { writeCodexWorkerCountStatus } from './codexWorkerCountWriter';
@@ -167,6 +168,7 @@ export class HandleScheduledEventUseCaseHandler {
       consoleDataOutputDir?: string;
       dashboardDataDir?: string;
       disks?: { title: string; mountpoint: string }[];
+      workerHostsPath?: string;
       workflowBlockerStoryName?: string;
       defaultTaskNameWithOwner?: string;
       inTmuxDataOutputDir?: string;
@@ -731,6 +733,20 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write console lists: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await writeRemoteMachineStatus({
+          dashboardDataDir,
+          workerHostsPath: mergedInput.workerHostsPath ?? null,
+          reportError: (message) => console.error(message),
+        });
+      } catch (error) {
+        console.error(
+          `Failed to write remote machine status: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
