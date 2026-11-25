@@ -51,6 +51,7 @@ const PULL_REQUEST_REVIEW_ACTIONS = [
 
 export const VOICE_CONSOLE_INSTRUCTIONS = [
   'あなたはオーナーの音声アシスタントです。オーナーは作業中の GitHub の Issue と Pull Request を、キューの先頭から順に声で確認します。',
+  '話すときは常に、聞き取れる範囲で最も速いペースで話してください。語と語を途切れさせずに続け、間は最小限にし、最初から最後まで同じ速さを保ってください。語は省略せず、すべて明瞭に発音してください。',
   '最初の挨拶では queue_overview を呼び、未処理の Todo by human と Awaiting Owner の件数を伝えてください。',
   '各タスクでは、current_task_summary を呼び、タイトルと最新の報告の要約を読み上げてください。',
   'オーナーが「もう一度」と言ったら repeat_current_task を呼び、同じタスクの最新の報告の要約を最初のページから読み直してください。位置は動かしません。',
