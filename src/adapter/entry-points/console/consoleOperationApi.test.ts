@@ -3773,8 +3773,10 @@ describe('consoleOperationApi', () => {
         expect(response.statusCode).toBe(200);
         if (testCase.writeProceeds) {
           expect(issueRepository.updateStatus).toHaveBeenCalled();
+          expect(response.body).not.toMatchObject({ statusSet: false });
         } else {
           expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+          expect(response.body).toEqual({ ok: true, statusSet: false });
         }
       }
     });

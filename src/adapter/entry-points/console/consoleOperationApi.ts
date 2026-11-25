@@ -495,6 +495,16 @@ const writeStatusForDecision = async (
   return null;
 };
 
+type StatusWriteOutcome =
+  | { kind: 'failed'; response: ConsoleOperationResponse }
+  | { kind: 'applied' }
+  | { kind: 'skipped' };
+
+const skippedStatusWriteResponse = (): ConsoleOperationResponse => ({
+  statusCode: 200,
+  body: { ok: true, statusSet: false },
+});
+
 const updateStatusByName = async (
   issueRepository: IssueRepository,
   project: Project,
@@ -502,10 +512,15 @@ const updateStatusByName = async (
   projectItemId: string,
   statusName: string,
   expectedStatusAtActionTime: ExpectedStatusAtActionTime,
-): Promise<ConsoleOperationResponse | null> => {
+): Promise<StatusWriteOutcome> => {
   const statusId = resolveStatusId(project, statusName);
   if (statusId === null) {
-    return badRequest(`status option "${statusName}" not found in project`);
+    return {
+      kind: 'failed',
+      response: badRequest(
+        `status option "${statusName}" not found in project`,
+      ),
+    };
   }
   const decision = await decideStatusWrite(
     issueRepository,
@@ -513,14 +528,20 @@ const updateStatusByName = async (
     statusName,
     expectedStatusAtActionTime,
   );
-  return writeStatusForDecision(
-    issueRepository,
-    project,
-    issueUrl,
-    projectItemId,
-    statusId,
-    decision,
-  );
+  if (decision.kind === 'failed') {
+    return { kind: 'failed', response: decision.response };
+  }
+  if (decision.kind === 'skipped') {
+    return { kind: 'skipped' };
+  }
+  if (decision.kind === 'write') {
+    await issueRepository.updateStatus(
+      project,
+      projectItemReference(issueUrl, projectItemId),
+      statusId,
+    );
+  }
+  return { kind: 'applied' };
 };
 
 const isMergeConflictRejectionError = (error: unknown): boolean =>
@@ -589,8 +610,11 @@ export const handleReview = async (
         AWAITING_WORKSPACE_STATUS_NAME,
         expectedStatusAtActionTime,
       );
-      if (statusFailure !== null) {
-        return statusFailure;
+      if (statusFailure.kind === 'failed') {
+        return statusFailure.response;
+      }
+      if (statusFailure.kind === 'skipped') {
+        return skippedStatusWriteResponse();
       }
     }
     recordDone(context, pjcodeResult, projectItemId);
@@ -634,8 +658,11 @@ export const handleReview = async (
       AWAITING_WORKSPACE_STATUS_NAME,
       expectedStatusAtActionTime,
     );
-    if (failure !== null) {
-      return failure;
+    if (failure.kind === 'failed') {
+      return failure.response;
+    }
+    if (failure.kind === 'skipped') {
+      return skippedStatusWriteResponse();
     }
     recordDone(context, pjcode, projectItemId);
     return ok();
@@ -663,8 +690,11 @@ export const handleReview = async (
           AWAITING_WORKSPACE_STATUS_NAME,
           expectedStatusAtActionTime,
         );
-        if (conflictFailure !== null) {
-          return conflictFailure;
+        if (conflictFailure.kind === 'failed') {
+          return conflictFailure.response;
+        }
+        if (conflictFailure.kind === 'skipped') {
+          return skippedStatusWriteResponse();
         }
         recordDoneForStatusChange(context, pjcode, projectItemId);
         return ok();
@@ -724,8 +754,11 @@ export const handleReview = async (
       AWAITING_WORKSPACE_STATUS_NAME,
       expectedStatusAtActionTime,
     );
-    if (failure !== null) {
-      return failure;
+    if (failure.kind === 'failed') {
+      return failure.response;
+    }
+    if (failure.kind === 'skipped') {
+      return skippedStatusWriteResponse();
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
     recordTaskClose(context, pjcode);
@@ -762,8 +795,11 @@ export const handleReview = async (
       AWAITING_WORKSPACE_STATUS_NAME,
       expectedStatusAtActionTime,
     );
-    if (failure !== null) {
-      return failure;
+    if (failure.kind === 'failed') {
+      return failure.response;
+    }
+    if (failure.kind === 'skipped') {
+      return skippedStatusWriteResponse();
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
     return ok();
@@ -1815,8 +1851,11 @@ export const handleIntmux = async (
     IN_TMUX_BY_HUMAN_STATUS_NAME,
     readExpectedStatusAtActionTime(body),
   );
-  if (failure !== null) {
-    return failure;
+  if (failure.kind === 'failed') {
+    return failure.response;
+  }
+  if (failure.kind === 'skipped') {
+    return skippedStatusWriteResponse();
   }
   recordDoneForStatusChange(context, pjcode, projectItemId);
   return ok();
