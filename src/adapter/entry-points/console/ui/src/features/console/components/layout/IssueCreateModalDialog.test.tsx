@@ -1713,6 +1713,34 @@ describe('IssueCreateModalDialog', () => {
       }
     });
 
+    it('renders the open preview below the Title and Body fields and above the Attachments section in DOM order', async () => {
+      const { unmount } = await renderWithFiles(imageFiles());
+      fireEvent.click(thumbnailButtonFor('a.png'));
+      const preview = screen.getByTestId(PREVIEW_TEST_ID);
+      const titleTextarea = screen.getByRole('textbox', { name: 'Title' });
+      const bodyTextarea = screen.getByRole('textbox', { name: 'Body' });
+      const attachmentsLabel = Array.from(
+        document.body.querySelectorAll('.console-task-create-dialog-section-label'),
+      ).find((label) => label.textContent === 'Attachments');
+      if (attachmentsLabel === undefined) {
+        throw new Error('No Attachments section label');
+      }
+      const isBefore = (earlier: Node, later: Node): boolean =>
+        (earlier.compareDocumentPosition(later) &
+          Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0;
+      expect({
+        titleBeforePreview: isBefore(titleTextarea, preview),
+        bodyBeforePreview: isBefore(bodyTextarea, preview),
+        previewBeforeAttachments: isBefore(preview, attachmentsLabel),
+      }).toEqual({
+        titleBeforePreview: true,
+        bodyBeforePreview: true,
+        previewBeforeAttachments: true,
+      });
+      unmount();
+    });
+
     it('hides the preview when the Close preview button is clicked', async () => {
       const { unmount } = await renderWithFiles(imageFiles());
       fireEvent.click(thumbnailButtonFor('a.png'));
