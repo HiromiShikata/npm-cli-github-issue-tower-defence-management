@@ -2,71 +2,22 @@ import { mock } from 'jest-mock-extended';
 import type { VoiceConsoleDelegationBridge } from './voiceConsoleDelegationBridge';
 import { VoiceConsoleSidebandHandler } from './voiceConsoleSideband';
 
-const TOOL_RESULT = '{"ok":true,"text":"日本語の結果"}';
-
-const delegated = (
-  eventId: string,
-  event: Record<string, unknown>,
-): Record<string, unknown> => ({
-  type: 'response.event',
-  event_id: eventId,
-  delegation_id: 'delegation_1',
-  event,
-});
-
-const functionCallDone = (
-  eventId: string,
-  callId: string,
-  name: string,
-  argumentsJson: string,
-) =>
-  delegated(eventId, {
-    type: 'response.output_item.done',
-    item: {
-      type: 'function_call',
-      call_id: callId,
-      name,
-      arguments: argumentsJson,
-    },
-  });
-
 const delegationCreated = (eventId: string, delegation: unknown) => ({
   type: 'session.delegation.created',
   event_id: eventId,
   delegation,
 });
 
-const createFakeSession = () => {
-  const callTool = jest.fn(
-    (_name: string, _argumentsJson: string): Promise<string> =>
-      Promise.resolve(TOOL_RESULT),
-  );
-  const recordOwnerSpeech = jest.fn((_delta: string): void => undefined);
-  const recordAssistantSpeech = jest.fn((_delta: string): void => undefined);
-  return {
-    callTool,
-    recordOwnerSpeech,
-    recordAssistantSpeech,
-    session: { callTool, recordOwnerSpeech, recordAssistantSpeech },
-  };
-};
-
 const createHandler = () => {
-  const fake = createFakeSession();
   const bridge = mock<VoiceConsoleDelegationBridge>();
   const send = jest.fn((_event: Record<string, unknown>): void => undefined);
   const logError = jest.fn((_message: string): void => undefined);
-  const handler = new VoiceConsoleSidebandHandler(
-    fake.session,
-    bridge,
-    send,
-    logError,
-  );
-  return { ...fake, bridge, send, logError, handler };
+  const handler = new VoiceConsoleSidebandHandler(bridge, send, logError);
+  return { bridge, send, logError, handler };
 };
 
 describe('VoiceConsoleSidebandHandler owner speech', () => {
-  it('forwards only owner input transcript deltas to recordOwnerSpeech and the bridge', async () => {
+  it('forwards only owner input transcript deltas to the bridge', async () => {
     const cases = [
       {
         name: 'an input transcript delta is forwarded with its text',
@@ -103,102 +54,36 @@ describe('VoiceConsoleSidebandHandler owner speech', () => {
     ];
 
     for (const testCase of cases) {
-      const { recordOwnerSpeech, bridge, handler } = createHandler();
+      const { bridge, handler } = createHandler();
 
       await handler.handleServerEvent(testCase.event);
 
       expect({
         name: testCase.name,
-        forwarded: recordOwnerSpeech.mock.calls.map((call) => call[0]),
         bridged: bridge.handleOwnerTranscriptDelta.mock.calls.map(
           (call) => call[0],
         ),
-      }).toEqual({
-        name: testCase.name,
-        forwarded: testCase.forwarded,
-        bridged: testCase.forwarded,
-      });
+      }).toEqual({ name: testCase.name, bridged: testCase.forwarded });
     }
   });
-});
 
-describe('VoiceConsoleSidebandHandler assistant speech', () => {
-  it('forwards output transcript deltas to recordAssistantSpeech and input deltas to recordOwnerSpeech only', async () => {
-    const cases = [
-      {
-        name: 'an output transcript delta is forwarded to the assistant speech',
-        event: {
-          type: 'session.output_transcript.delta',
-          event_id: 'o1',
-          delta: '読み上げ',
-          start_ms: 0,
-          end_ms: 100,
-        },
-        assistantForwarded: ['読み上げ'],
-        ownerForwarded: [],
-      },
-      {
-        name: 'an input transcript delta is forwarded to the owner speech',
-        event: {
-          type: 'session.input_transcript.delta',
-          event_id: 'i1',
-          delta: 'はい',
-          start_ms: 0,
-          end_ms: 100,
-        },
-        assistantForwarded: [],
-        ownerForwarded: ['はい'],
-      },
-      {
-        name: 'a response text delta is forwarded to neither',
-        event: { type: 'response.output_text.delta', delta: 'はい' },
-        assistantForwarded: [],
-        ownerForwarded: [],
-      },
-    ];
+  it('ignores output transcript deltas of the assistant', async () => {
+    const { bridge, send, logError, handler } = createHandler();
 
-    for (const testCase of cases) {
-      const { recordAssistantSpeech, recordOwnerSpeech, handler } =
-        createHandler();
-
-      await handler.handleServerEvent(testCase.event);
-
-      expect({
-        name: testCase.name,
-        assistant: recordAssistantSpeech.mock.calls.map((call) => call[0]),
-        owner: recordOwnerSpeech.mock.calls.map((call) => call[0]),
-      }).toEqual({
-        name: testCase.name,
-        assistant: testCase.assistantForwarded,
-        owner: testCase.ownerForwarded,
-      });
-    }
-  });
-});
-
-describe('VoiceConsoleSidebandHandler function calls', () => {
-  it('no longer runs a tool or sends any event for a function call', async () => {
-    const { callTool, send, logError, bridge, handler } = createHandler();
-
-    await handler.handleServerEvent(
-      delegated('c0', { type: 'response.created', response: { id: 'resp_1' } }),
-    );
-    await handler.handleServerEvent(
-      functionCallDone('e2', 'call_1', 'queue_overview', '{}'),
-    );
-    await handler.handleServerEvent(
-      delegated('e3', {
-        type: 'response.completed',
-        response: { id: 'resp_1' },
-      }),
-    );
+    await handler.handleServerEvent({
+      type: 'session.output_transcript.delta',
+      event_id: 'o1',
+      delta: '読み上げ',
+      start_ms: 0,
+      end_ms: 100,
+    });
 
     expect({
-      callTool: callTool.mock.calls.length,
+      bridgedOwner: bridge.handleOwnerTranscriptDelta.mock.calls.length,
+      bridgedDelegation: bridge.handleDelegationCreated.mock.calls.length,
       sent: send.mock.calls.length,
       logged: logError.mock.calls.length,
-      bridged: bridge.handleDelegationCreated.mock.calls.length,
-    }).toEqual({ callTool: 0, sent: 0, logged: 0, bridged: 0 });
+    }).toEqual({ bridgedOwner: 0, bridgedDelegation: 0, sent: 0, logged: 0 });
   });
 });
 

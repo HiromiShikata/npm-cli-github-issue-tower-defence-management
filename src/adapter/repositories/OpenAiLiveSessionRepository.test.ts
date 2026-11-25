@@ -2,10 +2,7 @@ import {
   buildLiveSessionRequestBody,
   OpenAiLiveSessionRepository,
 } from './OpenAiLiveSessionRepository';
-import {
-  VOICE_CONSOLE_LIVE_INSTRUCTIONS,
-  VOICE_CONSOLE_TOOL_NAMES,
-} from '../voice-console/voiceConsoleLiveSessionConfig';
+import { VOICE_CONSOLE_LIVE_INSTRUCTIONS } from '../voice-console/voiceConsoleLiveSessionConfig';
 
 const responseWithJson = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), {
@@ -278,7 +275,11 @@ describe('OpenAiLiveSessionRepository', () => {
 
 describe('buildLiveSessionRequestBody', () => {
   it('requests GPT-Live with client delegation and the voice-role instructions only', () => {
-    expect(JSON.parse(buildLiveSessionRequestBody('OFFER-SDP'))).toEqual({
+    const parsed: unknown = JSON.parse(
+      buildLiveSessionRequestBody('OFFER-SDP'),
+    );
+
+    expect(parsed).toEqual({
       session: {
         model: 'gpt-live-1',
         instructions: VOICE_CONSOLE_LIVE_INSTRUCTIONS,
@@ -289,14 +290,9 @@ describe('buildLiveSessionRequestBody', () => {
     });
   });
 
-  it('sends no OpenAI Responses model, no responses key and no tool name anywhere in the body', () => {
+  it('sends no OpenAI Responses model, no responses key and no tool list', () => {
     const body = buildLiveSessionRequestBody('OFFER-SDP');
-    const forbiddenTerms = [
-      'gpt-6.2-astra',
-      '"responses"',
-      '"tools"',
-      ...VOICE_CONSOLE_TOOL_NAMES,
-    ];
+    const forbiddenTerms = ['gpt-6.2-astra', '"responses"', '"tools"'];
 
     for (const term of forbiddenTerms) {
       expect({ term, present: body.includes(term) }).toEqual({

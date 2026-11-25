@@ -1,7 +1,6 @@
 import { buildClaudeCodeVoiceConsoleLaunch } from './claudeCodeVoiceConsoleLaunch';
 
-const MCP_CONFIG_JSON = '{"mcpServers":{"voice":{"type":"http"}}}';
-const BACKEND_INSTRUCTIONS = 'backend instructions';
+const BACKEND_NOTE = 'backend note';
 const OAUTH_TOKEN = 'oauth-token-for-test';
 const PROXY_BASE_URL = 'http://127.0.0.1:8787';
 
@@ -19,10 +18,8 @@ const FIXED_ARGS_AFTER_EFFORT = [
   '--output-format',
   'stream-json',
   '--dangerously-skip-permissions',
-  '--mcp-config',
-  MCP_CONFIG_JSON,
   '--append-system-prompt',
-  BACKEND_INSTRUCTIONS,
+  BACKEND_NOTE,
 ];
 
 describe('buildClaudeCodeVoiceConsoleLaunch', () => {
@@ -136,9 +133,8 @@ describe('buildClaudeCodeVoiceConsoleLaunch', () => {
       const launch = buildClaudeCodeVoiceConsoleLaunch({
         oauthToken: OAUTH_TOKEN,
         proxyBaseUrl: testCase.proxyBaseUrl,
-        mcpConfigJson: MCP_CONFIG_JSON,
         effortFlagSupported: testCase.effortFlagSupported,
-        backendInstructions: BACKEND_INSTRUCTIONS,
+        backendNote: BACKEND_NOTE,
         baseEnv: testCase.baseEnv,
       });
 
@@ -156,13 +152,24 @@ describe('buildClaudeCodeVoiceConsoleLaunch', () => {
     }
   });
 
+  it('passes no voice tool list and no MCP config to the child', () => {
+    const launch = buildClaudeCodeVoiceConsoleLaunch({
+      oauthToken: OAUTH_TOKEN,
+      proxyBaseUrl: null,
+      effortFlagSupported: true,
+      backendNote: BACKEND_NOTE,
+      baseEnv: {},
+    });
+
+    expect(launch.args).not.toContain('--mcp-config');
+  });
+
   it('never passes an Anthropic API key variable to the child environment', () => {
     const launch = buildClaudeCodeVoiceConsoleLaunch({
       oauthToken: OAUTH_TOKEN,
       proxyBaseUrl: null,
-      mcpConfigJson: MCP_CONFIG_JSON,
       effortFlagSupported: true,
-      backendInstructions: BACKEND_INSTRUCTIONS,
+      backendNote: BACKEND_NOTE,
       baseEnv: {
         ANTHROPIC_API_KEY: 'api-key-1',
         ANTHROPIC_API_KEY_PERSONAL: 'api-key-2',
