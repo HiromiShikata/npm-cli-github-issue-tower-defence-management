@@ -11,7 +11,6 @@ export {
   type ProjectReadmeConfig,
 } from './projectConfig';
 
-import * as os from 'os';
 import * as path from 'path';
 import { workerRequestTextOf } from '../../../domain/entities/WorkerRequestText';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
@@ -30,11 +29,6 @@ import { ISO_8601_UTC_DATE_TIME_CORE_PATTERN_SOURCE } from '../../../domain/serv
 
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { OpenAiLiveSessionRepository } from '../../repositories/OpenAiLiveSessionRepository';
-import { FileOwnerCallFileRepository } from '../../repositories/FileOwnerCallFileRepository';
-import { FileInTmuxIssueUrlRepository } from '../../repositories/FileInTmuxIssueUrlRepository';
-import { ProcSshSessionHostRepository } from '../../repositories/ProcSshSessionHostRepository';
-import { TmuxSshSessionCommandRepository } from '../../repositories/TmuxSshSessionCommandRepository';
-import { LiveSessionToolCallUseCase } from '../../../domain/usecases/liveSession/LiveSessionToolCallUseCase';
 import { OpenAiLiveSessionSideband } from '../../repositories/OpenAiLiveSessionSideband';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -1482,7 +1476,6 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
   const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
   const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
-  const workerHostsFilePath = process.env.AW_WORKER_HOSTS_FILE ?? null;
   const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =
     options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
@@ -1517,14 +1510,6 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueRepository,
     liveSessionRepository: liveSessionRepositoryInstance,
     liveSessionCloser: liveSessionSidebandInstance,
-    liveSessionToolCalls: new LiveSessionToolCallUseCase({
-      localHomeDirectory: os.homedir(),
-      ownerCalls: new FileOwnerCallFileRepository(inTmuxDataDir),
-      knownIssueUrls: new FileInTmuxIssueUrlRepository(inTmuxDataDir),
-      hosts: new ProcSshSessionHostRepository(workerHostsFilePath),
-      commands: new TmuxSshSessionCommandRepository(),
-      issues: issueRepository,
-    }),
     liveSessionSideband: liveSessionSidebandInstance,
     resolveIssueRepository,
     resolveProject,
