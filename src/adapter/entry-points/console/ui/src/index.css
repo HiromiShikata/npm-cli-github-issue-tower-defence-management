@@ -2815,7 +2815,7 @@ body {
   gap: 6px;
   max-height: 45dvh;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 0 0 8px;
   background: #161b22;
   border-bottom: 1px solid #30363d;
 }
@@ -2827,6 +2827,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding-top: 8px;
   background: #161b22;
 }
 
