@@ -40,10 +40,12 @@ describe('OpenAiLiveSessionRepository', () => {
     if (typeof requestBody !== 'string') {
       throw new Error('request body was not serialized as JSON');
     }
-    expect(JSON.parse(requestBody)).toMatchObject({
+    expect(JSON.parse(requestBody)).toEqual({
       session: {
         model: 'gpt-live-1',
+        instructions: VOICE_CONSOLE_LIVE_INSTRUCTIONS,
         audio: { output: { voice: 'marin' } },
+        delegation: { type: 'client' },
       },
       transport: { type: 'webrtc', sdp: 'OFFER-SDP' },
     });

@@ -401,3 +401,92 @@ describe('OpenAiLiveSessionSideband.close message errors', () => {
     );
   });
 });
+
+describe('OpenAiLiveSessionSideband.attach handleClosed', () => {
+  it('calls handleClosed exactly once when the socket closes or errors, before or after it opened', async () => {
+    const cases: {
+      name: string;
+      opensFirst: boolean;
+      event: 'close' | 'error';
+      expectedOutcome: 'resolved' | 'rejected';
+    }[] = [
+      {
+        name: 'close after open',
+        opensFirst: true,
+        event: 'close',
+        expectedOutcome: 'resolved',
+      },
+      {
+        name: 'error after open',
+        opensFirst: true,
+        event: 'error',
+        expectedOutcome: 'resolved',
+      },
+      {
+        name: 'close before open',
+        opensFirst: false,
+        event: 'close',
+        expectedOutcome: 'rejected',
+      },
+      {
+        name: 'error before open',
+        opensFirst: false,
+        event: 'error',
+        expectedOutcome: 'rejected',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { socket } = createHarness({ opens: false });
+      const handleClosed = jest.fn((): void => undefined);
+      const sideband = new OpenAiLiveSessionSideband(
+        () => socket,
+        () => 'key-1',
+        jest.fn(),
+      );
+      const outcome = sideband
+        .attach('live_123', () => Promise.resolve(), handleClosed)
+        .then(
+          (): 'resolved' => 'resolved',
+          (): 'rejected' => 'rejected',
+        );
+
+      if (testCase.opensFirst) {
+        socket.emit('open', {});
+      }
+      socket.emit(testCase.event, {});
+      const actualOutcome = await outcome;
+
+      expect({
+        name: testCase.name,
+        outcome: actualOutcome,
+        handleClosedCalls: handleClosed.mock.calls.length,
+      }).toEqual({
+        name: testCase.name,
+        outcome: testCase.expectedOutcome,
+        handleClosedCalls: 1,
+      });
+    }
+  });
+
+  it('does not call handleClosed while the socket stays open', async () => {
+    const { socket } = createHarness();
+    const handleClosed = jest.fn((): void => undefined);
+    const sideband = new OpenAiLiveSessionSideband(
+      () => socket,
+      () => 'key-1',
+      jest.fn(),
+    );
+    const attached = sideband.attach(
+      'live_123',
+      () => Promise.resolve(),
+      handleClosed,
+    );
+
+    socket.emit('open', {});
+    await attached;
+    socket.emit('message', { data: '{"type":"session.updated"}' });
+
+    expect(handleClosed.mock.calls.length).toBe(0);
+  });
+});

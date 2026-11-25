@@ -10,10 +10,9 @@ const delegationCreated = (eventId: string, delegation: unknown) => ({
 
 const createHandler = () => {
   const bridge = mock<VoiceConsoleDelegationBridge>();
-  const send = jest.fn((_event: Record<string, unknown>): void => undefined);
   const logError = jest.fn((_message: string): void => undefined);
-  const handler = new VoiceConsoleSidebandHandler(bridge, send, logError);
-  return { bridge, send, logError, handler };
+  const handler = new VoiceConsoleSidebandHandler(bridge, logError);
+  return { bridge, logError, handler };
 };
 
 describe('VoiceConsoleSidebandHandler owner speech', () => {
@@ -68,7 +67,7 @@ describe('VoiceConsoleSidebandHandler owner speech', () => {
   });
 
   it('ignores output transcript deltas of the assistant', async () => {
-    const { bridge, send, logError, handler } = createHandler();
+    const { bridge, logError, handler } = createHandler();
 
     await handler.handleServerEvent({
       type: 'session.output_transcript.delta',
@@ -81,15 +80,14 @@ describe('VoiceConsoleSidebandHandler owner speech', () => {
     expect({
       bridgedOwner: bridge.handleOwnerTranscriptDelta.mock.calls.length,
       bridgedDelegation: bridge.handleDelegationCreated.mock.calls.length,
-      sent: send.mock.calls.length,
       logged: logError.mock.calls.length,
-    }).toEqual({ bridgedOwner: 0, bridgedDelegation: 0, sent: 0, logged: 0 });
+    }).toEqual({ bridgedOwner: 0, bridgedDelegation: 0, logged: 0 });
   });
 });
 
 describe('VoiceConsoleSidebandHandler delegation', () => {
   it('hands the delegation id of a created delegation to the bridge', async () => {
-    const { bridge, send, handler } = createHandler();
+    const { bridge, handler } = createHandler();
 
     await handler.handleServerEvent(
       delegationCreated('d1', { id: 'delegation_1', type: 'client' }),
@@ -99,8 +97,7 @@ describe('VoiceConsoleSidebandHandler delegation', () => {
       delegationIds: bridge.handleDelegationCreated.mock.calls.map(
         (call) => call[0],
       ),
-      sent: send.mock.calls.length,
-    }).toEqual({ delegationIds: ['delegation_1'], sent: 0 });
+    }).toEqual({ delegationIds: ['delegation_1'] });
   });
 
   it('logs and does not call the bridge for a created delegation without a string id', async () => {

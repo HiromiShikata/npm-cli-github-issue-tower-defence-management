@@ -481,3 +481,36 @@ describe('ClaudeCodeVoiceConsoleProcess turn timeout', () => {
     expect(clearTimer).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ClaudeCodeVoiceConsoleProcess stdin error restart', () => {
+  it('rejects the pending turn, logs the error, kills the child, and answers the next utterance from a fresh child', async () => {
+    const { process, children, spawn, logError } = createProcess();
+    process.start(LAUNCH);
+    const turn = process.sendOwnerUtterance('質問');
+    await flush();
+
+    children[0]?.emitStdinError(new Error('EPIPE: broken pipe'));
+
+    await expect(turn).rejects.toThrow('EPIPE: broken pipe');
+    const logged = logError.mock.calls.map((call) => call[0]).join('\n');
+    expect({
+      logged: logged.includes('EPIPE: broken pipe'),
+      firstChildKills: children[0]?.kill.mock.calls.length,
+    }).toEqual({ logged: true, firstChildKills: 1 });
+
+    const next = process.sendOwnerUtterance('次の質問');
+    const nextOutcome = next.then(
+      (value) => value,
+      (error: unknown) =>
+        error instanceof Error ? `rejected: ${error.message}` : 'rejected',
+    );
+    await flush();
+    expect(spawn.mock.calls.length).toBe(2);
+
+    children[1]?.emitStdout(resultLine({ result: '次の回答' }));
+    await flush();
+    expect(
+      await Promise.race([nextOutcome, flush().then(() => 'still pending')]),
+    ).toBe('次の回答');
+  });
+});
