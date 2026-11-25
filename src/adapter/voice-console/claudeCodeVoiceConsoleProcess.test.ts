@@ -698,3 +698,56 @@ describe('ClaudeCodeVoiceConsoleProcess child exit restart', () => {
     }
   });
 });
+
+describe('ClaudeCodeVoiceConsoleProcess child error event', () => {
+  it('kills the live child on an error event, rejects the pending turn with the message, and answers the next utterance from a fresh child that a late exit of the old child does not affect', async () => {
+    const { process, children, spawn, logError } = createProcess();
+    process.start(LAUNCH);
+    const pending = process.sendOwnerUtterance('途中の質問');
+    const pendingOutcome = pending.then(
+      () => 'resolved',
+      (error: unknown) => (error instanceof Error ? error.message : 'rejected'),
+    );
+    await flush();
+
+    children[0]?.emitError(new Error('pipe broke'));
+    const pendingMessage = await pendingOutcome;
+    const loggedAfterError = logError.mock.calls
+      .map((call) => call[0])
+      .join('\n');
+    const killsAfterError = children[0]?.kill.mock.calls.length;
+
+    const next = process.sendOwnerUtterance('次の質問');
+    const nextOutcome = next.then(
+      (value) => value,
+      (error: unknown) =>
+        error instanceof Error ? `rejected: ${error.message}` : 'rejected',
+    );
+    await flush();
+
+    children[0]?.emitExit(1, null);
+    await flush();
+    children[1]?.emitStdout(resultLine({ result: '新しい子の回答' }));
+    await flush();
+    const answer = await Promise.race([
+      nextOutcome,
+      flush().then(() => 'still pending'),
+    ]);
+
+    expect({
+      pendingIncludesMessage: pendingMessage.includes('pipe broke'),
+      loggedMessage: loggedAfterError.includes('pipe broke'),
+      killsOfOldChild: killsAfterError,
+      spawnCalls: spawn.mock.calls.length,
+      killsOfFreshChild: children[1]?.kill.mock.calls.length,
+      answer,
+    }).toEqual({
+      pendingIncludesMessage: true,
+      loggedMessage: true,
+      killsOfOldChild: 1,
+      spawnCalls: 2,
+      killsOfFreshChild: 0,
+      answer: '新しい子の回答',
+    });
+  });
+});
