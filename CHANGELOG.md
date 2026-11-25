@@ -1,3 +1,10 @@
+## [2.212.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.212.0...v2.212.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **remote-machine-status:** use a unique temporary file per write ([#3779](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3779)) ([0b2a190](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0b2a1909de5e1788ed561949da009bda64750e28))
+
 # [2.212.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.211.2...v2.212.0) (2026-11-25)
 
 
