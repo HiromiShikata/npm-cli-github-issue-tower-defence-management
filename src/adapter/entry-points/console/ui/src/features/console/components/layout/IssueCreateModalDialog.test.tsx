@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   act,
   fireEvent,
@@ -1741,6 +1743,76 @@ describe('IssueCreateModalDialog', () => {
         previewBeforeAttachments: true,
       });
       unmount();
+    });
+
+    describe('layout of the open preview under the real index.css', () => {
+      const INDEX_CSS_PATH = join(__dirname, '../../../../index.css');
+      let injectedStyle: HTMLStyleElement | null = null;
+
+      beforeEach(() => {
+        injectedStyle = document.createElement('style');
+        injectedStyle.textContent = readFileSync(INDEX_CSS_PATH, 'utf-8');
+        document.head.appendChild(injectedStyle);
+      });
+
+      afterEach(() => {
+        injectedStyle?.remove();
+        injectedStyle = null;
+      });
+
+      const readOpenPreviewStyles = async () => {
+        const { unmount } = await renderWithFiles(imageFiles());
+        fireEvent.click(thumbnailButtonFor('a.png'));
+        const preview = screen.getByTestId(PREVIEW_TEST_ID);
+        const bar = preview.querySelector(
+          '.console-task-create-dialog-file-preview-bar',
+        );
+        const image = preview.querySelector('img');
+        if (bar === null || image === null) {
+          throw new Error('Open preview is missing its bar or image');
+        }
+        const panelStyle = window.getComputedStyle(preview);
+        const barStyle = window.getComputedStyle(bar);
+        const imageStyle = window.getComputedStyle(image);
+        const styles = {
+          panel: {
+            overflowY: panelStyle.overflowY,
+            maxHeight: panelStyle.maxHeight,
+          },
+          bar: { position: barStyle.position, top: barStyle.top },
+          image: {
+            width: imageStyle.width,
+            height: imageStyle.height,
+            objectFit: imageStyle.objectFit,
+            maxHeight: imageStyle.maxHeight,
+          },
+        };
+        unmount();
+        return styles;
+      };
+
+      it('makes the preview panel scroll vertically within a 45dvh cap', async () => {
+        const styles = await readOpenPreviewStyles();
+        expect(styles.panel).toEqual({
+          overflowY: 'auto',
+          maxHeight: '45dvh',
+        });
+      });
+
+      it('keeps the close bar sticky at the top of the scrolling panel', async () => {
+        const styles = await readOpenPreviewStyles();
+        expect(styles.bar).toEqual({ position: 'sticky', top: '0px' });
+      });
+
+      it('shows the image at full panel width with auto height and no object-fit cropping or 45vh cap', async () => {
+        const styles = await readOpenPreviewStyles();
+        expect(styles.image).toEqual({
+          width: '100%',
+          height: 'auto',
+          objectFit: '',
+          maxHeight: '',
+        });
+      });
     });
 
     it('hides the preview when the Close preview button is clicked', async () => {
