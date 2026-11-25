@@ -22,10 +22,8 @@ export type LegoDockerArguments = {
 export const buildLegoDockerArgs = (input: LegoDockerArguments): string[] => [
   'run',
   '--rm',
-  '--user',
-  `${input.hostUserId}:${input.hostGroupId}`,
-  '-p',
-  '80:80',
+  '--network',
+  'host',
   '-v',
   `${input.acmeDataDirectory}:/.lego`,
   LEGO_DOCKER_IMAGE,
@@ -43,6 +41,27 @@ export const buildLegoDockerArgs = (input: LegoDockerArguments): string[] => [
   ...(input.mode === 'renew'
     ? ['--renew-days', String(CERTIFICATE_RENEWAL_THRESHOLD_DAYS)]
     : []),
+];
+
+export type LegoChownDockerArguments = {
+  acmeDataDirectory: string;
+  hostUserId: number;
+  hostGroupId: number;
+};
+
+export const buildLegoChownDockerArgs = (
+  input: LegoChownDockerArguments,
+): string[] => [
+  'run',
+  '--rm',
+  '-v',
+  `${input.acmeDataDirectory}:/.lego`,
+  '--entrypoint',
+  'chown',
+  LEGO_DOCKER_IMAGE,
+  '-R',
+  `${input.hostUserId}:${input.hostGroupId}`,
+  '/.lego',
 ];
 
 export const selectCertificateAcquisitionMode = (

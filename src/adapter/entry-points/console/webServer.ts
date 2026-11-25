@@ -101,8 +101,10 @@ import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRe
 import { GraphqlRateLimitError } from '../../repositories/issue/GraphqlProjectItemRepository';
 import {
   CERTIFICATE_RENEWAL_INTERVAL_MS,
+  buildLegoChownDockerArgs,
   buildLegoDockerArgs,
   certificateFilePaths,
+  LegoCommandResult,
   LETS_ENCRYPT_STAGING_DIRECTORY_URL,
   runDockerLegoCommand,
   selectCertificateAcquisitionMode,
@@ -1605,6 +1607,30 @@ const listenHttpsServer = (server: https.Server, port: number): Promise<void> =>
     });
   });
 
+const handBackAcmeDataDirectory = async (
+  options: StartWebServerOptions,
+  acmeDataDirectory: string,
+): Promise<void> => {
+  const hostUserId = process.getuid?.() ?? 0;
+  const hostGroupId = process.getgid?.() ?? 0;
+  const handBackFailureMessagePrefix = `failed to hand ${acmeDataDirectory} back to uid ${hostUserId}:${hostGroupId}`;
+  try {
+    const result = await (options.runLegoCommand ?? runDockerLegoCommand)(
+      buildLegoChownDockerArgs({
+        acmeDataDirectory,
+        hostUserId,
+        hostGroupId,
+      }),
+    );
+    if (result.exitCode !== 0) {
+      console.error(`${handBackFailureMessagePrefix}: ${result.output}`);
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`${handBackFailureMessagePrefix}: ${reason}`);
+  }
+};
+
 const certificateAcquisition = async (
   options: StartWebServerOptions,
   httpsServer: https.Server | null,
@@ -1636,9 +1662,12 @@ const certificateAcquisition = async (
     hostGroupId: process.getgid?.() ?? 0,
   });
   try {
-    const result = await (options.runLegoCommand ?? runDockerLegoCommand)(
-      command,
-    );
+    let result: LegoCommandResult;
+    try {
+      result = await (options.runLegoCommand ?? runDockerLegoCommand)(command);
+    } finally {
+      await handBackAcmeDataDirectory(options, options.acmeDataDirectory);
+    }
     if (result.exitCode !== 0) {
       console.error(result.output);
       if (
