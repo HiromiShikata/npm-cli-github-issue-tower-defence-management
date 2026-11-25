@@ -5118,6 +5118,217 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       processExitSpy.mockRestore();
     });
 
+    it('should pass HTTPS and ACME options to the web server', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveWeb',
+        '--configFilePath',
+        configFilePath,
+        '--port',
+        '12345',
+        '--httpsPort',
+        '8443',
+        '--acmeIpAddress',
+        '127.0.0.1',
+        '--acmeDataDirectory',
+        '/var/cache/tdpm/acme',
+        '--acmeServerUrl',
+        'https://acme-staging-v02.api.letsencrypt.org/directory',
+        '--dashboardProjectNames',
+        'acme',
+      ]);
+
+      expect(mockStartWebServer.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          port: 12345,
+          httpsPort: 8443,
+          acmeIpAddress: '127.0.0.1',
+          acmeDataDirectory: '/var/cache/tdpm/acme',
+          acmeServerUrl:
+            'https://acme-staging-v02.api.letsencrypt.org/directory',
+        }),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('should use the production ACME server and cache ACME directory by default', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'serveWeb',
+        '--configFilePath',
+        configFilePath,
+        '--httpsPort',
+        '8443',
+        '--acmeIpAddress',
+        '127.0.0.1',
+        '--dashboardProjectNames',
+        'acme',
+      ]);
+
+      expect(mockStartWebServer.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          acmeDataDirectory: path.join(cacheHomeDir, 'tdpm', 'acme'),
+          acmeServerUrl: 'https://acme-v02.api.letsencrypt.org/directory',
+        }),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('should reject exactly one HTTPS option and name both options', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveWeb',
+          '--configFilePath',
+          configFilePath,
+          '--httpsPort',
+          '8443',
+          '--dashboardProjectNames',
+          'acme',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('--httpsPort'),
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('--acmeIpAddress'),
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(mockStartWebServer).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
+    it.each([
+      { option: '--httpsPort', value: '0' },
+      { option: '--httpsPort', value: '65536' },
+      { option: '--httpsPort', value: 'not-a-port' },
+      { option: '--acmeIpAddress', value: '127.0.0.999' },
+      { option: '--acmeIpAddress', value: '01.2.3.4' },
+    ])(
+      'should reject invalid $option value $value',
+      async ({ option, value }) => {
+        writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation();
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(() => {
+            throw new Error('process.exit called');
+          });
+
+        await expect(
+          program.parseAsync([
+            'node',
+            'test',
+            'serveWeb',
+            '--configFilePath',
+            configFilePath,
+            option,
+            value,
+            '--dashboardProjectNames',
+            'acme',
+          ]),
+        ).rejects.toThrow('process.exit called');
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        expect(mockStartWebServer).not.toHaveBeenCalled();
+        consoleErrorSpy.mockRestore();
+        processExitSpy.mockRestore();
+      },
+    );
+
+    it.each(['0x1F', '1e3', '443abc', ' 443', '0', '65536', '1.5'])(
+      'should reject malformed HTTPS port value %s',
+      async (value) => {
+        writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation();
+        const processExitSpy = jest
+          .spyOn(process, 'exit')
+          .mockImplementation(() => {
+            throw new Error('process.exit called');
+          });
+
+        await expect(
+          program.parseAsync([
+            'node',
+            'test',
+            'serveWeb',
+            '--configFilePath',
+            configFilePath,
+            '--httpsPort',
+            value,
+            '--acmeIpAddress',
+            '127.0.0.1',
+            '--dashboardProjectNames',
+            'acme',
+          ]),
+        ).rejects.toThrow('process.exit called');
+        expect(processExitSpy).toHaveBeenCalledWith(1);
+        expect(mockStartWebServer).not.toHaveBeenCalled();
+        consoleErrorSpy.mockRestore();
+        processExitSpy.mockRestore();
+      },
+    );
+
+    it('should reject equal HTTP and HTTPS ports and name both options', async () => {
+      writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'serveWeb',
+          '--configFilePath',
+          configFilePath,
+          '--port',
+          '9981',
+          '--httpsPort',
+          '9981',
+          '--acmeIpAddress',
+          '127.0.0.1',
+          '--dashboardProjectNames',
+          'acme',
+        ]),
+      ).rejects.toThrow('process.exit called');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('--port'),
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('--httpsPort'),
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(mockStartWebServer).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
+
     it('should inject the resolved project and issue repository into the server', async () => {
       writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
