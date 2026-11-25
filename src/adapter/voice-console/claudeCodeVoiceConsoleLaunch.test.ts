@@ -184,74 +184,126 @@ describe('buildClaudeCodeVoiceConsoleLaunch', () => {
   });
 });
 
-describe('buildClaudeCodeVoiceConsoleLaunch child environment allowlist', () => {
-  const SECRET_BASE_ENV: Record<string, string | undefined> = {
-    PATH: '/usr/bin',
-    HOME: '/home/test',
-    LANG: 'ja_JP.UTF-8',
-    OPENAI_API_KEY: 'openai-key',
-    ANTHROPIC_API_KEY: 'anthropic-key',
-    ANTHROPIC_API_KEY_PERSONAL: 'anthropic-personal-key',
-    ANTHROPIC_API_KEY_PRIVATE: 'anthropic-private-key',
-    SOME_SECRET: 'arbitrary-secret',
-    ANTHROPIC_BASE_URL: 'https://old.example',
-  };
+const REMOVED_ENV_NAMES = [
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_API_KEY_PERSONAL',
+  'ANTHROPIC_API_KEY_PRIVATE',
+  'CLAUDE_CODE_SESSION_ID',
+];
 
-  it('passes only allowlisted inherited variables, the OAuth token, and the proxy URL when it is set', () => {
-    const cases = [
+const comparable = (value: Record<string, unknown>): string =>
+  JSON.stringify(value, Object.keys(value).sort());
+
+const summarizeChildEnv = (env: Record<string, string>) => ({
+  GH_TOKEN: env.GH_TOKEN,
+  SSH_AUTH_SOCK: env.SSH_AUTH_SOCK,
+  OPENAI_API_KEY: env.OPENAI_API_KEY,
+  ARBITRARY_SETTING: env.ARBITRARY_SETTING,
+  CLAUDE_CODE_OAUTH_TOKEN: env.CLAUDE_CODE_OAUTH_TOKEN,
+  ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL,
+  removedNamesPresent: REMOVED_ENV_NAMES.filter((name) => name in env),
+  unsetValuePresent: 'UNSET_VALUE' in env,
+});
+
+describe('buildClaudeCodeVoiceConsoleLaunch child environment', () => {
+  const SELECTED_TOKEN = 'selected-token';
+
+  it('passes the console environment on, removing only the API key and session id variables', () => {
+    const cases: {
+      name: string;
+      baseEnv: Record<string, string | undefined>;
+      proxyBaseUrl: string | null;
+      expected: Record<string, unknown>;
+    }[] = [
       {
-        name: 'proxy URL given',
-        proxyBaseUrl: PROXY_BASE_URL,
-        present: {
+        name: 'full console environment with the proxy up',
+        baseEnv: {
           PATH: '/usr/bin',
           HOME: '/home/test',
-          LANG: 'ja_JP.UTF-8',
-          CLAUDE_CODE_OAUTH_TOKEN: OAUTH_TOKEN,
+          GH_TOKEN: 'gh-token',
+          SSH_AUTH_SOCK: '/tmp/ssh-agent.sock',
+          OPENAI_API_KEY: 'openai-key',
+          ARBITRARY_SETTING: 'kept-value',
+          ANTHROPIC_API_KEY: 'api-key-1',
+          ANTHROPIC_API_KEY_PERSONAL: 'api-key-2',
+          ANTHROPIC_API_KEY_PRIVATE: 'api-key-3',
+          CLAUDE_CODE_SESSION_ID: 'console-session',
+          CLAUDE_CODE_OAUTH_TOKEN: 'inherited-token',
+          ANTHROPIC_BASE_URL: 'https://inherited.example',
+        },
+        proxyBaseUrl: PROXY_BASE_URL,
+        expected: {
+          GH_TOKEN: 'gh-token',
+          SSH_AUTH_SOCK: '/tmp/ssh-agent.sock',
+          OPENAI_API_KEY: 'openai-key',
+          ARBITRARY_SETTING: 'kept-value',
+          CLAUDE_CODE_OAUTH_TOKEN: SELECTED_TOKEN,
           ANTHROPIC_BASE_URL: PROXY_BASE_URL,
+          removedNamesPresent: [],
+          unsetValuePresent: false,
         },
       },
       {
-        name: 'proxy URL null',
-        proxyBaseUrl: null,
-        present: {
+        name: 'full console environment with the proxy down',
+        baseEnv: {
           PATH: '/usr/bin',
-          HOME: '/home/test',
-          LANG: 'ja_JP.UTF-8',
-          CLAUDE_CODE_OAUTH_TOKEN: OAUTH_TOKEN,
+          GH_TOKEN: 'gh-token',
+          SSH_AUTH_SOCK: '/tmp/ssh-agent.sock',
+          OPENAI_API_KEY: 'openai-key',
+          ARBITRARY_SETTING: 'kept-value',
+          ANTHROPIC_API_KEY: 'api-key-1',
+          CLAUDE_CODE_SESSION_ID: 'console-session',
+          ANTHROPIC_BASE_URL: 'https://inherited.example',
+        },
+        proxyBaseUrl: null,
+        expected: {
+          GH_TOKEN: 'gh-token',
+          SSH_AUTH_SOCK: '/tmp/ssh-agent.sock',
+          OPENAI_API_KEY: 'openai-key',
+          ARBITRARY_SETTING: 'kept-value',
+          CLAUDE_CODE_OAUTH_TOKEN: SELECTED_TOKEN,
+          ANTHROPIC_BASE_URL: undefined,
+          removedNamesPresent: [],
+          unsetValuePresent: false,
+        },
+      },
+      {
+        name: 'undefined inherited values are not passed',
+        baseEnv: {
+          PATH: '/usr/bin',
+          GH_TOKEN: undefined,
+          OPENAI_API_KEY: undefined,
+          ARBITRARY_SETTING: undefined,
+          UNSET_VALUE: undefined,
+        },
+        proxyBaseUrl: PROXY_BASE_URL,
+        expected: {
+          GH_TOKEN: undefined,
+          SSH_AUTH_SOCK: undefined,
+          OPENAI_API_KEY: undefined,
+          ARBITRARY_SETTING: undefined,
+          CLAUDE_CODE_OAUTH_TOKEN: SELECTED_TOKEN,
+          ANTHROPIC_BASE_URL: PROXY_BASE_URL,
+          removedNamesPresent: [],
+          unsetValuePresent: false,
         },
       },
     ];
 
-    for (const testCase of cases) {
+    const mismatches = cases.flatMap((testCase) => {
       const launch = buildClaudeCodeVoiceConsoleLaunch({
-        oauthToken: OAUTH_TOKEN,
+        oauthToken: SELECTED_TOKEN,
         proxyBaseUrl: testCase.proxyBaseUrl,
         effortFlagSupported: true,
         backendNote: BACKEND_NOTE,
-        baseEnv: SECRET_BASE_ENV,
+        baseEnv: testCase.baseEnv,
       });
+      const actual = summarizeChildEnv(launch.env);
+      return comparable(actual) === comparable(testCase.expected)
+        ? []
+        : [{ name: testCase.name, actual, expected: testCase.expected }];
+    });
 
-      const absentNames = [
-        'OPENAI_API_KEY',
-        'ANTHROPIC_API_KEY',
-        'ANTHROPIC_API_KEY_PERSONAL',
-        'ANTHROPIC_API_KEY_PRIVATE',
-        'SOME_SECRET',
-      ].filter((name) => name in launch.env);
-      const presentMismatches = Object.entries(testCase.present).filter(
-        ([name, value]) => launch.env[name] !== value,
-      );
-      expect({
-        name: testCase.name,
-        absentNames,
-        presentMismatches,
-        baseUrlPresent: 'ANTHROPIC_BASE_URL' in launch.env,
-      }).toEqual({
-        name: testCase.name,
-        absentNames: [],
-        presentMismatches: [],
-        baseUrlPresent: testCase.proxyBaseUrl !== null,
-      });
-    }
+    expect(mismatches).toEqual([]);
   });
 });

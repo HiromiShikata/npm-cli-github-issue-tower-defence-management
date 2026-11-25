@@ -283,7 +283,7 @@ describe('createClaudeChildSpawn', () => {
       env: Record<string, string>;
     }[] = [
       {
-        name: 'allowlisted environment',
+        name: 'environment passed through',
         command: 'claude-agent',
         args: ['--agent', 'general', '-p'],
         env: { PATH: '/usr/bin', CLAUDE_CODE_OAUTH_TOKEN: 'token' },
