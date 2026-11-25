@@ -1,20 +1,32 @@
 import type {
-  OauthTokenSelectHandlerInput,
-  OauthTokenSelectHandlerOutput,
-} from '../entry-points/handlers/OauthTokenSelectHandler';
+  LiveSessionOauthTokenSelectHandlerInput,
+  LiveSessionOauthTokenSelectHandlerOutput,
+} from '../entry-points/handlers/LiveSessionOauthTokenSelectHandler';
 import { selectClaudeCodeVoiceConsoleOauthToken } from './claudeCodeVoiceConsoleToken';
 
-const createFakeHandler = (output: OauthTokenSelectHandlerOutput) => {
+const SELECTION_SETTINGS = {
+  maxConcurrentSessionCount: 3,
+  fullSpeedFiveHourFreeRatio: 0.5,
+  minFiveHourFreeRatio: 0.1,
+  minSevenDayFreeRatio: 0.1,
+  fiveHourShareConsumedPerSessionHour: 0.2,
+  sevenDayShareConsumedPerSessionHour: 0.02,
+};
+
+const createFakeHandler = (
+  output: LiveSessionOauthTokenSelectHandlerOutput,
+) => {
   const handle = jest.fn(
-    (_input: OauthTokenSelectHandlerInput): OauthTokenSelectHandlerOutput =>
-      output,
+    (
+      _input: LiveSessionOauthTokenSelectHandlerInput,
+    ): LiveSessionOauthTokenSelectHandlerOutput => output,
   );
   return { handler: { handle }, handle };
 };
 
 const INPUT_CASES: {
   name: string;
-  input: OauthTokenSelectHandlerInput;
+  input: LiveSessionOauthTokenSelectHandlerInput;
 }[] = [
   {
     name: 'token list path and cache directory given',
@@ -22,6 +34,7 @@ const INPUT_CASES: {
       tokenListJsonPath: '/etc/tdpm/tokens.json',
       cacheDirectory: '/var/cache/tdpm',
       nowEpochSeconds: 1_800_000_000,
+      selectionSettings: SELECTION_SETTINGS,
     },
   },
   {
@@ -30,6 +43,7 @@ const INPUT_CASES: {
       tokenListJsonPath: null,
       cacheDirectory: null,
       nowEpochSeconds: 1_800_000_000,
+      selectionSettings: SELECTION_SETTINGS,
     },
   },
 ];
@@ -71,23 +85,38 @@ describe('selectClaudeCodeVoiceConsoleOauthToken', () => {
   });
 
   it('returns an error with the diagnostics when no token is eligible', () => {
-    const cases = [
+    const cases: {
+      name: string;
+      output: LiveSessionOauthTokenSelectHandlerOutput;
+    }[] = [
       {
         name: 'the token list is empty',
-        diagnostics: ['token list has no entries'],
+        output: {
+          selectedToken: null,
+          selectedName: null,
+          diagnostics: ['token list has no entries'],
+        },
       },
       {
         name: 'every token is rate limited',
-        diagnostics: ['account-a: limited', 'account-b: limited'],
+        output: {
+          selectedToken: null,
+          selectedName: null,
+          diagnostics: ['account-a: limited', 'account-b: limited'],
+        },
+      },
+      {
+        name: 'a token without a name is not usable',
+        output: {
+          selectedToken: 'token-a',
+          selectedName: null,
+          diagnostics: ['account name missing'],
+        },
       },
     ];
 
     for (const testCase of cases) {
-      const { handler } = createFakeHandler({
-        selectedToken: null,
-        selectedName: null,
-        diagnostics: testCase.diagnostics,
-      });
+      const { handler } = createFakeHandler(testCase.output);
 
       const result = selectClaudeCodeVoiceConsoleOauthToken(
         INPUT_CASES[0].input,
@@ -98,12 +127,13 @@ describe('selectClaudeCodeVoiceConsoleOauthToken', () => {
         name: testCase.name,
         diagnostics: 'error' in result ? result.diagnostics : null,
         hasToken: 'token' in result,
+        errorIsText: 'error' in result && result.error.length > 0,
       }).toEqual({
         name: testCase.name,
-        diagnostics: testCase.diagnostics,
+        diagnostics: testCase.output.diagnostics,
         hasToken: false,
+        errorIsText: true,
       });
-      expect('error' in result && result.error.length > 0).toBe(true);
     }
   });
 

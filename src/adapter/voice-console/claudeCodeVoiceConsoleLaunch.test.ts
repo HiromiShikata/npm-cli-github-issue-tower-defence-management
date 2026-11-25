@@ -183,3 +183,75 @@ describe('buildClaudeCodeVoiceConsoleLaunch', () => {
     expect(apiKeyNames).toEqual([]);
   });
 });
+
+describe('buildClaudeCodeVoiceConsoleLaunch child environment allowlist', () => {
+  const SECRET_BASE_ENV: Record<string, string | undefined> = {
+    PATH: '/usr/bin',
+    HOME: '/home/test',
+    LANG: 'ja_JP.UTF-8',
+    OPENAI_API_KEY: 'openai-key',
+    ANTHROPIC_API_KEY: 'anthropic-key',
+    ANTHROPIC_API_KEY_PERSONAL: 'anthropic-personal-key',
+    ANTHROPIC_API_KEY_PRIVATE: 'anthropic-private-key',
+    SOME_SECRET: 'arbitrary-secret',
+    ANTHROPIC_BASE_URL: 'https://old.example',
+  };
+
+  it('passes only allowlisted inherited variables, the OAuth token, and the proxy URL when it is set', () => {
+    const cases = [
+      {
+        name: 'proxy URL given',
+        proxyBaseUrl: PROXY_BASE_URL,
+        present: {
+          PATH: '/usr/bin',
+          HOME: '/home/test',
+          LANG: 'ja_JP.UTF-8',
+          CLAUDE_CODE_OAUTH_TOKEN: OAUTH_TOKEN,
+          ANTHROPIC_BASE_URL: PROXY_BASE_URL,
+        },
+      },
+      {
+        name: 'proxy URL null',
+        proxyBaseUrl: null,
+        present: {
+          PATH: '/usr/bin',
+          HOME: '/home/test',
+          LANG: 'ja_JP.UTF-8',
+          CLAUDE_CODE_OAUTH_TOKEN: OAUTH_TOKEN,
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const launch = buildClaudeCodeVoiceConsoleLaunch({
+        oauthToken: OAUTH_TOKEN,
+        proxyBaseUrl: testCase.proxyBaseUrl,
+        effortFlagSupported: true,
+        backendNote: BACKEND_NOTE,
+        baseEnv: SECRET_BASE_ENV,
+      });
+
+      const absentNames = [
+        'OPENAI_API_KEY',
+        'ANTHROPIC_API_KEY',
+        'ANTHROPIC_API_KEY_PERSONAL',
+        'ANTHROPIC_API_KEY_PRIVATE',
+        'SOME_SECRET',
+      ].filter((name) => name in launch.env);
+      const presentMismatches = Object.entries(testCase.present).filter(
+        ([name, value]) => launch.env[name] !== value,
+      );
+      expect({
+        name: testCase.name,
+        absentNames,
+        presentMismatches,
+        baseUrlPresent: 'ANTHROPIC_BASE_URL' in launch.env,
+      }).toEqual({
+        name: testCase.name,
+        absentNames: [],
+        presentMismatches: [],
+        baseUrlPresent: testCase.proxyBaseUrl !== null,
+      });
+    }
+  });
+});

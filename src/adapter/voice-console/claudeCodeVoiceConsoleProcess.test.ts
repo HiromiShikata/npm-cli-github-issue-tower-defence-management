@@ -1,7 +1,10 @@
 import { EventEmitter } from 'events';
 import {
+  CLAUDE_CODE_TURN_TIMEOUT_MS,
   ClaudeCodeVoiceConsoleProcess,
   type ClaudeCodeChildProcess,
+  type ClaudeCodeTurnTimerHandle,
+  type ClaudeCodeTurnTimers,
 } from './claudeCodeVoiceConsoleProcess';
 
 const LAUNCH = {
@@ -21,6 +24,7 @@ const createFakeChild = () => {
   const stdout = new EventEmitter();
   const stderr = new EventEmitter();
   const exitEmitter = new EventEmitter();
+  const stdinEmitter = new EventEmitter();
   const kill = jest.fn((): boolean => true);
 
   const child: ClaudeCodeChildProcess = {
@@ -30,6 +34,10 @@ const createFakeChild = () => {
         return true;
       },
       end: jest.fn(),
+      on: <Args extends unknown[]>(
+        event: 'error',
+        handler: (...args: Args) => void,
+      ) => stdinEmitter.on(event, handler),
     },
     stdout,
     stderr,
@@ -56,17 +64,24 @@ const createFakeChild = () => {
     emitError: (error: Error): void => {
       exitEmitter.emit('error', error);
     },
+    emitStdinError: (error: Error): void => {
+      stdinEmitter.emit('error', error);
+    },
   };
 };
 
-const createProcess = () => {
+const createProcess = (options: { timers?: ClaudeCodeTurnTimers } = {}) => {
   const fake = createFakeChild();
   const spawn = jest.fn(
     (_command: string, _args: string[], _env: Record<string, string>) =>
       fake.child,
   );
   const logError = jest.fn((_message: string) => undefined);
-  const process = new ClaudeCodeVoiceConsoleProcess({ spawn, logError });
+  const process = new ClaudeCodeVoiceConsoleProcess({
+    spawn,
+    logError,
+    timers: options.timers,
+  });
   return { ...fake, spawn, logError, process };
 };
 
@@ -331,5 +346,103 @@ describe('ClaudeCodeVoiceConsoleProcess stop', () => {
         writes: written.length,
       }).toEqual({ name: testCase.name, killCalls: 1, writes: 0 });
     }
+  });
+});
+
+describe('ClaudeCodeVoiceConsoleProcess stdin errors', () => {
+  it('rejects the pending turn with a diagnostic error and logs it when stdin fails', async () => {
+    const { process, emitStdinError, logError } = createProcess();
+    process.start(LAUNCH);
+    const turn = process.sendOwnerUtterance('質問');
+    await flush();
+
+    expect(() => emitStdinError(new Error('EPIPE: broken pipe'))).not.toThrow();
+
+    await expect(turn).rejects.toThrow('EPIPE: broken pipe');
+    expect(logError.mock.calls.map((call) => call[0]).join('\n')).toContain(
+      'EPIPE: broken pipe',
+    );
+  });
+
+  it('logs a stdin error without throwing when no turn is pending', () => {
+    const { process, emitStdinError, logError } = createProcess();
+    process.start(LAUNCH);
+
+    expect(() => emitStdinError(new Error('EPIPE: broken pipe'))).not.toThrow();
+    expect(logError.mock.calls.map((call) => call[0]).join('\n')).toContain(
+      'EPIPE: broken pipe',
+    );
+  });
+});
+
+describe('ClaudeCodeVoiceConsoleProcess turn timeout', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['setImmediate'] });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('uses a 600000 millisecond turn timeout', () => {
+    expect(CLAUDE_CODE_TURN_TIMEOUT_MS).toBe(600000);
+  });
+
+  it('rejects a turn with no result within the timeout and serves the next turn', async () => {
+    const setTimer = jest.fn((callback: () => void, delayMs: number) =>
+      setTimeout(callback, delayMs),
+    );
+    const clearTimer = jest.fn((handle: ClaudeCodeTurnTimerHandle) =>
+      clearTimeout(handle),
+    );
+    const { process, written, emitStdout } = createProcess({
+      timers: { setTimeout: setTimer, clearTimeout: clearTimer },
+    });
+    process.start(LAUNCH);
+
+    const timedOut = process.sendOwnerUtterance('待たされる質問');
+    await flush();
+    expect(setTimer.mock.calls.map((call) => call[1])).toEqual([
+      CLAUDE_CODE_TURN_TIMEOUT_MS,
+    ]);
+
+    jest.advanceTimersByTime(CLAUDE_CODE_TURN_TIMEOUT_MS);
+
+    await expect(timedOut).rejects.toThrow(`${CLAUDE_CODE_TURN_TIMEOUT_MS} ms`);
+
+    const next = process.sendOwnerUtterance('次の質問');
+    const nextOutcome = next.then(
+      (value) => value,
+      (error: unknown) =>
+        error instanceof Error ? `rejected: ${error.message}` : 'rejected',
+    );
+    await flush();
+    expect(written).toHaveLength(2);
+    emitStdout(resultLine({ result: '次の回答' }));
+    await flush();
+
+    expect(
+      await Promise.race([nextOutcome, flush().then(() => 'still pending')]),
+    ).toBe('次の回答');
+  });
+
+  it('clears the timer when the result arrives before the timeout', async () => {
+    const setTimer = jest.fn((callback: () => void, delayMs: number) =>
+      setTimeout(callback, delayMs),
+    );
+    const clearTimer = jest.fn((handle: ClaudeCodeTurnTimerHandle) =>
+      clearTimeout(handle),
+    );
+    const { process, emitStdout } = createProcess({
+      timers: { setTimeout: setTimer, clearTimeout: clearTimer },
+    });
+    process.start(LAUNCH);
+
+    const turn = process.sendOwnerUtterance('早い質問');
+    await flush();
+    emitStdout(resultLine({ result: '早い回答' }));
+
+    await expect(turn).resolves.toBe('早い回答');
+    expect(clearTimer).toHaveBeenCalledTimes(1);
   });
 });
