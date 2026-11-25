@@ -2783,12 +2783,57 @@ body {
   border-radius: 6px;
 }
 
+.console-task-create-dialog-file-thumbnail-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  line-height: 0;
+  border-radius: 4px;
+  cursor: zoom-in;
+  flex-shrink: 0;
+}
+
+.console-task-create-dialog-file-thumbnail-button[aria-pressed='true'] {
+  outline: 2px solid #1f6feb;
+  outline-offset: 1px;
+}
+
+.console-task-create-dialog-file-thumbnail-button:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: 2px;
+}
+
 .console-task-create-dialog-file-thumbnail {
   width: 32px;
   height: 32px;
   object-fit: cover;
   border-radius: 4px;
   flex-shrink: 0;
+}
+
+.console-task-create-dialog-file-preview {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 18px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+}
+
+.console-task-create-dialog-file-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.console-task-create-dialog-file-preview-image {
+  display: block;
+  width: 100%;
+  max-height: 45vh;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #010409;
 }
 
 .console-task-create-dialog-file-name {

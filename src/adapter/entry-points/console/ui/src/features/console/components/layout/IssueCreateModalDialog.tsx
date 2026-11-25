@@ -155,6 +155,13 @@ export const IssueCreateModalDialog = ({
   const [thumbnailUrls, setThumbnailUrls] = useState<Map<File, string>>(
     new Map(),
   );
+  const [previewTarget, setPreviewTarget] = useState<File | null>(null);
+  const previewedFile =
+    previewTarget !== null && selectedFiles.includes(previewTarget)
+      ? previewTarget
+      : null;
+  const previewedUrl =
+    previewedFile === null ? undefined : thumbnailUrls.get(previewedFile);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,6 +330,31 @@ export const IssueCreateModalDialog = ({
             </button>
           </div>
         </div>
+        {previewedFile !== null && previewedUrl !== undefined && (
+          <div
+            className="console-task-create-dialog-file-preview"
+            data-testid="console-task-create-dialog-file-preview"
+          >
+            <div className="console-task-create-dialog-file-preview-bar">
+              <span className="console-task-create-dialog-file-name">
+                {previewedFile.name}
+              </span>
+              <button
+                type="button"
+                className="console-task-create-dialog-close"
+                aria-label="Close preview"
+                onClick={() => setPreviewTarget(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <img
+              src={previewedUrl}
+              alt={previewedFile.name}
+              className="console-task-create-dialog-file-preview-image"
+            />
+          </div>
+        )}
         <div className="console-task-create-dialog-body">
           <span className="console-task-create-dialog-section-label">
             Title
@@ -411,11 +443,22 @@ export const IssueCreateModalDialog = ({
                   className="console-task-create-dialog-file-item"
                 >
                   {thumbnailUrls.has(file) && (
-                    <img
-                      src={thumbnailUrls.get(file)}
-                      alt={file.name}
-                      className="console-task-create-dialog-file-thumbnail"
-                    />
+                    <button
+                      type="button"
+                      className="console-task-create-dialog-file-thumbnail-button"
+                      aria-pressed={previewedFile === file}
+                      onClick={() =>
+                        setPreviewTarget((prev) =>
+                          prev === file ? null : file,
+                        )
+                      }
+                    >
+                      <img
+                        src={thumbnailUrls.get(file)}
+                        alt={file.name}
+                        className="console-task-create-dialog-file-thumbnail"
+                      />
+                    </button>
                   )}
                   <span className="console-task-create-dialog-file-name">
                     {file.name}

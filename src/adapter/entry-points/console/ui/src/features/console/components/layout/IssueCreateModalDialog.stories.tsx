@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { userEvent } from 'storybook/test';
+import { userEvent, waitFor, within } from 'storybook/test';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import { IssueCreateModalDialog } from './IssueCreateModalDialog';
 
@@ -106,5 +106,21 @@ export const WithFileAttachments: Story = {
       new File(['image content'], 'screenshot.png', { type: 'image/png' }),
       new File(['text content'], 'notes.txt', { type: 'text/plain' }),
     ]);
+  },
+};
+
+export const WithScreenshotPreview: Story = {
+  play: async () => {
+    const fileInput = document.body.querySelector("input[type='file']");
+    if (!(fileInput instanceof HTMLInputElement)) {
+      throw new Error('File input is not rendered');
+    }
+    await userEvent.upload(fileInput, [
+      new File(['image content'], 'screenshot.png', { type: 'image/png' }),
+    ]);
+    const thumbnailButton = await waitFor(() =>
+      within(document.body).getByRole('button', { name: 'screenshot.png' }),
+    );
+    await userEvent.click(thumbnailButton);
   },
 };
