@@ -1,3 +1,10 @@
+## [2.209.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.209.1...v2.209.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **console:** keep the file preview bar flush with the panel top ([#3772](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3772)) ([a791d50](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a791d50752edd3dfd102517e277d525c2ec9556f))
+
 ## [2.209.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.209.0...v2.209.1) (2026-11-25)
 
 
