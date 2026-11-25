@@ -1,3 +1,10 @@
+# [2.207.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.4...v2.207.0) (2026-11-25)
+
+
+### Features
+
+* **console-ui:** preview task attachment screenshots at full size ([#3767](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3767)) ([dbd1f0e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dbd1f0e658f2c8a31b54ee809b3ecc268dacf02c))
+
 ## [2.206.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.3...v2.206.4) (2026-11-25)
 
 
