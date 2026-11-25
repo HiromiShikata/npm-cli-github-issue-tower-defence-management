@@ -11,7 +11,7 @@ export const buildLiveSessionRequestBody = (sdpOffer: string): string =>
     session: {
       model: 'gpt-live-1',
       instructions: VOICE_CONSOLE_LIVE_INSTRUCTIONS,
-      audio: { output: { voice: 'harema' } },
+      audio: { output: { voice: 'marin' } },
       delegation: { type: 'client' },
     },
     transport: { type: 'webrtc', sdp: sdpOffer },

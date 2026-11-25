@@ -1,3 +1,10 @@
+# [2.210.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.209.2...v2.210.0) (2026-11-25)
+
+
+### Features
+
+* **voice:** switch GPT-Live console voice to marin ([#3773](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3773)) ([04c9673](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/04c9673f9f261a4b1ccda518f7303fb725f72679))
+
 ## [2.209.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.209.1...v2.209.2) (2026-11-25)
 
 

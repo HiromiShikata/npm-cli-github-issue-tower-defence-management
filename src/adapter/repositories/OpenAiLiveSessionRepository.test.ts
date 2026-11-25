@@ -43,7 +43,7 @@ describe('OpenAiLiveSessionRepository', () => {
     expect(JSON.parse(requestBody)).toMatchObject({
       session: {
         model: 'gpt-live-1',
-        audio: { output: { voice: 'harema' } },
+        audio: { output: { voice: 'marin' } },
       },
       transport: { type: 'webrtc', sdp: 'OFFER-SDP' },
     });
@@ -283,7 +283,7 @@ describe('buildLiveSessionRequestBody', () => {
       session: {
         model: 'gpt-live-1',
         instructions: VOICE_CONSOLE_LIVE_INSTRUCTIONS,
-        audio: { output: { voice: 'harema' } },
+        audio: { output: { voice: 'marin' } },
         delegation: { type: 'client' },
       },
       transport: { type: 'webrtc', sdp: 'OFFER-SDP' },
