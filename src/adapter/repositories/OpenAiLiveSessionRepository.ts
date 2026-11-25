@@ -2,26 +2,17 @@ import {
   LiveSessionCreateResult,
   LiveSessionRepository,
 } from '../../domain/usecases/adapter-interfaces/LiveSessionRepository';
-import {
-  VOICE_CONSOLE_INSTRUCTIONS,
-  VOICE_CONSOLE_TOOL_DEFINITIONS,
-} from '../voice-console/voiceConsoleLiveSessionConfig';
+import { VOICE_CONSOLE_LIVE_INSTRUCTIONS } from '../voice-console/voiceConsoleLiveSessionConfig';
 
 const OPENAI_LIVE_SESSIONS_URL = 'https://api.openai.com/v1/live/sessions';
 
-const buildLiveSessionRequestBody = (sdpOffer: string): string =>
+export const buildLiveSessionRequestBody = (sdpOffer: string): string =>
   JSON.stringify({
     session: {
       model: 'gpt-live-1',
-      instructions: VOICE_CONSOLE_INSTRUCTIONS,
+      instructions: VOICE_CONSOLE_LIVE_INSTRUCTIONS,
       audio: { output: { voice: 'harema' } },
-      delegation: {
-        type: 'responses',
-        responses: {
-          model: 'gpt-6.2-astra',
-          tools: VOICE_CONSOLE_TOOL_DEFINITIONS,
-        },
-      },
+      delegation: { type: 'client' },
     },
     transport: { type: 'webrtc', sdp: sdpOffer },
   });

@@ -3,21 +3,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import { randomUUID } from 'crypto';
+import { execFileSync, spawn } from 'child_process';
 import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/LiveSessionRepository';
 import type { LiveSessionToolCallRunner } from '../../../domain/usecases/liveSession/LiveSessionToolCall';
 import type { VoiceConsoleServerEventHandler } from '../../repositories/OpenAiLiveSessionSideband';
-import { GitHubRepositoryFileReader } from '../../repositories/GitHubRepositoryFileReader';
-import { VoiceConsoleSession } from '../../voice-console/voiceConsoleSession';
-import { VoiceConsoleSidebandHandler } from '../../voice-console/voiceConsoleSideband';
+import { buildClaudeCodeVoiceConsoleLaunch } from '../../voice-console/claudeCodeVoiceConsoleLaunch';
 import {
-  type CreateTaskDefaults,
-  createStoriesListJsonPath,
-  NO_CREATE_TASK_DEFAULTS,
-  readCreateTaskDefaultsFromFile,
-} from '../../voice-console/voiceConsoleCreateTaskDefaults';
+  ClaudeCodeChildProcess,
+  ClaudeCodeVoiceConsoleProcess,
+} from '../../voice-console/claudeCodeVoiceConsoleProcess';
+import { selectClaudeCodeVoiceConsoleOauthToken } from '../../voice-console/claudeCodeVoiceConsoleToken';
+import { VOICE_CONSOLE_BACKEND_NOTE } from '../../voice-console/voiceConsoleLiveSessionConfig';
+import { VoiceConsoleDelegationBridge } from '../../voice-console/voiceConsoleDelegationBridge';
+import {
+  VoiceConsoleSendEvent,
+  VoiceConsoleSidebandHandler,
+} from '../../voice-console/voiceConsoleSideband';
+import { ensureProxyRunning } from '../../proxy/ensureProxyRunning';
+import { PROXY_PORT } from '../../proxy/RateLimitCache';
+import {
+  resolveCacheDirectory,
+  resolveTokenListJsonPath,
+} from '../handlers/OauthTokenSelectHandler';
 import { Project } from '../../../domain/entities/Project';
 import type {
   ConsoleFieldOption,
@@ -272,6 +282,7 @@ export type LiveSessionSidebandConnector = {
   attach(
     sessionId: string,
     handleServerEvent: VoiceConsoleServerEventHandler,
+    handleClosed?: () => void,
   ): Promise<void>;
 };
 
@@ -575,22 +586,11 @@ const parseRequestBody = (raw: string): Record<string, unknown> | null => {
   return parsed;
 };
 
-const readCreateTaskDefaults = async (
-  consoleDataOutputDir: string | null,
-  pjcode: string,
-): Promise<CreateTaskDefaults> => {
-  if (consoleDataOutputDir === null) {
-    return NO_CREATE_TASK_DEFAULTS;
-  }
-  return readCreateTaskDefaultsFromFile({
-    storiesListJsonPath: createStoriesListJsonPath({
-      consoleDataOutputDir,
-      pjcode,
-    }),
-    readTextFile: (filePath) => fs.promises.readFile(filePath, 'utf-8'),
-    logError: (message, error) => console.error(message, error),
-  });
-};
+const createStoriesListJsonPath = (input: {
+  consoleDataOutputDir: string;
+  pjcode: string;
+}): string =>
+  path.join(input.consoleDataOutputDir, input.pjcode, 'stories', 'list.json');
 
 const buildNameWithOwnerByPjcode = (
   options: WebServerOptions,
@@ -1090,43 +1090,100 @@ const resolveAirplaneSyncDeps = (
 
 const LIVE_SESSIONS_REQUEST_PATH = '/api/live/sessions';
 
-const buildVoiceConsoleSession = (
-  options: WebServerOptions,
-): VoiceConsoleSession => {
-  const requireIssueRepository = (): IssueRepository => {
-    const repository = options.issueRepository ?? null;
-    if (repository === null) {
-      throw new Error(
-        'issue repository is not configured for the voice console',
+const VOICE_CONSOLE_PROXY_BASE_URL = `http://127.0.0.1:${PROXY_PORT}`;
+
+const describeErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+let claudeEffortFlagSupport: boolean | null = null;
+
+// The check cl uses: the --effort flag is passed only when `claude --help` advertises it.
+const isClaudeEffortFlagSupported = (): boolean => {
+  if (claudeEffortFlagSupport === null) {
+    let helpText = '';
+    try {
+      helpText = execFileSync('claude', ['--help'], {
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+    } catch (error) {
+      console.error(
+        `claude --help failed; the voice console session runs without --effort: ${describeErrorMessage(error)}`,
       );
     }
-    return repository;
-  };
-  const resolveIssueRepository: ConsoleIssueRepositoryResolver =
-    options.resolveIssueRepository ?? (() => requireIssueRepository());
-  const repositoryFileReader = new GitHubRepositoryFileReader(
-    fetch,
-    (owner) => options.resolveGithubToken?.(owner) ?? '',
-  );
-  return new VoiceConsoleSession({
-    consoleDataOutputDir: options.consoleDataOutputDir,
-    projectPjcodes: options.dashboardProjectNames,
-    resolveIssueRepository,
-    searchIssues: (query) => requireIssueRepository().searchIssues(query),
-    getAuthenticatedUserLogin: () =>
-      requireIssueRepository().getAuthenticatedUserLogin(),
-    readRepositoryFile: (owner, repo, ref, filePath) =>
-      repositoryFileReader.readFile(owner, repo, ref, filePath),
-    runOperation: async (requestPath, body) =>
-      (await handleOperationApi(options, requestPath, body)) ?? {
-        statusCode: 503,
-        body: { error: 'operation_unavailable' },
-      },
-    newActionId: () => randomUUID(),
-    logError: (message) => console.error(message),
-    resolveCreateTaskDefaults: (pjcode) =>
-      readCreateTaskDefaults(options.consoleDataOutputDir, pjcode),
+    claudeEffortFlagSupport = helpText.includes('--effort');
+  }
+  return claudeEffortFlagSupport;
+};
+
+const startProxyForVoiceConsole = async (): Promise<string | null> => {
+  try {
+    return (await ensureProxyRunning(PROXY_PORT))
+      ? VOICE_CONSOLE_PROXY_BASE_URL
+      : null;
+  } catch (error) {
+    console.error(
+      `voice console could not start the token proxy; the Claude Code session runs without ANTHROPIC_BASE_URL: ${describeErrorMessage(error)}`,
+    );
+    return null;
+  }
+};
+
+type VoiceConsoleBackend = {
+  sendToBackend: (utterance: string) => Promise<string>;
+  stop: () => void;
+};
+
+const createFailedVoiceConsoleBackend = (
+  reason: string,
+): VoiceConsoleBackend => ({
+  sendToBackend: () => Promise.reject(new Error(reason)),
+  stop: () => undefined,
+});
+
+const spawnClaudeCodeChild = (
+  command: string,
+  args: string[],
+  env: Record<string, string>,
+): ClaudeCodeChildProcess =>
+  spawn(command, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+
+// One long-lived Claude Code process per voice session, launched like a fleet live session.
+const startVoiceConsoleBackend = async (): Promise<VoiceConsoleBackend> => {
+  const tokenResult = selectClaudeCodeVoiceConsoleOauthToken({
+    tokenListJsonPath: resolveTokenListJsonPath(null),
+    cacheDirectory: resolveCacheDirectory(null),
+    nowEpochSeconds: Math.floor(Date.now() / 1000),
   });
+  if ('error' in tokenResult) {
+    const reason = `${tokenResult.error}: ${tokenResult.diagnostics.join('; ')}`;
+    console.error(`voice console has no Claude Code backend: ${reason}`);
+    return createFailedVoiceConsoleBackend(reason);
+  }
+  const launch = buildClaudeCodeVoiceConsoleLaunch({
+    oauthToken: tokenResult.token,
+    proxyBaseUrl: await startProxyForVoiceConsole(),
+    effortFlagSupported: isClaudeEffortFlagSupported(),
+    backendNote: VOICE_CONSOLE_BACKEND_NOTE,
+    baseEnv: process.env,
+  });
+  const claudeProcess = new ClaudeCodeVoiceConsoleProcess({
+    spawn: spawnClaudeCodeChild,
+    logError: (message) => console.error(message),
+  });
+  try {
+    claudeProcess.start(launch);
+  } catch (error) {
+    const reason = describeErrorMessage(error);
+    console.error(
+      `voice console Claude Code process (token ${tokenResult.tokenName}) could not start: ${reason}`,
+    );
+    return createFailedVoiceConsoleBackend(reason);
+  }
+  return {
+    sendToBackend: (utterance) => claudeProcess.sendOwnerUtterance(utterance),
+    stop: () => claudeProcess.stop(),
+  };
 };
 
 const attachVoiceConsoleSideband = async (
@@ -1137,19 +1194,47 @@ const attachVoiceConsoleSideband = async (
   if (sideband === null) {
     return;
   }
-  const session = buildVoiceConsoleSession(options);
-  const handlerHolder: { handler: VoiceConsoleSidebandHandler | null } = {
-    handler: null,
-  };
-  await sideband.attach(sessionId, (event, send) => {
-    const handler =
-      handlerHolder.handler ??
-      new VoiceConsoleSidebandHandler(session, send, (message) =>
-        console.error(message),
-      );
-    handlerHolder.handler = handler;
-    return handler.handleServerEvent(event);
+  const backend = await startVoiceConsoleBackend();
+  const newEventId = (): string => randomUUID();
+  let currentSend: VoiceConsoleSendEvent | null = null;
+  const bridge = new VoiceConsoleDelegationBridge({
+    sendToBackend: (utterance) => backend.sendToBackend(utterance),
+    appendCommentary: (delegationId, content) => {
+      if (currentSend === null) {
+        throw new Error(
+          `no sideband send is available to report delegation ${delegationId}`,
+        );
+      }
+      currentSend({
+        type: 'session.commentary.append',
+        event_id: newEventId(),
+        delegation_id: delegationId,
+        content,
+      });
+    },
+    newEventId,
+    logError: (message) => console.error(message),
   });
+  let handler: VoiceConsoleSidebandHandler | null = null;
+  try {
+    await sideband.attach(
+      sessionId,
+      (event, send) => {
+        currentSend = send;
+        const activeHandler =
+          handler ??
+          new VoiceConsoleSidebandHandler(bridge, send, (message) =>
+            console.error(message),
+          );
+        handler = activeHandler;
+        return activeHandler.handleServerEvent(event);
+      },
+      () => backend.stop(),
+    );
+  } catch (error) {
+    backend.stop();
+    throw error;
+  }
 };
 
 const closeLiveSessionAfterSidebandFailure = async (
