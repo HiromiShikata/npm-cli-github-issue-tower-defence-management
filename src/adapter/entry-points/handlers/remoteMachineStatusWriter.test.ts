@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import fs from 'fs';
-import { execFileSync } from 'child_process';
+import os from 'os';
 import path from 'path';
 import {
   buildSshInvocation,
@@ -8,28 +7,62 @@ import {
   parseWorkerHostsYaml,
   REMOTE_COMMAND_TIMEOUT_MS,
   REMOTE_METRICS_COMMAND,
+  type RemoteMachineStatusEntry,
+  type RemoteMachineStatusFile,
   writeRemoteMachineStatus,
 } from './remoteMachineStatusWriter';
 
-const makeTempDirectory = (): string =>
-  execFileSync(
-    'mktemp',
-    ['-d', '/mnt/storage/tmp/remote-machine-status.XXXXXX'],
-    {
-      encoding: 'utf8',
-    },
-  ).trim();
+const temporaryPaths: string[] = [];
+
+const makeTempDirectory = (): string => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'tdpm-remote-status-'),
+  );
+  temporaryPaths.push(directory);
+  return directory;
+};
 
 const makeTempFile = (content: string): string => {
-  const filePath = execFileSync(
-    'mktemp',
-    ['/mnt/storage/tmp/remote-hosts.XXXXXX'],
-    {
-      encoding: 'utf8',
-    },
-  ).trim();
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'tdpm-remote-status-'),
+  );
+  temporaryPaths.push(directory);
+  const filePath = path.join(directory, 'worker-hosts.yml');
   fs.writeFileSync(filePath, content);
   return filePath;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const isStatusEntry = (value: unknown): value is RemoteMachineStatusEntry => {
+  if (!isRecord(value)) return false;
+  const load = value.load;
+  return (
+    typeof value.name === 'string' &&
+    typeof value.reachable === 'boolean' &&
+    (value.memPct === null || typeof value.memPct === 'number') &&
+    (value.cpuPct === null || typeof value.cpuPct === 'number') &&
+    (value.diskPct === null || typeof value.diskPct === 'number') &&
+    (load === null ||
+      (Array.isArray(load) &&
+        load.length === 3 &&
+        load.every((item) => typeof item === 'number'))) &&
+    typeof value.capturedAt === 'string'
+  );
+};
+
+const parseStatusFile = (content: string): RemoteMachineStatusFile => {
+  const parsed: unknown = JSON.parse(content);
+  if (
+    !isRecord(parsed) ||
+    typeof parsed.capturedAt !== 'string' ||
+    !Array.isArray(parsed.machines) ||
+    !parsed.machines.every(isStatusEntry)
+  ) {
+    throw new Error('invalid remote machine status file');
+  }
+  return { capturedAt: parsed.capturedAt, machines: parsed.machines };
 };
 
 const host = {
@@ -121,9 +154,11 @@ describe('writeRemoteMachineStatus', () => {
   let workerHostsPath = '';
 
   afterEach(() => {
-    if (dashboardDataDir)
-      fs.rmSync(dashboardDataDir, { recursive: true, force: true });
-    if (workerHostsPath) fs.rmSync(workerHostsPath, { force: true });
+    for (const temporaryPath of temporaryPaths.splice(0)) {
+      fs.rmSync(temporaryPath, { recursive: true, force: true });
+    }
+    dashboardDataDir = '';
+    workerHostsPath = '';
   });
 
   it.each([
@@ -177,7 +212,7 @@ describe('writeRemoteMachineStatus', () => {
     workerHostsPath = makeTempFile(
       'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n  - name: worker-b\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
     );
-    const reportError = jest.fn();
+    const reportError = jest.fn<void, [string]>();
     const runner = jest
       .fn()
       .mockRejectedValueOnce(new Error('connection refused'))
@@ -189,7 +224,7 @@ describe('writeRemoteMachineStatus', () => {
       reportError,
       now: new Date('2026-11-25T00:00:00.000Z'),
     });
-    const written = JSON.parse(
+    const written = parseStatusFile(
       fs.readFileSync(
         path.join(dashboardDataDir, 'remote-machine-status.json'),
         'utf8',
@@ -210,14 +245,88 @@ describe('writeRemoteMachineStatus', () => {
     expect(runner).toHaveBeenCalledTimes(2);
   });
 
-  it('propagates a YAML read error without writing a status file', async () => {
+  it('writes previous hosts as unreachable when the YAML cannot be read', async () => {
     dashboardDataDir = makeTempDirectory();
+    const outputPath = path.join(
+      dashboardDataDir,
+      'remote-machine-status.json',
+    );
+    const previous: RemoteMachineStatusFile = {
+      capturedAt: '2026-11-24T00:00:00.000Z',
+      machines: [
+        {
+          name: 'worker-a',
+          reachable: true,
+          memPct: 25,
+          cpuPct: 60,
+          diskPct: 80,
+          load: [3.5, 2.5, 1.5],
+          capturedAt: '2026-11-24T00:00:00.000Z',
+        },
+        {
+          name: 'worker-b',
+          reachable: true,
+          memPct: 30,
+          cpuPct: 40,
+          diskPct: 50,
+          load: [1, 2, 3],
+          capturedAt: '2026-11-24T00:00:00.000Z',
+        },
+      ],
+    };
+    fs.writeFileSync(outputPath, JSON.stringify(previous));
+    const reportError = jest.fn<void, [string]>();
+
+    await writeRemoteMachineStatus({
+      dashboardDataDir,
+      workerHostsPath: makeTempFile('hosts: [\n'),
+      readFile: () => {
+        throw new Error('YAML config is unreadable');
+      },
+      reportError,
+      now: new Date('2026-11-25T00:00:00.000Z'),
+    });
+
+    const written = parseStatusFile(fs.readFileSync(outputPath, 'utf8'));
+    expect(written).toEqual({
+      capturedAt: '2026-11-25T00:00:00.000Z',
+      machines: previous.machines.map(({ name }) => ({
+        name,
+        reachable: false,
+        memPct: null,
+        cpuPct: null,
+        diskPct: null,
+        load: null,
+        capturedAt: '2026-11-25T00:00:00.000Z',
+      })),
+    });
+    expect(reportError).toHaveBeenCalledTimes(1);
+    const [message] = reportError.mock.calls[0];
+    expect(message).toContain('YAML config is unreadable');
+  });
+
+  it('removes a stale status file when worker hosts are not configured', async () => {
+    dashboardDataDir = makeTempDirectory();
+    const outputPath = path.join(
+      dashboardDataDir,
+      'remote-machine-status.json',
+    );
+    fs.writeFileSync(outputPath, '{}');
+
+    await expect(
+      writeRemoteMachineStatus({ dashboardDataDir, workerHostsPath: null }),
+    ).resolves.toBeUndefined();
+    expect(fs.existsSync(outputPath)).toBe(false);
+  });
+
+  it('does not throw when no status file exists and worker hosts are not configured', async () => {
+    dashboardDataDir = makeTempDirectory();
+
     await expect(
       writeRemoteMachineStatus({
         dashboardDataDir,
-        workerHostsPath: '/missing/worker-hosts.yml',
+        workerHostsPath: undefined,
       }),
-    ).rejects.toThrow();
-    expect(fs.readdirSync(dashboardDataDir)).toEqual([]);
+    ).resolves.toBeUndefined();
   });
 });

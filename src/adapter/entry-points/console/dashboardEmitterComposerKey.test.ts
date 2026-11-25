@@ -168,7 +168,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
       `<tt>${line.replace(/ /g, '&nbsp;')}</tt><br>`;
     const expected =
       [
-        '<tt>        M  C  D  S cy LA</tt><br>',
+        '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;M&nbsp;&nbsp;C&nbsp;&nbsp;D&nbsp;&nbsp;S&nbsp;cy&nbsp;LA</tt><br>',
         wrap('🔴main   55 62 93  - 13 16 23 40'),
         wrap('      1  1  2  1  1  0  0  0  0  0  0'),
         wrap('  pj td ao fl pp ws dp 🔴 🟡 1h 3h 5h'),
