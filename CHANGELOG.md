@@ -1,3 +1,10 @@
+## [2.206.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.3...v2.206.4) (2026-11-25)
+
+
+### Bug Fixes
+
+* **console:** keep task create dialog footer visible in landscape mobile ([#3766](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3766)) ([9b391c2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9b391c2907255e2235de1766f92e976424199ba0))
+
 ## [2.206.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.2...v2.206.3) (2026-11-23)
 
 
