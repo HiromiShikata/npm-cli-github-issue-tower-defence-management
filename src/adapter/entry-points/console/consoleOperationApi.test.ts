@@ -374,7 +374,7 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_c_totally_wrong');
     });
 
-    it('updateStatusByName rejects or allows a review-triggered write based on whether expectedStatusName matches the live Status', async () => {
+    it('updateStatusByName overwrites a review-triggered Status when the live Status moved away from expectedStatusName and is not Preparation', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
         url: 'https://github.com/o/r/issues/9',
@@ -389,11 +389,8 @@ describe('consoleOperationApi', () => {
         projectItemId: 'PVTI_row5_review',
         expectedStatusName: 'Awaiting Quality Check',
       });
-      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
-      expect(response.statusCode).toBe(400);
-      const errorMessage = errorMessageOf(response.body);
-      expect(errorMessage).toContain('Awaiting Quality Check');
-      expect(errorMessage).toContain('Done');
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+      expect(response.statusCode).toBe(200);
     });
 
     it('updateStatusByName treats a review close with a linked issue as success without writing the Status when the live Status already equals Awaiting workspace, and still closes the pull request, comments and records done', async () => {
@@ -937,7 +934,7 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
     });
 
-    it('approve_and_merge returns the Status-changed 400 and posts only the conflict comment when the live Status differs and the pull request is conflicted', async () => {
+    it('approve_and_merge posts the conflict comment and overwrites the Status to Awaiting workspace when the live Status differs and the pull request is conflicted', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
         url: 'https://github.com/o/r/pull/1',
@@ -966,16 +963,91 @@ describe('consoleOperationApi', () => {
         projectItemId: 'PVTI_stale_conflict',
         expectedStatusName: 'Preparation',
       });
-      expect(response.statusCode).toBe(400);
-      expect(errorMessageOf(response.body)).toContain(
-        'Status changed since this action was queued',
-      );
+      expect(response.statusCode).toBe(200);
       expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
       expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
         'https://github.com/o/r/pull/1',
         AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
       expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('approve_and_merge in the conflicted route skips the Status write without a done record when the live Status moved to Preparation', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_conflict_preparation_skipped',
+        status: 'Preparation',
+      });
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_conflict_preparation_skipped',
+        expectedStatusName: 'Awaiting Owner',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true, statusSet: false });
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('set_status with commentBody writes nothing and reports the comment as posted when the Status moved to Preparation during the comment post', async () => {
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        issueRepository.getIssueByUrl
+          .mockResolvedValueOnce({
+            ...issue,
+            url: 'https://github.com/o/r/issues/1',
+            itemId: 'PVTI_race',
+            status: 'Awaiting Owner',
+          })
+          .mockResolvedValueOnce({
+            ...issue,
+            url: 'https://github.com/o/r/issues/1',
+            itemId: 'PVTI_race',
+            status: 'Preparation',
+          });
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_race',
+          statusName: 'Awaiting workspace',
+          commentBody: 'a comment',
+          expectedStatusName: 'Awaiting Owner',
+        });
+        expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({
+          ok: true,
+          commentPosted: true,
+          statusSet: false,
+        });
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(
+          `[console-operation] stale status operation skipped: issue=https://github.com/o/r/issues/1 statusAtTap="Awaiting Owner" current="Preparation" target="Awaiting workspace"`,
+        );
+      } finally {
+        logSpy.mockRestore();
+      }
     });
 
     it('approve_and_merge merges and then moves the item to Awaiting workspace when the live Status equals expectedStatusName', async () => {
@@ -1343,7 +1415,7 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleTriage', () => {
-    it('rejects a stale set_status with commentBody before creating the comment and reports no comment', async () => {
+    it('posts the comment and overwrites the Status when the live Status moved to a value other than Preparation', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
         status: 'Done',
@@ -1352,17 +1424,25 @@ describe('consoleOperationApi', () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
         action: 'set_status',
-        actionId: 'triage-stale-before-comment-1',
+        actionId: 'triage-stale-overwrite-1',
         issueUrl: 'https://github.com/o/r/issues/1',
-        projectItemId: 'PVTI_stale_before_comment',
+        projectItemId: 'PVTI_stale_overwrite',
         expectedStatusName: 'Todo',
         statusName: 'Awaiting workspace',
         commentBody: 'handoff details',
       });
 
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toMatchObject({ commentPosted: false });
-      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        'handoff details',
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        commentPosted: true,
+        statusSet: true,
+      });
     });
 
     it('posts the comment when the Status is already the target status even though the expected status differs', async () => {
@@ -1387,7 +1467,7 @@ describe('consoleOperationApi', () => {
       expect(response.body).toMatchObject({ ok: true, commentPosted: true });
     });
 
-    it('rejects a stale set_status with commentBody when the live Status is Awaiting workspace and differs from the expected Status', async () => {
+    it('posts the comment and overwrites the Status when the live Status is Awaiting workspace and differs from the expected Status', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
         status: 'Awaiting workspace',
@@ -1399,14 +1479,15 @@ describe('consoleOperationApi', () => {
         actionId: 'triage-awaiting-stale-1',
         issueUrl: 'https://github.com/o/r/issues/1',
         projectItemId: 'PVTI_awaiting_stale',
-        expectedStatusName: 'Todo',
-        statusName: 'Preparation',
+        expectedStatusName: 'In Tmux by human',
+        statusName: 'Todo',
         commentBody: 'handoff details',
       });
 
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toMatchObject({ commentPosted: false });
-      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toMatchObject({ ok: true, commentPosted: true });
     });
 
     it('reports the comment as posted when bookkeeping after the comment write fails', async () => {
@@ -1827,8 +1908,8 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBeLessThan(500);
     });
 
-    it('updateStatusByName rejects or allows a set_status write based on whether expectedStatusName matches the live Status', async () => {
-      const projectWithPreparation: Project = {
+    it('updateStatusByName applies the stale-status rule to a set_status write and logs one line for each skipped or overwritten operation', async () => {
+      const projectWithTargets: Project = {
         ...project,
         status: {
           ...project.status,
@@ -1840,10 +1921,24 @@ describe('consoleOperationApi', () => {
               color: 'BLUE',
               description: '',
             },
+            {
+              id: 'status_todo_by_human',
+              name: 'Todo by human',
+              color: 'BLUE',
+              description: '',
+            },
           ],
         },
       };
-      const preparationContext = contextForProject(projectWithPreparation);
+      const targetContext = contextForProject(projectWithTargets);
+      const issueUrl = 'https://github.com/o/r/issues/1';
+      const staleStatusLogLine = (
+        outcome: 'skipped' | 'overwritten',
+        statusAtTap: string | null,
+        currentStatus: string | null,
+        targetStatus: string,
+      ): string =>
+        `[console-operation] stale status operation ${outcome}: issue=${issueUrl} statusAtTap=${JSON.stringify(statusAtTap)} current=${JSON.stringify(currentStatus)} target=${JSON.stringify(targetStatus)}`;
       const testCases: {
         projectItemId: string;
         expectedStatusNamePresent: boolean;
@@ -1851,97 +1946,207 @@ describe('consoleOperationApi', () => {
         liveStatus: string | null;
         requestedStatusName: string;
         writeProceeds: boolean;
+        expectedLogLine: string | null;
       }[] = [
         {
-          projectItemId: 'PVTI_row1_key_absent',
+          projectItemId: 'PVTI_case1_changed_to_preparation_skipped',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting Owner',
+          liveStatus: 'Preparation',
+          requestedStatusName: 'Todo by human',
+          writeProceeds: false,
+          expectedLogLine: staleStatusLogLine(
+            'skipped',
+            'Awaiting Owner',
+            'Preparation',
+            'Todo by human',
+          ),
+        },
+        {
+          projectItemId: 'PVTI_case2_changed_to_other_overwritten',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting Owner',
+          liveStatus: 'Awaiting workspace',
+          requestedStatusName: 'Todo by human',
+          writeProceeds: true,
+          expectedLogLine: staleStatusLogLine(
+            'overwritten',
+            'Awaiting Owner',
+            'Awaiting workspace',
+            'Todo by human',
+          ),
+        },
+        {
+          projectItemId: 'PVTI_case2_changed_to_unset_overwritten',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting Owner',
+          liveStatus: null,
+          requestedStatusName: 'Todo by human',
+          writeProceeds: true,
+          expectedLogLine: staleStatusLogLine(
+            'overwritten',
+            'Awaiting Owner',
+            null,
+            'Todo by human',
+          ),
+        },
+        {
+          projectItemId: 'PVTI_case2_changed_to_target_preparation',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting workspace',
+          liveStatus: 'Awaiting Owner',
+          requestedStatusName: 'Preparation',
+          writeProceeds: true,
+          expectedLogLine: staleStatusLogLine(
+            'overwritten',
+            'Awaiting workspace',
+            'Awaiting Owner',
+            'Preparation',
+          ),
+        },
+        {
+          projectItemId: 'PVTI_case3_unchanged_written',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting Owner',
+          liveStatus: 'Awaiting Owner',
+          requestedStatusName: 'Todo by human',
+          writeProceeds: true,
+          expectedLogLine: null,
+        },
+        {
+          projectItemId: 'PVTI_case4_already_target_no_write',
+          expectedStatusNamePresent: true,
+          expectedStatusName: 'Awaiting Owner',
+          liveStatus: 'Todo by human',
+          requestedStatusName: 'Todo by human',
+          writeProceeds: false,
+          expectedLogLine: null,
+        },
+        {
+          projectItemId: 'PVTI_no_expected_status_written',
           expectedStatusNamePresent: false,
           expectedStatusName: null,
           liveStatus: 'Preparation',
-          requestedStatusName: 'Awaiting Workspace',
+          requestedStatusName: 'Todo by human',
           writeProceeds: true,
-        },
-        {
-          projectItemId: 'PVTI_row2_match',
-          expectedStatusNamePresent: true,
-          expectedStatusName: 'Awaiting Workspace',
-          liveStatus: 'Awaiting Workspace',
-          requestedStatusName: 'Preparation',
-          writeProceeds: true,
-        },
-        {
-          projectItemId: 'PVTI_row3_mismatch',
-          expectedStatusNamePresent: true,
-          expectedStatusName: 'Awaiting Workspace',
-          liveStatus: 'Preparation',
-          requestedStatusName: 'Awaiting Workspace',
-          writeProceeds: false,
-        },
-        {
-          projectItemId: 'PVTI_row4_match_own_status',
-          expectedStatusNamePresent: true,
-          expectedStatusName: 'Preparation',
-          liveStatus: 'Preparation',
-          requestedStatusName: 'Awaiting Workspace',
-          writeProceeds: true,
-        },
-        {
-          projectItemId: 'PVTI_row6_mismatch_moved_on',
-          expectedStatusNamePresent: true,
-          expectedStatusName: 'Preparation',
-          liveStatus: 'Awaiting Workspace',
-          requestedStatusName: 'Preparation',
-          writeProceeds: false,
-        },
-        {
-          projectItemId: 'PVTI_row7_both_unset',
-          expectedStatusNamePresent: true,
-          expectedStatusName: null,
-          liveStatus: null,
-          requestedStatusName: 'Awaiting Workspace',
-          writeProceeds: true,
-        },
-        {
-          projectItemId: 'PVTI_row8_unset_then_set',
-          expectedStatusNamePresent: true,
-          expectedStatusName: null,
-          liveStatus: 'Preparation',
-          requestedStatusName: 'Awaiting Workspace',
-          writeProceeds: false,
+          expectedLogLine: null,
         },
       ];
-      for (const testCase of testCases) {
-        issueRepository.updateStatus.mockClear();
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        for (const testCase of testCases) {
+          issueRepository.updateStatus.mockClear();
+          logSpy.mockClear();
+          issueRepository.getIssueByUrl.mockResolvedValue({
+            ...issue,
+            url: issueUrl,
+            itemId: testCase.projectItemId,
+            status: testCase.liveStatus,
+          });
+          const body: Record<string, unknown> = {
+            pjcode: 'acme',
+            action: 'set_status',
+            issueUrl,
+            projectItemId: testCase.projectItemId,
+            statusName: testCase.requestedStatusName,
+          };
+          if (testCase.expectedStatusNamePresent) {
+            body.expectedStatusName = testCase.expectedStatusName;
+          }
+          const response = await handleTriage(targetContext, body);
+          expect(response.statusCode).toBe(200);
+          if (testCase.writeProceeds) {
+            expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+          } else {
+            expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+          }
+          if (testCase.expectedLogLine === null) {
+            expect(logSpy).not.toHaveBeenCalled();
+          } else {
+            expect(logSpy).toHaveBeenCalledTimes(1);
+            expect(logSpy).toHaveBeenCalledWith(testCase.expectedLogLine);
+          }
+        }
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+
+    it('set_status with commentBody skips both the comment and the write when the Status moved to Preparation, and posts the comment and writes the target when it moved to another value', async () => {
+      const projectWithTargets: Project = {
+        ...project,
+        status: {
+          ...project.status,
+          statuses: [
+            ...project.status.statuses,
+            {
+              id: 'status_todo_by_human',
+              name: 'Todo by human',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const targetContext = contextForProject(projectWithTargets);
+      const issueUrl = 'https://github.com/o/r/issues/1';
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      try {
         issueRepository.getIssueByUrl.mockResolvedValue({
           ...issue,
-          url: 'https://github.com/o/r/issues/1',
-          itemId: testCase.projectItemId,
-          status: testCase.liveStatus,
+          url: issueUrl,
+          itemId: 'PVTI_comment_skipped',
+          status: 'Preparation',
         });
-        const body: Record<string, unknown> = {
+        const skippedResponse = await handleTriage(targetContext, {
           pjcode: 'acme',
           action: 'set_status',
-          issueUrl: 'https://github.com/o/r/issues/1',
-          projectItemId: testCase.projectItemId,
-          statusName: testCase.requestedStatusName,
-        };
-        if (testCase.expectedStatusNamePresent) {
-          body.expectedStatusName = testCase.expectedStatusName;
-        }
-        const response = await handleTriage(preparationContext, body);
-        if (testCase.writeProceeds) {
-          expect(response.statusCode).toBe(200);
-          expect(issueRepository.updateStatus).toHaveBeenCalled();
-        } else {
-          expect(issueRepository.updateStatus).not.toHaveBeenCalled();
-          expect(response.statusCode).toBe(400);
-          const errorMessage = errorMessageOf(response.body);
-          if (testCase.expectedStatusName !== null) {
-            expect(errorMessage).toContain(testCase.expectedStatusName);
-          }
-          if (testCase.liveStatus !== null) {
-            expect(errorMessage).toContain(testCase.liveStatus);
-          }
-        }
+          issueUrl,
+          projectItemId: 'PVTI_comment_skipped',
+          statusName: 'Todo by human',
+          commentBody: 'a comment',
+          expectedStatusName: 'Awaiting Owner',
+        });
+        expect(skippedResponse.statusCode).toBe(200);
+        expect(skippedResponse.body).toEqual({ ok: true, statusSet: false });
+        expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(
+          `[console-operation] stale status operation skipped: issue=${issueUrl} statusAtTap="Awaiting Owner" current="Preparation" target="Todo by human"`,
+        );
+
+        logSpy.mockClear();
+        issueRepository.createCommentByUrl.mockClear();
+        issueRepository.getIssueByUrl.mockClear();
+        issueRepository.getIssueByUrl.mockResolvedValue({
+          ...issue,
+          url: issueUrl,
+          itemId: 'PVTI_comment_overwritten',
+          status: 'Awaiting workspace',
+        });
+        const overwrittenResponse = await handleTriage(targetContext, {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl,
+          projectItemId: 'PVTI_comment_overwritten',
+          statusName: 'Todo by human',
+          commentBody: 'a comment',
+          expectedStatusName: 'Awaiting Owner',
+        });
+        expect(overwrittenResponse.statusCode).toBe(200);
+        expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+          issueUrl,
+          'a comment',
+        );
+        expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(
+          `[console-operation] stale status operation overwritten: issue=${issueUrl} statusAtTap="Awaiting Owner" current="Awaiting workspace" target="Todo by human"`,
+        );
+        expect(issueRepository.getIssueByUrl).toHaveBeenCalledTimes(2);
+      } finally {
+        logSpy.mockRestore();
       }
     });
 
@@ -1993,7 +2198,7 @@ describe('consoleOperationApi', () => {
       }
     });
 
-    it('updateStatusByName keeps rejecting a set_status write when the live Status differs from both the expected Status and the requested Status', async () => {
+    it('updateStatusByName writes the set_status target when the live Status differs from both the expected Status and the requested Status', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
         url: 'https://github.com/o/r/issues/1',
@@ -2008,11 +2213,8 @@ describe('consoleOperationApi', () => {
         statusName: 'Awaiting Workspace',
         expectedStatusName: 'Awaiting Owner',
       });
-      expect(response.statusCode).toBe(400);
-      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
-      expect(errorMessageOf(response.body)).toContain(
-        'Status changed since this action was queued',
-      );
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalledTimes(1);
     });
 
     it('updateStatusByName rejects a set_status write with a bad-gateway error naming the issue when the live issue cannot be loaded', async () => {
@@ -3604,7 +3806,7 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('updateStatusByName rejects or allows a set_intmux write based on whether expectedStatusName matches the live Status', async () => {
+    it('updateStatusByName skips a set_intmux write when the live Status moved to Preparation and overwrites it otherwise', async () => {
       const testCases: {
         projectItemId: string;
         expectedStatusName: string;
@@ -3612,10 +3814,16 @@ describe('consoleOperationApi', () => {
         writeProceeds: boolean;
       }[] = [
         {
-          projectItemId: 'PVTI_row9_mismatch',
+          projectItemId: 'PVTI_row9_mismatch_preparation_skipped',
           expectedStatusName: 'Awaiting Workspace',
           liveStatus: 'Preparation',
           writeProceeds: false,
+        },
+        {
+          projectItemId: 'PVTI_row9b_mismatch_overwritten',
+          expectedStatusName: 'Awaiting Workspace',
+          liveStatus: 'Todo',
+          writeProceeds: true,
         },
         {
           projectItemId: 'PVTI_row10_match',
@@ -3639,15 +3847,13 @@ describe('consoleOperationApi', () => {
           projectItemId: testCase.projectItemId,
           expectedStatusName: testCase.expectedStatusName,
         });
+        expect(response.statusCode).toBe(200);
         if (testCase.writeProceeds) {
-          expect(response.statusCode).toBe(200);
           expect(issueRepository.updateStatus).toHaveBeenCalled();
+          expect(response.body).not.toMatchObject({ statusSet: false });
         } else {
           expect(issueRepository.updateStatus).not.toHaveBeenCalled();
-          expect(response.statusCode).toBe(400);
-          const errorMessage = errorMessageOf(response.body);
-          expect(errorMessage).toContain(testCase.expectedStatusName);
-          expect(errorMessage).toContain(testCase.liveStatus);
+          expect(response.body).toEqual({ ok: true, statusSet: false });
         }
       }
     });
