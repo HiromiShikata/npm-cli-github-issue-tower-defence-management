@@ -4,6 +4,12 @@ import {
   type ClaudeCodeChildProcess,
 } from './claudeCodeVoiceConsoleProcess';
 
+const LAUNCH = {
+  command: 'claude-agent',
+  args: ['--agent', 'general'],
+  env: { CLAUDE_CODE_OAUTH_TOKEN: 'token' },
+};
+
 const flush = (): Promise<void> =>
   new Promise((resolve) => setImmediate(resolve));
 
@@ -28,8 +34,10 @@ const createFakeChild = () => {
     },
     stdout,
     stderr,
-    on: (event: 'exit' | 'error', handler: (...args: never[]) => void) =>
-      exitEmitter.on(event, handler),
+    on: <Args extends unknown[]>(
+      event: 'exit' | 'error',
+      handler: (...args: Args) => void,
+    ) => exitEmitter.on(event, handler),
     kill,
   };
 
