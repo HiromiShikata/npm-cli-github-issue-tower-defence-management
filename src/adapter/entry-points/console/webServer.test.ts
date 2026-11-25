@@ -5479,7 +5479,7 @@ describe('webServer HTTPS certificate handling', () => {
       jest.advanceTimersByTime(CERTIFICATE_RENEWAL_INTERVAL_MS);
       await Promise.resolve();
       expect(runLegoCommand).toHaveBeenNthCalledWith(
-        1,
+        3,
         expect.arrayContaining(['--renew-days', '3']),
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith('renewal failed');
@@ -5571,8 +5571,18 @@ describe('webServer HTTPS certificate handling', () => {
           path.join(acmeDataDirectory, 'certificates', '127.0.0.1.crt'),
         ),
       });
-      expect(runLegoCommand).toHaveBeenCalledWith(
+      expect(runLegoCommand).toHaveBeenCalledTimes(4);
+      expect(runLegoCommand).toHaveBeenNthCalledWith(
+        3,
         expect.arrayContaining(['--renew-days', '3']),
+      );
+      expect(runLegoCommand).toHaveBeenNthCalledWith(
+        4,
+        buildLegoChownDockerArgs({
+          acmeDataDirectory,
+          hostUserId: process.getuid?.() ?? 0,
+          hostGroupId: process.getgid?.() ?? 0,
+        }),
       );
     } finally {
       await stopWebServer(server);
