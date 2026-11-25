@@ -1080,6 +1080,12 @@ describe('VoiceConsoleSession create task tool', () => {
   const emptyQueueDir = (): string =>
     fs.mkdtempSync(path.join(root, 'empty-queue-'));
 
+  const queueDirWithOnlyXcareItem = (): string => {
+    const dir = fs.mkdtempSync(path.join(root, 'xcare-queue-'));
+    writeListFile(dir, 'xcare', 'todo-by-human', [item21]);
+    return dir;
+  };
+
   it('prepares without running the operation and runs it once with the create request on confirm', async () => {
     const rows = [
       {
@@ -1237,6 +1243,33 @@ describe('VoiceConsoleSession create task tool', () => {
         args: { title: 'Fix export' },
         expectedPjcode: 'xcare',
       },
+      {
+        name: 'empty project_pjcode with no current item and one project uses that project',
+        options: {
+          consoleDataOutputDir: emptyQueueDir(),
+          projectPjcodes: ['xcare'],
+        },
+        args: { title: 'Fix export', project_pjcode: '' },
+        expectedPjcode: 'xcare',
+      },
+      {
+        name: 'whitespace-only project_pjcode with no current item and one project uses that project',
+        options: {
+          consoleDataOutputDir: emptyQueueDir(),
+          projectPjcodes: ['xcare'],
+        },
+        args: { title: 'Fix export', project_pjcode: '   ' },
+        expectedPjcode: 'xcare',
+      },
+      {
+        name: 'empty project_pjcode with a current item of project xcare uses the item project',
+        options: {
+          consoleDataOutputDir: queueDirWithOnlyXcareItem(),
+          projectPjcodes: ['umino', 'xcare'],
+        },
+        args: { title: 'Fix export', project_pjcode: '' },
+        expectedPjcode: 'xcare',
+      },
     ];
 
     for (const row of rows) {
@@ -1281,6 +1314,24 @@ describe('VoiceConsoleSession create task tool', () => {
         options: {},
         args: { title: 'Fix export', project_pjcode: 'nope' },
         error: 'unknown_project',
+      },
+      {
+        name: 'non-empty project_pjcode not in a one-project list',
+        options: {
+          consoleDataOutputDir: emptyQueueDir(),
+          projectPjcodes: ['xcare'],
+        },
+        args: { title: 'Fix export', project_pjcode: 'nope' },
+        error: 'unknown_project',
+      },
+      {
+        name: 'empty project_pjcode with no current item and two projects',
+        options: {
+          consoleDataOutputDir: emptyQueueDir(),
+          projectPjcodes: ['umino', 'xcare'],
+        },
+        args: { title: 'Fix export', project_pjcode: '' },
+        error: 'project_required',
       },
       {
         name: 'no project and no current item with two projects',
