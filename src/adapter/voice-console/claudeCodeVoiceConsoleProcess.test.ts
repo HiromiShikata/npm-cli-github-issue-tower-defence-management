@@ -514,3 +514,146 @@ describe('ClaudeCodeVoiceConsoleProcess stdin error restart', () => {
     ).toBe('次の回答');
   });
 });
+
+describe('ClaudeCodeVoiceConsoleProcess child exit restart', () => {
+  it('rejects the pending turn with the exit diagnostic, logs it, and answers the next utterance from a fresh child', async () => {
+    const cases: {
+      name: string;
+      pending: boolean;
+      code: number | null;
+      signal: string | null;
+      expectedFragment: string | null;
+    }[] = [
+      {
+        name: 'exit with a code while a turn is pending',
+        pending: true,
+        code: 1,
+        signal: null,
+        expectedFragment: 'code 1',
+      },
+      {
+        name: 'killed by a signal while a turn is pending',
+        pending: true,
+        code: null,
+        signal: 'SIGKILL',
+        expectedFragment: 'SIGKILL',
+      },
+      {
+        name: 'exit with code 0 while idle',
+        pending: false,
+        code: 0,
+        signal: null,
+        expectedFragment: null,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { process, children, spawn, logError } = createProcess();
+      process.start(LAUNCH);
+      const pendingTurn = testCase.pending
+        ? process.sendOwnerUtterance('質問')
+        : null;
+      const pendingOutcome =
+        pendingTurn === null
+          ? Promise.resolve('no pending turn')
+          : pendingTurn.then(
+              () => 'resolved',
+              (error: unknown) =>
+                error instanceof Error ? error.message : 'rejected',
+            );
+      await flush();
+
+      children[0]?.emitExit(testCase.code, testCase.signal);
+      const pendingMessage = await pendingOutcome;
+
+      const next = process.sendOwnerUtterance('次の質問');
+      const nextOutcome = next.then(
+        (value) => value,
+        (error: unknown) =>
+          error instanceof Error ? `rejected: ${error.message}` : 'rejected',
+      );
+      await flush();
+      children[1]?.emitStdout(resultLine({ result: '次の回答' }));
+      await flush();
+
+      const logged = logError.mock.calls.map((call) => call[0]).join('\n');
+      expect({
+        name: testCase.name,
+        pendingIncludesFragment:
+          testCase.expectedFragment === null
+            ? true
+            : pendingMessage.includes(testCase.expectedFragment),
+        logged:
+          testCase.expectedFragment === null
+            ? true
+            : logged.includes(testCase.expectedFragment),
+        spawnCalls: spawn.mock.calls.length,
+        answer: await Promise.race([
+          nextOutcome,
+          flush().then(() => 'still pending'),
+        ]),
+      }).toEqual({
+        name: testCase.name,
+        pendingIncludesFragment: true,
+        logged: true,
+        spawnCalls: 2,
+        answer: '次の回答',
+      });
+    }
+  });
+
+  it('ignores late events from the exited child once a fresh child serves the next turn', async () => {
+    const { process, children, spawn } = createProcess();
+    process.start(LAUNCH);
+    children[0]?.emitExit(1, null);
+
+    const next = process.sendOwnerUtterance('次の質問');
+    const nextOutcome = next.then(
+      (value) => value,
+      (error: unknown) =>
+        error instanceof Error ? `rejected: ${error.message}` : 'rejected',
+    );
+    await flush();
+    children[0]?.emitStdout(resultLine({ result: '終了した子の回答' }));
+    await flush();
+
+    expect({
+      spawnCalls: spawn.mock.calls.length,
+      answeredBeforeFreshChild: await Promise.race([
+        nextOutcome,
+        flush().then(() => 'still pending'),
+      ]),
+    }).toEqual({ spawnCalls: 2, answeredBeforeFreshChild: 'still pending' });
+
+    children[1]?.emitStdout(resultLine({ result: '新しい子の回答' }));
+    await flush();
+    expect(await nextOutcome).toBe('新しい子の回答');
+  });
+
+  it('keeps stop permanent: no utterance restarts a child after stop, with or without an earlier exit', async () => {
+    const cases = [
+      { name: 'stop without an earlier exit', exitFirst: false },
+      { name: 'stop after an exit and a restart', exitFirst: true },
+    ];
+
+    for (const testCase of cases) {
+      const { process, children, spawn } = createProcess();
+      process.start(LAUNCH);
+      if (testCase.exitFirst) {
+        children[0]?.emitExit(1, null);
+        void process.sendOwnerUtterance('再開の質問').catch(() => undefined);
+        await flush();
+      }
+      const spawnsBeforeStop = spawn.mock.calls.length;
+
+      process.stop();
+      const afterStop = process.sendOwnerUtterance('停止後の質問');
+      await expect(afterStop).rejects.toThrow();
+
+      expect({
+        name: testCase.name,
+        spawnsAfterStop: spawn.mock.calls.length - spawnsBeforeStop,
+      }).toEqual({ name: testCase.name, spawnsAfterStop: 0 });
+    }
+  });
+});
