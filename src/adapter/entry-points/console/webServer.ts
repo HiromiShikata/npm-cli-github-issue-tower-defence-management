@@ -3,21 +3,27 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import { randomUUID } from 'crypto';
-import { execFileSync, spawn } from 'child_process';
 import YAML from 'yaml';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { LiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/LiveSessionRepository';
 import type { LiveSessionToolCallRunner } from '../../../domain/usecases/liveSession/LiveSessionToolCall';
 import type { VoiceConsoleServerEventHandler } from '../../repositories/OpenAiLiveSessionSideband';
-import type { ClaudeCodeChildProcess } from '../../voice-console/claudeCodeVoiceConsoleProcess';
-import { selectClaudeCodeVoiceConsoleOauthToken } from '../../voice-console/claudeCodeVoiceConsoleToken';
+import {
+  loadLiveSessionOauthTokenSelectionSettings,
+  resolveFleetConfigFilePath,
+} from '../cli/fleetConfig';
 import { VOICE_CONSOLE_BACKEND_NOTE } from '../../voice-console/voiceConsoleLiveSessionConfig';
 import { startVoiceConsoleBackend } from '../../voice-console/voiceConsoleBackendStarter';
 import {
-  VoiceConsoleSendEvent,
-  VoiceConsoleSidebandHandler,
-} from '../../voice-console/voiceConsoleSideband';
+  attachVoiceConsoleBackend,
+  createClaudeChildSpawn,
+  createClaudeEffortFlagSupportCheck,
+  isVoiceConsoleProxyUp,
+  runClaudeHelp,
+  selectVoiceConsoleOauthTokenForSession,
+  voiceConsoleProxyBaseUrl,
+} from '../../voice-console/voiceConsoleBackendWiring';
 import { ensureProxyRunning } from '../../proxy/ensureProxyRunning';
 import { PROXY_PORT } from '../../proxy/RateLimitCache';
 import {
@@ -1086,48 +1092,16 @@ const resolveAirplaneSyncDeps = (
 
 const LIVE_SESSIONS_REQUEST_PATH = '/api/live/sessions';
 
-const VOICE_CONSOLE_PROXY_BASE_URL = `http://127.0.0.1:${PROXY_PORT}`;
-
-const describeErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
-let claudeEffortFlagSupport: boolean | null = null;
-
-const isClaudeEffortFlagSupported = (): boolean => {
-  if (claudeEffortFlagSupport === null) {
-    let helpText = '';
-    try {
-      helpText = execFileSync('claude', ['--help'], {
-        encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-    } catch (error) {
-      console.error(
-        `claude --help failed; the voice console session runs without --effort: ${describeErrorMessage(error)}`,
-      );
-    }
-    claudeEffortFlagSupport = helpText.includes('--effort');
-  }
-  return claudeEffortFlagSupport;
+const voiceConsoleLogError = (message: string): void => {
+  console.error(message);
 };
 
-const isVoiceConsoleProxyUp = async (): Promise<boolean> => {
-  try {
-    return await ensureProxyRunning(PROXY_PORT);
-  } catch (error) {
-    console.error(
-      `voice console could not start the token proxy; the Claude Code session runs without ANTHROPIC_BASE_URL: ${describeErrorMessage(error)}`,
-    );
-    return false;
-  }
-};
+const voiceConsoleEffortFlagSupported = createClaudeEffortFlagSupportCheck(
+  runClaudeHelp,
+  voiceConsoleLogError,
+);
 
-const spawnClaudeCodeChild = (
-  command: string,
-  args: string[],
-  env: Record<string, string>,
-): ClaudeCodeChildProcess =>
-  spawn(command, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+const voiceConsoleSpawn = createClaudeChildSpawn();
 
 const attachVoiceConsoleSideband = async (
   options: WebServerOptions,
@@ -1137,55 +1111,38 @@ const attachVoiceConsoleSideband = async (
   if (sideband === null) {
     return;
   }
-  let currentSend: VoiceConsoleSendEvent | null = null;
-  const backend = await startVoiceConsoleBackend({
-    selectOauthToken: () =>
-      selectClaudeCodeVoiceConsoleOauthToken({
-        tokenListJsonPath: resolveTokenListJsonPath(null),
-        cacheDirectory: resolveCacheDirectory(null),
-        nowEpochSeconds: Math.floor(Date.now() / 1000),
+  await attachVoiceConsoleBackend({
+    sideband,
+    sessionId,
+    startBackend: (appendCommentary) =>
+      startVoiceConsoleBackend({
+        selectOauthToken: () =>
+          selectVoiceConsoleOauthTokenForSession({
+            loadSelectionSettings: () =>
+              loadLiveSessionOauthTokenSelectionSettings(
+                resolveFleetConfigFilePath(null),
+              ),
+            tokenListJsonPath: resolveTokenListJsonPath(null),
+            cacheDirectory: resolveCacheDirectory(null),
+            nowEpochSeconds: Date.now() / 1000,
+          }),
+        isProxyUp: () =>
+          isVoiceConsoleProxyUp({
+            port: PROXY_PORT,
+            ensureProxyRunning,
+            logError: voiceConsoleLogError,
+          }),
+        proxyBaseUrl: voiceConsoleProxyBaseUrl(PROXY_PORT),
+        effortFlagSupported: voiceConsoleEffortFlagSupported(),
+        backendNote: VOICE_CONSOLE_BACKEND_NOTE,
+        baseEnv: process.env,
+        spawn: voiceConsoleSpawn,
+        logError: voiceConsoleLogError,
+        appendCommentary,
       }),
-    isProxyUp: isVoiceConsoleProxyUp,
-    proxyBaseUrl: VOICE_CONSOLE_PROXY_BASE_URL,
-    effortFlagSupported: isClaudeEffortFlagSupported(),
-    backendNote: VOICE_CONSOLE_BACKEND_NOTE,
-    baseEnv: process.env,
-    spawn: spawnClaudeCodeChild,
-    logError: (message) => console.error(message),
-    appendCommentary: (delegationId, content) => {
-      if (currentSend === null) {
-        throw new Error(
-          `no sideband send is available to report delegation ${delegationId}`,
-        );
-      }
-      currentSend({
-        type: 'session.commentary.append',
-        event_id: randomUUID(),
-        delegation_id: delegationId,
-        content,
-      });
-    },
+    newEventId: randomUUID,
+    logError: voiceConsoleLogError,
   });
-  let handler: VoiceConsoleSidebandHandler | null = null;
-  try {
-    await sideband.attach(
-      sessionId,
-      (event, send) => {
-        currentSend = send;
-        const activeHandler =
-          handler ??
-          new VoiceConsoleSidebandHandler(backend, send, (message) =>
-            console.error(message),
-          );
-        handler = activeHandler;
-        return activeHandler.handleServerEvent(event);
-      },
-      () => backend.stop(),
-    );
-  } catch (error) {
-    backend.stop();
-    throw error;
-  }
 };
 
 const closeLiveSessionAfterSidebandFailure = async (

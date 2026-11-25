@@ -1,18 +1,18 @@
 import {
-  OauthTokenSelectHandler,
-  type OauthTokenSelectHandlerInput,
-} from '../entry-points/handlers/OauthTokenSelectHandler';
+  LiveSessionOauthTokenSelectHandler,
+  type LiveSessionOauthTokenSelectHandlerInput,
+} from '../entry-points/handlers/LiveSessionOauthTokenSelectHandler';
 
 export type ClaudeCodeVoiceConsoleOauthTokenResult =
   | { token: string; tokenName: string }
   | { error: string; diagnostics: string[] };
 
 export const selectClaudeCodeVoiceConsoleOauthToken = (
-  input: OauthTokenSelectHandlerInput,
+  input: LiveSessionOauthTokenSelectHandlerInput,
   handler: Pick<
-    OauthTokenSelectHandler,
+    LiveSessionOauthTokenSelectHandler,
     'handle'
-  > = new OauthTokenSelectHandler(),
+  > = new LiveSessionOauthTokenSelectHandler(),
 ): ClaudeCodeVoiceConsoleOauthTokenResult => {
   const output = handler.handle(input);
   if (output.selectedToken === null || output.selectedName === null) {

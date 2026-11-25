@@ -12,19 +12,32 @@ export type ClaudeCodeVoiceConsoleLaunch = {
   env: Record<string, string>;
 };
 
-const ANTHROPIC_API_KEY_PREFIX = 'ANTHROPIC_API_KEY';
+const INHERITED_ENV_NAMES = [
+  'PATH',
+  'HOME',
+  'USER',
+  'LOGNAME',
+  'SHELL',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'TERM',
+  'TMPDIR',
+  'XDG_CONFIG_HOME',
+  'XDG_CACHE_HOME',
+  'XDG_DATA_HOME',
+  'NODE_ENV',
+];
 
 const buildChildEnv = (
   input: ClaudeCodeVoiceConsoleLaunchInput,
 ): Record<string, string> => {
   const env: Record<string, string> = {};
-  for (const [name, value] of Object.entries(input.baseEnv)) {
-    if (value === undefined) continue;
-    if (name.startsWith(ANTHROPIC_API_KEY_PREFIX)) continue;
-    if (name === 'ANTHROPIC_BASE_URL' || name === 'CLAUDE_CODE_OAUTH_TOKEN') {
-      continue;
+  for (const name of INHERITED_ENV_NAMES) {
+    const value = input.baseEnv[name];
+    if (value !== undefined) {
+      env[name] = value;
     }
-    env[name] = value;
   }
   env.CLAUDE_CODE_OAUTH_TOKEN = input.oauthToken;
   if (input.proxyBaseUrl !== null) {

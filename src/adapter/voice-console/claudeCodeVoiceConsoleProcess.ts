@@ -1,5 +1,7 @@
 import { StringDecoder } from 'string_decoder';
 
+export const CLAUDE_CODE_TURN_TIMEOUT_MS = 600000;
+
 export type ClaudeCodeLaunch = {
   command: string;
   args: string[];
@@ -10,11 +12,14 @@ export type ClaudeCodeReadable = {
   on(event: 'data', listener: (chunk: Buffer | string) => void): unknown;
 };
 
+export type ClaudeCodeWritable = {
+  write(chunk: string): boolean;
+  end(): void;
+  on?(event: 'error', handler: (error: Error) => void): unknown;
+};
+
 export type ClaudeCodeChildProcess = {
-  stdin: {
-    write(chunk: string): boolean;
-    end(): void;
-  };
+  stdin: ClaudeCodeWritable;
   stdout: ClaudeCodeReadable;
   stderr: ClaudeCodeReadable;
   on(event: 'exit' | 'error', handler: (...args: unknown[]) => void): unknown;
@@ -27,17 +32,31 @@ export type ClaudeCodeSpawn = (
   env: Record<string, string>,
 ) => ClaudeCodeChildProcess;
 
+export type ClaudeCodeTurnTimerHandle = ReturnType<typeof setTimeout>;
+
+export type ClaudeCodeTurnTimers = {
+  setTimeout(callback: () => void, delayMs: number): ClaudeCodeTurnTimerHandle;
+  clearTimeout(handle: ClaudeCodeTurnTimerHandle): void;
+};
+
 export type ClaudeCodeVoiceConsoleProcessDependencies = {
   spawn: ClaudeCodeSpawn;
   logError: (message: string) => void;
+  timers?: ClaudeCodeTurnTimers;
 };
 
 type PendingTurn = {
   resolve: (resultText: string) => void;
   reject: (error: Error) => void;
+  timer: ClaudeCodeTurnTimerHandle | null;
 };
 
 const STDERR_TAIL_LINES = 20;
+
+const defaultTurnTimers: ClaudeCodeTurnTimers = {
+  setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
+  clearTimeout: (handle) => clearTimeout(handle),
+};
 
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -61,16 +80,20 @@ export class ClaudeCodeVoiceConsoleProcess {
   private child: ClaudeCodeChildProcess | null = null;
   private readonly stdoutDecoder = new StringDecoder('utf8');
   private readonly stderrDecoder = new StringDecoder('utf8');
+  private readonly timers: ClaudeCodeTurnTimers;
   private stdoutBuffer = '';
   private stderrTail: string[] = [];
   private pendingTurn: PendingTurn | null = null;
+  private abandonedTurns = 0;
   private queueTail: Promise<void> = Promise.resolve();
   private terminatedBy: string | null = null;
   private stopped = false;
 
   constructor(
     private readonly dependencies: ClaudeCodeVoiceConsoleProcessDependencies,
-  ) {}
+  ) {
+    this.timers = dependencies.timers ?? defaultTurnTimers;
+  }
 
   start(launch: ClaudeCodeLaunch): void {
     if (this.child !== null) {
@@ -84,6 +107,11 @@ export class ClaudeCodeVoiceConsoleProcess {
     this.child = child;
     child.stdout.on('data', (chunk) => this.handleStdout(chunk));
     child.stderr.on('data', (chunk) => this.handleStderr(chunk));
+    child.stdin.on?.('error', (error) => {
+      this.terminate(
+        `Claude Code voice console stdin error: ${describeError(error)}`,
+      );
+    });
     child.on('error', (error) => {
       this.terminate(
         `Claude Code voice console process error: ${describeError(error)}`,
@@ -110,9 +138,8 @@ export class ClaudeCodeVoiceConsoleProcess {
     this.stopped = true;
     const shouldKill = this.terminatedBy === null && this.child !== null;
     this.terminatedBy ??= 'Claude Code voice console process was stopped';
-    const pending = this.pendingTurn;
-    this.pendingTurn = null;
-    pending?.reject(new Error(this.describeTermination()));
+    const turn = this.takePendingTurn();
+    turn?.reject(new Error(this.describeTermination()));
     if (shouldKill) {
       this.child?.kill();
     }
@@ -129,13 +156,36 @@ export class ClaudeCodeVoiceConsoleProcess {
       return Promise.reject(new Error(this.describeTermination()));
     }
     return new Promise<string>((resolve, reject) => {
-      this.pendingTurn = { resolve, reject };
+      const turn: PendingTurn = { resolve, reject, timer: null };
+      turn.timer = this.timers.setTimeout(
+        () => this.timeOutTurn(turn),
+        CLAUDE_CODE_TURN_TIMEOUT_MS,
+      );
+      this.pendingTurn = turn;
       const message = {
         type: 'user',
         message: { role: 'user', content: text },
       };
       child.stdin.write(`${JSON.stringify(message)}\n`);
     });
+  }
+
+  private timeOutTurn(turn: PendingTurn): void {
+    if (this.pendingTurn !== turn) return;
+    this.pendingTurn = null;
+    this.abandonedTurns += 1;
+    const message = `Claude Code turn did not finish within ${CLAUDE_CODE_TURN_TIMEOUT_MS} ms; the turn is abandoned and its late result will be discarded`;
+    this.dependencies.logError(message);
+    turn.reject(new Error(message));
+  }
+
+  private takePendingTurn(): PendingTurn | null {
+    const turn = this.pendingTurn;
+    this.pendingTurn = null;
+    if (turn !== null && turn.timer !== null) {
+      this.timers.clearTimeout(turn.timer);
+    }
+    return turn;
   }
 
   private handleStdout(chunk: Buffer | string): void {
@@ -162,9 +212,15 @@ export class ClaudeCodeVoiceConsoleProcess {
       return;
     }
     if (!isRecord(parsed) || parsed.type !== 'result') return;
-    const turn = this.pendingTurn;
+    if (this.abandonedTurns > 0) {
+      this.abandonedTurns -= 1;
+      this.dependencies.logError(
+        'Claude Code voice console discarded the late result of an abandoned turn',
+      );
+      return;
+    }
+    const turn = this.takePendingTurn();
     if (turn === null) return;
-    this.pendingTurn = null;
     const failure = describeResultFailure(parsed);
     if (failure !== null) {
       turn.reject(new Error(failure));
@@ -196,9 +252,8 @@ export class ClaudeCodeVoiceConsoleProcess {
     if (this.terminatedBy !== null) return;
     this.terminatedBy = reason;
     const message = this.describeTermination();
-    const pending = this.pendingTurn;
-    this.pendingTurn = null;
+    const turn = this.takePendingTurn();
     this.dependencies.logError(message);
-    pending?.reject(new Error(message));
+    turn?.reject(new Error(message));
   }
 }
