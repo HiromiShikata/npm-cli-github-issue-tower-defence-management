@@ -2615,7 +2615,7 @@ body {
   flex-direction: column;
   width: 100%;
   max-width: 560px;
-  max-height: calc(100vh - 100px);
+  max-height: calc(100dvh - 100px);
   overflow: hidden;
 }
 

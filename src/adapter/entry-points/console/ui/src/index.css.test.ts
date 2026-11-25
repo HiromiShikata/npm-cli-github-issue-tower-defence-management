@@ -88,6 +88,13 @@ describe('console CSS class contract', () => {
     expect(ruleBlock).toContain('min-height: 0');
   });
 
+  it('bounds max-height of console-task-create-dialog by the dynamic viewport unit (100dvh) so the dialog footer with the Create button stays inside the visible area when the mobile browser toolbar is shown in landscape orientation', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-task-create-dialog');
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).toContain('max-height: calc(100dvh - 100px)');
+  });
+
   it('sets minimum 8px vertical padding on console-tab-project-link to provide an adequate tap target for the GitHub project icon link', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-tab-project-link');
