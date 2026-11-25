@@ -394,6 +394,37 @@ describe('writeRemoteMachineStatus', () => {
     ).toEqual([]);
   });
 
+  it('reports a temporary-file cleanup error and rethrows the rename error', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile(
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+    );
+    const renameError = new Error('rename failed for test');
+    const reportError = jest.fn<void, [string]>();
+    const runner = jest.fn().mockResolvedValue(metricsOutput);
+    jest.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw renameError;
+    });
+    jest.spyOn(fs, 'rmSync').mockImplementation(() => {
+      throw new Error('cleanup failed for test');
+    });
+
+    await expect(
+      writeRemoteMachineStatus({
+        dashboardDataDir,
+        workerHostsPath,
+        reportError,
+        runRemoteCommand: runner,
+      }),
+    ).rejects.toBe(renameError);
+    expect(reportError).toHaveBeenCalledTimes(1);
+    const [message] = reportError.mock.calls[0];
+    expect(message).toContain(
+      'could not remove temporary remote machine status file',
+    );
+    expect(message).toContain('cleanup failed for test');
+  });
+
   it('propagates a temporary-file write error and removes the temporary file', async () => {
     dashboardDataDir = makeTempDirectory();
     workerHostsPath = makeTempFile('hosts: []\n');
