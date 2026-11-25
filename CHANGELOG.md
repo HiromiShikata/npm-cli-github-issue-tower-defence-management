@@ -1,3 +1,10 @@
+# [2.209.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.208.0...v2.209.0) (2026-11-25)
+
+
+### Features
+
+* **voice-console:** create tasks by voice with prepare_create_task ([#3771](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3771)) ([190fe06](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/190fe06c5574af7e94eed3cc9d8a52fdfc0ddeaa))
+
 # [2.208.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.207.1...v2.208.0) (2026-11-25)
 
 
