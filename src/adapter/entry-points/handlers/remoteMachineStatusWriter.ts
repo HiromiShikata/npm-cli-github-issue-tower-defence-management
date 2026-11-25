@@ -148,12 +148,68 @@ export const writeRemoteMachineStatus = async (params: {
   now?: Date;
   reportError?: (message: string) => void;
 }): Promise<void> => {
-  if (!params.dashboardDataDir || !params.workerHostsPath) return;
+  if (!params.dashboardDataDir) return;
+  const outputPath = path.join(
+    params.dashboardDataDir,
+    REMOTE_MACHINE_STATUS_FILE_NAME,
+  );
+  if (!params.workerHostsPath) {
+    try {
+      fs.unlinkSync(outputPath);
+    } catch (error) {
+      if (!(isRecord(error) && error.code === 'ENOENT')) {
+        throw error;
+      }
+    }
+    return;
+  }
   const readFile =
     params.readFile ??
     ((filePath: string) => fs.readFileSync(filePath, 'utf8'));
-  const hosts = parseWorkerHostsYaml(readFile(params.workerHostsPath));
   const capturedAt = (params.now ?? new Date()).toISOString();
+  let hosts: WorkerHost[];
+  try {
+    hosts = parseWorkerHostsYaml(readFile(params.workerHostsPath));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    params.reportError?.(`could not read or parse worker hosts: ${message}`);
+    let previousNames: string[] = [];
+    try {
+      const previousText = fs.readFileSync(outputPath, 'utf8');
+      const extractMachines = (value: unknown): unknown =>
+        isRecord(value) ? value.machines : null;
+      const previousMachines = extractMachines(JSON.parse(previousText));
+      if (Array.isArray(previousMachines)) {
+        previousNames = previousMachines.flatMap((machine: unknown) =>
+          isRecord(machine) && typeof machine.name === 'string'
+            ? [machine.name]
+            : [],
+        );
+      }
+    } catch {
+      previousNames = [];
+    }
+    const machines = previousNames.map((name) => ({
+      name,
+      reachable: false,
+      memPct: null,
+      cpuPct: null,
+      diskPct: null,
+      load: null,
+      capturedAt,
+    }));
+    fs.mkdirSync(params.dashboardDataDir, { recursive: true });
+    const temporaryPath = `${outputPath}.tmp`;
+    fs.writeFileSync(
+      temporaryPath,
+      JSON.stringify({
+        capturedAt,
+        machines,
+      } satisfies RemoteMachineStatusFile),
+    );
+    fs.renameSync(temporaryPath, outputPath);
+    return;
+  }
   const runRemoteCommand =
     params.runRemoteCommand ?? defaultRemoteCommandRunner;
   const machines: RemoteMachineStatusEntry[] = [];
@@ -187,10 +243,6 @@ export const writeRemoteMachineStatus = async (params: {
       });
     }
   }
-  const outputPath = path.join(
-    params.dashboardDataDir,
-    REMOTE_MACHINE_STATUS_FILE_NAME,
-  );
   const temporaryPath = `${outputPath}.tmp`;
   fs.mkdirSync(params.dashboardDataDir, { recursive: true });
   fs.writeFileSync(

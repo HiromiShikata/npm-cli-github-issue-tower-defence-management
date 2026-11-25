@@ -647,15 +647,6 @@ export class ComposeDashboardUseCase {
       ...tokenLines,
       ...codexLines,
     ];
-    const firstLine = statsLines[0];
-    return (
-      lines
-        .map((line, index) =>
-          index === 0 && line === firstLine
-            ? `<tt>${line}</tt><br>`
-            : wrapLine(line),
-        )
-        .join('\n') + '\n'
-    );
+    return lines.map((line) => wrapLine(line)).join('\n') + '\n';
   };
 }
