@@ -2815,7 +2815,7 @@ body {
   gap: 6px;
   max-height: 45dvh;
   overflow-y: auto;
-  padding: 8px 18px;
+  padding: 8px 0;
   background: #161b22;
   border-bottom: 1px solid #30363d;
 }

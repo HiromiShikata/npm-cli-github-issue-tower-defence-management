@@ -330,31 +330,6 @@ export const IssueCreateModalDialog = ({
             </button>
           </div>
         </div>
-        {previewedFile !== null && previewedUrl !== undefined && (
-          <div
-            className="console-task-create-dialog-file-preview"
-            data-testid="console-task-create-dialog-file-preview"
-          >
-            <div className="console-task-create-dialog-file-preview-bar">
-              <span className="console-task-create-dialog-file-name">
-                {previewedFile.name}
-              </span>
-              <button
-                type="button"
-                className="console-task-create-dialog-close"
-                aria-label="Close preview"
-                onClick={() => setPreviewTarget(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <img
-              src={previewedUrl}
-              alt={previewedFile.name}
-              className="console-task-create-dialog-file-preview-image"
-            />
-          </div>
-        )}
         <div className="console-task-create-dialog-body">
           <span className="console-task-create-dialog-section-label">
             Title
@@ -424,6 +399,32 @@ export const IssueCreateModalDialog = ({
             disabled={submitting}
             rows={3}
           />
+
+          {previewedFile !== null && previewedUrl !== undefined && (
+            <div
+              className="console-task-create-dialog-file-preview"
+              data-testid="console-task-create-dialog-file-preview"
+            >
+              <div className="console-task-create-dialog-file-preview-bar">
+                <span className="console-task-create-dialog-file-name">
+                  {previewedFile.name}
+                </span>
+                <button
+                  type="button"
+                  className="console-task-create-dialog-close"
+                  aria-label="Close preview"
+                  onClick={() => setPreviewTarget(null)}
+                >
+                  ✕
+                </button>
+              </div>
+              <img
+                src={previewedUrl}
+                alt={previewedFile.name}
+                className="console-task-create-dialog-file-preview-image"
+              />
+            </div>
+          )}
 
           <span className="console-task-create-dialog-section-label">
             Attachments
