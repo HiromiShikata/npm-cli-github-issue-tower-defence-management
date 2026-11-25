@@ -10,7 +10,12 @@ import {
   type ClaudeCodeVoiceConsoleOauthTokenResult,
   selectClaudeCodeVoiceConsoleOauthToken,
 } from './claudeCodeVoiceConsoleToken';
-import type { VoiceConsoleBackend } from './voiceConsoleBackendStarter';
+import {
+  startVoiceConsoleBackend,
+  type VoiceConsoleBackend,
+  type VoiceConsoleBackendStarterInput,
+} from './voiceConsoleBackendStarter';
+import { VOICE_CONSOLE_BACKEND_NOTE } from './voiceConsoleLiveSessionConfig';
 import {
   type VoiceConsoleSendEvent,
   VoiceConsoleSidebandHandler,
@@ -178,3 +183,66 @@ export const attachVoiceConsoleBackend = async (input: {
     throw error;
   }
 };
+
+export type VoiceConsoleBackendEnvironment = {
+  resolveFleetConfigFilePath: (cliValue: string | null) => string | null;
+  loadSelectionSettings: (
+    fleetConfigFilePath: string | null,
+  ) => LiveSessionOauthTokenSelectionSettings;
+  resolveTokenListJsonPath: (explicitPath: string | null) => string | null;
+  resolveCacheDirectory: (explicitDirectory: string | null) => string;
+  readNowEpochSeconds: () => number;
+  ensureProxyRunning: (port: number) => Promise<boolean>;
+  proxyPort: number;
+  effortFlagSupported: () => boolean;
+  baseEnv: Record<string, string | undefined>;
+  spawn: ClaudeCodeSpawn;
+  logError: (message: string) => void;
+};
+
+export const buildVoiceConsoleBackendStartInput = (
+  environment: VoiceConsoleBackendEnvironment,
+  appendCommentary: (delegationId: string, content: string) => void,
+): VoiceConsoleBackendStarterInput => ({
+  selectOauthToken: () =>
+    selectVoiceConsoleOauthTokenForSession({
+      loadSelectionSettings: () =>
+        environment.loadSelectionSettings(
+          environment.resolveFleetConfigFilePath(null),
+        ),
+      tokenListJsonPath: environment.resolveTokenListJsonPath(null),
+      cacheDirectory: environment.resolveCacheDirectory(null),
+      nowEpochSeconds: environment.readNowEpochSeconds(),
+    }),
+  isProxyUp: () =>
+    isVoiceConsoleProxyUp({
+      port: environment.proxyPort,
+      ensureProxyRunning: environment.ensureProxyRunning,
+      logError: environment.logError,
+    }),
+  proxyBaseUrl: voiceConsoleProxyBaseUrl(environment.proxyPort),
+  effortFlagSupported: environment.effortFlagSupported(),
+  backendNote: VOICE_CONSOLE_BACKEND_NOTE,
+  baseEnv: environment.baseEnv,
+  spawn: environment.spawn,
+  logError: environment.logError,
+  appendCommentary,
+});
+
+export const attachVoiceConsoleBackendWithEnvironment = (input: {
+  sideband: VoiceConsoleSidebandConnector;
+  sessionId: string;
+  environment: VoiceConsoleBackendEnvironment;
+  newEventId: () => string;
+  logError: (message: string) => void;
+}): Promise<void> =>
+  attachVoiceConsoleBackend({
+    sideband: input.sideband,
+    sessionId: input.sessionId,
+    startBackend: (appendCommentary) =>
+      startVoiceConsoleBackend(
+        buildVoiceConsoleBackendStartInput(input.environment, appendCommentary),
+      ),
+    newEventId: input.newEventId,
+    logError: input.logError,
+  });

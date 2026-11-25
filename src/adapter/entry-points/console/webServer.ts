@@ -13,16 +13,12 @@ import {
   loadLiveSessionOauthTokenSelectionSettings,
   resolveFleetConfigFilePath,
 } from '../cli/fleetConfig';
-import { VOICE_CONSOLE_BACKEND_NOTE } from '../../voice-console/voiceConsoleLiveSessionConfig';
-import { startVoiceConsoleBackend } from '../../voice-console/voiceConsoleBackendStarter';
 import {
-  attachVoiceConsoleBackend,
+  attachVoiceConsoleBackendWithEnvironment,
   createClaudeChildSpawn,
   createClaudeEffortFlagSupportCheck,
-  isVoiceConsoleProxyUp,
   runClaudeHelp,
-  selectVoiceConsoleOauthTokenForSession,
-  voiceConsoleProxyBaseUrl,
+  type VoiceConsoleBackendEnvironment,
 } from '../../voice-console/voiceConsoleBackendWiring';
 import { ensureProxyRunning } from '../../proxy/ensureProxyRunning';
 import { PROXY_PORT } from '../../proxy/RateLimitCache';
@@ -1096,12 +1092,22 @@ const voiceConsoleLogError = (message: string): void => {
   console.error(message);
 };
 
-const voiceConsoleEffortFlagSupported = createClaudeEffortFlagSupportCheck(
-  runClaudeHelp,
-  voiceConsoleLogError,
-);
-
-const voiceConsoleSpawn = createClaudeChildSpawn();
+const voiceConsoleEnvironment: VoiceConsoleBackendEnvironment = {
+  resolveFleetConfigFilePath,
+  loadSelectionSettings: loadLiveSessionOauthTokenSelectionSettings,
+  resolveTokenListJsonPath,
+  resolveCacheDirectory,
+  readNowEpochSeconds: () => Date.now() / 1000,
+  ensureProxyRunning,
+  proxyPort: PROXY_PORT,
+  effortFlagSupported: createClaudeEffortFlagSupportCheck(
+    runClaudeHelp,
+    voiceConsoleLogError,
+  ),
+  baseEnv: process.env,
+  spawn: createClaudeChildSpawn(),
+  logError: voiceConsoleLogError,
+};
 
 const attachVoiceConsoleSideband = async (
   options: WebServerOptions,
@@ -1111,35 +1117,10 @@ const attachVoiceConsoleSideband = async (
   if (sideband === null) {
     return;
   }
-  await attachVoiceConsoleBackend({
+  await attachVoiceConsoleBackendWithEnvironment({
     sideband,
     sessionId,
-    startBackend: (appendCommentary) =>
-      startVoiceConsoleBackend({
-        selectOauthToken: () =>
-          selectVoiceConsoleOauthTokenForSession({
-            loadSelectionSettings: () =>
-              loadLiveSessionOauthTokenSelectionSettings(
-                resolveFleetConfigFilePath(null),
-              ),
-            tokenListJsonPath: resolveTokenListJsonPath(null),
-            cacheDirectory: resolveCacheDirectory(null),
-            nowEpochSeconds: Date.now() / 1000,
-          }),
-        isProxyUp: () =>
-          isVoiceConsoleProxyUp({
-            port: PROXY_PORT,
-            ensureProxyRunning,
-            logError: voiceConsoleLogError,
-          }),
-        proxyBaseUrl: voiceConsoleProxyBaseUrl(PROXY_PORT),
-        effortFlagSupported: voiceConsoleEffortFlagSupported(),
-        backendNote: VOICE_CONSOLE_BACKEND_NOTE,
-        baseEnv: process.env,
-        spawn: voiceConsoleSpawn,
-        logError: voiceConsoleLogError,
-        appendCommentary,
-      }),
+    environment: voiceConsoleEnvironment,
     newEventId: randomUUID,
     logError: voiceConsoleLogError,
   });
