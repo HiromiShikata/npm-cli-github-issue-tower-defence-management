@@ -1,3 +1,11 @@
+# [2.212.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.211.2...v2.212.0) (2026-11-25)
+
+
+### Features
+
+* **console:** serve the TDPM console over HTTPS with a Let's Encrypt IP certificate ([#3777](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3777)) ([eaad0cd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/eaad0cdcae08bcf2c8f4b8cfc65ee92ed3f719a3))
+* **dashboard:** show remote worker machine health rows ([#3778](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3778)) ([da44c4e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/da44c4e3c03b1ecbab0d9364993b0c65be9eda31))
+
 ## [2.211.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.211.1...v2.211.2) (2026-11-25)
 
 
