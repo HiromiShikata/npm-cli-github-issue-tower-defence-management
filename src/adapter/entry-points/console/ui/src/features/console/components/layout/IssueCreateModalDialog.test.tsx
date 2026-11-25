@@ -1720,7 +1720,9 @@ describe('IssueCreateModalDialog', () => {
       const titleTextarea = screen.getByRole('textbox', { name: 'Title' });
       const bodyTextarea = screen.getByRole('textbox', { name: 'Body' });
       const attachmentsLabel = Array.from(
-        document.body.querySelectorAll('.console-task-create-dialog-section-label'),
+        document.body.querySelectorAll(
+          '.console-task-create-dialog-section-label',
+        ),
       ).find((label) => label.textContent === 'Attachments');
       if (attachmentsLabel === undefined) {
         throw new Error('No Attachments section label');
