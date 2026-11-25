@@ -1891,7 +1891,7 @@ test('max settings button is always visible and cross-project settings modal lis
   await expect(saveButton).toBeEnabled();
 });
 
-test('Create new task dialog is one scroll container in landscape orientation', async ({
+test('Create new task dialog is scrollable in landscape orientation', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 667, height: 375 });
@@ -1899,13 +1899,13 @@ test('Create new task dialog is one scroll container in landscape orientation', 
 
   await page.getByRole('button', { name: 'Create new task' }).click();
 
-  const panel = await page
+  const { scrollHeight, clientHeight } = await page
     .locator('.console-task-create-dialog')
     .evaluate((el) => ({
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,
     }));
-  expect(panel.scrollHeight).toBeGreaterThan(panel.clientHeight);
+  expect(scrollHeight).toBeGreaterThan(clientHeight);
 
   const body = await page
     .locator('.console-task-create-dialog-body')
