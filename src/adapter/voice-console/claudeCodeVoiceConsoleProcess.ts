@@ -77,14 +77,14 @@ const describeResultFailure = (
 };
 
 export class ClaudeCodeVoiceConsoleProcess {
+  private launch: ClaudeCodeLaunch | null = null;
   private child: ClaudeCodeChildProcess | null = null;
-  private readonly stdoutDecoder = new StringDecoder('utf8');
-  private readonly stderrDecoder = new StringDecoder('utf8');
+  private stdoutDecoder = new StringDecoder('utf8');
+  private stderrDecoder = new StringDecoder('utf8');
   private readonly timers: ClaudeCodeTurnTimers;
   private stdoutBuffer = '';
   private stderrTail: string[] = [];
   private pendingTurn: PendingTurn | null = null;
-  private abandonedTurns = 0;
   private queueTail: Promise<void> = Promise.resolve();
   private terminatedBy: string | null = null;
   private stopped = false;
@@ -96,32 +96,11 @@ export class ClaudeCodeVoiceConsoleProcess {
   }
 
   start(launch: ClaudeCodeLaunch): void {
-    if (this.child !== null) {
+    if (this.launch !== null) {
       throw new Error('Claude Code voice console process was already started');
     }
-    const child = this.dependencies.spawn(
-      launch.command,
-      launch.args,
-      launch.env,
-    );
-    this.child = child;
-    child.stdout.on('data', (chunk) => this.handleStdout(chunk));
-    child.stderr.on('data', (chunk) => this.handleStderr(chunk));
-    child.stdin.on?.('error', (error) => {
-      this.terminate(
-        `Claude Code voice console stdin error: ${describeError(error)}`,
-      );
-    });
-    child.on('error', (error) => {
-      this.terminate(
-        `Claude Code voice console process error: ${describeError(error)}`,
-      );
-    });
-    child.on('exit', (code, signal) => {
-      this.terminate(
-        `Claude Code voice console process exited with code ${String(code)} and signal ${String(signal)}`,
-      );
-    });
+    this.launch = launch;
+    this.spawnChild();
   }
 
   sendOwnerUtterance(text: string): Promise<string> {
@@ -145,15 +124,70 @@ export class ClaudeCodeVoiceConsoleProcess {
     }
   }
 
+  private spawnChild(): void {
+    const launch = this.launch;
+    if (launch === null) {
+      throw new Error('Claude Code voice console process has not been started');
+    }
+    const child = this.dependencies.spawn(
+      launch.command,
+      launch.args,
+      launch.env,
+    );
+    this.child = child;
+    this.stdoutDecoder = new StringDecoder('utf8');
+    this.stderrDecoder = new StringDecoder('utf8');
+    this.stdoutBuffer = '';
+    this.stderrTail = [];
+    child.stdout.on('data', (chunk) => {
+      if (this.child === child) this.handleStdout(chunk);
+    });
+    child.stderr.on('data', (chunk) => {
+      if (this.child === child) this.handleStderr(chunk);
+    });
+    child.stdin.on?.('error', (error) => {
+      if (this.child !== child) return;
+      this.terminate(
+        `Claude Code voice console stdin error: ${describeError(error)}`,
+      );
+    });
+    child.on('error', (error) => {
+      if (this.child !== child) return;
+      this.terminate(
+        `Claude Code voice console process error: ${describeError(error)}`,
+      );
+    });
+    child.on('exit', (code, signal) => {
+      if (this.child !== child) return;
+      this.terminate(
+        `Claude Code voice console process exited with code ${String(code)} and signal ${String(signal)}`,
+      );
+    });
+  }
+
   private runTurn(text: string): Promise<string> {
-    const child = this.child;
-    if (child === null) {
+    if (this.launch === null) {
       return Promise.reject(
         new Error('Claude Code voice console process has not been started'),
       );
     }
     if (this.terminatedBy !== null) {
       return Promise.reject(new Error(this.describeTermination()));
+    }
+    if (this.child === null) {
+      try {
+        this.spawnChild();
+      } catch (error) {
+        const message = `Claude Code voice console process could not restart after a timed-out turn: ${describeError(error)}`;
+        this.dependencies.logError(message);
+        return Promise.reject(new Error(message));
+      }
+    }
+    const child = this.child;
+    if (child === null) {
+      return Promise.reject(
+        new Error('Claude Code voice console process has not been started'),
+      );
     }
     return new Promise<string>((resolve, reject) => {
       const turn: PendingTurn = { resolve, reject, timer: null };
@@ -172,10 +206,12 @@ export class ClaudeCodeVoiceConsoleProcess {
 
   private timeOutTurn(turn: PendingTurn): void {
     if (this.pendingTurn !== turn) return;
-    this.pendingTurn = null;
-    this.abandonedTurns += 1;
-    const message = `Claude Code turn did not finish within ${CLAUDE_CODE_TURN_TIMEOUT_MS} ms; the turn is abandoned and its late result will be discarded`;
+    this.takePendingTurn();
+    const message = `Claude Code turn did not finish within ${CLAUDE_CODE_TURN_TIMEOUT_MS} ms; the Claude Code process is killed and the next turn starts a fresh one`;
     this.dependencies.logError(message);
+    const child = this.child;
+    this.child = null;
+    child?.kill();
     turn.reject(new Error(message));
   }
 
@@ -212,13 +248,6 @@ export class ClaudeCodeVoiceConsoleProcess {
       return;
     }
     if (!isRecord(parsed) || parsed.type !== 'result') return;
-    if (this.abandonedTurns > 0) {
-      this.abandonedTurns -= 1;
-      this.dependencies.logError(
-        'Claude Code voice console discarded the late result of an abandoned turn',
-      );
-      return;
-    }
     const turn = this.takePendingTurn();
     if (turn === null) return;
     const failure = describeResultFailure(parsed);
