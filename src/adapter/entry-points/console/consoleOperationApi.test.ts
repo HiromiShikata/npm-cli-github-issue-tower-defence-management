@@ -973,6 +973,83 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
     });
 
+    it('approve_and_merge in the conflicted route skips the Status write without a done record when the live Status moved to Preparation', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/pull/1',
+        itemId: 'PVTI_conflict_preparation_skipped',
+        status: 'Preparation',
+      });
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_conflict_preparation_skipped',
+        expectedStatusName: 'Awaiting Owner',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true, statusSet: false });
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('set_status with commentBody writes nothing and reports the comment as posted when the Status moved to Preparation during the comment post', async () => {
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        issueRepository.getIssueByUrl
+          .mockResolvedValueOnce({
+            ...issue,
+            url: 'https://github.com/o/r/issues/1',
+            itemId: 'PVTI_race',
+            status: 'Awaiting Owner',
+          })
+          .mockResolvedValueOnce({
+            ...issue,
+            url: 'https://github.com/o/r/issues/1',
+            itemId: 'PVTI_race',
+            status: 'Preparation',
+          });
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'set_status',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_race',
+          statusName: 'Awaiting workspace',
+          commentBody: 'a comment',
+          expectedStatusName: 'Awaiting Owner',
+        });
+        expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toEqual({
+          ok: true,
+          commentPosted: true,
+          statusSet: false,
+        });
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(
+          `[console-operation] stale status operation skipped: issue=https://github.com/o/r/issues/1 statusAtTap="Awaiting Owner" current="Preparation" target="Awaiting workspace"`,
+        );
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+
     it('approve_and_merge merges and then moves the item to Awaiting workspace when the live Status equals expectedStatusName', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
@@ -2067,7 +2144,7 @@ describe('consoleOperationApi', () => {
         expect(logSpy).toHaveBeenCalledWith(
           `[console-operation] stale status operation overwritten: issue=${issueUrl} statusAtTap="Awaiting Owner" current="Awaiting workspace" target="Todo by human"`,
         );
-        expect(issueRepository.getIssueByUrl).toHaveBeenCalledTimes(1);
+        expect(issueRepository.getIssueByUrl).toHaveBeenCalledTimes(2);
       } finally {
         logSpy.mockRestore();
       }
