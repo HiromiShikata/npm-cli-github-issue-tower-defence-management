@@ -158,9 +158,9 @@ export class ClaudeCodeVoiceConsoleProcess {
       );
     });
     child.on('exit', (code, signal) => {
-      if (this.child !== child) return;
-      this.terminate(
-        `Claude Code voice console process exited with code ${String(code)} and signal ${String(signal)}`,
+      if (this.child !== child || this.stopped) return;
+      this.discardChild(
+        `Claude Code voice console process exited with code ${String(code)} and signal ${String(signal)}; the next turn starts a fresh process`,
       );
     });
   }
@@ -212,11 +212,12 @@ export class ClaudeCodeVoiceConsoleProcess {
   }
 
   private discardChild(message: string): void {
-    this.dependencies.logError(message);
+    const diagnostic = this.withStderrTail(message);
+    this.dependencies.logError(diagnostic);
     const child = this.child;
     this.child = null;
     child?.kill();
-    this.takePendingTurn()?.reject(new Error(message));
+    this.takePendingTurn()?.reject(new Error(diagnostic));
   }
 
   private takePendingTurn(): PendingTurn | null {
@@ -272,13 +273,17 @@ export class ClaudeCodeVoiceConsoleProcess {
     this.stderrTail = this.stderrTail.slice(-STDERR_TAIL_LINES);
   }
 
-  private describeTermination(): string {
-    const reason =
-      this.terminatedBy ?? 'Claude Code voice console process is not running';
+  private withStderrTail(reason: string): string {
     const stderrTail = this.stderrTail.join(' | ');
     return stderrTail.length > 0
       ? `${reason}; last stderr lines: ${stderrTail}`
       : reason;
+  }
+
+  private describeTermination(): string {
+    return this.withStderrTail(
+      this.terminatedBy ?? 'Claude Code voice console process is not running',
+    );
   }
 
   private terminate(reason: string): void {
