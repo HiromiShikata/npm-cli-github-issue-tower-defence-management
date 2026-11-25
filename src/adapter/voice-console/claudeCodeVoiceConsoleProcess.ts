@@ -147,8 +147,8 @@ export class ClaudeCodeVoiceConsoleProcess {
     });
     child.stdin.on?.('error', (error) => {
       if (this.child !== child) return;
-      this.terminate(
-        `Claude Code voice console stdin error: ${describeError(error)}`,
+      this.discardChild(
+        `Claude Code voice console stdin error: ${describeError(error)}; the Claude Code process is killed and the next turn starts a fresh one`,
       );
     });
     child.on('error', (error) => {
@@ -206,13 +206,17 @@ export class ClaudeCodeVoiceConsoleProcess {
 
   private timeOutTurn(turn: PendingTurn): void {
     if (this.pendingTurn !== turn) return;
-    this.takePendingTurn();
-    const message = `Claude Code turn did not finish within ${CLAUDE_CODE_TURN_TIMEOUT_MS} ms; the Claude Code process is killed and the next turn starts a fresh one`;
+    this.discardChild(
+      `Claude Code turn did not finish within ${CLAUDE_CODE_TURN_TIMEOUT_MS} ms; the Claude Code process is killed and the next turn starts a fresh one`,
+    );
+  }
+
+  private discardChild(message: string): void {
     this.dependencies.logError(message);
     const child = this.child;
     this.child = null;
     child?.kill();
-    turn.reject(new Error(message));
+    this.takePendingTurn()?.reject(new Error(message));
   }
 
   private takePendingTurn(): PendingTurn | null {

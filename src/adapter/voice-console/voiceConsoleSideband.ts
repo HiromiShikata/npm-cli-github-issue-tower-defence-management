@@ -18,7 +18,6 @@ const readDelegationId = (delegation: unknown): string | null =>
 export class VoiceConsoleSidebandHandler {
   constructor(
     private readonly bridge: VoiceConsoleSidebandBridge,
-    private readonly send: VoiceConsoleSendEvent,
     private readonly logError: (message: string) => void,
   ) {}
 

@@ -171,8 +171,7 @@ export const attachVoiceConsoleBackend = async (input: {
       (event, send) => {
         currentSend = send;
         const activeHandler =
-          handler ??
-          new VoiceConsoleSidebandHandler(backend, send, input.logError);
+          handler ?? new VoiceConsoleSidebandHandler(backend, input.logError);
         handler = activeHandler;
         return activeHandler.handleServerEvent(event);
       },
