@@ -107,7 +107,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🔴D93% cy13 🔴LA 16 23 40']);
+    ).toEqual(['        M  C  D  S cy LA', '🔴main   55 62 93  -  - 16 23 40']);
   });
 
   it('rounds loads with half-to-even and renders integers', () => {
@@ -119,12 +119,13 @@ describe('formatMachineStatusLines', () => {
         load: [1.2, 0.98, 0.75],
         cycleMinutes: 14,
       }),
-    ).toEqual(['M62% C31% D7% cy14 LA 1 1 1']);
+    ).toEqual(['        M  C  D  S cy LA', '🟢main   62 31  7  -  -  1  1  1']);
   });
 
   it('falls back to placeholders when the machine status is absent', () => {
     expect(formatMachineStatusLines(null)).toEqual([
-      'M?% C?% D?% cy- LA ? ? ?',
+      '        M  C  D  S cy LA',
+      '🔴main    ?  ?  ?  ?  ?  ?  ?  ?',
     ]);
   });
 
@@ -137,7 +138,7 @@ describe('formatMachineStatusLines', () => {
         load: [0, 0, 0],
         cycleMinutes: null,
       }),
-    ).toEqual(['M1% C2% D3% cy- LA 0 0 0']);
+    ).toEqual(['        M  C  D  S cy LA', '🟢main    1  2  3  -  -  0  0  0']);
   });
 
   it('renders D?% when only the disk percent is unavailable', () => {
@@ -149,7 +150,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% D?% cy13 🔴LA 16 23 40']);
+    ).toEqual(['        M  C  D  S cy LA', '🔴main   55 62  ?  -  - 16 23 40']);
   });
 
   it('renders configured partitions inline with metrics when they fit on one line', () => {
@@ -165,7 +166,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🟡D89% S41% cy13 🔴LA 16 23 40']);
+    ).toEqual(['        M  C  D  S cy LA', '🔴main   55 62 89 41 13 16 23 40']);
   });
 
   it('wraps partitions onto subsequent lines when they exceed the width budget', () => {
@@ -185,7 +186,7 @@ describe('formatMachineStatusLines', () => {
       load: [16, 23, 40],
       cycleMinutes: 13,
     });
-    expect(lines[0]).toBe('M55% C62% cy13 🔴LA 16 23 40');
+    expect(lines[0]).toBe('        M  C  D  S cy LA');
     expect(lines.length).toBeGreaterThan(2);
     for (const line of lines.slice(1)) {
       expect(codePointLength(line)).toBeLessThanOrEqual(
@@ -203,7 +204,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🟡D89% cy13 🔴LA 16 23 40']);
+    ).toEqual(['        M  C  D  S cy LA', '🟡main   55 62 89  - 13 16 23 40']);
   });
 
   it('prefixes memory with yellow dot at 80% and red dot at 90%', () => {
