@@ -1,3 +1,10 @@
+## [2.211.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.211.0...v2.211.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **voice-console:** pass the full console environment to the Claude child ([#3775](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3775)) ([18a5f91](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/18a5f91a6afb6b6997c89a10c8fa275fa445bcb9))
+
 # [2.211.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.210.0...v2.211.0) (2026-11-25)
 
 
