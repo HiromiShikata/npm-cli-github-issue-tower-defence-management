@@ -1,3 +1,10 @@
+## [2.207.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.207.0...v2.207.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **console-ui:** make task create dialog one scroll container ([#3769](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3769)) ([64fe432](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/64fe4329bf8ac213df676aacd71f8da0eaddb743))
+
 # [2.207.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.206.4...v2.207.0) (2026-11-25)
 
 
