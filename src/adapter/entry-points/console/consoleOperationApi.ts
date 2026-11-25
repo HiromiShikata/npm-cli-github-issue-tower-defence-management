@@ -411,6 +411,61 @@ const rejectWhenStatusChangedBeforePullRequestWrite = async (
   return null;
 };
 
+const logStaleStatusOperation = (
+  outcome: 'skipped' | 'overwritten',
+  issueUrl: string,
+  statusAtTap: string | null,
+  currentStatus: string | null,
+  targetStatus: string,
+): void => {
+  console.log(
+    `[console-operation] stale status operation ${outcome}: issue=${issueUrl} statusAtTap=${JSON.stringify(statusAtTap)} current=${JSON.stringify(currentStatus)} target=${JSON.stringify(targetStatus)}`,
+  );
+};
+
+type StaleStatusGate =
+  | { kind: 'proceed' }
+  | { kind: 'skipped' }
+  | { kind: 'failed'; response: ConsoleOperationResponse };
+
+const gateStaleStatusBeforeComment = async (
+  issueRepository: IssueRepository,
+  issueUrl: string,
+  expectedStatusAtActionTime: ExpectedStatusAtActionTime,
+  targetStatusName: string,
+): Promise<StaleStatusGate> => {
+  if (!expectedStatusAtActionTime.present) {
+    return { kind: 'proceed' };
+  }
+  const liveIssue = await issueRepository.getIssueByUrl(issueUrl, {
+    bypassCache: true,
+  });
+  if (liveIssue === null) {
+    return {
+      kind: 'failed',
+      response: badGateway(`issue "${issueUrl}" could not be loaded`),
+    };
+  }
+  const liveStatusName = liveIssue.status;
+  if (liveStatusName?.toLowerCase() === targetStatusName.toLowerCase()) {
+    return { kind: 'proceed' };
+  }
+  if (liveStatusName === expectedStatusAtActionTime.statusName) {
+    return { kind: 'proceed' };
+  }
+  if (liveStatusName?.toLowerCase() === PREPARATION_STATUS_NAME) {
+    logStaleStatusOperation(
+      'skipped',
+      issueUrl,
+      expectedStatusAtActionTime.statusName,
+      liveStatusName,
+      targetStatusName,
+    );
+    return { kind: 'skipped' };
+  }
+  return { kind: 'proceed' };
+};
+
 const updateStatusByName = async (
   issueRepository: IssueRepository,
   project: Project,
@@ -435,9 +490,22 @@ const updateStatusByName = async (
       return null;
     }
     if (liveStatusName !== expectedStatusAtActionTime.statusName) {
-      return statusChangedSinceQueuedResponse(
+      if (liveStatusName?.toLowerCase() === PREPARATION_STATUS_NAME) {
+        logStaleStatusOperation(
+          'skipped',
+          issueUrl,
+          expectedStatusAtActionTime.statusName,
+          liveStatusName,
+          statusName,
+        );
+        return null;
+      }
+      logStaleStatusOperation(
+        'overwritten',
+        issueUrl,
         expectedStatusAtActionTime.statusName,
         liveStatusName,
+        statusName,
       );
     }
   }
@@ -759,23 +827,25 @@ const handleTriageImpl = async (
       isNonEmptyString(commentBody) &&
       previousResult?.commentPosted !== true
     ) {
-      const staleBeforeComment =
-        await rejectWhenStatusChangedBeforePullRequestWrite(
-          context.resolveIssueRepository(issueUrl),
-          issueUrl,
-          readExpectedStatusAtActionTime(body),
-          statusName,
-        );
-      if (staleBeforeComment !== null) {
+      const staleGate = await gateStaleStatusBeforeComment(
+        context.resolveIssueRepository(issueUrl),
+        issueUrl,
+        readExpectedStatusAtActionTime(body),
+        statusName,
+      );
+      if (staleGate.kind === 'failed') {
         const staleBody =
-          typeof staleBeforeComment.body === 'object' &&
-          staleBeforeComment.body !== null
-            ? staleBeforeComment.body
+          typeof staleGate.response.body === 'object' &&
+          staleGate.response.body !== null
+            ? staleGate.response.body
             : {};
         return {
-          ...staleBeforeComment,
+          ...staleGate.response,
           body: { ...staleBody, commentPosted: false, statusSet: false },
         };
+      }
+      if (staleGate.kind === 'skipped') {
+        return { statusCode: 200, body: { ok: true } };
       }
       try {
         await context
