@@ -57,7 +57,11 @@ const expectedPrepareToolNames = [
 
 describe('VOICE_CONSOLE_INSTRUCTIONS', () => {
   it('is a non-empty Japanese instruction text containing the wording the assistant must use', () => {
-    const cases = [{ word: 'はい' }, { word: '詳しく' }, { word: '最も速いペース' }];
+    const cases = [
+      { word: 'はい' },
+      { word: '詳しく' },
+      { word: '最も速いペース' },
+    ];
 
     for (const testCase of cases) {
       expect(VOICE_CONSOLE_INSTRUCTIONS.length).toBeGreaterThan(0);
