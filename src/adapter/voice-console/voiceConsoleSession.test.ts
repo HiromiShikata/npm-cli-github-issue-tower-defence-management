@@ -256,13 +256,31 @@ const READ_BACK = '<read-back>';
 const resolveSpeech = (text: string): string =>
   text === READ_BACK ? lastReadBack : text;
 
+type CreateTaskDefaults = {
+  nameWithOwner: string | null;
+  storyName: string | null;
+};
+type CreateTaskDefaultsResolver = (
+  pjcode: string,
+) => Promise<CreateTaskDefaults>;
+
+const DEFAULT_CREATE_TASK_DEFAULTS: CreateTaskDefaults = {
+  nameWithOwner: 'HiromiShikata/example',
+  storyName: 'Portal redesign',
+};
+const defaultResolveCreateTaskDefaults: CreateTaskDefaultsResolver = (
+  _pjcode: string,
+) => Promise.resolve(DEFAULT_CREATE_TASK_DEFAULTS);
+
 const openSession = async (
   options: {
     position?: number;
     consoleDataOutputDir?: string;
+    projectPjcodes?: string[];
     runOperation?: VoiceConsoleSessionDeps['runOperation'];
     searchIssues?: VoiceConsoleSessionDeps['searchIssues'];
     readRepositoryFile?: VoiceConsoleSessionDeps['readRepositoryFile'];
+    resolveCreateTaskDefaults?: CreateTaskDefaultsResolver;
   } = {},
 ) => {
   const getIssueOrPullRequestComments = jest.fn((url: string) =>
@@ -287,10 +305,16 @@ const openSession = async (
   const runOperation = jest.fn(options.runOperation ?? defaultRunOperation);
   const newActionId = jest.fn((): string => FIXED_ACTION_ID);
   const logError = jest.fn((_message: string) => undefined);
+  const resolveCreateTaskDefaults = jest.fn(
+    options.resolveCreateTaskDefaults ?? defaultResolveCreateTaskDefaults,
+  );
 
-  const deps: VoiceConsoleSessionDeps = {
+  // Deliberately not annotated as VoiceConsoleSessionDeps: the create-task
+  // dependency is added by the change under test, and an excess-property
+  // check on a typed literal would stop this whole file from compiling.
+  const deps = {
     consoleDataOutputDir: options.consoleDataOutputDir ?? root,
-    projectPjcodes: ['umino', 'xcare'],
+    projectPjcodes: options.projectPjcodes ?? ['umino', 'xcare'],
     resolveIssueRepository,
     searchIssues,
     getAuthenticatedUserLogin,
@@ -298,6 +322,7 @@ const openSession = async (
     runOperation,
     newActionId,
     logError,
+    resolveCreateTaskDefaults,
   };
   const session = new VoiceConsoleSession(deps);
 
@@ -329,6 +354,7 @@ const openSession = async (
     runOperation,
     newActionId,
     logError,
+    resolveCreateTaskDefaults,
     getIssueOrPullRequestComments,
     getIssueOrPullRequestBody,
   };
@@ -1038,6 +1064,442 @@ describe('VoiceConsoleSession write tools', () => {
         },
       ],
     ]);
+  });
+});
+
+describe('VoiceConsoleSession create task tool', () => {
+  const CREATE_ISSUE_PATH = '/api/createissue';
+  const CREATED_ISSUE_URL =
+    'https://github.com/HiromiShikata/example/issues/77';
+
+  const pickCreateBody = (body: Record<string, unknown>) => ({
+    title: body.title,
+    nameWithOwner: body.nameWithOwner,
+    storyName: body.storyName,
+    body: body.body,
+    actionId: body.actionId,
+  });
+
+  const emptyQueueDir = (): string =>
+    fs.mkdtempSync(path.join(root, 'empty-queue-'));
+
+  it('prepares without running the operation and runs it once with the create request on confirm', async () => {
+    const rows = [
+      {
+        name: 'title only takes the repository and story defaults',
+        args: { title: 'Fix export' },
+        expected: {
+          title: 'Fix export',
+          nameWithOwner: 'HiromiShikata/example',
+          storyName: 'Portal redesign',
+        },
+      },
+      {
+        name: 'title and body send the body text',
+        args: { title: 'Fix export', body: 'Steps to reproduce' },
+        expected: {
+          title: 'Fix export',
+          nameWithOwner: 'HiromiShikata/example',
+          storyName: 'Portal redesign',
+          body: 'Steps to reproduce',
+        },
+      },
+      {
+        name: 'an empty body is not sent',
+        args: { title: 'Fix export', body: '' },
+        expected: {
+          title: 'Fix export',
+          nameWithOwner: 'HiromiShikata/example',
+          storyName: 'Portal redesign',
+        },
+      },
+      {
+        name: 'explicit repository and story replace the defaults',
+        args: {
+          title: 'Fix export',
+          repository: 'acme/portal',
+          story: 'Move to Okinawa',
+        },
+        expected: {
+          title: 'Fix export',
+          nameWithOwner: 'acme/portal',
+          storyName: 'Move to Okinawa',
+        },
+      },
+      {
+        name: 'an explicit repository keeps the default story',
+        args: { title: 'Fix export', repository: 'acme/portal' },
+        expected: {
+          title: 'Fix export',
+          nameWithOwner: 'acme/portal',
+          storyName: 'Portal redesign',
+        },
+      },
+      {
+        name: 'an explicit story keeps the default repository',
+        args: { title: 'Fix export', story: 'Move to Okinawa' },
+        expected: {
+          title: 'Fix export',
+          nameWithOwner: 'HiromiShikata/example',
+          storyName: 'Move to Okinawa',
+        },
+      },
+    ];
+
+    for (const row of rows) {
+      const { call, runOperation, session } = await openSession({
+        position: 1,
+      });
+
+      const prepared = await call('prepare_create_task', row.args);
+      const callsBeforeConfirm = runOperation.mock.calls.length;
+      session.recordAssistantSpeech(String(prepared.readBack));
+      session.recordOwnerSpeech('はい');
+      const confirmed = await confirmYes(call);
+
+      expect({
+        name: row.name,
+        preparedOk: prepared.ok,
+        callsBeforeConfirm,
+        confirmedOk: confirmed.ok,
+        operations: runOperation.mock.calls.map(([requestPath, body]) => [
+          requestPath,
+          pickCreateBody(body),
+        ]),
+      }).toEqual({
+        name: row.name,
+        preparedOk: true,
+        callsBeforeConfirm: 0,
+        confirmedOk: true,
+        operations: [
+          [CREATE_ISSUE_PATH, { ...row.expected, actionId: FIXED_ACTION_ID }],
+        ],
+      });
+    }
+  });
+
+  it('reads back the title, the repository and the story that will be created', async () => {
+    const rows = [
+      {
+        name: 'defaults',
+        args: { title: 'Fix export' },
+        spoken: ['Fix export', 'HiromiShikata/example', 'Portal redesign'],
+      },
+      {
+        name: 'explicit repository and story',
+        args: {
+          title: 'Fix export',
+          repository: 'acme/portal',
+          story: 'Move to Okinawa',
+        },
+        spoken: ['Fix export', 'acme/portal', 'Move to Okinawa'],
+      },
+    ];
+
+    for (const row of rows) {
+      const { call } = await openSession({ position: 1 });
+
+      const prepared = await call('prepare_create_task', row.args);
+      const readBack = String(prepared.readBack);
+
+      expect({
+        name: row.name,
+        ok: prepared.ok,
+        spoken: row.spoken.map((value) => ({
+          value,
+          included: readBack.includes(value),
+        })),
+      }).toEqual({
+        name: row.name,
+        ok: true,
+        spoken: row.spoken.map((value) => ({ value, included: true })),
+      });
+    }
+  });
+
+  it('chooses the project and asks the resolver for the defaults of that project', async () => {
+    const rows = [
+      {
+        name: 'omitted project with a current item uses the item project',
+        options: { position: 1, projectPjcodes: ['umino', 'xcare'] },
+        args: { title: 'Fix export' },
+        expectedPjcode: 'umino',
+      },
+      {
+        name: 'explicit project_pjcode wins over the current item',
+        options: { position: 1 },
+        args: { title: 'Fix export', project_pjcode: 'xcare' },
+        expectedPjcode: 'xcare',
+      },
+      {
+        name: 'omitted project with no current item and one project uses that project',
+        options: {
+          consoleDataOutputDir: emptyQueueDir(),
+          projectPjcodes: ['xcare'],
+        },
+        args: { title: 'Fix export' },
+        expectedPjcode: 'xcare',
+      },
+    ];
+
+    for (const row of rows) {
+      const { call, resolveCreateTaskDefaults } = await openSession(
+        row.options,
+      );
+
+      const prepared = await call('prepare_create_task', row.args);
+
+      expect({
+        name: row.name,
+        ok: prepared.ok,
+        resolvedFor: [
+          ...new Set(
+            resolveCreateTaskDefaults.mock.calls.map(([pjcode]) => pjcode),
+          ),
+        ],
+      }).toEqual({
+        name: row.name,
+        ok: true,
+        resolvedFor: [row.expectedPjcode],
+      });
+    }
+  });
+
+  it('gives an error without running the operation for invalid create task requests', async () => {
+    const cases = [
+      {
+        name: 'title missing',
+        options: {},
+        args: {},
+        error: 'title_required',
+      },
+      {
+        name: 'title empty',
+        options: {},
+        args: { title: '' },
+        error: 'title_required',
+      },
+      {
+        name: 'project_pjcode not in the project list',
+        options: {},
+        args: { title: 'Fix export', project_pjcode: 'nope' },
+        error: 'unknown_project',
+      },
+      {
+        name: 'no project and no current item with two projects',
+        options: {
+          consoleDataOutputDir: emptyQueueDir(),
+          projectPjcodes: ['umino', 'xcare'],
+        },
+        args: { title: 'Fix export' },
+        error: 'project_required',
+      },
+      {
+        name: 'no project and no current item with no projects',
+        options: {
+          consoleDataOutputDir: emptyQueueDir(),
+          projectPjcodes: [],
+        },
+        args: { title: 'Fix export' },
+        error: 'project_required',
+      },
+      {
+        name: 'no repository default and no repository argument',
+        options: {
+          resolveCreateTaskDefaults: () =>
+            Promise.resolve({
+              nameWithOwner: null,
+              storyName: 'Portal redesign',
+            }),
+        },
+        args: { title: 'Fix export' },
+        error: 'repository_required',
+      },
+      {
+        name: 'no story default and no story argument',
+        options: {
+          resolveCreateTaskDefaults: () =>
+            Promise.resolve({
+              nameWithOwner: 'HiromiShikata/example',
+              storyName: null,
+            }),
+        },
+        args: { title: 'Fix export' },
+        error: 'story_required',
+      },
+      {
+        name: 'unknown argument property',
+        options: {},
+        args: { title: 'Fix export', unexpected: 'x' },
+        error: 'invalid_arguments',
+      },
+      {
+        name: 'title of the wrong type',
+        options: {},
+        args: { title: 42 },
+        error: 'invalid_arguments',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { call, runOperation } = await openSession(testCase.options);
+
+      const result = await call('prepare_create_task', testCase.args);
+
+      expect({
+        name: testCase.name,
+        ok: result.ok,
+        error: result.error,
+        operationCalls: runOperation.mock.calls.length,
+      }).toEqual({
+        name: testCase.name,
+        ok: false,
+        error: testCase.error,
+        operationCalls: 0,
+      });
+    }
+  });
+
+  it('keeps a pending create task when a later prepare_create_task fails validation', async () => {
+    const { call, runOperation, session } = await openSession();
+
+    await call('prepare_create_task', { title: 'Fix export' });
+    session.recordAssistantSpeech(lastReadBack);
+    session.recordOwnerSpeech('はい');
+    const failed = await call('prepare_create_task', {});
+    expect({ ok: failed.ok, error: failed.error }).toEqual({
+      ok: false,
+      error: 'title_required',
+    });
+
+    const confirmed = await confirmYes(call);
+
+    expect(confirmed.ok).toBe(true);
+    expect(
+      runOperation.mock.calls.map(([requestPath, body]) => [
+        requestPath,
+        pickCreateBody(body),
+      ]),
+    ).toEqual([
+      [
+        CREATE_ISSUE_PATH,
+        {
+          title: 'Fix export',
+          nameWithOwner: 'HiromiShikata/example',
+          storyName: 'Portal redesign',
+          actionId: FIXED_ACTION_ID,
+        },
+      ],
+    ]);
+  });
+
+  it('discards a pending create task that the owner did not confirm and runs no operation', async () => {
+    const { call, runOperation, session } = await openSession();
+
+    const prepared = await call('prepare_create_task', { title: 'Fix export' });
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('いいえ');
+    const cancelled = await call('cancel_pending_action');
+    const confirmed = await confirmYes(call);
+
+    expect({
+      preparedOk: prepared.ok,
+      cancelledOk: cancelled.ok,
+      confirmedOk: confirmed.ok,
+      operationCalls: runOperation.mock.calls.length,
+    }).toEqual({
+      preparedOk: true,
+      cancelledOk: true,
+      confirmedOk: false,
+      operationCalls: 0,
+    });
+  });
+
+  it('gives the created issue URL on confirm and keeps the queue entry', async () => {
+    const { call, runOperation, session } = await openSession({
+      position: 1,
+      runOperation: () =>
+        Promise.resolve({
+          statusCode: 200,
+          body: { ok: true, issueUrl: CREATED_ISSUE_URL },
+        }),
+    });
+
+    const prepared = await call('prepare_create_task', { title: 'Fix export' });
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('はい');
+    const confirmed = await confirmYes(call);
+    const after = await call('queue_overview');
+    const detail = await call('current_task_detail', { page: 1 });
+
+    expect({
+      ok: confirmed.ok,
+      issueUrl: confirmed.issueUrl,
+      hasReadBack: typeof confirmed.readBack === 'string',
+      operationCalls: runOperation.mock.calls.length,
+      totalStillFour: collectNumbers(after).includes(4),
+      stillFirst: String(detail.text).includes('Fix login'),
+    }).toEqual({
+      ok: true,
+      issueUrl: CREATED_ISSUE_URL,
+      hasReadBack: true,
+      operationCalls: 1,
+      totalStillFour: true,
+      stillFirst: true,
+    });
+  });
+
+  it('gives the operation error message on confirm when the operation answers 400', async () => {
+    const message = 'story option "Nope" not found in project';
+    const { call, session } = await openSession({
+      runOperation: () =>
+        Promise.resolve({
+          statusCode: 400,
+          body: { ok: false, error: message },
+        }),
+    });
+
+    const prepared = await call('prepare_create_task', { title: 'Fix export' });
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('はい');
+    const confirmed = await confirmYes(call);
+
+    expect({
+      ok: confirmed.ok,
+      error: confirmed.error,
+      hasIssueUrl: 'issueUrl' in confirmed,
+    }).toEqual({ ok: false, error: message, hasIssueUrl: false });
+  });
+
+  it('gives tool_failed and logs the error when the create operation throws', async () => {
+    const { call, logError, session } = await openSession({
+      runOperation: () => Promise.reject(new Error('create boom')),
+    });
+
+    const prepared = await call('prepare_create_task', { title: 'Fix export' });
+    session.recordAssistantSpeech(String(prepared.readBack));
+    session.recordOwnerSpeech('はい');
+    const confirmed = await confirmYes(call);
+
+    expect({ ok: confirmed.ok, error: confirmed.error }).toEqual({
+      ok: false,
+      error: 'tool_failed',
+    });
+    expect(logError.mock.calls.flat().join('\n')).toContain('create boom');
+  });
+
+  it('gives an existing write tool confirm no issueUrl when its operation body has none', async () => {
+    const { call, session } = await openSession();
+
+    await call('prepare_ok');
+    session.recordAssistantSpeech(lastReadBack);
+    session.recordOwnerSpeech('はい');
+    const confirmed = await confirmYes(call);
+
+    expect({
+      ok: confirmed.ok,
+      hasIssueUrl: 'issueUrl' in confirmed,
+    }).toEqual({ ok: true, hasIssueUrl: false });
   });
 });
 
