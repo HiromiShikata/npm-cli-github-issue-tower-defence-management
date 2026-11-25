@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import fs from 'fs';
 import {
   isIpv4Address,
-  LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
+  LETS_ENCRYPT_STAGING_DIRECTORY_URL,
 } from '../console/dockerLegoCertificate';
 
 export {
@@ -1582,8 +1582,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     acmeIpAddress: options.acmeIpAddress,
     acmeDataDirectory:
       options.acmeDataDirectory ?? path.join(tdpmCacheDirectory(), 'acme'),
-    acmeServerUrl:
-      options.acmeServerUrl ?? LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
+    acmeServerUrl: options.acmeServerUrl ?? LETS_ENCRYPT_STAGING_DIRECTORY_URL,
   });
   console.log(`TDPM web server listening on port ${port}`);
 };
@@ -1609,7 +1608,7 @@ const addServeWebOptions = (command: Command): Command =>
     )
     .option(
       '--acmeServerUrl <url>',
-      `ACME directory URL (default: ${LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL})`,
+      'ACME directory URL (default: staging; pass the production directory URL explicitly)',
     )
     .option(
       '--consoleDataOutputDir <path>',

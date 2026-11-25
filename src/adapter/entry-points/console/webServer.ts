@@ -103,7 +103,7 @@ import {
   CERTIFICATE_RENEWAL_INTERVAL_MS,
   buildLegoDockerArgs,
   certificateFilePaths,
-  LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
+  LETS_ENCRYPT_STAGING_DIRECTORY_URL,
   runDockerLegoCommand,
   selectCertificateAcquisitionMode,
   shouldScheduleCertificateRenewal,
@@ -1630,8 +1630,7 @@ const certificateAcquisition = async (
   const command = buildLegoDockerArgs({
     mode,
     acmeDataDirectory: options.acmeDataDirectory,
-    acmeServerUrl:
-      options.acmeServerUrl ?? LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL,
+    acmeServerUrl: options.acmeServerUrl ?? LETS_ENCRYPT_STAGING_DIRECTORY_URL,
     acmeIpAddress,
     hostUserId: process.getuid?.() ?? 0,
     hostGroupId: process.getgid?.() ?? 0,
@@ -1653,7 +1652,7 @@ const certificateAcquisition = async (
         };
         const createdServer = https.createServer(
           credentials,
-          createRequestHandler(options, true, false),
+          createRequestHandler(options, true),
         );
         if (options.httpsPort === undefined) return httpsServer;
         await listenHttpsServer(createdServer, options.httpsPort);

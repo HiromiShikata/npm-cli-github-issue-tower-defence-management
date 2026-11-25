@@ -4,6 +4,8 @@ import { spawn } from 'child_process';
 export const LEGO_DOCKER_IMAGE = 'goacme/lego:v5.7.0';
 export const CERTIFICATE_RENEWAL_THRESHOLD_DAYS = 3;
 export const CERTIFICATE_RENEWAL_INTERVAL_MS = 6 * 60 * 60 * 1000;
+export const LETS_ENCRYPT_STAGING_DIRECTORY_URL =
+  'https://acme-staging-v02.api.letsencrypt.org/directory';
 export const LETS_ENCRYPT_PRODUCTION_DIRECTORY_URL =
   'https://acme-v02.api.letsencrypt.org/directory';
 
