@@ -52,6 +52,7 @@ type PendingTurn = {
 };
 
 const STDERR_TAIL_LINES = 20;
+const STOPPED_MESSAGE = 'Claude Code voice console process was stopped';
 
 const defaultTurnTimers: ClaudeCodeTurnTimers = {
   setTimeout: (callback, delayMs) => setTimeout(callback, delayMs),
@@ -86,7 +87,6 @@ export class ClaudeCodeVoiceConsoleProcess {
   private stderrTail: string[] = [];
   private pendingTurn: PendingTurn | null = null;
   private queueTail: Promise<void> = Promise.resolve();
-  private terminatedBy: string | null = null;
   private stopped = false;
 
   constructor(
@@ -115,13 +115,10 @@ export class ClaudeCodeVoiceConsoleProcess {
   stop(): void {
     if (this.stopped) return;
     this.stopped = true;
-    const shouldKill = this.terminatedBy === null && this.child !== null;
-    this.terminatedBy ??= 'Claude Code voice console process was stopped';
+    const child = this.child;
     const turn = this.takePendingTurn();
-    turn?.reject(new Error(this.describeTermination()));
-    if (shouldKill) {
-      this.child?.kill();
-    }
+    turn?.reject(new Error(this.withStderrTail(STOPPED_MESSAGE)));
+    child?.kill();
   }
 
   private spawnChild(): void {
@@ -171,8 +168,8 @@ export class ClaudeCodeVoiceConsoleProcess {
         new Error('Claude Code voice console process has not been started'),
       );
     }
-    if (this.terminatedBy !== null) {
-      return Promise.reject(new Error(this.describeTermination()));
+    if (this.stopped) {
+      return Promise.reject(new Error(this.withStderrTail(STOPPED_MESSAGE)));
     }
     if (this.child === null) {
       try {
@@ -278,20 +275,5 @@ export class ClaudeCodeVoiceConsoleProcess {
     return stderrTail.length > 0
       ? `${reason}; last stderr lines: ${stderrTail}`
       : reason;
-  }
-
-  private describeTermination(): string {
-    return this.withStderrTail(
-      this.terminatedBy ?? 'Claude Code voice console process is not running',
-    );
-  }
-
-  private terminate(reason: string): void {
-    if (this.terminatedBy !== null) return;
-    this.terminatedBy = reason;
-    const message = this.describeTermination();
-    const turn = this.takePendingTurn();
-    this.dependencies.logError(message);
-    turn?.reject(new Error(message));
   }
 }
