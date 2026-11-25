@@ -1,3 +1,10 @@
+## [2.209.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.209.0...v2.209.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **console:** show file preview at full width and scroll it within the panel ([#3768](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3768)) ([e32e528](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e32e528ee0c46fa2268599a4373c1942fd9af067))
+
 # [2.209.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.208.0...v2.209.0) (2026-11-25)
 
 
