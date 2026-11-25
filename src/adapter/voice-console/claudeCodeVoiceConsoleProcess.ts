@@ -153,8 +153,8 @@ export class ClaudeCodeVoiceConsoleProcess {
     });
     child.on('error', (error) => {
       if (this.child !== child) return;
-      this.terminate(
-        `Claude Code voice console process error: ${describeError(error)}`,
+      this.discardChild(
+        `Claude Code voice console process error: ${describeError(error)}; the Claude Code process is killed and the next turn starts a fresh one`,
       );
     });
     child.on('exit', (code, signal) => {
