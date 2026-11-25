@@ -1,3 +1,5 @@
+import * as path from 'node:path';
+
 export type CreateTaskDefaults = {
   nameWithOwner: string | null;
   storyName: string | null;
@@ -39,4 +41,43 @@ export const createTaskDefaultsFromStoriesListJson = (
     defaultNameWithOwner: stringOrNull(listJson.defaultNameWithOwner),
     storyOptionNames: firstStoryName === null ? [] : [firstStoryName],
   });
+};
+
+export const createStoriesListJsonPath = (input: {
+  consoleDataOutputDir: string;
+  pjcode: string;
+}): string =>
+  path.join(input.consoleDataOutputDir, input.pjcode, 'stories', 'list.json');
+
+const isNotFoundError = (error: unknown): boolean =>
+  error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
+export const readCreateTaskDefaultsFromFile = async (input: {
+  storiesListJsonPath: string;
+  readTextFile: (filePath: string) => Promise<string>;
+  logError: (message: string, error: unknown) => void;
+}): Promise<CreateTaskDefaults> => {
+  let text: string;
+  try {
+    text = await input.readTextFile(input.storiesListJsonPath);
+  } catch (error) {
+    if (!isNotFoundError(error)) {
+      input.logError(
+        `voice console create task defaults read failed: ${input.storiesListJsonPath}`,
+        error,
+      );
+    }
+    return NO_CREATE_TASK_DEFAULTS;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    input.logError(
+      `voice console create task defaults parse failed: ${input.storiesListJsonPath}`,
+      error,
+    );
+    return NO_CREATE_TASK_DEFAULTS;
+  }
+  return createTaskDefaultsFromStoriesListJson(parsed);
 };
