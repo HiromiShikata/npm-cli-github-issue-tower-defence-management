@@ -1786,6 +1786,11 @@ describe('IssueCreateModalDialog', () => {
             objectFit: imageStyle.objectFit,
             maxHeight: imageStyle.maxHeight,
           },
+          edge: {
+            panelPaddingTop: panelStyle.paddingTop,
+            barTop: barStyle.top,
+            barPaddingTop: barStyle.paddingTop,
+          },
         };
         unmount();
         return styles;
@@ -1802,6 +1807,17 @@ describe('IssueCreateModalDialog', () => {
       it('keeps the close bar sticky at the top of the scrolling panel', async () => {
         const styles = await readOpenPreviewStyles();
         expect(styles.bar).toEqual({ position: 'sticky', top: '0px' });
+      });
+
+      it('leaves no panel padding above the sticky bar, so scrolled image pixels never show above the bar', async () => {
+        const styles = await readOpenPreviewStyles();
+        expect(styles.edge.panelPaddingTop).toBe('0px');
+        expect(styles.edge.barTop).toBe('0px');
+      });
+
+      it('gives the bar its own top padding so the unscrolled layout is unchanged', async () => {
+        const styles = await readOpenPreviewStyles();
+        expect(styles.edge.barPaddingTop).toBe('8px');
       });
 
       it('shows the image at full panel width with auto height and no object-fit cropping or 45vh cap', async () => {
