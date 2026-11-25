@@ -21,6 +21,7 @@ import {
   extractLatestReportSummary,
   type VoiceConsoleTaskComment,
 } from './voiceConsoleTaskDocument';
+import type { CreateTaskDefaults } from './voiceConsoleCreateTaskDefaults';
 
 export type VoiceConsoleOperationResponse = {
   statusCode: number;
@@ -45,6 +46,7 @@ export type VoiceConsoleSessionDeps = {
   ) => Promise<VoiceConsoleOperationResponse>;
   newActionId: () => string;
   logError: (message: string) => void;
+  resolveCreateTaskDefaults: (pjcode: string) => Promise<CreateTaskDefaults>;
 };
 
 type ToolResult = Record<string, unknown>;
@@ -97,6 +99,13 @@ const PULL_REQUEST_REVIEW_ACTIONS = [
   'totally_wrong',
 ];
 
+const CREATE_TASK_ARGUMENT_KEYS = [
+  'title',
+  'body',
+  'project_pjcode',
+  'repository',
+  'story',
+];
 const CLOSE_REASONS = ['completed', 'not_planned'];
 const CLOSE_COMMENT_KINDS = ['none', 'ok', 'text'];
 const OK_STATUS_NAME = 'Awaiting Workspace';
@@ -472,6 +481,8 @@ export class VoiceConsoleSession {
         return this.prepareMoveToInTmuxByHuman();
       case 'prepare_pull_request_review':
         return this.preparePullRequestReview(args);
+      case 'prepare_create_task':
+        return this.prepareCreateTask(args);
       case 'confirm_pending_action':
         return this.confirmPendingAction(args);
       case 'cancel_pending_action':
@@ -747,7 +758,7 @@ export class VoiceConsoleSession {
   // Write tools: prepare, then confirm_pending_action
 
   private stageAction(
-    entry: VoiceConsoleQueueEntry,
+    entry: VoiceConsoleQueueEntry | null,
     draft: StagedActionDraft,
   ): ToolResult {
     const actionId = this.deps.newActionId();
@@ -759,7 +770,7 @@ export class VoiceConsoleSession {
       removesFromQueue: draft.removesFromQueue,
     };
     this.pendingActions.prepare(action);
-    this.pendingTargetKey = queueEntryKey(entry);
+    this.pendingTargetKey = entry === null ? null : queueEntryKey(entry);
     this.pendingReadBack = draft.readBack;
     this.ownerSpeech = '';
     this.assistantSpeech = '';
@@ -768,11 +779,14 @@ export class VoiceConsoleSession {
       ok: true,
       actionId,
       readBack: draft.readBack,
-      target: {
-        pjcode: entry.pjcode,
-        url: entry.item.url,
-        title: entry.item.title,
-      },
+      target:
+        entry === null
+          ? null
+          : {
+              pjcode: entry.pjcode,
+              url: entry.item.url,
+              title: entry.item.title,
+            },
     };
   }
 
@@ -996,6 +1010,68 @@ export class VoiceConsoleSession {
     });
   }
 
+  private async prepareCreateTask(args: ToolArguments): Promise<ToolResult> {
+    rejectUnknownArguments(args, CREATE_TASK_ARGUMENT_KEYS);
+    const title = readOptionalString(args, 'title')?.trim() ?? '';
+    if (title === '') {
+      throw new VoiceConsoleRejection('title_required');
+    }
+    const bodyArgument = readOptionalString(args, 'body')?.trim() ?? '';
+    const pjcode = this.createTaskProjectPjcode(args);
+    const repositoryArgument = nonEmptyArgumentOrNull(
+      readOptionalString(args, 'repository'),
+    );
+    const storyArgument = nonEmptyArgumentOrNull(
+      readOptionalString(args, 'story'),
+    );
+    const defaults =
+      repositoryArgument === null || storyArgument === null
+        ? await this.deps.resolveCreateTaskDefaults(pjcode)
+        : null;
+    const repository = repositoryArgument ?? defaults?.nameWithOwner ?? null;
+    if (repository === null) {
+      throw new VoiceConsoleRejection('repository_required');
+    }
+    const storyName = storyArgument ?? defaults?.storyName ?? null;
+    if (storyName === null) {
+      throw new VoiceConsoleRejection('story_required');
+    }
+    const body: Record<string, unknown> = {
+      pjcode,
+      title,
+      nameWithOwner: repository,
+      storyName,
+    };
+    if (bodyArgument !== '') {
+      body.body = bodyArgument;
+    }
+    return this.stageAction(null, {
+      requestPath: '/api/createissue',
+      body,
+      readBack: `「${title}」というタスクを、リポジトリ ${repository}、ストーリー「${storyName}」に作成します。`,
+      removesFromQueue: false,
+    });
+  }
+
+  private createTaskProjectPjcode(args: ToolArguments): string {
+    const projectArgument = readOptionalString(args, 'project_pjcode');
+    if (projectArgument !== undefined) {
+      if (!this.deps.projectPjcodes.includes(projectArgument)) {
+        throw new VoiceConsoleRejection('unknown_project');
+      }
+      return projectArgument;
+    }
+    const currentEntry = this.currentEntry();
+    if (currentEntry !== null) {
+      return currentEntry.pjcode;
+    }
+    const [onlyPjcode] = this.deps.projectPjcodes;
+    if (this.deps.projectPjcodes.length === 1 && onlyPjcode !== undefined) {
+      return onlyPjcode;
+    }
+    throw new VoiceConsoleRejection('project_required');
+  }
+
   private async confirmPendingAction(args: ToolArguments): Promise<ToolResult> {
     const actionId = readString(args, 'action_id');
     const ownerReply = normalizeSpeech(readString(args, 'owner_reply'));
@@ -1032,7 +1108,10 @@ export class VoiceConsoleSession {
     if (action.removesFromQueue && targetKey !== null) {
       this.removeQueueEntry(targetKey);
     }
-    return { ok: true, readBack: action.readBack };
+    const issueUrl = createdIssueUrl(response.body);
+    return issueUrl === null
+      ? { ok: true, readBack: action.readBack }
+      : { ok: true, readBack: action.readBack, issueUrl };
   }
 
   private cancelPendingAction(): ToolResult {
@@ -1065,3 +1144,20 @@ const operationErrorText = (body: unknown): string =>
   isRecord(body) && typeof body.error === 'string'
     ? body.error
     : 'operation_failed';
+
+const createdIssueUrl = (body: unknown): string | null =>
+  isRecord(body) && typeof body.issueUrl === 'string' ? body.issueUrl : null;
+
+const nonEmptyArgumentOrNull = (value: string | undefined): string | null => {
+  const trimmed = value?.trim() ?? '';
+  return trimmed === '' ? null : trimmed;
+};
+
+const rejectUnknownArguments = (
+  args: ToolArguments,
+  allowedKeys: string[],
+): void => {
+  if (Object.keys(args).some((key) => !allowedKeys.includes(key))) {
+    throw new VoiceConsoleRejection('invalid_arguments');
+  }
+};

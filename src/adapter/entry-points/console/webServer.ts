@@ -12,6 +12,11 @@ import type { VoiceConsoleServerEventHandler } from '../../repositories/OpenAiLi
 import { GitHubRepositoryFileReader } from '../../repositories/GitHubRepositoryFileReader';
 import { VoiceConsoleSession } from '../../voice-console/voiceConsoleSession';
 import { VoiceConsoleSidebandHandler } from '../../voice-console/voiceConsoleSideband';
+import {
+  createTaskDefaultsFromStoriesListJson,
+  type CreateTaskDefaults,
+  NO_CREATE_TASK_DEFAULTS,
+} from '../../voice-console/voiceConsoleCreateTaskDefaults';
 import { Project } from '../../../domain/entities/Project';
 import type {
   ConsoleFieldOption,
@@ -569,6 +574,45 @@ const parseRequestBody = (raw: string): Record<string, unknown> | null => {
   return parsed;
 };
 
+const storiesListJsonPath = (
+  consoleDataOutputDir: string,
+  pjcode: string,
+): string => path.join(consoleDataOutputDir, pjcode, 'stories', 'list.json');
+
+const readCreateTaskDefaults = async (
+  consoleDataOutputDir: string | null,
+  pjcode: string,
+): Promise<CreateTaskDefaults> => {
+  if (consoleDataOutputDir === null) {
+    return NO_CREATE_TASK_DEFAULTS;
+  }
+  const storiesPath = storiesListJsonPath(consoleDataOutputDir, pjcode);
+  let raw: string;
+  try {
+    raw = await fs.promises.readFile(storiesPath, 'utf-8');
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return NO_CREATE_TASK_DEFAULTS;
+    }
+    console.error(
+      `voice console create task defaults read failed: ${storiesPath}`,
+      error,
+    );
+    return NO_CREATE_TASK_DEFAULTS;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    console.error(
+      `voice console create task defaults parse failed: ${storiesPath}`,
+      error,
+    );
+    return NO_CREATE_TASK_DEFAULTS;
+  }
+  return createTaskDefaultsFromStoriesListJson(parsed);
+};
+
 const buildNameWithOwnerByPjcode = (
   options: WebServerOptions,
 ): Record<string, string> => {
@@ -577,11 +621,9 @@ const buildNameWithOwnerByPjcode = (
     return nameWithOwnerByPjcode;
   }
   for (const pjcode of options.dashboardProjectNames) {
-    const storiesPath = path.join(
+    const storiesPath = storiesListJsonPath(
       options.consoleDataOutputDir,
       pjcode,
-      'stories',
-      'list.json',
     );
     try {
       const raw = fs.readFileSync(storiesPath, 'utf-8');
@@ -1103,6 +1145,8 @@ const buildVoiceConsoleSession = (
       },
     newActionId: () => randomUUID(),
     logError: (message) => console.error(message),
+    resolveCreateTaskDefaults: (pjcode) =>
+      readCreateTaskDefaults(options.consoleDataOutputDir, pjcode),
   });
 };
 
