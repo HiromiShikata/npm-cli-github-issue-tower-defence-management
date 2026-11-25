@@ -95,6 +95,36 @@ describe('console CSS class contract', () => {
     expect(ruleBlock).toContain('max-height: calc(100dvh - 100px)');
   });
 
+  it('sets overflow-y: auto on console-task-create-dialog and no longer clips it with overflow: hidden, so the whole dialog from the header through the Cancel/Create footer is one scroll container', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-task-create-dialog');
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).toContain('overflow-y: auto');
+    expect(ruleBlock).not.toContain('overflow: hidden');
+  });
+
+  it('sets flex: none on console-task-create-dialog-body so its children are not compressed by flex shrinking and the body has no own scroll area', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(
+      css,
+      '.console-task-create-dialog-body',
+    );
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).toContain('flex: none');
+    expect(ruleBlock).not.toContain('overflow-y');
+  });
+
+  it('declares no max-height and no overflow-y on console-task-create-dialog-option-list so the Story and Agent lists show every option without a nested scroll inside the dialog', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(
+      css,
+      '.console-task-create-dialog-option-list',
+    );
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).not.toContain('max-height');
+    expect(ruleBlock).not.toContain('overflow-y');
+  });
+
   it('sets minimum 8px vertical padding on console-tab-project-link to provide an adequate tap target for the GitHub project icon link', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-tab-project-link');
