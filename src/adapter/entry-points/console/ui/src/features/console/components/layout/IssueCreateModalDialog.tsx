@@ -448,7 +448,9 @@ export const IssueCreateModalDialog = ({
                       className="console-task-create-dialog-file-thumbnail-button"
                       aria-pressed={previewedFile === file}
                       onClick={() =>
-                        setPreviewTarget((prev) => (prev === file ? null : file))
+                        setPreviewTarget((prev) =>
+                          prev === file ? null : file,
+                        )
                       }
                     >
                       <img

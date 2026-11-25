@@ -1582,9 +1582,7 @@ describe('IssueCreateModalDialog', () => {
         .queryAllByRole('button', {
           name: (accessibleName) => accessibleName.includes(fileName),
         })
-        .filter((button) =>
-          button.classList.contains(THUMBNAIL_BUTTON_CLASS),
-        );
+        .filter((button) => button.classList.contains(THUMBNAIL_BUTTON_CLASS));
 
     const thumbnailButtonFor = (fileName: string): HTMLElement => {
       const buttons = thumbnailButtonsFor(fileName);
@@ -1769,9 +1767,8 @@ describe('IssueCreateModalDialog', () => {
           tagName: button.tagName,
           type: button.getAttribute('type'),
           containsImg: button.querySelector('img') !== null,
-          foundByFileNameInAccessibleName: thumbnailButtonsFor(
-            fileName,
-          ).includes(button),
+          foundByFileNameInAccessibleName:
+            thumbnailButtonsFor(fileName).includes(button),
           focused: document.activeElement === button,
         }).toEqual({
           fileName,
