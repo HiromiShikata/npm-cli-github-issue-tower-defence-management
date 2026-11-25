@@ -7,7 +7,6 @@ const BACKEND_FAILURE_SENTENCE_PREFIX =
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-// Splits by code points so that no surrogate pair or Japanese character is cut.
 export const splitCommentaryContent = (
   text: string,
   maxCharacters: number,
@@ -42,7 +41,6 @@ export class VoiceConsoleDelegationBridge {
   handleDelegationCreated(delegationId: string): void {
     const utterance = this.utterance;
     this.utterance = '';
-    // Each turn waits for the previous one, and a failed turn never stops the chain.
     this.turnTail = this.turnTail
       .then(() => this.runTurn(delegationId, utterance))
       .catch((error: unknown) => {

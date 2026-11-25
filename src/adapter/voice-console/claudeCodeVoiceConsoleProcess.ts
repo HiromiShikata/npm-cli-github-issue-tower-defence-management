@@ -21,12 +21,14 @@ export type ClaudeCodeChildProcess = {
   kill(): boolean;
 };
 
+export type ClaudeCodeSpawn = (
+  command: string,
+  args: string[],
+  env: Record<string, string>,
+) => ClaudeCodeChildProcess;
+
 export type ClaudeCodeVoiceConsoleProcessDependencies = {
-  spawn: (
-    command: string,
-    args: string[],
-    env: Record<string, string>,
-  ) => ClaudeCodeChildProcess;
+  spawn: ClaudeCodeSpawn;
   logError: (message: string) => void;
 };
 
@@ -43,7 +45,6 @@ const describeError = (error: unknown): string =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// Returns the failure message of a result event, or null when the turn succeeded.
 const describeResultFailure = (
   event: Record<string, unknown>,
 ): string | null => {

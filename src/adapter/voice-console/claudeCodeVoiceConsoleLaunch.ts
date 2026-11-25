@@ -33,8 +33,6 @@ const buildChildEnv = (
   return env;
 };
 
-// Same arguments as a fleet live session (cl), minus the voice tool wiring:
-// the agent is the general agent with its own CLAUDE.md and skills.
 export const buildClaudeCodeVoiceConsoleLaunch = (
   input: ClaudeCodeVoiceConsoleLaunchInput,
 ): ClaudeCodeVoiceConsoleLaunch => {

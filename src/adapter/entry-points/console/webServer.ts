@@ -10,14 +10,10 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { LiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/LiveSessionRepository';
 import type { LiveSessionToolCallRunner } from '../../../domain/usecases/liveSession/LiveSessionToolCall';
 import type { VoiceConsoleServerEventHandler } from '../../repositories/OpenAiLiveSessionSideband';
-import { buildClaudeCodeVoiceConsoleLaunch } from '../../voice-console/claudeCodeVoiceConsoleLaunch';
-import {
-  ClaudeCodeChildProcess,
-  ClaudeCodeVoiceConsoleProcess,
-} from '../../voice-console/claudeCodeVoiceConsoleProcess';
+import type { ClaudeCodeChildProcess } from '../../voice-console/claudeCodeVoiceConsoleProcess';
 import { selectClaudeCodeVoiceConsoleOauthToken } from '../../voice-console/claudeCodeVoiceConsoleToken';
 import { VOICE_CONSOLE_BACKEND_NOTE } from '../../voice-console/voiceConsoleLiveSessionConfig';
-import { VoiceConsoleDelegationBridge } from '../../voice-console/voiceConsoleDelegationBridge';
+import { startVoiceConsoleBackend } from '../../voice-console/voiceConsoleBackendStarter';
 import {
   VoiceConsoleSendEvent,
   VoiceConsoleSidebandHandler,
@@ -1097,7 +1093,6 @@ const describeErrorMessage = (error: unknown): string =>
 
 let claudeEffortFlagSupport: boolean | null = null;
 
-// The check cl uses: the --effort flag is passed only when `claude --help` advertises it.
 const isClaudeEffortFlagSupported = (): boolean => {
   if (claudeEffortFlagSupport === null) {
     let helpText = '';
@@ -1116,30 +1111,16 @@ const isClaudeEffortFlagSupported = (): boolean => {
   return claudeEffortFlagSupport;
 };
 
-const startProxyForVoiceConsole = async (): Promise<string | null> => {
+const isVoiceConsoleProxyUp = async (): Promise<boolean> => {
   try {
-    return (await ensureProxyRunning(PROXY_PORT))
-      ? VOICE_CONSOLE_PROXY_BASE_URL
-      : null;
+    return await ensureProxyRunning(PROXY_PORT);
   } catch (error) {
     console.error(
       `voice console could not start the token proxy; the Claude Code session runs without ANTHROPIC_BASE_URL: ${describeErrorMessage(error)}`,
     );
-    return null;
+    return false;
   }
 };
-
-type VoiceConsoleBackend = {
-  sendToBackend: (utterance: string) => Promise<string>;
-  stop: () => void;
-};
-
-const createFailedVoiceConsoleBackend = (
-  reason: string,
-): VoiceConsoleBackend => ({
-  sendToBackend: () => Promise.reject(new Error(reason)),
-  stop: () => undefined,
-});
 
 const spawnClaudeCodeChild = (
   command: string,
@@ -1147,44 +1128,6 @@ const spawnClaudeCodeChild = (
   env: Record<string, string>,
 ): ClaudeCodeChildProcess =>
   spawn(command, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
-
-// One long-lived Claude Code process per voice session, launched like a fleet live session.
-const startVoiceConsoleBackend = async (): Promise<VoiceConsoleBackend> => {
-  const tokenResult = selectClaudeCodeVoiceConsoleOauthToken({
-    tokenListJsonPath: resolveTokenListJsonPath(null),
-    cacheDirectory: resolveCacheDirectory(null),
-    nowEpochSeconds: Math.floor(Date.now() / 1000),
-  });
-  if ('error' in tokenResult) {
-    const reason = `${tokenResult.error}: ${tokenResult.diagnostics.join('; ')}`;
-    console.error(`voice console has no Claude Code backend: ${reason}`);
-    return createFailedVoiceConsoleBackend(reason);
-  }
-  const launch = buildClaudeCodeVoiceConsoleLaunch({
-    oauthToken: tokenResult.token,
-    proxyBaseUrl: await startProxyForVoiceConsole(),
-    effortFlagSupported: isClaudeEffortFlagSupported(),
-    backendNote: VOICE_CONSOLE_BACKEND_NOTE,
-    baseEnv: process.env,
-  });
-  const claudeProcess = new ClaudeCodeVoiceConsoleProcess({
-    spawn: spawnClaudeCodeChild,
-    logError: (message) => console.error(message),
-  });
-  try {
-    claudeProcess.start(launch);
-  } catch (error) {
-    const reason = describeErrorMessage(error);
-    console.error(
-      `voice console Claude Code process (token ${tokenResult.tokenName}) could not start: ${reason}`,
-    );
-    return createFailedVoiceConsoleBackend(reason);
-  }
-  return {
-    sendToBackend: (utterance) => claudeProcess.sendOwnerUtterance(utterance),
-    stop: () => claudeProcess.stop(),
-  };
-};
 
 const attachVoiceConsoleSideband = async (
   options: WebServerOptions,
@@ -1194,11 +1137,21 @@ const attachVoiceConsoleSideband = async (
   if (sideband === null) {
     return;
   }
-  const backend = await startVoiceConsoleBackend();
-  const newEventId = (): string => randomUUID();
   let currentSend: VoiceConsoleSendEvent | null = null;
-  const bridge = new VoiceConsoleDelegationBridge({
-    sendToBackend: (utterance) => backend.sendToBackend(utterance),
+  const backend = await startVoiceConsoleBackend({
+    selectOauthToken: () =>
+      selectClaudeCodeVoiceConsoleOauthToken({
+        tokenListJsonPath: resolveTokenListJsonPath(null),
+        cacheDirectory: resolveCacheDirectory(null),
+        nowEpochSeconds: Math.floor(Date.now() / 1000),
+      }),
+    isProxyUp: isVoiceConsoleProxyUp,
+    proxyBaseUrl: VOICE_CONSOLE_PROXY_BASE_URL,
+    effortFlagSupported: isClaudeEffortFlagSupported(),
+    backendNote: VOICE_CONSOLE_BACKEND_NOTE,
+    baseEnv: process.env,
+    spawn: spawnClaudeCodeChild,
+    logError: (message) => console.error(message),
     appendCommentary: (delegationId, content) => {
       if (currentSend === null) {
         throw new Error(
@@ -1207,13 +1160,11 @@ const attachVoiceConsoleSideband = async (
       }
       currentSend({
         type: 'session.commentary.append',
-        event_id: newEventId(),
+        event_id: randomUUID(),
         delegation_id: delegationId,
         content,
       });
     },
-    newEventId,
-    logError: (message) => console.error(message),
   });
   let handler: VoiceConsoleSidebandHandler | null = null;
   try {
@@ -1223,7 +1174,7 @@ const attachVoiceConsoleSideband = async (
         currentSend = send;
         const activeHandler =
           handler ??
-          new VoiceConsoleSidebandHandler(bridge, send, (message) =>
+          new VoiceConsoleSidebandHandler(backend, send, (message) =>
             console.error(message),
           );
         handler = activeHandler;

@@ -26,7 +26,6 @@ const isProxyResponding = (port: number): Promise<boolean> =>
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-// Resolves true when the proxy answers on the port after the call.
 export const ensureProxyRunning = async (
   port: number = PROXY_PORT,
 ): Promise<boolean> => {

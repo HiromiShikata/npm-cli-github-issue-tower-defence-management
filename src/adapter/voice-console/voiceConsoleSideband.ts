@@ -1,5 +1,10 @@
 import type { VoiceConsoleDelegationBridge } from './voiceConsoleDelegationBridge';
 
+export type VoiceConsoleSidebandBridge = Pick<
+  VoiceConsoleDelegationBridge,
+  'handleOwnerTranscriptDelta' | 'handleDelegationCreated'
+>;
+
 export type VoiceConsoleSendEvent = (event: Record<string, unknown>) => void;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -12,7 +17,7 @@ const readDelegationId = (delegation: unknown): string | null =>
 
 export class VoiceConsoleSidebandHandler {
   constructor(
-    private readonly bridge: VoiceConsoleDelegationBridge,
+    private readonly bridge: VoiceConsoleSidebandBridge,
     private readonly send: VoiceConsoleSendEvent,
     private readonly logError: (message: string) => void,
   ) {}
