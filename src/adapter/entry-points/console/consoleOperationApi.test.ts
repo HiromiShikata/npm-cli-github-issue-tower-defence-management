@@ -4194,7 +4194,7 @@ describe('consoleOperationApi', () => {
       ).not.toHaveBeenCalled();
     });
 
-    it('surfaces the GitHub error message when the comment cannot be created', async () => {
+    it('returns a generic error without the GitHub error message when the comment cannot be created', async () => {
       issueRepository.createPullRequestReviewComment.mockRejectedValue(
         new Error(
           'Failed to create review comment on PR https://github.com/o/r/pull/1: Validation Failed: line must be part of the diff',
@@ -4202,10 +4202,7 @@ describe('consoleOperationApi', () => {
       );
       const response = await handleReviewComment(context, validRequest);
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({
-        error:
-          'Failed to create review comment on PR https://github.com/o/r/pull/1: Validation Failed: line must be part of the diff',
-      });
+      expect(response.body).toEqual({ error: 'internal server error' });
     });
   });
 
@@ -9578,7 +9575,7 @@ describe('consoleOperationApi', () => {
       );
       expect(response).toEqual({
         statusCode: 502,
-        body: { error: 'GraphQL request failed: HTTP 403' },
+        body: { error: 'internal server error' },
       });
       expect(updateProjectV2ReadmeSpy).not.toHaveBeenCalled();
     });

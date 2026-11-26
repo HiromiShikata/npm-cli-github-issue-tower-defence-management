@@ -19,16 +19,6 @@ import {
 import * as projectConfig from '../cli/projectConfig';
 import type { ConsoleProjectResolver } from './consoleOperationApi';
 
-const parseErrorBody = (body: string): { error: unknown } => {
-  const parsed: unknown = JSON.parse(body);
-  return {
-    error:
-      typeof parsed === 'object' && parsed !== null && 'error' in parsed
-        ? parsed.error
-        : undefined,
-  };
-};
-
 describe('consoleReadApi', () => {
   const RATE_LIMIT_ERROR_MESSAGE =
     'Failed to fetch body for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
@@ -182,9 +172,7 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
-        'string',
-      );
+      expect(response.body).toEqual({ error: 'internal server error' });
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_response',
       );
@@ -251,9 +239,7 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
-        'string',
-      );
+      expect(response.body).toEqual({ error: 'internal server error' });
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_failure',
       );
@@ -347,9 +333,7 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
-        'string',
-      );
+      expect(response.body).toEqual({ error: 'internal server error' });
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_failure',
       );
@@ -416,9 +400,7 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
-        'string',
-      );
+      expect(response.body).toEqual({ error: 'internal server error' });
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_failure',
       );
@@ -567,9 +549,7 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
-        'string',
-      );
+      expect(response.body).toEqual({ error: 'internal server error' });
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_failure',
       );
@@ -790,9 +770,7 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
-        'string',
-      );
+      expect(response.body).toEqual({ error: 'internal server error' });
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_failure',
       );
@@ -980,9 +958,7 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
-        'string',
-      );
+      expect(response.body).toEqual({ error: 'internal server error' });
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_failure',
       );

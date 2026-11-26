@@ -830,19 +830,6 @@ const handleReadApi = async (
 
 const internalServerErrorMessage = 'internal server error';
 
-const sanitizeReadErrorResponse = (result: {
-  statusCode: number;
-  body: unknown;
-}): { statusCode: number; body: unknown } => {
-  if (result.statusCode !== 502 || !isRecord(result.body)) {
-    return result;
-  }
-  return {
-    ...result,
-    body: { ...result.body, error: internalServerErrorMessage },
-  };
-};
-
 const dispatchOperation = (
   context: ConsoleOperationContext,
   resolveGithubToken: ((owner: string) => string) | null,
@@ -1292,8 +1279,11 @@ const handleTokenedRequest = async (
           options.resolveGithubToken ?? null,
           searchParams.get('pjcode'),
         );
-        const sanitizedResult = sanitizeReadErrorResponse(projectReadmeResult);
-        sendJson(response, sanitizedResult.statusCode, sanitizedResult.body);
+        sendJson(
+          response,
+          projectReadmeResult.statusCode,
+          projectReadmeResult.body,
+        );
         return;
       }
       const readResult = await handleReadApi(
@@ -1305,8 +1295,7 @@ const handleTokenedRequest = async (
         sendNotFound(response);
         return;
       }
-      const sanitizedResult = sanitizeReadErrorResponse(readResult);
-      sendJson(response, sanitizedResult.statusCode, sanitizedResult.body);
+      sendJson(response, readResult.statusCode, readResult.body);
       return;
     }
     if (method === 'POST') {

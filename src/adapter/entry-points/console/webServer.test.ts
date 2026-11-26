@@ -1245,7 +1245,7 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(502);
       const responseBody = parseErrorBody(response.body);
-      expect(typeof responseBody.error).toBe('string');
+      expect(responseBody).toEqual({ error: 'internal server error' });
       expect(responseBody.error).not.toContain('HTTP 405');
     } finally {
       await closeServer(server);
@@ -1383,7 +1383,7 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(502);
       const responseBody = parseErrorBody(response.body);
-      expect(typeof responseBody.error).toBe('string');
+      expect(responseBody).toEqual({ error: 'internal server error' });
       expect(responseBody.error).not.toContain(operationError.message);
       expect(response.body).not.toContain('    at ');
       expect(consoleError).toHaveBeenCalledWith(
@@ -1428,7 +1428,9 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(502);
       const responseBody = parseErrorBody(response.body);
-      expect(typeof responseBody.error).toBe('string');
+      expect(responseBody).toEqual({
+        error: 'GraphQL API rate limit exceeded',
+      });
       expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).not.toHaveBeenCalled();
@@ -1471,7 +1473,7 @@ describe('webServer new routes integration', () => {
       const parsedBody: unknown = JSON.parse(response.body);
       expect(parsedBody).toEqual(expect.objectContaining({ rateLimitResetAt }));
       const responseBody = parseErrorBody(response.body);
-      expect(typeof responseBody.error).toBe('string');
+      expect(responseBody).toEqual({ error: 'GitHub API rate limit exceeded' });
       expect(responseBody.error).not.toContain(rateLimitError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).not.toHaveBeenCalled();
@@ -1553,7 +1555,7 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(502);
       const responseBody = parseErrorBody(response.body);
-      expect(typeof responseBody.error).toBe('string');
+      expect(responseBody).toEqual({ error: 'internal server error' });
       expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).toHaveBeenCalledTimes(1);
@@ -1635,7 +1637,9 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(502);
       const responseBody = parseErrorBody(response.body);
-      expect(typeof responseBody.error).toBe('string');
+      expect(responseBody).toEqual({
+        error: 'GraphQL API rate limit exceeded',
+      });
       expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).not.toHaveBeenCalled();
@@ -2041,7 +2045,7 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(502);
       const responseBody = parseErrorBody(response.body);
-      expect(typeof responseBody.error).toBe('string');
+      expect(responseBody).toEqual({ error: 'internal server error' });
       expect(responseBody.error).not.toContain(gitHubMessage);
     } finally {
       await closeServer(server);

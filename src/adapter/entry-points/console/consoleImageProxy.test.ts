@@ -117,7 +117,7 @@ describe('fetchProxiedImage', () => {
     expect(result).toEqual({
       ok: false,
       statusCode: 502,
-      error: 'proxy error: network down',
+      error: 'internal server error',
     });
   });
 
