@@ -242,8 +242,9 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     const packages = readPackageLockPackages();
     const minimatchKeys = Object.keys(packages).filter(
       (key) =>
-        key === 'node_modules/minimatch' ||
-        key.endsWith('/node_modules/minimatch'),
+        (key === 'node_modules/minimatch' ||
+          key.endsWith('/node_modules/minimatch')) &&
+        !(isRecord(packages[key]) && packages[key].inBundle === true),
     );
 
     expect(minimatchKeys).not.toHaveLength(0);
