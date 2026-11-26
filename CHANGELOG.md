@@ -1,3 +1,10 @@
+## [2.214.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.2...v2.214.3) (2026-11-26)
+
+
+### Bug Fixes
+
+* **security:** stop returning raw error details in HTTP error responses and patch minimatch ([#3786](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3786)) ([b13fb46](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b13fb46ba660cabbc08c92564d9efe3d4bb3e4f2))
+
 ## [2.214.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.1...v2.214.2) (2026-11-26)
 
 
