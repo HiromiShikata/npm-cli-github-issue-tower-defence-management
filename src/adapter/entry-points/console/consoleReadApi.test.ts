@@ -182,7 +182,9 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe('string');
+      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
+        'string',
+      );
       expect(JSON.stringify(response.body)).not.toContain(
         'INTERNAL_MARKER_read_response',
       );
@@ -249,8 +251,12 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe('string');
-      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
+      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
+        'string',
+      );
+      expect(JSON.stringify(response.body)).not.toContain(
+        'INTERNAL_MARKER_read_failure',
+      );
     });
   });
 
@@ -341,8 +347,12 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe('string');
-      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
+      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
+        'string',
+      );
+      expect(JSON.stringify(response.body)).not.toContain(
+        'INTERNAL_MARKER_read_failure',
+      );
     });
   });
 
@@ -406,8 +416,12 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe('string');
-      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
+      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
+        'string',
+      );
+      expect(JSON.stringify(response.body)).not.toContain(
+        'INTERNAL_MARKER_read_failure',
+      );
     });
   });
 
@@ -553,8 +567,12 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe('string');
-      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
+      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
+        'string',
+      );
+      expect(JSON.stringify(response.body)).not.toContain(
+        'INTERNAL_MARKER_read_failure',
+      );
     });
 
     it('returns 400 when url is a pull request URL', async () => {
@@ -772,8 +790,12 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe('string');
-      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
+      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
+        'string',
+      );
+      expect(JSON.stringify(response.body)).not.toContain(
+        'INTERNAL_MARKER_read_failure',
+      );
     });
   });
 
@@ -958,8 +980,12 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.statusCode).toBe(502);
-      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe('string');
-      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
+      expect(typeof parseErrorBody(JSON.stringify(response.body)).error).toBe(
+        'string',
+      );
+      expect(JSON.stringify(response.body)).not.toContain(
+        'INTERNAL_MARKER_read_failure',
+      );
     });
   });
 

@@ -1383,7 +1383,10 @@ describe('consoleOperationApi', () => {
         expect(response).toEqual({
           statusCode: 502,
           body: rateLimited
-            ? { error: 'GitHub API rate limit exceeded', rateLimitResetAt: resetAt }
+            ? {
+                error: 'GitHub API rate limit exceeded',
+                rateLimitResetAt: resetAt,
+              }
             : { error: 'internal server error' },
         });
         expectCompletionCount(0);

@@ -261,7 +261,9 @@ describe('webServer live sessions route', () => {
         error: 'openai_live_session_failed',
         status: 429,
       });
-      expect(response.body).not.toContain('INTERNAL_MARKER_openai_live_failure');
+      expect(response.body).not.toContain(
+        'INTERNAL_MARKER_openai_live_failure',
+      );
     } finally {
       await close(server);
     }
@@ -384,9 +386,7 @@ describe('webServer live session creation when the voice console sideband cannot
     const closer = new RecordingLiveSessionCloser();
     const server = await createTestServer(
       repository,
-      new FailingLiveSessionSideband(
-        'INTERNAL_MARKER_voice_sideband_failure',
-      ),
+      new FailingLiveSessionSideband('INTERNAL_MARKER_voice_sideband_failure'),
       closer,
     );
 
@@ -410,7 +410,9 @@ describe('webServer live session creation when the voice console sideband cannot
         body: { error: 'voice_console_sideband_failed' },
         closedSessionIds: ['live_9'],
       });
-      expect(response.body).not.toContain('INTERNAL_MARKER_voice_sideband_failure');
+      expect(response.body).not.toContain(
+        'INTERNAL_MARKER_voice_sideband_failure',
+      );
       expect(response.body).not.toContain('    at ');
       expect(consoleError).toHaveBeenCalledWith(
         expect.stringContaining('INTERNAL_MARKER_voice_sideband_failure'),

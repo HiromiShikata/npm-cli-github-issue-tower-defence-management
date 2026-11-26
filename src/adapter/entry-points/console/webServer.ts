@@ -837,7 +837,10 @@ const sanitizeReadErrorResponse = (result: {
   if (result.statusCode !== 502 || !isRecord(result.body)) {
     return result;
   }
-  return { ...result, body: { ...result.body, error: internalServerErrorMessage } };
+  return {
+    ...result,
+    body: { ...result.body, error: internalServerErrorMessage },
+  };
 };
 
 const dispatchOperation = (

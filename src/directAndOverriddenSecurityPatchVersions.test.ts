@@ -249,7 +249,10 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     expect(minimatchKeys).not.toHaveLength(0);
     for (const key of minimatchKeys) {
       const resolvedVersion = readResolvedVersion(packages, key);
-      expect({ key, atLeastPatched: isVersionAtLeast(resolvedVersion, '11.0.1') }).toEqual({ key, atLeastPatched: true });
+      expect({
+        key,
+        atLeastPatched: isVersionAtLeast(resolvedVersion, '11.0.1'),
+      }).toEqual({ key, atLeastPatched: true });
     }
   });
 
