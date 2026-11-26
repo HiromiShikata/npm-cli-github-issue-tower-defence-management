@@ -238,6 +238,59 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
   });
 
+  it('resolves @eslint/config-array minimatch at or above its patched version threshold', () => {
+    const packages = readPackageLockPackages();
+    const resolvedVersion = readResolvedVersion(
+      packages,
+      'node_modules/@eslint/config-array/node_modules/minimatch',
+    );
+
+    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
+  });
+
+  it('resolves eslint minimatch at or above its patched version threshold', () => {
+    const packages = readPackageLockPackages();
+    const resolvedVersion = readResolvedVersion(
+      packages,
+      'node_modules/eslint/node_modules/minimatch',
+    );
+
+    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
+  });
+
+  it('resolves glob minimatch at or above its patched version threshold', () => {
+    const packages = readPackageLockPackages();
+    const resolvedVersion = readResolvedVersion(
+      packages,
+      'node_modules/glob/node_modules/minimatch',
+    );
+
+    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
+  });
+
+  it('resolves direct minimatch at or above its patched version threshold', () => {
+    const packages = readPackageLockPackages();
+    const resolvedVersion = readResolvedVersion(packages, 'node_modules/minimatch');
+
+    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
+  });
+
+  it('resolves npm minimatch at or above its patched version threshold', () => {
+    const packages = readPackageLockPackages();
+    const resolvedVersion = readResolvedVersion(
+      packages,
+      'node_modules/npm/node_modules/minimatch',
+    );
+
+    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
+  });
+
+  it('pins the root minimatch override at or above its patched version threshold', () => {
+    const overriddenVersion = readPackageJsonOverrideVersion('minimatch');
+
+    expect(isVersionAtLeast(overriddenVersion, '11.0.1')).toBe(true);
+  });
+
   it('pins source-map-js to at or above its patched version threshold via a package.json override', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('source-map-js');
 

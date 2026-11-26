@@ -165,14 +165,17 @@ describe('consoleReadApi', () => {
     it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
-        new Error('Network timeout'),
+        new Error('INTERNAL_MARKER_read_response'),
       );
       const response = await handleItemBody(
         issueRepository,
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'Network timeout' });
+      expect(response.body).toEqual({ error: expect.any(String) });
+      expect(JSON.stringify(response.body)).not.toContain(
+        'INTERNAL_MARKER_read_response',
+      );
     });
   });
 
@@ -235,7 +238,9 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'Network timeout' });
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: expect.any(String) });
+      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
     });
   });
 
@@ -325,7 +330,9 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/pull/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'Network timeout' });
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: expect.any(String) });
+      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
     });
   });
 
@@ -388,7 +395,9 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/pull/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'Network timeout' });
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: expect.any(String) });
+      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
     });
   });
 
@@ -533,7 +542,9 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'Network timeout' });
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: expect.any(String) });
+      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
     });
 
     it('returns 400 when url is a pull request URL', async () => {
@@ -750,7 +761,9 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'Network timeout' });
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: expect.any(String) });
+      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
     });
   });
 
@@ -934,7 +947,9 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/pull/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'Network timeout' });
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: expect.any(String) });
+      expect(JSON.stringify(response.body)).not.toContain('INTERNAL_MARKER_read_failure');
     });
   });
 
