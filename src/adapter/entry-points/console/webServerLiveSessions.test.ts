@@ -443,7 +443,9 @@ describe('webServer live session creation when the voice console sideband cannot
         'OFFER-SDP',
         'application/sdp',
       );
-      expect(response.body).not.toContain('INTERNAL_MARKER_non_error_rejection');
+      expect(response.body).not.toContain(
+        'INTERNAL_MARKER_non_error_rejection',
+      );
       const errorBody: unknown = JSON.parse(response.body);
       expect({
         statusCode: response.statusCode,

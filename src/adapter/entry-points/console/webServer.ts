@@ -1197,7 +1197,9 @@ const handleLiveSessionCreate = async (
       await attachVoiceConsoleSideband(options, result.sessionId);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'voice console sideband failed';
+        error instanceof Error
+          ? error.message
+          : 'voice console sideband failed';
       console.error(
         `voice console sideband could not attach to live session ${result.sessionId}: ${message}`,
       );
