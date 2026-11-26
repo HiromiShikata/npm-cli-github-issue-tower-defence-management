@@ -434,6 +434,41 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
+  it('skips a recorded pull request whose individual status fetch fails and keeps the other open URL', async () => {
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: () =>
+        buildRecordedUrlsResponse([recordedComment(1), recordedComment(2)]),
+      slimPullRequestBatch: () => ({
+        data: {
+          pullRequest0: { pullRequest: buildSlimPullRequestNode(1) },
+          pullRequest1: { pullRequest: null },
+        },
+        errors: [
+          {
+            type: 'INTERNAL',
+            path: ['pullRequest1'],
+          },
+        ],
+      }),
+      slimPullRequest: (number) =>
+        number === 2
+          ? new Response('boom', { status: 500 })
+          : buildSlimPullRequestResponse(number),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([issueUrl]);
+
+    expect(result.get(issueUrl)).toEqual([pullRequestUrl(1)]);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(pullRequestUrl(2)),
+    );
+    warnSpy.mockRestore();
+  });
+
   it('omits a recorded pull request that is not found and keeps the other open URL', async () => {
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: () =>
@@ -649,15 +684,17 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
           return [
             `pullRequest${index}`,
             {
-              reviewThreads: {
-                pageInfo:
-                  cursor === null || cursor === undefined
-                    ? {
-                        endCursor: `cursor-${String(number)}`,
-                        hasNextPage: true,
-                      }
-                    : { endCursor: null, hasNextPage: false },
-                nodes: [{ isResolved: true }],
+              pullRequest: {
+                reviewThreads: {
+                  pageInfo:
+                    cursor === null || cursor === undefined
+                      ? {
+                          endCursor: `cursor-${String(number)}`,
+                          hasNextPage: true,
+                        }
+                      : { endCursor: null, hasNextPage: false },
+                  nodes: [{ isResolved: true }],
+                },
               },
             },
           ];
