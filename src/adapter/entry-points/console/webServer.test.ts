@@ -960,6 +960,11 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
       try {
         const page = await requestServer(server, '/');
         expect(page.statusCode).toBe(expectedStatus);
+        const endpoint = await requestServer(
+          server,
+          CONSOLE_HTTPS_ENDPOINT_PATH,
+        );
+        expect(endpoint.statusCode).toBe(listening ? 200 : 404);
         const tokenRequest = await requestServer(
           server,
           `/api/review?k=${accessToken}`,

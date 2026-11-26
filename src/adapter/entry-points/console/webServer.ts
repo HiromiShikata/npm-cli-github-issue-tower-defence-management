@@ -1472,7 +1472,7 @@ export const handleWebRequest = async (
   }
 
   const method = (request.method ?? 'GET').toUpperCase();
-  const httpsBaseUrl = httpsBaseUrlFor(options);
+  const httpsBaseUrl = activeHttpsBaseUrl(options);
   if (requestPath === CONSOLE_HTTPS_ENDPOINT_PATH && method === 'GET') {
     if (httpsBaseUrl === null) {
       sendNotFound(response);
@@ -1522,7 +1522,7 @@ export const handleWebRequest = async (
     requestPath !== DASHBOARD_REQUEST_PATH
   ) {
     response.writeHead(308, {
-      Location: `${redirectBaseUrl}${request.url ?? '/'}`,
+      Location: `${redirectBaseUrl}${requestUrl.pathname}${requestUrl.search}`,
       'Cache-Control': 'no-store',
     });
     response.end();
