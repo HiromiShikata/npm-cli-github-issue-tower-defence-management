@@ -3429,6 +3429,7 @@ export class ApiV3CheerioRestIssueRepository
     let commentsAfter: string | null = null;
     let commentsHasNextPage = true;
     const taskCommentBodies: string[] = [];
+    const timelinePullRequests: NonNullable<TimelineItem['source']>[] = [];
 
     while (hasNextPage || commentsHasNextPage) {
       const response = await this.fetchWithRateLimitRetry(() =>
@@ -3485,7 +3486,7 @@ export class ApiV3CheerioRestIssueRepository
         if (!this.isRelatedOpenPullRequestTimelineItem(item, issueUrl))
           continue;
 
-        await this.relatedOpenPullRequestRecord(item.source, relatedPRsMap);
+        timelinePullRequests.push(item.source);
       }
 
       if (hasNextPage) {
@@ -3494,9 +3495,19 @@ export class ApiV3CheerioRestIssueRepository
       }
     }
 
-    for (const recordedUrl of pullRequestUrlsFromCommentBodies(
-      taskCommentBodies,
-    )) {
+    const recordedPrUrls = pullRequestUrlsFromCommentBodies(taskCommentBodies);
+    const statesByUrl = await this.fetchSlimPullRequestStatesByUrl([
+      ...timelinePullRequests.flatMap((pr) =>
+        pr.url && pr.number !== undefined ? [pr.url] : [],
+      ),
+      ...recordedPrUrls,
+    ]);
+
+    for (const pr of timelinePullRequests) {
+      await this.relatedOpenPullRequestRecord(pr, relatedPRsMap, statesByUrl);
+    }
+
+    for (const recordedUrl of recordedPrUrls) {
       if (relatedPRsMap.has(recordedUrl)) continue;
       await this.relatedOpenPullRequestRecord(
         {
@@ -3507,6 +3518,7 @@ export class ApiV3CheerioRestIssueRepository
           state: 'OPEN',
         },
         relatedPRsMap,
+        statesByUrl,
       );
     }
 
@@ -3524,6 +3536,7 @@ export class ApiV3CheerioRestIssueRepository
   private relatedOpenPullRequestRecord = async (
     pr: NonNullable<TimelineItem['source']>,
     relatedPRsMap: Map<string, RelatedPullRequest>,
+    prefetchedSlimPullRequests: Map<string, SlimPullRequest | null> = new Map(),
   ): Promise<void> => {
     const prUrl = pr.url || '';
 
@@ -3575,11 +3588,9 @@ export class ApiV3CheerioRestIssueRepository
 
     let slimPullRequest: SlimPullRequest;
     try {
-      const fetchedSlimPullRequest = await this.fetchSlimPullRequest(
-        prOwner,
-        prRepo,
-        pr.number,
-      );
+      const fetchedSlimPullRequest = prefetchedSlimPullRequests.has(prUrl)
+        ? (prefetchedSlimPullRequests.get(prUrl) ?? null)
+        : await this.fetchSlimPullRequest(prOwner, prRepo, pr.number);
       if (!fetchedSlimPullRequest || fetchedSlimPullRequest.state !== 'OPEN') {
         console.info(
           `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
@@ -3933,13 +3944,17 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const openPrUrls: string[] = [];
-    for (const prUrl of pullRequestUrlsFromCommentBodies(commentBodies)) {
-      const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
-      const pullRequest = await this.fetchSlimPullRequest(
-        owner,
-        repo,
-        issueNumber,
-      );
+    const recordedPrUrls = pullRequestUrlsFromCommentBodies(commentBodies);
+    const statesByUrl =
+      await this.fetchSlimPullRequestStatesByUrl(recordedPrUrls);
+    for (const prUrl of recordedPrUrls) {
+      let pullRequest: SlimPullRequest | null;
+      if (statesByUrl.has(prUrl)) {
+        pullRequest = statesByUrl.get(prUrl) ?? null;
+      } else {
+        const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
+        pullRequest = await this.fetchSlimPullRequest(owner, repo, issueNumber);
+      }
       if (pullRequest?.state === 'OPEN') {
         openPrUrls.push(prUrl);
       }
@@ -4263,6 +4278,9 @@ export class ApiV3CheerioRestIssueRepository
       if (otherErrorAliases.has(alias)) {
         return;
       }
+      if (!responseData.data || !(alias in responseData.data)) {
+        return;
+      }
       const node = responseData.data?.[alias]?.pullRequest ?? null;
       if (!node) {
         if (notFoundAliases.has(alias) || !errors.length) {
@@ -4288,6 +4306,44 @@ export class ApiV3CheerioRestIssueRepository
       });
     });
     return slimByUrl;
+  };
+
+  private fetchSlimPullRequestStatesByUrl = async (
+    prUrls: string[],
+  ): Promise<Map<string, SlimPullRequest | null>> => {
+    const resolved = new Map<string, SlimPullRequest | null>();
+    const references = Array.from(new Set(prUrls)).flatMap((prUrl) => {
+      const parsed = this.parseIssueUrl(prUrl);
+      if (!parsed.isPr) return [];
+      return [
+        {
+          prUrl,
+          owner: parsed.owner,
+          repo: parsed.repo,
+          prNumber: parsed.issueNumber,
+        },
+      ];
+    });
+
+    for (
+      let start = 0;
+      start < references.length;
+      start += SLIM_PULL_REQUEST_BATCH_SIZE
+    ) {
+      const chunk = references.slice(
+        start,
+        start + SLIM_PULL_REQUEST_BATCH_SIZE,
+      );
+      try {
+        const slimByUrl = await this.fetchSlimPullRequestsInOneQuery(chunk);
+        for (const [prUrl, slimPullRequest] of slimByUrl) {
+          resolved.set(prUrl, slimPullRequest);
+        }
+      } catch {
+        // A failed chunk leaves its URLs absent from the map; each is then resolved by the per-pull-request path, which logs its own failure.
+      }
+    }
+    return resolved;
   };
 
   closePullRequest = async (prUrl: string): Promise<void> => {
