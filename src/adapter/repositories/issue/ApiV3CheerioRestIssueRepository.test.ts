@@ -10117,6 +10117,52 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ) {
               return toResponse(routes.slimPullRequestBatch(body.rawVariables));
             }
+            if (
+              body.query.includes('PullRequestSlimStatusBatch') &&
+              routes.slimPullRequest
+            ) {
+              const batchData: Record<string, unknown> = {};
+              const indexes = Object.keys(body.rawVariables)
+                .filter((key) => /^prNumber\d+$/.test(key))
+                .map((key) => key.slice('prNumber'.length))
+                .filter(
+                  (index) =>
+                    `owner${index}` in body.rawVariables &&
+                    `repo${index}` in body.rawVariables,
+                )
+                .sort((left, right) => Number(left) - Number(right));
+              for (const index of indexes) {
+                const owner = body.rawVariables[`owner${index}`];
+                const repo = body.rawVariables[`repo${index}`];
+                const prNumber = body.rawVariables[`prNumber${index}`];
+                const singleResponse = toResponse(
+                  routes.slimPullRequest({
+                    owner: typeof owner === 'string' ? owner : undefined,
+                    repo: typeof repo === 'string' ? repo : undefined,
+                    prNumber: typeof prNumber === 'number' ? prNumber : 0,
+                    reviewThreadsAfter: null,
+                  }),
+                );
+                if (!singleResponse.ok) {
+                  return singleResponse;
+                }
+                const singleResponseBody: unknown = await singleResponse.json();
+                const pullRequest =
+                  typeof singleResponseBody === 'object' &&
+                  singleResponseBody !== null &&
+                  'data' in singleResponseBody &&
+                  typeof singleResponseBody.data === 'object' &&
+                  singleResponseBody.data !== null &&
+                  'repository' in singleResponseBody.data &&
+                  typeof singleResponseBody.data.repository === 'object' &&
+                  singleResponseBody.data.repository !== null &&
+                  'pullRequest' in singleResponseBody.data.repository
+                    ? singleResponseBody.data.repository.pullRequest
+                    : null;
+                batchData[`pullRequest${index}`] = { pullRequest };
+              }
+              return jsonResponse({ data: batchData });
+            }
             if (body.query.includes('headRefOid') && routes.slimPullRequest) {
               return toResponse(routes.slimPullRequest(body.variables));
             }

@@ -344,6 +344,101 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
     ]);
   });
 
+  it('falls back to per-request resolution when the batch request fails', async () => {
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const numbers = [1, 2];
+    const fetchSpy = mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: () =>
+        buildRecordedUrlsResponse(numbers.map(recordedComment)),
+      slimPullRequest: (number) => buildSlimPullRequestResponse(number),
+      slimPullRequestBatch: () => new Response('boom', { status: 500 }),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([issueUrl]);
+
+    expect(result.get(issueUrl)).toEqual(numbers.map(pullRequestUrl));
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.stringContaining('batched pull request status query failed'),
+    );
+    expect(countSingleQueries(fetchSpy)).toBe(2);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('excludes a recorded pull request reported as not found by the batch', async () => {
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const fetchSpy = mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: () =>
+        buildRecordedUrlsResponse([recordedComment(1), recordedComment(2)]),
+      slimPullRequestBatch: () => ({
+        data: {
+          pullRequest0: { pullRequest: null },
+          pullRequest1: { pullRequest: buildSlimPullRequestNode(2) },
+        },
+        errors: [{ type: 'NOT_FOUND', path: ['pullRequest0'] }],
+      }),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([issueUrl]);
+
+    expect(result.get(issueUrl)).toEqual([pullRequestUrl(2)]);
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.stringContaining('recorded pull request is not found'),
+    );
+    expect(countBatchQueries(fetchSpy)).toBe(1);
+    expect(countSingleQueries(fetchSpy)).toBe(0);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('falls back to one request when the batch has more than one page of review threads', async () => {
+    const infoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    let singleRequestCount = 0;
+    const fetchSpy = mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: () =>
+        buildRecordedUrlsResponse([recordedComment(1)]),
+      slimPullRequest: (number) => {
+        singleRequestCount += 1;
+        return buildSlimPullRequestResponse(number);
+      },
+      slimPullRequestBatch: () => ({
+        data: {
+          pullRequest0: {
+            pullRequest: {
+              ...buildSlimPullRequestNode(1),
+              reviewThreads: {
+                pageInfo: { endCursor: 'cursor-2', hasNextPage: true },
+                nodes: [],
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([issueUrl]);
+
+    expect(result.get(issueUrl)).toEqual([pullRequestUrl(1)]);
+    expect(singleRequestCount).toBe(1);
+    expect(countBatchQueries(fetchSpy)).toBe(1);
+    expect(countSingleQueries(fetchSpy)).toBe(1);
+    expect(infoSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
   it('omits a recorded pull request that is not found and keeps the other open URL', async () => {
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: () =>
