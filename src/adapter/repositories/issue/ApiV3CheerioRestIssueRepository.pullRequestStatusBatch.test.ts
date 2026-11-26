@@ -434,11 +434,8 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('skips a recorded pull request whose individual status fetch fails and keeps the other open URL', async () => {
-    const warnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => undefined);
-    mockFetchRoutes({
+  it('keeps checking the other recorded pull requests and then rejects when an individual status fetch fails', async () => {
+    const fetchSpy = mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: () =>
         buildRecordedUrlsResponse([recordedComment(1), recordedComment(2)]),
       slimPullRequestBatch: () => ({
@@ -459,14 +456,18 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
           : buildSlimPullRequestResponse(number),
     });
 
-    const result = await createRepository().findRelatedOpenPrUrls([issueUrl]);
-
-    expect(result.get(issueUrl)).toEqual([pullRequestUrl(1)]);
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(pullRequestUrl(2)),
-    );
-    warnSpy.mockRestore();
+    const resultPromise = new Promise<unknown>((resolve, reject) => {
+      createRepository()
+        .findRelatedOpenPrUrls([issueUrl])
+        .then(resolve, reject);
+    });
+    await expect(resultPromise).rejects.toThrow();
+    const rejection = await resultPromise.catch((error: unknown) => error);
+    expect(rejection).toBeInstanceOf(Error);
+    expect(
+      rejection instanceof Error ? rejection.message : String(rejection),
+    ).toEqual(expect.stringContaining(pullRequestUrl(2)));
+    expect(countSingleQueries(fetchSpy)).toBe(1);
   });
 
   it('omits a recorded pull request that is not found and keeps the other open URL', async () => {
