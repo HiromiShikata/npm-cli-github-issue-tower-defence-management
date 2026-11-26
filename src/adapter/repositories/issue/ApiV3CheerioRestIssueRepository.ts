@@ -357,12 +357,14 @@ type SlimPullRequestReviewThreadsBatchResponse = {
   data?: Record<
     string,
     {
-      reviewThreads?: {
-        pageInfo: {
-          endCursor: string | null;
-          hasNextPage: boolean;
-        };
-        nodes: Array<{ isResolved: boolean }>;
+      pullRequest?: {
+        reviewThreads?: {
+          pageInfo: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          };
+          nodes: Array<{ isResolved: boolean }>;
+        } | null;
       } | null;
     } | null
   > | null;
@@ -4003,7 +4005,20 @@ export class ApiV3CheerioRestIssueRepository
         }
       } else {
         const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
-        pullRequest = await this.fetchSlimPullRequest(owner, repo, issueNumber);
+        try {
+          pullRequest = await this.fetchSlimPullRequest(
+            owner,
+            repo,
+            issueNumber,
+          );
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.warn(
+            `ApiV3CheerioRestIssueRepository: fetching recorded pull request status failed, skipping it from open PR URLs. prUrl: ${prUrl} error: ${errorMessage}`,
+          );
+          continue;
+        }
       }
       if (pullRequest?.state === 'OPEN') {
         openPrUrls.push(prUrl);
@@ -4449,7 +4464,8 @@ export class ApiV3CheerioRestIssueRepository
         }
         chunk.forEach(({ reference, slimPullRequest }, index) => {
           const page =
-            responseData.data?.[aliasOfReviewThreads(index)]?.reviewThreads;
+            responseData.data?.[aliasOfReviewThreads(index)]?.pullRequest
+              ?.reviewThreads;
           if (!page)
             throw new Error(`Missing review threads for ${reference.prUrl}`);
           slimPullRequest.reviewThreads.push(
