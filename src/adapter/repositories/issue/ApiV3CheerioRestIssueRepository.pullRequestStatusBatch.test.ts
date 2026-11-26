@@ -14,6 +14,7 @@ type FetchRoutes = {
   relatedOpenPullRequestUrlsBatch?: () => FetchRoute;
   slimPullRequest?: (prNumber: number) => FetchRoute;
   slimPullRequestBatch?: (variables: Record<string, unknown>) => FetchRoute;
+  reviewThreadsBatch?: (variables: Record<string, unknown>) => FetchRoute;
   mergeability?: () => FetchRoute;
   branchRules?: () => FetchRoute;
   checkRuns?: () => FetchRoute;
@@ -70,12 +71,29 @@ const buildSlimPullRequestNode = (number: number, state = 'OPEN') => ({
   headRefName: `feature-${number}`,
   baseRefName: 'main',
   mergeable: 'MERGEABLE',
+  mergeStateStatus: 'CLEAN',
   headRefOid: `head-sha-${number}`,
   reviewDecision: null,
   reviewThreads: {
     pageInfo: { endCursor: null, hasNextPage: false },
     nodes: [],
   },
+});
+const buildSlimPullRequestNodeWithOverrides = (
+  number: number,
+  overrides: {
+    mergeable?: string;
+    mergeStateStatus?: string;
+    reviewThreads?: {
+      pageInfo: { endCursor: string | null; hasNextPage: boolean };
+      nodes: { isResolved: boolean }[];
+    };
+  } = {},
+) => ({
+  ...buildSlimPullRequestNode(number),
+  ...overrides,
+  reviewThreads:
+    overrides.reviewThreads ?? buildSlimPullRequestNode(number).reviewThreads,
 });
 const buildSlimPullRequestResponse = (number: number, state = 'OPEN') => ({
   data: {
@@ -174,12 +192,18 @@ const mockFetchRoutes = (routes: FetchRoutes) =>
             return toResponse(routes.timeline());
           }
           if (
+            body.query.includes('PullRequestReviewThreadsBatch') &&
+            routes.reviewThreadsBatch
+          ) {
+            return toResponse(routes.reviewThreadsBatch(body.variables));
+          }
+          if (
             body.query.includes('PullRequestSlimStatusBatch') &&
             routes.slimPullRequestBatch
           ) {
             return toResponse(routes.slimPullRequestBatch(body.variables));
           }
-          if (body.query.includes('mergeStateStatus')) {
+          if (body.query.includes('query PullRequestMergeability')) {
             return toResponse(
               routes.mergeability?.() ?? {
                 data: {
@@ -230,6 +254,17 @@ const countSingleQueries = (fetchSpy: FetchSpy): number =>
     (body) =>
       body.includes('PullRequestSlimStatus') &&
       !body.includes('PullRequestSlimStatusBatch'),
+  );
+const countMergeabilityQueries = (fetchSpy: FetchSpy): number =>
+  countCallsMatching(
+    fetchSpy,
+    (body) =>
+      body.includes('query PullRequestMergeability') &&
+      !body.includes('PullRequestSlimStatusBatch'),
+  );
+const countReviewThreadsBatchQueries = (fetchSpy: FetchSpy): number =>
+  countCallsMatching(fetchSpy, (body) =>
+    body.includes('PullRequestReviewThreadsBatch'),
   );
 const createRepository = (): ApiV3CheerioRestIssueRepository => {
   const apiV3IssueRepository = mock<ApiV3IssueRepository>();
@@ -493,26 +528,24 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
       checkRuns: () => ({ total_count: 0, check_runs: [] }),
     });
     const result = await createRepository().findRelatedOpenPRs(issueUrl);
-    expect(result.map((pr) => pr.url)).toEqual(numbers.map(pullRequestUrl));
-    expect(
-      result.map((pr) => ({
-        isConflicted: pr.isConflicted,
-        mergeable: pr.mergeable,
-        isPassedAllCiJob: pr.isPassedAllCiJob,
-        isCiStateSuccess: pr.isCiStateSuccess,
-        isBranchOutOfDate: pr.isBranchOutOfDate,
-        missingRequiredCheckNames: pr.missingRequiredCheckNames,
-      })),
-    ).toEqual(
-      numbers.map(() => ({
+    expect(result).toEqual([
+      ...numbers.map((number) => ({
+        url: pullRequestUrl(number),
+        branchName: `feature-${number}`,
+        createdAt: new Date(number === 1 ? '2026-01-01T00:00:00.000Z' : 0),
+        isDraft: false,
         isConflicted: false,
         mergeable: 'MERGEABLE',
         isPassedAllCiJob: false,
         isCiStateSuccess: false,
+        isCiFailing: false,
+        isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        reviewDecision: null,
+        ciStatusAvailability: 'AVAILABLE',
       })),
-    );
+    ]);
     expect(countBatchQueries(fetchSpy)).toBe(1);
     expect(countSingleQueries(fetchSpy)).toBe(0);
   });
@@ -529,8 +562,225 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
       checkRuns: () => ({ total_count: 0, check_runs: [] }),
     });
     const result = await createRepository().findRelatedOpenPRs(issueUrl);
-    expect(result.map((pr) => pr.url)).toEqual(numbers.map(pullRequestUrl));
+    expect(result).toEqual(
+      numbers.map((number) => ({
+        url: pullRequestUrl(number),
+        branchName: `feature-${number}`,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: false,
+        isCiStateSuccess: false,
+        isCiFailing: false,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        reviewDecision: null,
+        ciStatusAvailability: 'AVAILABLE',
+      })),
+    );
     expect(countBatchQueries(fetchSpy)).toBe(1);
     expect(countSingleQueries(fetchSpy)).toBe(0);
+  });
+
+  it('reuses definitive batched mergeability for comment-recorded open pull requests', async () => {
+    const numbers = [1, 2, 3];
+    const fetchSpy = mockFetchRoutes({
+      timeline: () =>
+        buildIssueTimelineResponse([], numbers.map(recordedComment)),
+      slimPullRequestBatch: () => ({
+        data: Object.fromEntries(
+          numbers.map((number, index) => [
+            `pullRequest${index}`,
+            {
+              pullRequest: buildSlimPullRequestNodeWithOverrides(number, {
+                mergeable: 'MERGEABLE',
+                mergeStateStatus: 'CLEAN',
+              }),
+            },
+          ]),
+        ),
+      }),
+    });
+
+    const result = await createRepository().findRelatedOpenPRs(issueUrl);
+
+    expect(countMergeabilityQueries(fetchSpy)).toBe(0);
+    expect(result).toEqual(
+      numbers.map((number) => ({
+        url: pullRequestUrl(number),
+        branchName: `feature-${number}`,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: false,
+        isCiStateSuccess: false,
+        isCiFailing: false,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        reviewDecision: null,
+        ciStatusAvailability: 'AVAILABLE',
+      })),
+    );
+  });
+
+  it('resolves a comment-recorded unknown batched mergeability with one direct query', async () => {
+    const number = 1;
+    const fetchSpy = mockFetchRoutes({
+      timeline: () => buildIssueTimelineResponse([], [recordedComment(number)]),
+      slimPullRequestBatch: () => ({
+        data: {
+          pullRequest0: {
+            pullRequest: buildSlimPullRequestNodeWithOverrides(number, {
+              mergeable: 'UNKNOWN',
+              mergeStateStatus: 'UNKNOWN',
+            }),
+          },
+        },
+      }),
+      mergeability: () => ({
+        data: {
+          repository: {
+            pullRequest: {
+              mergeable: 'CONFLICTING',
+              mergeStateStatus: 'DIRTY',
+            },
+          },
+        },
+      }),
+    });
+
+    const result = await createRepository().findRelatedOpenPRs(issueUrl);
+
+    expect(countMergeabilityQueries(fetchSpy)).toBe(1);
+    expect(result[0]).toEqual({
+      url: pullRequestUrl(number),
+      branchName: `feature-${number}`,
+      createdAt: new Date(0),
+      isDraft: false,
+      isConflicted: true,
+      mergeable: 'CONFLICTING',
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isCiFailing: false,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+      ciStatusAvailability: 'AVAILABLE',
+    });
+  });
+
+  const reviewThreadsBatchResponse = (variables: Record<string, unknown>) => ({
+    data: Object.fromEntries(
+      Object.keys(variables)
+        .filter((key) => /^prNumber\d+$/.test(key))
+        .map((key) => {
+          const index = key.slice('prNumber'.length);
+          const cursorKey = Object.keys(variables).find(
+            (candidate) =>
+              candidate.endsWith(index) && /after|cursor/i.test(candidate),
+          );
+          const cursor = cursorKey ? variables[cursorKey] : null;
+          const number = variables[key];
+          return [
+            `pullRequest${index}`,
+            {
+              reviewThreads: {
+                pageInfo:
+                  cursor === null || cursor === undefined
+                    ? {
+                        endCursor: `cursor-${String(number)}`,
+                        hasNextPage: true,
+                      }
+                    : { endCursor: null, hasNextPage: false },
+                nodes: [{ isResolved: true }],
+              },
+            },
+          ];
+        }),
+    ),
+  });
+
+  it('pages review threads in one batch without a single pull request request', async () => {
+    const number = 1;
+    const baselineFetchSpy = mockFetchRoutes({
+      timeline: () => buildIssueTimelineResponse([], [recordedComment(number)]),
+      slimPullRequestBatch: () => ({
+        data: {
+          pullRequest0: {
+            pullRequest: buildSlimPullRequestNodeWithOverrides(number, {
+              reviewThreads: {
+                pageInfo: { endCursor: null, hasNextPage: false },
+                nodes: [{ isResolved: true }, { isResolved: true }],
+              },
+            }),
+          },
+        },
+      }),
+    });
+    const baseline = await createRepository().findRelatedOpenPRs(issueUrl);
+    expect(baselineFetchSpy).toHaveBeenCalled();
+    jest.restoreAllMocks();
+
+    const fetchSpy = mockFetchRoutes({
+      timeline: () => buildIssueTimelineResponse([], [recordedComment(number)]),
+      slimPullRequestBatch: () => ({
+        data: {
+          pullRequest0: {
+            pullRequest: buildSlimPullRequestNodeWithOverrides(number, {
+              reviewThreads: {
+                pageInfo: { endCursor: 'cursor-1', hasNextPage: true },
+                nodes: [{ isResolved: true }],
+              },
+            }),
+          },
+        },
+      }),
+      reviewThreadsBatch: reviewThreadsBatchResponse,
+      slimPullRequest: () => buildSlimPullRequestResponse(number),
+    });
+    const result = await createRepository().findRelatedOpenPRs(issueUrl);
+
+    expect(countSingleQueries(fetchSpy)).toBe(0);
+    expect(countReviewThreadsBatchQueries(fetchSpy)).toBe(1);
+    expect(result).toEqual(baseline);
+  });
+
+  it('pages review threads for two pull requests in one batch', async () => {
+    const numbers = [1, 2];
+    const fetchSpy = mockFetchRoutes({
+      timeline: () =>
+        buildIssueTimelineResponse([], numbers.map(recordedComment)),
+      slimPullRequestBatch: () => ({
+        data: Object.fromEntries(
+          numbers.map((number, index) => [
+            `pullRequest${index}`,
+            {
+              pullRequest: buildSlimPullRequestNodeWithOverrides(number, {
+                reviewThreads: {
+                  pageInfo: {
+                    endCursor: `cursor-${number}`,
+                    hasNextPage: true,
+                  },
+                  nodes: [{ isResolved: true }],
+                },
+              }),
+            },
+          ]),
+        ),
+      }),
+      reviewThreadsBatch: reviewThreadsBatchResponse,
+      slimPullRequest: (number) => buildSlimPullRequestResponse(number),
+    });
+    const result = await createRepository().findRelatedOpenPRs(issueUrl);
+
+    expect(countReviewThreadsBatchQueries(fetchSpy)).toBe(1);
+    expect(countSingleQueries(fetchSpy)).toBe(0);
+    expect(result).toHaveLength(numbers.length);
+    expect(result.every((pr) => pr.isResolvedAllReviewComments)).toBe(true);
   });
 });

@@ -10106,16 +10106,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               return toResponse(routes.timeline(body.rawVariables));
             }
             if (
-              body.query.includes('mergeStateStatus') &&
-              routes.mergeability
-            ) {
-              return toResponse(routes.mergeability());
-            }
-            if (
               body.query.includes('PullRequestSlimStatusBatch') &&
               routes.slimPullRequestBatch
             ) {
               return toResponse(routes.slimPullRequestBatch(body.rawVariables));
+            }
+            if (body.query.includes('query PullRequestMergeability')) {
+              return toResponse(
+                routes.mergeability?.() ?? {
+                  data: {
+                    repository: {
+                      pullRequest: {
+                        mergeable: 'MERGEABLE',
+                        mergeStateStatus: 'CLEAN',
+                      },
+                    },
+                  },
+                },
+              );
             }
             if (
               body.query.includes('PullRequestSlimStatusBatch') &&
@@ -10218,7 +10226,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       fetchSpy,
       (url, body) =>
         url === 'https://api.github.com/graphql' &&
-        body.includes('mergeStateStatus'),
+        body.includes('query PullRequestMergeability') &&
+        !body.includes('PullRequestSlimStatusBatch'),
     );
 
   const countSlimPullRequestBatchQueries = (fetchSpy: FetchSpy): number =>
