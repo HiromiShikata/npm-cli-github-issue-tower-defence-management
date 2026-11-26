@@ -881,6 +881,11 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
       headers: { cookie: `${CONSOLE_TOKEN_COOKIE}=not-validated` },
       requestPath: '/api/review',
     },
+    {
+      carrier: 'cookie on a page',
+      headers: { cookie: `${CONSOLE_TOKEN_COOKIE}=not-validated` },
+      requestPath: '/',
+    },
   ])(
     'rejects HTTP requests carrying a $carrier token when disabled',
     async ({ headers, requestPath }) => {
