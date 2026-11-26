@@ -6020,7 +6020,7 @@ describe('webServer HTTPS certificate handling', () => {
           host: '127.0.0.1',
           port: httpsPort,
           path: CONSOLE_HTTPS_ENDPOINT_PATH,
-          rejectUnauthorized: false,
+          ca: certificate,
         }),
       );
       expect(overHttps.statusCode).toBe(200);
