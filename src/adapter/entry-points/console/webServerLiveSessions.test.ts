@@ -361,11 +361,11 @@ class FailingLiveSessionSideband implements LiveSessionSideband {
 }
 
 class NonErrorRejectionLiveSessionSideband implements LiveSessionSideband {
-  attach(): Promise<void> {
+  async attach(): Promise<void> {
     const nonErrorRejection: unknown = {
       toString: () => 'INTERNAL_MARKER_non_error_rejection',
     };
-    return Promise.reject(nonErrorRejection);
+    throw nonErrorRejection;
   }
 }
 
@@ -444,9 +444,10 @@ describe('webServer live session creation when the voice console sideband cannot
         'application/sdp',
       );
       expect(response.body).not.toContain('INTERNAL_MARKER_non_error_rejection');
+      const errorBody: unknown = JSON.parse(response.body);
       expect({
         statusCode: response.statusCode,
-        body: JSON.parse(response.body),
+        body: errorBody,
         closedSessionIds: closer.closedSessionIds,
       }).toEqual({
         statusCode: 502,
