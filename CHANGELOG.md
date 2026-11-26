@@ -1,3 +1,10 @@
+# [2.214.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.213.0...v2.214.0) (2026-11-26)
+
+
+### Features
+
+* **project-migration:** retire the WORKFLOW BLOCKER story option ([#3782](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3782)) ([6dc7f3c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6dc7f3c18ac3a7fc8c7af33e85dbce9bcedd9873))
+
 # [2.213.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.212.2...v2.213.0) (2026-11-26)
 
 
