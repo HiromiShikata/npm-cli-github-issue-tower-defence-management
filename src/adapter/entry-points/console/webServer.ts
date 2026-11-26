@@ -117,6 +117,23 @@ export const CONSOLE_TOKEN_HEADER = 'x-pv-token';
 
 export const CONSOLE_TOKEN_COOKIE = 'pv_token';
 
+export const CONSOLE_HTTPS_ENDPOINT_PATH = '/api/console/https-endpoint';
+
+export const httpsBaseUrlFor = (input: {
+  httpsPort?: number;
+  acmeIpAddress?: string;
+}): string | null =>
+  input.httpsPort === undefined || input.acmeIpAddress === undefined
+    ? null
+    : `https://${input.acmeIpAddress}:${input.httpsPort}`;
+
+const activeHttpsBaseUrl = (options: WebServerOptions): string | null => {
+  const httpsBaseUrl = httpsBaseUrlFor(options);
+  if (httpsBaseUrl === null) return null;
+  const isListening = options.isHttpsListening ?? ((): boolean => false);
+  return isListening() ? httpsBaseUrl : null;
+};
+
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -158,7 +175,8 @@ export const hasDotSegment = (requestPath: string): boolean =>
     .some((segment) => segment.length > 0 && segment.startsWith('.'));
 
 export const requiresToken = (requestPath: string): boolean =>
-  requestPath.startsWith('/api/') ||
+  (requestPath.startsWith('/api/') &&
+    requestPath !== CONSOLE_HTTPS_ENDPOINT_PATH) ||
   requestPath === '/api' ||
   requestPath.endsWith('.json') ||
   requestPath.endsWith(OWNER_CALL_FILE_EXTENSION);
@@ -346,6 +364,8 @@ export type WebServerOptions = {
     | null;
   httpsPort?: number;
   acmeIpAddress?: string;
+  httpTokenAuthDisabled?: boolean;
+  isHttpsListening?: () => boolean;
   acmeDataDirectory?: string;
   acmeServerUrl?: string;
   runLegoCommand?: (
@@ -1451,8 +1471,65 @@ export const handleWebRequest = async (
     return;
   }
 
+  const method = (request.method ?? 'GET').toUpperCase();
+  const httpsBaseUrl = activeHttpsBaseUrl(options);
+  if (requestPath === CONSOLE_HTTPS_ENDPOINT_PATH && method === 'GET') {
+    if (httpsBaseUrl === null) {
+      sendNotFound(response);
+      return;
+    }
+    response.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    response.end(JSON.stringify({ httpsBaseUrl }));
+    return;
+  }
+
+  const redirectBaseUrl = activeHttpsBaseUrl(options);
+  if (
+    !secure &&
+    options.httpTokenAuthDisabled === true &&
+    redirectBaseUrl !== null
+  ) {
+    const providedToken = extractProvidedToken(
+      requestUrl.searchParams.get('k'),
+      request.headers[CONSOLE_TOKEN_HEADER],
+      extractCookieToken(request.headers.cookie),
+    );
+    if (providedToken !== null) {
+      response.writeHead(403, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      });
+      response.end(
+        JSON.stringify({
+          error: 'https_required',
+          httpsBaseUrl: redirectBaseUrl,
+        }),
+      );
+      return;
+    }
+  }
+
+  if (
+    !secure &&
+    redirectBaseUrl !== null &&
+    (method === 'GET' || method === 'HEAD') &&
+    !requiresToken(requestPath) &&
+    requestPath !== '/api' &&
+    !requestPath.startsWith('/api/') &&
+    requestPath !== DASHBOARD_REQUEST_PATH
+  ) {
+    response.writeHead(308, {
+      Location: `${redirectBaseUrl}${requestUrl.pathname}${requestUrl.search}`,
+      'Cache-Control': 'no-store',
+    });
+    response.end();
+    return;
+  }
+
   if (requestPath === DASHBOARD_REQUEST_PATH) {
-    const method = (request.method ?? 'GET').toUpperCase();
     if (method !== 'GET') {
       sendNotFound(response);
       return;
@@ -1480,7 +1557,10 @@ export const handleWebRequest = async (
     return;
   }
 
-  if (requiresToken(requestPath)) {
+  if (
+    requiresToken(requestPath) ||
+    requestPath === CONSOLE_HTTPS_ENDPOINT_PATH
+  ) {
     const providedToken = extractProvidedToken(
       requestUrl.searchParams.get('k'),
       request.headers[CONSOLE_TOKEN_HEADER],
@@ -1713,7 +1793,12 @@ const certificateAcquisition = async (
 export const startWebServer = async (
   options: StartWebServerOptions,
 ): Promise<http.Server> => {
-  const server = createWebServer(options);
+  let httpsServer: https.Server | null = null;
+  const liveOptions: StartWebServerOptions = {
+    ...options,
+    isHttpsListening: () => httpsServer !== null && httpsServer.listening,
+  };
+  const server = createWebServer(liveOptions);
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(options.port, () => {
@@ -1721,13 +1806,12 @@ export const startWebServer = async (
       resolve();
     });
   });
-  let httpsServer: https.Server | null = null;
   if (shouldScheduleCertificateRenewal(options)) {
-    httpsServer = await certificateAcquisition(options, httpsServer);
+    httpsServer = await certificateAcquisition(liveOptions, httpsServer);
   }
   const renewalTimer = shouldScheduleCertificateRenewal(options)
     ? setInterval(() => {
-        void certificateAcquisition(options, httpsServer).then(
+        void certificateAcquisition(liveOptions, httpsServer).then(
           (updatedServer) => {
             httpsServer = updatedServer;
             const resources = webServerResources.get(server);
