@@ -10106,16 +10106,70 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               return toResponse(routes.timeline(body.rawVariables));
             }
             if (
-              body.query.includes('mergeStateStatus') &&
-              routes.mergeability
-            ) {
-              return toResponse(routes.mergeability());
-            }
-            if (
               body.query.includes('PullRequestSlimStatusBatch') &&
               routes.slimPullRequestBatch
             ) {
               return toResponse(routes.slimPullRequestBatch(body.rawVariables));
+            }
+            if (body.query.includes('query PullRequestMergeability')) {
+              return toResponse(
+                routes.mergeability?.() ?? {
+                  data: {
+                    repository: {
+                      pullRequest: {
+                        mergeable: 'MERGEABLE',
+                        mergeStateStatus: 'CLEAN',
+                      },
+                    },
+                  },
+                },
+              );
+            }
+            if (
+              body.query.includes('PullRequestSlimStatusBatch') &&
+              routes.slimPullRequest
+            ) {
+              const batchData: Record<string, unknown> = {};
+              const indexes = Object.keys(body.rawVariables)
+                .filter((key) => /^prNumber\d+$/.test(key))
+                .map((key) => key.slice('prNumber'.length))
+                .filter(
+                  (index) =>
+                    `owner${index}` in body.rawVariables &&
+                    `repo${index}` in body.rawVariables,
+                )
+                .sort((left, right) => Number(left) - Number(right));
+              for (const index of indexes) {
+                const owner = body.rawVariables[`owner${index}`];
+                const repo = body.rawVariables[`repo${index}`];
+                const prNumber = body.rawVariables[`prNumber${index}`];
+                const singleResponse = toResponse(
+                  routes.slimPullRequest({
+                    owner: typeof owner === 'string' ? owner : undefined,
+                    repo: typeof repo === 'string' ? repo : undefined,
+                    prNumber: typeof prNumber === 'number' ? prNumber : 0,
+                    reviewThreadsAfter: null,
+                  }),
+                );
+                if (!singleResponse.ok) {
+                  return singleResponse;
+                }
+                const singleResponseBody: unknown = await singleResponse.json();
+                const pullRequest =
+                  typeof singleResponseBody === 'object' &&
+                  singleResponseBody !== null &&
+                  'data' in singleResponseBody &&
+                  typeof singleResponseBody.data === 'object' &&
+                  singleResponseBody.data !== null &&
+                  'repository' in singleResponseBody.data &&
+                  typeof singleResponseBody.data.repository === 'object' &&
+                  singleResponseBody.data.repository !== null &&
+                  'pullRequest' in singleResponseBody.data.repository
+                    ? singleResponseBody.data.repository.pullRequest
+                    : null;
+                batchData[`pullRequest${index}`] = { pullRequest };
+              }
+              return jsonResponse({ data: batchData });
             }
             if (body.query.includes('headRefOid') && routes.slimPullRequest) {
               return toResponse(routes.slimPullRequest(body.variables));
@@ -10172,7 +10226,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       fetchSpy,
       (url, body) =>
         url === 'https://api.github.com/graphql' &&
-        body.includes('mergeStateStatus'),
+        body.includes('query PullRequestMergeability') &&
+        !body.includes('PullRequestSlimStatusBatch'),
     );
 
   const countSlimPullRequestBatchQueries = (fetchSpy: FetchSpy): number =>
@@ -10181,6 +10236,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       (url, body) =>
         url === 'https://api.github.com/graphql' &&
         body.includes('PullRequestSlimStatusBatch'),
+    );
+
+  const countSlimPullRequestQueries = (fetchSpy: FetchSpy): number =>
+    countCallsMatching(
+      fetchSpy,
+      (url, body) =>
+        url === 'https://api.github.com/graphql' &&
+        body.includes('headRefOid') &&
+        !body.includes('PullRequestSlimStatusBatch'),
     );
 
   const countRelatedOpenPrUrlsBatchQueries = (fetchSpy: FetchSpy): number =>
@@ -12612,6 +12676,16 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             url: `https://github.com/${variables.owner}/${variables.repo}/pull/${variables.prNumber}`,
             state: prState,
           }),
+        slimPullRequestBatch: (_variables) => ({
+          data: {
+            pullRequest0: {
+              pullRequest: buildSlimPullRequestNode({
+                url: RECORDED_PR_URL,
+                state: prState,
+              }),
+            },
+          },
+        }),
       });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
@@ -12621,14 +12695,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       expect(result.map((pr) => pr.url)).toEqual(expectedUrls);
-      expect(
-        countCallsMatching(
-          fetchSpy,
-          (url, body) =>
-            url === 'https://api.github.com/graphql' &&
-            body.includes('headRefOid'),
-        ),
-      ).toBe(expectedUrls.length > 0 || prState === 'MERGED' ? 1 : 0);
+      const hasRecordedPullRequestUrl = comments.some(({ body }) =>
+        body.includes('"pullRequestUrl": "'),
+      );
+      expect(countSlimPullRequestBatchQueries(fetchSpy)).toBe(
+        hasRecordedPullRequestUrl ? 1 : 0,
+      );
+      expect(countSlimPullRequestQueries(fetchSpy)).toBe(0);
     });
   });
 
@@ -13157,47 +13230,50 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('queries the PR repository owner and name when the PR is in a different repository than the issue', async () => {
-      const capturedSlimVariables: Array<{
-        owner?: string;
-        repo?: string;
-        prNumber: number;
-      }> = [];
-
-      mockFetchRoutes({
-        timeline: () => ({
-          data: {
-            repository: {
-              issue: {
-                timelineItems: {
-                  pageInfo: { endCursor: null, hasNextPage: false },
-                  nodes: [
-                    {
-                      __typename: 'CrossReferencedEvent',
-                      willCloseTarget: true,
-                      source: {
-                        __typename: 'PullRequest',
-                        url: 'https://github.com/HiromiShikata/secretary/pull/2751',
-                        number: 2751,
-                        state: 'OPEN',
-                        createdAt: '2024-01-01T00:00:00Z',
-                        isDraft: false,
-                        mergeable: 'MERGEABLE',
-                        headRefName: 'close-ufw-port-9981-i30106',
-                        baseRefName: 'main',
-                        baseRef: { name: 'main' },
-                      },
+      const capturedBatchVariables: Array<Record<string, unknown>> = [];
+      const timeline = () => ({
+        data: {
+          repository: {
+            issue: {
+              timelineItems: {
+                pageInfo: { endCursor: null, hasNextPage: false },
+                nodes: [
+                  {
+                    __typename: 'CrossReferencedEvent',
+                    willCloseTarget: true,
+                    source: {
+                      __typename: 'PullRequest',
+                      url: 'https://github.com/HiromiShikata/secretary/pull/2751',
+                      number: 2751,
+                      state: 'OPEN',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      isDraft: false,
+                      mergeable: 'MERGEABLE',
+                      headRefName: 'close-ufw-port-9981-i30106',
+                      baseRefName: 'main',
+                      baseRef: { name: 'main' },
                     },
-                  ],
-                },
+                  },
+                ],
               },
             },
           },
-        }),
-        slimPullRequest: (variables) => {
-          capturedSlimVariables.push(variables);
-          return buildSlimPullRequestResponse({
-            url: 'https://github.com/HiromiShikata/secretary/pull/2751',
-          });
+        },
+      });
+
+      mockFetchRoutes({
+        timeline,
+        slimPullRequestBatch: (variables) => {
+          capturedBatchVariables.push(variables);
+          return {
+            data: {
+              pullRequest0: {
+                pullRequest: buildSlimPullRequestNode({
+                  url: 'https://github.com/HiromiShikata/secretary/pull/2751',
+                }),
+              },
+            },
+          };
         },
       });
 
@@ -13210,10 +13286,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].url).toBe(
         'https://github.com/HiromiShikata/secretary/pull/2751',
       );
-      expect(capturedSlimVariables).toHaveLength(1);
-      expect(capturedSlimVariables[0].owner).toBe('HiromiShikata');
-      expect(capturedSlimVariables[0].repo).toBe('secretary');
-      expect(capturedSlimVariables[0].prNumber).toBe(2751);
+      expect(capturedBatchVariables).toHaveLength(1);
+      expect(capturedBatchVariables[0].owner0).toBe('HiromiShikata');
+      expect(capturedBatchVariables[0].repo0).toBe('secretary');
+      expect(capturedBatchVariables[0].prNumber0).toBe(2751);
     });
   });
 

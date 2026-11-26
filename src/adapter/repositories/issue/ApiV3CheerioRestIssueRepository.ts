@@ -327,6 +327,7 @@ type SlimPullRequestNodeResponse = {
   headRefName?: string;
   baseRefName?: string;
   mergeable?: string;
+  mergeStateStatus?: string | null;
   headRefOid?: string;
   reviewDecision?: string;
   reviewThreads?: {
@@ -344,6 +345,28 @@ type SlimPullRequestBatchResponse = {
   data?: Record<
     string,
     { pullRequest?: SlimPullRequestNodeResponse | null } | null
+  > | null;
+  errors?: Array<{
+    message: string;
+    type?: string;
+    path?: Array<string | number>;
+  }>;
+};
+
+type SlimPullRequestReviewThreadsBatchResponse = {
+  data?: Record<
+    string,
+    {
+      pullRequest?: {
+        reviewThreads?: {
+          pageInfo: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          };
+          nodes: Array<{ isResolved: boolean }>;
+        } | null;
+      } | null;
+    } | null
   > | null;
   errors?: Array<{
     message: string;
@@ -386,6 +409,7 @@ type SlimPullRequest = {
   headRefName?: string;
   baseRefName?: string;
   mergeable?: string;
+  mergeStateStatus?: string | null;
   headRefOid?: string;
   reviewThreads: Array<{
     isResolved: boolean;
@@ -462,6 +486,13 @@ function isSlimPullRequestResponse(
 function isSlimPullRequestBatchResponse(
   value: unknown,
 ): value is SlimPullRequestBatchResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isSlimPullRequestReviewThreadsBatchResponse(
+  value: unknown,
+): value is SlimPullRequestReviewThreadsBatchResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
@@ -3429,6 +3460,7 @@ export class ApiV3CheerioRestIssueRepository
     let commentsAfter: string | null = null;
     let commentsHasNextPage = true;
     const taskCommentBodies: string[] = [];
+    const timelinePullRequests: NonNullable<TimelineItem['source']>[] = [];
 
     while (hasNextPage || commentsHasNextPage) {
       const response = await this.fetchWithRateLimitRetry(() =>
@@ -3485,7 +3517,7 @@ export class ApiV3CheerioRestIssueRepository
         if (!this.isRelatedOpenPullRequestTimelineItem(item, issueUrl))
           continue;
 
-        await this.relatedOpenPullRequestRecord(item.source, relatedPRsMap);
+        timelinePullRequests.push(item.source);
       }
 
       if (hasNextPage) {
@@ -3494,9 +3526,19 @@ export class ApiV3CheerioRestIssueRepository
       }
     }
 
-    for (const recordedUrl of pullRequestUrlsFromCommentBodies(
-      taskCommentBodies,
-    )) {
+    const recordedPrUrls = pullRequestUrlsFromCommentBodies(taskCommentBodies);
+    const statesByUrl = await this.fetchSlimPullRequestStatesByUrl([
+      ...timelinePullRequests.flatMap((pr) =>
+        pr.url && pr.number !== undefined ? [pr.url] : [],
+      ),
+      ...recordedPrUrls,
+    ]);
+
+    for (const pr of timelinePullRequests) {
+      await this.relatedOpenPullRequestRecord(pr, relatedPRsMap, statesByUrl);
+    }
+
+    for (const recordedUrl of recordedPrUrls) {
       if (relatedPRsMap.has(recordedUrl)) continue;
       await this.relatedOpenPullRequestRecord(
         {
@@ -3507,6 +3549,7 @@ export class ApiV3CheerioRestIssueRepository
           state: 'OPEN',
         },
         relatedPRsMap,
+        statesByUrl,
       );
     }
 
@@ -3524,6 +3567,7 @@ export class ApiV3CheerioRestIssueRepository
   private relatedOpenPullRequestRecord = async (
     pr: NonNullable<TimelineItem['source']>,
     relatedPRsMap: Map<string, RelatedPullRequest>,
+    prefetchedSlimPullRequests: Map<string, SlimPullRequest | null> = new Map(),
   ): Promise<void> => {
     const prUrl = pr.url || '';
 
@@ -3539,35 +3583,51 @@ export class ApiV3CheerioRestIssueRepository
         pr.mergeable === null ||
         pr.mergeable === 'UNKNOWN')
     ) {
-      let resolved: {
-        mergeable: string | null;
-        mergeStateStatus: string | null;
-      } | null;
-      try {
-        resolved = await this.resolveMergeabilityWithRetry(
-          prOwner,
-          prRepo,
-          pr.number,
-        );
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        if (errorMessage.includes('NOT_FOUND')) {
-          console.info(
-            `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
-          );
-        } else {
-          console.warn(
-            `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
-          );
-        }
-        return;
-      }
-      if (resolved !== null) {
-        mergeable = resolved.mergeable;
+      const prefetchedSlimPullRequest = prefetchedSlimPullRequests.has(prUrl)
+        ? (prefetchedSlimPullRequests.get(prUrl) ?? null)
+        : null;
+      if (
+        pr.mergeable === undefined &&
+        prefetchedSlimPullRequest &&
+        prefetchedSlimPullRequest.mergeable !== null &&
+        prefetchedSlimPullRequest.mergeable !== undefined &&
+        prefetchedSlimPullRequest.mergeable !== 'UNKNOWN'
+      ) {
+        mergeable = prefetchedSlimPullRequest.mergeable;
         isConflicted =
-          resolved.mergeable === 'CONFLICTING' ||
-          resolved.mergeStateStatus === 'DIRTY';
+          mergeable === 'CONFLICTING' ||
+          prefetchedSlimPullRequest.mergeStateStatus === 'DIRTY';
+      } else {
+        let resolved: {
+          mergeable: string | null;
+          mergeStateStatus: string | null;
+        } | null;
+        try {
+          resolved = await this.resolveMergeabilityWithRetry(
+            prOwner,
+            prRepo,
+            pr.number,
+          );
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          if (errorMessage.includes('NOT_FOUND')) {
+            console.info(
+              `ApiV3CheerioRestIssueRepository: pull request no longer exists, excluding it from related open PRs. prUrl: ${prUrl}`,
+            );
+          } else {
+            console.warn(
+              `ApiV3CheerioRestIssueRepository: resolveMergeabilityWithRetry failed, skipping PR for this cycle. prUrl: ${prUrl} error: ${errorMessage}`,
+            );
+          }
+          return;
+        }
+        if (resolved !== null) {
+          mergeable = resolved.mergeable;
+          isConflicted =
+            resolved.mergeable === 'CONFLICTING' ||
+            resolved.mergeStateStatus === 'DIRTY';
+        }
       }
     }
 
@@ -3575,11 +3635,9 @@ export class ApiV3CheerioRestIssueRepository
 
     let slimPullRequest: SlimPullRequest;
     try {
-      const fetchedSlimPullRequest = await this.fetchSlimPullRequest(
-        prOwner,
-        prRepo,
-        pr.number,
-      );
+      const fetchedSlimPullRequest = prefetchedSlimPullRequests.has(prUrl)
+        ? (prefetchedSlimPullRequests.get(prUrl) ?? null)
+        : await this.fetchSlimPullRequest(prOwner, prRepo, pr.number);
       if (!fetchedSlimPullRequest || fetchedSlimPullRequest.state !== 'OPEN') {
         console.info(
           `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
@@ -3933,16 +3991,43 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const openPrUrls: string[] = [];
-    for (const prUrl of pullRequestUrlsFromCommentBodies(commentBodies)) {
-      const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
-      const pullRequest = await this.fetchSlimPullRequest(
-        owner,
-        repo,
-        issueNumber,
-      );
+    const recordedPrUrls = pullRequestUrlsFromCommentBodies(commentBodies);
+    const statesByUrl =
+      await this.fetchSlimPullRequestStatesByUrl(recordedPrUrls);
+    const failedPrUrls: { prUrl: string; message: string }[] = [];
+    for (const prUrl of recordedPrUrls) {
+      let pullRequest: SlimPullRequest | null;
+      if (statesByUrl.has(prUrl)) {
+        pullRequest = statesByUrl.get(prUrl) ?? null;
+        if (pullRequest === null) {
+          console.info(
+            `ApiV3CheerioRestIssueRepository: recorded pull request is not found, excluding it from open PR URLs. prUrl: ${prUrl}`,
+          );
+        }
+      } else {
+        const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
+        try {
+          pullRequest = await this.fetchSlimPullRequest(
+            owner,
+            repo,
+            issueNumber,
+          );
+        } catch (error) {
+          failedPrUrls.push({
+            prUrl,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          continue;
+        }
+      }
       if (pullRequest?.state === 'OPEN') {
         openPrUrls.push(prUrl);
       }
+    }
+    if (failedPrUrls.length > 0) {
+      throw new Error(
+        `Failed to fetch status of ${failedPrUrls.length} recorded pull request(s): ${failedPrUrls.map(({ prUrl, message }) => `${prUrl} (${message})`).join('; ')}`,
+      );
     }
     return openPrUrls;
   };
@@ -4180,6 +4265,8 @@ export class ApiV3CheerioRestIssueRepository
       repo: string;
       prNumber: number;
     }[],
+    absentAliasUnresolved = false,
+    pageReviewThreads = false,
   ): Promise<Map<string, SlimPullRequest | null>> => {
     const aliasOf = (index: number): string => `pullRequest${index}`;
     const variableDeclarations = references
@@ -4201,6 +4288,7 @@ export class ApiV3CheerioRestIssueRepository
       headRefName
       baseRefName
       mergeable
+      mergeStateStatus
       headRefOid
       reviewDecision
       reviewThreads(first: ${SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE}) {
@@ -4263,6 +4351,9 @@ export class ApiV3CheerioRestIssueRepository
       if (otherErrorAliases.has(alias)) {
         return;
       }
+      if (absentAliasUnresolved && !(alias in (responseData.data ?? {}))) {
+        return;
+      }
       const node = responseData.data?.[alias]?.pullRequest ?? null;
       if (!node) {
         if (notFoundAliases.has(alias) || !errors.length) {
@@ -4270,24 +4361,181 @@ export class ApiV3CheerioRestIssueRepository
         }
         return;
       }
-      if (node.reviewThreads?.pageInfo.hasNextPage === true) {
+      if (
+        !pageReviewThreads &&
+        node.reviewThreads?.pageInfo.hasNextPage === true
+      ) {
         return;
       }
-      slimByUrl.set(reference.prUrl, {
+      const slimPullRequest: SlimPullRequest = {
         url: node.url,
         state: node.state,
         isDraft: node.isDraft,
         headRefName: node.headRefName,
         baseRefName: node.baseRefName,
         mergeable: node.mergeable,
+        mergeStateStatus: node.mergeStateStatus,
         headRefOid: node.headRefOid,
         reviewDecision: node.reviewDecision,
         reviewThreads: (node.reviewThreads?.nodes || []).map((thread) => ({
           isResolved: thread.isResolved,
         })),
-      });
+      };
+      slimByUrl.set(reference.prUrl, slimPullRequest);
     });
+
+    if (!pageReviewThreads) return slimByUrl;
+
+    let pending = references.flatMap((reference, index) => {
+      const slimPullRequest = slimByUrl.get(reference.prUrl);
+      const pageInfo =
+        responseData.data?.[aliasOf(index)]?.pullRequest?.reviewThreads
+          ?.pageInfo;
+      if (!slimPullRequest || !pageInfo?.hasNextPage || !pageInfo.endCursor) {
+        return [];
+      }
+      return [{ reference, slimPullRequest, cursor: pageInfo.endCursor }];
+    });
+
+    while (pending.length > 0) {
+      const nextPending: typeof pending = [];
+      for (
+        let start = 0;
+        start < pending.length;
+        start += SLIM_PULL_REQUEST_BATCH_SIZE
+      ) {
+        const chunk = pending.slice(
+          start,
+          start + SLIM_PULL_REQUEST_BATCH_SIZE,
+        );
+        const aliasOfReviewThreads = (index: number): string =>
+          `pullRequest${index}`;
+        const variableDeclarations = chunk
+          .map(
+            (_, index) =>
+              `$owner${index}: String!, $repo${index}: String!, $prNumber${index}: Int!, $after${index}: String`,
+          )
+          .join(', ');
+        const selections = chunk
+          .map(
+            (
+              _,
+              index,
+            ) => `  ${aliasOfReviewThreads(index)}: repository(owner: $owner${index}, name: $repo${index}) {
+    pullRequest(number: $prNumber${index}) {
+      reviewThreads(first: ${SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE}, after: $after${index}) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          isResolved
+        }
+      }
+    }
+  }`,
+          )
+          .join('\n');
+        const query = `query PullRequestReviewThreadsBatch(${variableDeclarations}) {\n${selections}\n}`;
+        const variables: Record<string, string | number | null> = {};
+        chunk.forEach(({ reference, cursor }, index) => {
+          variables[`owner${index}`] = reference.owner;
+          variables[`repo${index}`] = reference.repo;
+          variables[`prNumber${index}`] = reference.prNumber;
+          variables[`after${index}`] = cursor;
+        });
+
+        const response = await this.fetchWithRateLimitRetry(() =>
+          fetchGithubGraphql({ ghToken: this.ghToken, query, variables }),
+        );
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch pull request review threads from GitHub GraphQL API: HTTP ${response.status}`,
+          );
+        }
+        const responseData: unknown = await response.json();
+        if (
+          !isSlimPullRequestReviewThreadsBatchResponse(responseData) ||
+          !responseData.data ||
+          responseData.errors?.length
+        ) {
+          throw new Error(
+            `GraphQL errors: ${JSON.stringify(
+              isSlimPullRequestReviewThreadsBatchResponse(responseData)
+                ? responseData.errors || []
+                : [],
+            )}`,
+          );
+        }
+        chunk.forEach(({ reference, slimPullRequest }, index) => {
+          const page =
+            responseData.data?.[aliasOfReviewThreads(index)]?.pullRequest
+              ?.reviewThreads;
+          if (!page)
+            throw new Error(`Missing review threads for ${reference.prUrl}`);
+          slimPullRequest.reviewThreads.push(
+            ...page.nodes.map((thread) => ({
+              isResolved: thread.isResolved,
+            })),
+          );
+          if (page.pageInfo.hasNextPage && page.pageInfo.endCursor) {
+            nextPending.push({
+              reference,
+              slimPullRequest,
+              cursor: page.pageInfo.endCursor,
+            });
+          }
+        });
+      }
+      pending = nextPending.filter(({ reference }) =>
+        slimByUrl.has(reference.prUrl),
+      );
+    }
     return slimByUrl;
+  };
+
+  private fetchSlimPullRequestStatesByUrl = async (
+    prUrls: string[],
+  ): Promise<Map<string, SlimPullRequest | null>> => {
+    const resolved = new Map<string, SlimPullRequest | null>();
+    const references = Array.from(new Set(prUrls)).flatMap((prUrl) => {
+      const parsed = this.parseIssueUrl(prUrl);
+      if (!parsed.isPr) return [];
+      return [
+        {
+          prUrl,
+          owner: parsed.owner,
+          repo: parsed.repo,
+          prNumber: parsed.issueNumber,
+        },
+      ];
+    });
+
+    for (
+      let start = 0;
+      start < references.length;
+      start += SLIM_PULL_REQUEST_BATCH_SIZE
+    ) {
+      const chunk = references.slice(
+        start,
+        start + SLIM_PULL_REQUEST_BATCH_SIZE,
+      );
+      try {
+        const slimByUrl = await this.fetchSlimPullRequestsInOneQuery(
+          chunk,
+          true,
+          true,
+        );
+        for (const [prUrl, slimPullRequest] of slimByUrl) {
+          resolved.set(prUrl, slimPullRequest);
+        }
+      } catch (error) {
+        console.info(
+          `ApiV3CheerioRestIssueRepository: batched pull request status query failed, resolving ${chunk.length} pull request(s) per request. error: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    return resolved;
   };
 
   closePullRequest = async (prUrl: string): Promise<void> => {
