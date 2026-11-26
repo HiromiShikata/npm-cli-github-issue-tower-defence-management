@@ -15,9 +15,12 @@ const storyOption = (
 
 export const NO_STORY_STORY_NAME = 'regular / NO STORY';
 
+export const RETIRED_STORY_OPTION_NAMES: readonly string[] = [
+  'regular / WORKFLOW BLOCKER',
+];
+
 const REQUIRED_STORY_OPTIONS: Omit<FieldOption, 'id'>[] = [
   storyOption(NO_STORY_STORY_NAME, 'RED'),
-  storyOption('regular / WORKFLOW BLOCKER', 'RED'),
   storyOption('regular / inquiry', 'RED'),
   storyOption('regular / high priority', 'RED'),
   storyOption('regular / workflow management', 'YELLOW'),

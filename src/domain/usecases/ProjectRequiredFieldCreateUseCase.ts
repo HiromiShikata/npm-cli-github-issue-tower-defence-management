@@ -4,6 +4,7 @@ import {
   AGENT_FIELD_NAME,
   NEXT_ACTION_HOUR_FIELD_NAME,
   REQUIRED_PROJECT_FIELDS,
+  RETIRED_STORY_OPTION_NAMES,
   STORY_FIELD_NAME,
 } from '../entities/RequiredProjectField';
 import { AgentDefaultRepository } from './adapter-interfaces/AgentDefaultRepository';
@@ -66,8 +67,16 @@ export class ProjectRequiredFieldCreateUseCase {
   private buildMergedStoryOptions = (
     existingStories: FieldOption[],
     requiredOptions: Omit<FieldOption, 'id'>[],
-  ): { mergedOptions: OptionToSubmit[]; addedCount: number } => {
-    const mergedOptions: OptionToSubmit[] = existingStories.map((o) => ({
+  ): {
+    mergedOptions: OptionToSubmit[];
+    addedCount: number;
+    removedCount: number;
+  } => {
+    const retainedStories = existingStories.filter(
+      (o) => !this.isRetiredStoryOption(o.name),
+    );
+    const removedCount = existingStories.length - retainedStories.length;
+    const mergedOptions: OptionToSubmit[] = retainedStories.map((o) => ({
       ...o,
     }));
     let addedCount = 0;
@@ -85,8 +94,15 @@ export class ProjectRequiredFieldCreateUseCase {
       previousRequiredIndex = insertIndex;
       addedCount += 1;
     }
-    return { mergedOptions, addedCount };
+    return { mergedOptions, addedCount, removedCount };
   };
+
+  private isRetiredStoryOption = (name: string): boolean =>
+    RETIRED_STORY_OPTION_NAMES.some(
+      (retiredName) =>
+        normalizeProjectFieldName(name) ===
+        normalizeProjectFieldName(retiredName),
+    );
 
   private reconcileStoryOptions = async (project: Project): Promise<void> => {
     if (!project.story) {
@@ -101,23 +117,26 @@ export class ProjectRequiredFieldCreateUseCase {
       return;
     }
     const requiredOptions = storyFieldDefinition.options;
-    const { addedCount } = this.buildMergedStoryOptions(
+    const { addedCount, removedCount } = this.buildMergedStoryOptions(
       project.story.stories,
       requiredOptions,
     );
-    if (addedCount === 0) {
+    if (addedCount + removedCount === 0) {
       return;
     }
     const latestProject = await this.projectRepository.getByUrl(project.url);
     if (!latestProject.story) {
       return;
     }
-    const { mergedOptions: freshMergedOptions, addedCount: freshAddedCount } =
-      this.buildMergedStoryOptions(
-        latestProject.story.stories,
-        requiredOptions,
-      );
-    if (freshAddedCount === 0) {
+    const {
+      mergedOptions: freshMergedOptions,
+      addedCount: freshAddedCount,
+      removedCount: freshRemovedCount,
+    } = this.buildMergedStoryOptions(
+      latestProject.story.stories,
+      requiredOptions,
+    );
+    if (freshAddedCount + freshRemovedCount === 0) {
       return;
     }
     await this.projectRepository.updateStoryList(
