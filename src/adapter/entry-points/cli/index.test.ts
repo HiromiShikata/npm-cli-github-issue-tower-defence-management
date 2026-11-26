@@ -4912,7 +4912,12 @@ ${removedSettingName}: 'claude-sonnet-4-6'
     });
 
     it('should include the HTTP token authentication disable option in help output', () => {
-      expect(program.helpInformation()).toContain('--httpTokenAuthDisabled');
+      const serveWebCommand = program.commands.find(
+        (command) => command.name() === 'serveWeb',
+      );
+      expect(serveWebCommand?.helpInformation()).toContain(
+        '--httpTokenAuthDisabled',
+      );
     });
 
     it('should start the server on the default port 9980 when --port is omitted', async () => {

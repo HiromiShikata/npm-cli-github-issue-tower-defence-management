@@ -738,12 +738,22 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
     });
   };
 
+  const createPlainTestServer = (
+    options: ReturnType<typeof buildOptions>,
+  ): Promise<http.Server> => {
+    const server = createWebServer(options);
+    return new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', () => resolve(server));
+    });
+  };
+
   const createSecureTestServer = (
     options: ReturnType<typeof buildOptions>,
   ): Promise<http.Server> => {
-    const server = http.createServer((request, response) =>
-      handleWebRequest(options, request, response, true),
-    );
+    const server = http.createServer((request, response) => {
+      void handleWebRequest(options, request, response, true);
+    });
     return new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(0, '127.0.0.1', () => resolve(server));
@@ -764,9 +774,12 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
       const options = buildOptions();
       const server = secure
         ? await createSecureTestServer(options)
-        : createWebServer(options);
+        : await createPlainTestServer(options);
       try {
-        const response = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
+        const response = await requestServer(
+          server,
+          CONSOLE_HTTPS_ENDPOINT_PATH,
+        );
         expect(response.statusCode).toBe(200);
         expect(JSON.parse(response.body)).toEqual({
           httpsBaseUrl: httpsBaseUrlFor(options),
@@ -792,9 +805,12 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
       };
       const server = secure
         ? await createSecureTestServer(options)
-        : createWebServer(options);
+        : await createPlainTestServer(options);
       try {
-        const response = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
+        const response = await requestServer(
+          server,
+          CONSOLE_HTTPS_ENDPOINT_PATH,
+        );
         expect(response.statusCode).toBe(404);
       } finally {
         await closeServer(server);
@@ -810,7 +826,7 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
   ])(
     'redirects HTTP $method $requestPath to HTTPS unchanged',
     async ({ method, requestPath }) => {
-      const server = createWebServer(buildOptions());
+      const server = await createPlainTestServer(buildOptions());
       try {
         const response = await requestServer(server, requestPath, method);
         expect(response.statusCode).toBe(308);
@@ -831,7 +847,7 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
   ])(
     'does not redirect HTTP $method $requestPath',
     async ({ method, requestPath }) => {
-      const server = createWebServer(buildOptions());
+      const server = await createPlainTestServer(buildOptions());
       try {
         const response = await requestServer(server, requestPath, method);
         expect(response.statusCode).not.toBe(308);
@@ -861,9 +877,14 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
   ])(
     'rejects HTTP requests carrying a $carrier token when disabled',
     async ({ headers, requestPath }) => {
-      const server = createWebServer(buildOptions(true));
+      const server = await createPlainTestServer(buildOptions(true));
       try {
-        const response = await requestServer(server, requestPath, 'GET', headers);
+        const response = await requestServer(
+          server,
+          requestPath,
+          'GET',
+          headers,
+        );
         expect(response.statusCode).toBe(403);
         expect(JSON.parse(response.body)).toEqual({
           error: 'https_required',
@@ -877,7 +898,7 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
 
   it('keeps the endpoint and page redirect available when HTTP token authentication is disabled', async () => {
     const options = buildOptions(true);
-    const server = createWebServer(options);
+    const server = await createPlainTestServer(options);
     try {
       const endpoint = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
       expect(endpoint.statusCode).toBe(200);
@@ -895,7 +916,7 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
       httpsPort: undefined,
       acmeIpAddress: undefined,
     };
-    const server = createWebServer(options);
+    const server = await createPlainTestServer(options);
     try {
       const endpoint = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
       expect(endpoint.statusCode).toBe(404);
@@ -5878,7 +5899,7 @@ describe('webServer HTTPS certificate handling', () => {
         server,
         `/?k=${testToken}`,
       );
-      expect(responseStatusCode).toBe(200);
+      expect(responseStatusCode).toBe(308);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('renewal failed'),
       );
@@ -6132,7 +6153,7 @@ describe('webServer HTTPS certificate handling', () => {
     });
     try {
       expect(consoleErrorSpy).toHaveBeenCalled();
-      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(200);
+      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(308);
     } finally {
       await stopWebServer(server);
       await new Promise<void>((resolve, reject) =>
@@ -6169,7 +6190,7 @@ describe('webServer HTTPS certificate handling', () => {
     try {
       expect(runLegoCommand).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalled();
-      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(200);
+      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(308);
     } finally {
       await stopWebServer(server);
       consoleErrorSpy.mockRestore();
@@ -6211,7 +6232,7 @@ describe('webServer HTTPS certificate handling', () => {
         server,
         `/?k=${testToken}`,
       );
-      expect(responseStatusCode).toBe(200);
+      expect(responseStatusCode).toBe(308);
       expect(consoleErrorSpy).toHaveBeenCalled();
     } finally {
       await stopWebServer(server);

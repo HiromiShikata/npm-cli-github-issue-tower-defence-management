@@ -276,6 +276,7 @@ type ServeWebOptions = {
   port?: string;
   httpsPort?: string;
   acmeIpAddress?: string;
+  httpTokenAuthDisabled?: boolean;
   acmeDataDirectory?: string;
   acmeServerUrl?: string;
   consoleDataOutputDir?: string;
@@ -1580,6 +1581,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     port,
     httpsPort,
     acmeIpAddress: options.acmeIpAddress,
+    httpTokenAuthDisabled: options.httpTokenAuthDisabled === true,
     acmeDataDirectory:
       options.acmeDataDirectory ?? path.join(tdpmCacheDirectory(), 'acme'),
     acmeServerUrl: options.acmeServerUrl ?? LETS_ENCRYPT_STAGING_DIRECTORY_URL,
@@ -1598,6 +1600,10 @@ const addServeWebOptions = (command: Command): Command =>
       `Port for the web HTTP server (default: ${DEFAULT_WEB_PORT})`,
     )
     .option('--httpsPort <port>', 'Port for the opt-in HTTPS server')
+    .option(
+      '--httpTokenAuthDisabled',
+      'Reject HTTP requests carrying a token when HTTPS is configured',
+    )
     .option(
       '--acmeIpAddress <ipv4>',
       "IPv4 address for the Let's Encrypt certificate",

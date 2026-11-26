@@ -117,6 +117,16 @@ export const CONSOLE_TOKEN_HEADER = 'x-pv-token';
 
 export const CONSOLE_TOKEN_COOKIE = 'pv_token';
 
+export const CONSOLE_HTTPS_ENDPOINT_PATH = '/api/console/https-endpoint';
+
+export const httpsBaseUrlFor = (input: {
+  httpsPort?: number;
+  acmeIpAddress?: string;
+}): string | null =>
+  input.httpsPort === undefined || input.acmeIpAddress === undefined
+    ? null
+    : `https://${input.acmeIpAddress}:${input.httpsPort}`;
+
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -158,7 +168,8 @@ export const hasDotSegment = (requestPath: string): boolean =>
     .some((segment) => segment.length > 0 && segment.startsWith('.'));
 
 export const requiresToken = (requestPath: string): boolean =>
-  requestPath.startsWith('/api/') ||
+  (requestPath.startsWith('/api/') &&
+    requestPath !== CONSOLE_HTTPS_ENDPOINT_PATH) ||
   requestPath === '/api' ||
   requestPath.endsWith('.json') ||
   requestPath.endsWith(OWNER_CALL_FILE_EXTENSION);
@@ -346,6 +357,7 @@ export type WebServerOptions = {
     | null;
   httpsPort?: number;
   acmeIpAddress?: string;
+  httpTokenAuthDisabled?: boolean;
   acmeDataDirectory?: string;
   acmeServerUrl?: string;
   runLegoCommand?: (
@@ -1451,8 +1463,56 @@ export const handleWebRequest = async (
     return;
   }
 
+  const method = (request.method ?? 'GET').toUpperCase();
+  const httpsBaseUrl = httpsBaseUrlFor(options);
+  if (requestPath === CONSOLE_HTTPS_ENDPOINT_PATH && method === 'GET') {
+    if (httpsBaseUrl === null) {
+      sendNotFound(response);
+      return;
+    }
+    response.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    response.end(JSON.stringify({ httpsBaseUrl }));
+    return;
+  }
+
+  if (
+    !secure &&
+    options.httpTokenAuthDisabled === true &&
+    httpsBaseUrl !== null
+  ) {
+    const providedToken = extractProvidedToken(
+      requestUrl.searchParams.get('k'),
+      request.headers[CONSOLE_TOKEN_HEADER],
+      extractCookieToken(request.headers.cookie),
+    );
+    if (providedToken !== null) {
+      response.writeHead(403, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      });
+      response.end(JSON.stringify({ error: 'https_required', httpsBaseUrl }));
+      return;
+    }
+  }
+
+  if (
+    !secure &&
+    httpsBaseUrl !== null &&
+    (method === 'GET' || method === 'HEAD') &&
+    !requiresToken(requestPath)
+  ) {
+    response.writeHead(308, {
+      Location: `${httpsBaseUrl}${request.url ?? '/'}`,
+      'Cache-Control': 'no-store',
+    });
+    response.end();
+    return;
+  }
+
   if (requestPath === DASHBOARD_REQUEST_PATH) {
-    const method = (request.method ?? 'GET').toUpperCase();
     if (method !== 'GET') {
       sendNotFound(response);
       return;
