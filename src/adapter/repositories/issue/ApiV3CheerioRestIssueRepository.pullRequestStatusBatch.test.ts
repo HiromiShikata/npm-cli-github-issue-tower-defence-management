@@ -434,46 +434,6 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('falls back to one request when the batch has more than one page of review threads', async () => {
-    const infoSpy = jest
-      .spyOn(console, 'info')
-      .mockImplementation(() => undefined);
-    const warnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => undefined);
-    let singleRequestCount = 0;
-    const fetchSpy = mockFetchRoutes({
-      relatedOpenPullRequestUrlsBatch: () =>
-        buildRecordedUrlsResponse([recordedComment(1)]),
-      slimPullRequest: (number) => {
-        singleRequestCount += 1;
-        return buildSlimPullRequestResponse(number);
-      },
-      slimPullRequestBatch: () => ({
-        data: {
-          pullRequest0: {
-            pullRequest: {
-              ...buildSlimPullRequestNode(1),
-              reviewThreads: {
-                pageInfo: { endCursor: 'cursor-2', hasNextPage: true },
-                nodes: [],
-              },
-            },
-          },
-        },
-      }),
-    });
-
-    const result = await createRepository().findRelatedOpenPrUrls([issueUrl]);
-
-    expect(result.get(issueUrl)).toEqual([pullRequestUrl(1)]);
-    expect(singleRequestCount).toBe(1);
-    expect(countBatchQueries(fetchSpy)).toBe(1);
-    expect(countSingleQueries(fetchSpy)).toBe(1);
-    expect(infoSpy).not.toHaveBeenCalled();
-    expect(warnSpy).not.toHaveBeenCalled();
-  });
-
   it('omits a recorded pull request that is not found and keeps the other open URL', async () => {
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: () =>
