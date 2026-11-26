@@ -93,8 +93,8 @@ export const fetchProxiedImage = async (
       Authorization: `token ${githubToken}`,
     });
   } catch (error) {
-    console.error('console image proxy failed', error);
-    return { ok: false, statusCode: 502, error: 'internal server error' };
+    const detail = error instanceof Error ? error.message : String(error);
+    return { ok: false, statusCode: 502, error: `proxy error: ${detail}` };
   }
   if (result.status < 200 || result.status >= 300) {
     return {

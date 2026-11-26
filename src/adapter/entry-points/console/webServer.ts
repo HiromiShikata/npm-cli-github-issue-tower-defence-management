@@ -828,7 +828,12 @@ const handleReadApi = async (
   }
 };
 
-const internalServerErrorMessage = 'internal server error';
+const operationErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+  return String(error);
+};
 
 const dispatchOperation = (
   context: ConsoleOperationContext,
@@ -897,16 +902,13 @@ const handleOperationApi = async (
     } catch (error) {
       console.error('console operation failed', error);
       if (error instanceof GraphqlRateLimitError) {
-        return {
-          statusCode: 502,
-          body: { error: 'GraphQL API rate limit exceeded' },
-        };
+        return { statusCode: 502, body: { error: error.message } };
       }
       if (error instanceof GitHubRateLimitError) {
         return {
           statusCode: 502,
           body: {
-            error: 'GitHub API rate limit exceeded',
+            error: error.message,
             rateLimitResetAt: error.rateLimitResetAt,
           },
         };
@@ -916,7 +918,12 @@ const handleOperationApi = async (
       }
       return {
         statusCode: 502,
-        body: { error: internalServerErrorMessage },
+        body: {
+          error:
+            error instanceof Error && error.message.length > 0
+              ? error.message
+              : String(error),
+        },
       };
     }
   }
@@ -996,16 +1003,13 @@ const handleOperationApi = async (
   } catch (error) {
     console.error('console operation failed', error);
     if (error instanceof GraphqlRateLimitError) {
-      return {
-        statusCode: 502,
-        body: { error: 'GraphQL API rate limit exceeded' },
-      };
+      return { statusCode: 502, body: { error: error.message } };
     }
     if (error instanceof GitHubRateLimitError) {
       return {
         statusCode: 502,
         body: {
-          error: 'GitHub API rate limit exceeded',
+          error: error.message,
           rateLimitResetAt: error.rateLimitResetAt,
         },
       };
@@ -1015,7 +1019,7 @@ const handleOperationApi = async (
     }
     return {
       statusCode: 502,
-      body: { error: internalServerErrorMessage },
+      body: { error: operationErrorMessage(error) },
     };
   }
 };
@@ -1203,6 +1207,7 @@ const handleLiveSessionCreate = async (
       );
       sendJson(response, 502, {
         error: 'voice_console_sideband_failed',
+        message,
       });
       return;
     }
@@ -1220,6 +1225,7 @@ const handleLiveSessionCreate = async (
   sendJson(response, 502, {
     error: 'openai_live_session_failed',
     status: result.status,
+    message: result.message,
   });
 };
 

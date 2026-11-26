@@ -165,17 +165,14 @@ describe('consoleReadApi', () => {
     it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
-        new Error('INTERNAL_MARKER_read_response'),
+        new Error('Network timeout'),
       );
       const response = await handleItemBody(
         issueRepository,
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
-      expect(JSON.stringify(response.body)).not.toContain(
-        'INTERNAL_MARKER_read_response',
-      );
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -238,11 +235,7 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
-      expect(JSON.stringify(response.body)).not.toContain(
-        'INTERNAL_MARKER_read_failure',
-      );
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -332,11 +325,7 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/pull/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
-      expect(JSON.stringify(response.body)).not.toContain(
-        'INTERNAL_MARKER_read_failure',
-      );
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -399,11 +388,7 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/pull/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
-      expect(JSON.stringify(response.body)).not.toContain(
-        'INTERNAL_MARKER_read_failure',
-      );
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -548,11 +533,7 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
-      expect(JSON.stringify(response.body)).not.toContain(
-        'INTERNAL_MARKER_read_failure',
-      );
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
 
     it('returns 400 when url is a pull request URL', async () => {
@@ -769,11 +750,7 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/issues/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
-      expect(JSON.stringify(response.body)).not.toContain(
-        'INTERNAL_MARKER_read_failure',
-      );
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -957,11 +934,7 @@ describe('consoleReadApi', () => {
         'https://github.com/o/r/pull/1',
       );
       expect(response.statusCode).toBe(502);
-      expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
-      expect(JSON.stringify(response.body)).not.toContain(
-        'INTERNAL_MARKER_read_failure',
-      );
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -1047,7 +1020,7 @@ describe('consoleReadApi', () => {
       );
       expect(response).toEqual({
         statusCode: 502,
-        body: { error: 'internal server error' },
+        body: { error: 'GraphQL request failed: HTTP 403' },
       });
     });
 

@@ -112,8 +112,6 @@ const badRequest = (message: string): ConsoleOperationResponse => ({
   body: { error: message },
 });
 
-const INTERNAL_SERVER_ERROR_MESSAGE = 'internal server error';
-
 const badGateway = (message: string): ConsoleOperationResponse => ({
   statusCode: 502,
   body: { error: message },
@@ -969,17 +967,13 @@ const handleTriageImpl = async (
           `project item "${projectItemId}" no longer exists in GitHub`,
         );
       } else if (commentPosted) {
-        console.error(
-          'console operation failed after the comment was posted',
-          error,
-        );
         return {
           statusCode: 502,
           body: {
             ok: false,
             commentPosted: true,
             statusSet: false,
-            error: INTERNAL_SERVER_ERROR_MESSAGE,
+            error: error instanceof Error ? error.message : String(error),
           },
         };
       } else {
@@ -1017,17 +1011,13 @@ const handleTriageImpl = async (
       }
     } catch (error) {
       if (!commentPosted) throw error;
-      console.error(
-        'console operation failed after the comment was posted',
-        error,
-      );
       return {
         statusCode: 502,
         body: {
           ok: false,
           commentPosted: true,
           statusSet: true,
-          error: INTERNAL_SERVER_ERROR_MESSAGE,
+          error: error instanceof Error ? error.message : String(error),
         },
       };
     }
@@ -1749,8 +1739,7 @@ export const handleReviewComment = async (
       .resolveIssueRepository(url)
       .createPullRequestReviewComment(url, path, line, side, commentBody);
   } catch (error) {
-    console.error('console pull request review comment failed', error);
-    return badGateway(INTERNAL_SERVER_ERROR_MESSAGE);
+    return badGateway(error instanceof Error ? error.message : 'unknown error');
   }
   return ok();
 };
@@ -2483,8 +2472,11 @@ export const handleProjectMaxPreparingUpdate = async (
     );
     await updateProjectV2Readme(project.id, updatedReadme, githubToken);
   } catch (error) {
-    console.error('console project README update failed', error);
-    return badGateway(INTERNAL_SERVER_ERROR_MESSAGE);
+    return badGateway(
+      error instanceof Error
+        ? error.message
+        : 'failed to update project README',
+    );
   }
   return ok();
 };

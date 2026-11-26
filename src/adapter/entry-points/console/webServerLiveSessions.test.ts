@@ -239,11 +239,11 @@ describe('webServer live sessions route', () => {
     }
   });
 
-  it('returns the mapped upstream failure without exposing its message', async () => {
+  it('returns the mapped upstream failure', async () => {
     const repository = new InMemoryLiveSessionRepository({
       type: 'openAiFailed',
       status: 429,
-      message: 'INTERNAL_MARKER_openai_live_failure',
+      message: 'rate limited',
     });
     const server = await createTestServer(repository);
 
@@ -257,12 +257,8 @@ describe('webServer live sessions route', () => {
       );
       expect(response.statusCode).toBe(502);
       expect(response.contentType).toBe('application/json; charset=utf-8');
-      expect(JSON.parse(response.body)).toEqual({
-        error: 'openai_live_session_failed',
-        status: 429,
-      });
-      expect(response.body).not.toContain(
-        'INTERNAL_MARKER_openai_live_failure',
+      expect(response.body).toBe(
+        '{"error":"openai_live_session_failed","status":429,"message":"rate limited"}',
       );
     } finally {
       await close(server);
@@ -364,6 +360,15 @@ class FailingLiveSessionSideband implements LiveSessionSideband {
   }
 }
 
+class NonErrorRejectionLiveSessionSideband implements LiveSessionSideband {
+  attach(): Promise<void> {
+    const nonErrorRejection: unknown = {
+      toString: () => 'INTERNAL_MARKER_non_error_rejection',
+    };
+    return Promise.reject(nonErrorRejection);
+  }
+}
+
 class RecordingLiveSessionCloser {
   readonly closedSessionIds: string[] = [];
 
@@ -375,9 +380,6 @@ class RecordingLiveSessionCloser {
 
 describe('webServer live session creation when the voice console sideband cannot attach', () => {
   it('fails with a non-2xx JSON error and closes the created session', async () => {
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
     const repository = new InMemoryLiveSessionRepository({
       type: 'created',
       sdpAnswer: 'ANSWER-SDP',
@@ -386,7 +388,9 @@ describe('webServer live session creation when the voice console sideband cannot
     const closer = new RecordingLiveSessionCloser();
     const server = await createTestServer(
       repository,
-      new FailingLiveSessionSideband('INTERNAL_MARKER_voice_sideband_failure'),
+      new FailingLiveSessionSideband(
+        'OPENAI_API_KEY is not set for the live session sideband',
+      ),
       closer,
     );
 
@@ -407,19 +411,53 @@ describe('webServer live session creation when the voice console sideband cannot
       }).toEqual({
         statusCode: 502,
         contentType: 'application/json; charset=utf-8',
-        body: { error: 'voice_console_sideband_failed' },
+        body: {
+          error: 'voice_console_sideband_failed',
+          message: 'OPENAI_API_KEY is not set for the live session sideband',
+        },
         closedSessionIds: ['live_9'],
       });
-      expect(response.body).not.toContain(
-        'INTERNAL_MARKER_voice_sideband_failure',
-      );
-      expect(response.body).not.toContain('    at ');
-      expect(consoleError).toHaveBeenCalledWith(
-        expect.stringContaining('INTERNAL_MARKER_voice_sideband_failure'),
-      );
     } finally {
       await close(server);
-      consoleError.mockRestore();
+    }
+  });
+
+  it('does not echo a non-Error sideband rejection value into the response body', async () => {
+    const repository = new InMemoryLiveSessionRepository({
+      type: 'created',
+      sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_12',
+    });
+    const closer = new RecordingLiveSessionCloser();
+    const server = await createTestServer(
+      repository,
+      new NonErrorRejectionLiveSessionSideband(),
+      closer,
+    );
+
+    try {
+      const response = await requestServer(
+        server,
+        'POST',
+        '/api/live/sessions',
+        'OFFER-SDP',
+        'application/sdp',
+      );
+      expect(response.body).not.toContain('INTERNAL_MARKER_non_error_rejection');
+      expect({
+        statusCode: response.statusCode,
+        body: JSON.parse(response.body),
+        closedSessionIds: closer.closedSessionIds,
+      }).toEqual({
+        statusCode: 502,
+        body: {
+          error: 'voice_console_sideband_failed',
+          message: 'voice console sideband failed',
+        },
+        closedSessionIds: ['live_12'],
+      });
+    } finally {
+      await close(server);
     }
   });
 

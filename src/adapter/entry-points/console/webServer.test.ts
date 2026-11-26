@@ -75,16 +75,6 @@ const reserveHttpsPort = (): Promise<number> =>
     probe.on('error', reject);
   });
 
-const parseErrorBody = (body: string): { error: unknown } => {
-  const parsed: unknown = JSON.parse(body);
-  return {
-    error:
-      typeof parsed === 'object' && parsed !== null && 'error' in parsed
-        ? parsed.error
-        : undefined,
-  };
-};
-
 describe('webServer pure helpers', () => {
   describe('DEFAULT_WEB_PORT', () => {
     it('is 9980', () => {
@@ -1244,9 +1234,9 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = parseErrorBody(response.body);
-      expect(responseBody).toEqual({ error: 'internal server error' });
-      expect(responseBody.error).not.toContain('HTTP 405');
+      expect(JSON.parse(response.body)).toEqual({
+        error: 'Failed to merge PR https://github.com/o/r/pull/1: HTTP 405',
+      });
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1356,11 +1346,8 @@ describe('webServer new routes integration', () => {
   it('returns 502 with the error message and calls consoleErrorReporter when /api/createworkflowissue fails with a plain Error', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
-    const operationError = new Error('INTERNAL_MARKER_create_workflow');
+    const operationError = new Error('Failed to create issue in o/r: HTTP 500');
     issueRepository.createNewIssue.mockRejectedValue(operationError);
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
     const consoleErrorReporter = jest.fn(async () => {});
     const server = await startWebServer({
       accessToken: testToken,
@@ -1382,20 +1369,14 @@ describe('webServer new routes integration', () => {
         { nameWithOwner: 'o/r', title: 'New workflow issue' },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = parseErrorBody(response.body);
-      expect(responseBody).toEqual({ error: 'internal server error' });
-      expect(responseBody.error).not.toContain(operationError.message);
-      expect(response.body).not.toContain('    at ');
-      expect(consoleError).toHaveBeenCalledWith(
-        'console operation failed',
-        operationError,
-      );
+      expect(JSON.parse(response.body)).toEqual({
+        error: operationError.message,
+      });
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).toHaveBeenCalledTimes(1);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
-      consoleError.mockRestore();
     }
   });
 
@@ -1403,7 +1384,7 @@ describe('webServer new routes integration', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
     const operationError = new GraphqlRateLimitError(
-      'INTERNAL_MARKER_graphql_rate_limit',
+      'GraphQL quota exhausted while creating the issue',
     );
     issueRepository.createNewIssue.mockRejectedValue(operationError);
     const consoleErrorReporter = jest.fn(async () => {});
@@ -1427,11 +1408,9 @@ describe('webServer new routes integration', () => {
         { nameWithOwner: 'o/r', title: 'New workflow issue' },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = parseErrorBody(response.body);
-      expect(responseBody).toEqual({
-        error: 'GraphQL API rate limit exceeded',
+      expect(JSON.parse(response.body)).toEqual({
+        error: operationError.message,
       });
-      expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).not.toHaveBeenCalled();
     } finally {
@@ -1445,7 +1424,7 @@ describe('webServer new routes integration', () => {
     const issueRepository = mock<IssueRepository>();
     const rateLimitResetAt = '2026-01-01T01:00:00.000Z';
     const rateLimitError = new GitHubRateLimitError(
-      'INTERNAL_MARKER_github_rate_limit',
+      'Failed to create issue in o/r: HTTP 403 GitHub rate limit exceeded',
       rateLimitResetAt,
     );
     issueRepository.createNewIssue.mockRejectedValue(rateLimitError);
@@ -1470,11 +1449,9 @@ describe('webServer new routes integration', () => {
         { nameWithOwner: 'o/r', title: 'New workflow issue' },
       );
       expect(response.statusCode).toBe(502);
-      const parsedBody: unknown = JSON.parse(response.body);
-      expect(parsedBody).toEqual(expect.objectContaining({ rateLimitResetAt }));
-      const responseBody = parseErrorBody(response.body);
-      expect(responseBody).toEqual({ error: 'GitHub API rate limit exceeded' });
-      expect(responseBody.error).not.toContain(rateLimitError.message);
+      expect(JSON.parse(response.body)).toMatchObject({
+        rateLimitResetAt,
+      });
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).not.toHaveBeenCalled();
     } finally {
@@ -1554,9 +1531,9 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = parseErrorBody(response.body);
-      expect(responseBody).toEqual({ error: 'internal server error' });
-      expect(responseBody.error).not.toContain(operationError.message);
+      expect(JSON.parse(response.body)).toEqual({
+        error: operationError.message,
+      });
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).toHaveBeenCalledTimes(1);
     } finally {
@@ -1604,7 +1581,7 @@ describe('webServer new routes integration', () => {
       'authenticated-user',
     );
     const operationError = new GraphqlRateLimitError(
-      'INTERNAL_MARKER_dispatched_graphql_rate_limit',
+      'GraphQL quota exhausted while merging the pull request',
     );
     issueRepository.mergePullRequest.mockRejectedValue(operationError);
     const consoleErrorReporter = jest.fn(async () => {});
@@ -1636,11 +1613,9 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = parseErrorBody(response.body);
-      expect(responseBody).toEqual({
-        error: 'GraphQL API rate limit exceeded',
+      expect(JSON.parse(response.body)).toEqual({
+        error: operationError.message,
       });
-      expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(consoleErrorReporter).not.toHaveBeenCalled();
     } finally {
@@ -1980,7 +1955,7 @@ describe('webServer new routes integration', () => {
 
   it('returns 502 with the GitHub error message when reorderstory receives a GraphQL response without data', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
-    const gitHubMessage = 'INTERNAL_MARKER_reorder_story';
+    const gitHubMessage = 'API rate limit already exceeded for user ID 1.';
     const updateStoryList = jest
       .fn()
       .mockRejectedValue(
@@ -2044,9 +2019,9 @@ describe('webServer new routes integration', () => {
         { pjcode: 'acme', storyOptionId: 'opt_first', direction: 'down' },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = parseErrorBody(response.body);
-      expect(responseBody).toEqual({ error: 'internal server error' });
-      expect(responseBody.error).not.toContain(gitHubMessage);
+      expect(JSON.parse(response.body)).toEqual({
+        error: `GitHub GraphQL API returned no data for updateStoryList: ${gitHubMessage}`,
+      });
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

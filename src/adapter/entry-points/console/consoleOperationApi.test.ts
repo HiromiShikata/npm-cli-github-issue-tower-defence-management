@@ -1306,7 +1306,7 @@ describe('consoleOperationApi', () => {
           body:
             expectedStatus === 200
               ? { ok: true, closedAtMs: anyClosedAtMs }
-              : { error: 'internal server error' },
+              : { error: closeError.message },
         });
         expect(issueRepository.closeIssueByUrl).toHaveBeenCalledTimes(1);
         expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
@@ -1383,11 +1383,8 @@ describe('consoleOperationApi', () => {
         expect(response).toEqual({
           statusCode: 502,
           body: rateLimited
-            ? {
-                error: 'GitHub API rate limit exceeded',
-                rateLimitResetAt: resetAt,
-              }
-            : { error: 'internal server error' },
+            ? { error: closeError.message, rateLimitResetAt: resetAt }
+            : { error: closeError.message },
         });
         expectCompletionCount(0);
       },
@@ -4194,7 +4191,7 @@ describe('consoleOperationApi', () => {
       ).not.toHaveBeenCalled();
     });
 
-    it('returns a generic error without the GitHub error message when the comment cannot be created', async () => {
+    it('surfaces the GitHub error message when the comment cannot be created', async () => {
       issueRepository.createPullRequestReviewComment.mockRejectedValue(
         new Error(
           'Failed to create review comment on PR https://github.com/o/r/pull/1: Validation Failed: line must be part of the diff',
@@ -4202,7 +4199,10 @@ describe('consoleOperationApi', () => {
       );
       const response = await handleReviewComment(context, validRequest);
       expect(response.statusCode).toBe(502);
-      expect(response.body).toEqual({ error: 'internal server error' });
+      expect(response.body).toEqual({
+        error:
+          'Failed to create review comment on PR https://github.com/o/r/pull/1: Validation Failed: line must be part of the diff',
+      });
     });
   });
 
@@ -9575,7 +9575,7 @@ describe('consoleOperationApi', () => {
       );
       expect(response).toEqual({
         statusCode: 502,
-        body: { error: 'internal server error' },
+        body: { error: 'GraphQL request failed: HTTP 403' },
       });
       expect(updateProjectV2ReadmeSpy).not.toHaveBeenCalled();
     });
