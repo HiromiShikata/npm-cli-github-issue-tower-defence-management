@@ -1502,7 +1502,9 @@ export const handleWebRequest = async (
     !secure &&
     httpsBaseUrl !== null &&
     (method === 'GET' || method === 'HEAD') &&
-    !requiresToken(requestPath)
+    !requiresToken(requestPath) &&
+    !requestPath.startsWith('/api') &&
+    requestPath !== DASHBOARD_REQUEST_PATH
   ) {
     response.writeHead(308, {
       Location: `${httpsBaseUrl}${request.url ?? '/'}`,

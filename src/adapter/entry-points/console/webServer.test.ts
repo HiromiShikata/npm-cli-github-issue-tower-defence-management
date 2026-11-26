@@ -844,6 +844,8 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
     { method: 'GET', requestPath: '/data/situation.json' },
     { method: 'GET', requestPath: '/data/settings.yaml' },
     { method: 'POST', requestPath: '/projects/abc/prs' },
+    { method: 'HEAD', requestPath: CONSOLE_HTTPS_ENDPOINT_PATH },
+    { method: 'GET', requestPath: '/tdpm.txt' },
   ])(
     'does not redirect HTTP $method $requestPath',
     async ({ method, requestPath }) => {
@@ -920,13 +922,19 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
     try {
       const endpoint = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
       expect(endpoint.statusCode).toBe(404);
+      const unauthenticatedApi = await requestServer(server, '/api/review');
+      expect(unauthenticatedApi.statusCode).toBe(401);
       const tokenRequest = await requestServer(
         server,
         `/api/review?k=${accessToken}`,
       );
+      expect(tokenRequest.statusCode).not.toBe(401);
       expect(tokenRequest.statusCode).not.toBe(403);
+      const dashboard = await requestServer(server, '/tdpm.txt');
+      expect(dashboard.statusCode).toBe(401);
       const page = await requestServer(server, '/');
-      expect(page.statusCode).not.toBe(308);
+      expect(page.statusCode).toBe(200);
+      expect(page.location).toBeUndefined();
     } finally {
       await closeServer(server);
     }
