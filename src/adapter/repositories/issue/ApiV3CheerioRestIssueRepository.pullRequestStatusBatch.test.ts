@@ -401,7 +401,6 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
     expect(result.map((pr) => pr.url)).toEqual(numbers.map(pullRequestUrl));
     expect(
       result.map((pr) => ({
-        branchName: pr.branchName,
         isConflicted: pr.isConflicted,
         mergeable: pr.mergeable,
         isPassedAllCiJob: pr.isPassedAllCiJob,
