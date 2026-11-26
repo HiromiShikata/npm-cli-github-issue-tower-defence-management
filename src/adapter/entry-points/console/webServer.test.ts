@@ -674,6 +674,7 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
   const acmeIpAddress = '127.0.0.1';
 
   type TestWebServerOptions = {
+    isHttpsListening: () => boolean;
     accessToken: string;
     uiDistDir: string;
     consoleDataOutputDir: null;
@@ -701,6 +702,7 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
     httpsPort,
     acmeIpAddress,
     httpTokenAuthDisabled,
+    isHttpsListening: () => true,
   });
 
   const requestServer = (
@@ -914,6 +916,35 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
       await closeServer(server);
     }
   });
+
+  it.each([
+    { listener: 'HTTP', secure: false },
+    { listener: 'HTTPS', secure: true },
+  ])(
+    'keeps non-GET requests to the endpoint token-protected on the $listener listener',
+    async ({ secure }) => {
+      const options = buildOptions();
+      const server = secure
+        ? await createSecureTestServer(options)
+        : await createPlainTestServer(options);
+      try {
+        const head = await requestServer(
+          server,
+          CONSOLE_HTTPS_ENDPOINT_PATH,
+          'HEAD',
+        );
+        expect(head.statusCode).toBe(401);
+        const post = await requestServer(
+          server,
+          CONSOLE_HTTPS_ENDPOINT_PATH,
+          'POST',
+        );
+        expect(post.statusCode).toBe(401);
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
 
   it.each([
     { listening: true, expectedStatus: 308 },

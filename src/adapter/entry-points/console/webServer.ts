@@ -130,7 +130,7 @@ export const httpsBaseUrlFor = (input: {
 const activeHttpsBaseUrl = (options: WebServerOptions): string | null => {
   const httpsBaseUrl = httpsBaseUrlFor(options);
   if (httpsBaseUrl === null) return null;
-  const isListening = options.isHttpsListening ?? ((): boolean => true);
+  const isListening = options.isHttpsListening ?? ((): boolean => false);
   return isListening() ? httpsBaseUrl : null;
 };
 
@@ -1557,7 +1557,10 @@ export const handleWebRequest = async (
     return;
   }
 
-  if (requiresToken(requestPath)) {
+  if (
+    requiresToken(requestPath) ||
+    requestPath === CONSOLE_HTTPS_ENDPOINT_PATH
+  ) {
     const providedToken = extractProvidedToken(
       requestUrl.searchParams.get('k'),
       request.headers[CONSOLE_TOKEN_HEADER],

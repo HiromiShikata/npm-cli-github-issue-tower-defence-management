@@ -86,7 +86,7 @@ Options for serveWeb (and its deprecated alias serveConsole):
   --port <number>                                  Port for the web HTTP server (default: 9980)
   --httpsPort <port>                               Opt-in HTTPS listener port
   --acmeIpAddress <ipv4>                           IPv4 address for the Let's Encrypt certificate (must be used with --httpsPort)
-  --httpTokenAuthDisabled                          Reject HTTP requests carrying a token when HTTPS is configured
+  --httpTokenAuthDisabled                          Reject HTTP requests carrying a token while the HTTPS listener is serving
   --acmeDataDirectory <dir>                        Directory for ACME certificate data (default: `${XDG_CACHE_HOME:-~/.cache}/tdpm/acme`)
   --acmeServerUrl <url>                             ACME directory URL (default: Let's Encrypt staging; pass production explicitly)
   --consoleDataOutputDir <path>                    Directory where console data files are written and served from

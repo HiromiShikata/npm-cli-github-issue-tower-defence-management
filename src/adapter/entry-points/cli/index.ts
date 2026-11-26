@@ -1602,7 +1602,7 @@ const addServeWebOptions = (command: Command): Command =>
     .option('--httpsPort <port>', 'Port for the opt-in HTTPS server')
     .option(
       '--httpTokenAuthDisabled',
-      'Reject HTTP requests carrying a token when HTTPS is configured',
+      'Reject HTTP requests carrying a token while the HTTPS listener is serving',
     )
     .option(
       '--acmeIpAddress <ipv4>',
