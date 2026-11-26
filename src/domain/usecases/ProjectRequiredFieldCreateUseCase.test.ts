@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import { FieldOption, Project } from '../entities/Project';
+import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import {
   AGENT_FIELD_NAME,
   DEPENDED_ISSUE_URL_FIELD_NAME,
@@ -151,7 +152,6 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     expect(storyCall?.[1].dataType).toBe('SINGLE_SELECT');
     expect(storyCall?.[1].options.map((option) => option.name)).toEqual([
       'regular / NO STORY',
-      'regular / WORKFLOW BLOCKER',
       'regular / inquiry',
       'regular / high priority',
       'regular / workflow management',
@@ -261,12 +261,6 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     const existingStoriesComplete: FieldOption[] = [
       { id: 'opt1', name: 'regular / NO STORY', color: 'RED', description: '' },
       {
-        id: 'opt2',
-        name: 'regular / WORKFLOW BLOCKER',
-        color: 'RED',
-        description: '',
-      },
-      {
         id: 'opt_inq',
         name: 'regular / inquiry',
         color: 'RED',
@@ -329,7 +323,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       expect(projectRepository.updateStoryList).not.toHaveBeenCalled();
     });
 
-    it('should not call updateStoryList when all required story options are already present', async () => {
+    it('should not call updateStoryList when the board matches the required list and has no retired option', async () => {
       const project = buildProjectWithStory(existingStoriesComplete);
       const { projectRepository, useCase } = createUseCase(
         [
@@ -367,7 +361,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       expect(projectRepository.updateStoryList).toHaveBeenCalledTimes(1);
     });
 
-    it('should place regular / inquiry immediately after regular / WORKFLOW BLOCKER in the merged option list', async () => {
+    it('should place regular / inquiry immediately after regular / NO STORY in the merged option list', async () => {
       const project = buildProjectWithStory(existingStoriesWithoutInquiry);
       const { projectRepository, useCase } = createUseCase(
         [
@@ -386,9 +380,9 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       const submittedOptions =
         projectRepository.updateStoryList.mock.calls[0][1];
       const names = submittedOptions.map((o) => o.name);
-      const workflowBlockerIndex = names.indexOf('regular / WORKFLOW BLOCKER');
+      const noStoryIndex = names.indexOf('regular / NO STORY');
       const inquiryIndex = names.indexOf('regular / inquiry');
-      expect(inquiryIndex).toBe(workflowBlockerIndex + 1);
+      expect(inquiryIndex).toBe(noStoryIndex + 1);
     });
 
     it('should submit the new option without an id', async () => {
@@ -433,7 +427,9 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
 
       const submittedOptions =
         projectRepository.updateStoryList.mock.calls[0][1];
-      for (const original of existingStoriesWithoutInquiry) {
+      for (const original of existingStoriesWithoutInquiry.filter(
+        (o) => o.name !== 'regular / WORKFLOW BLOCKER',
+      )) {
         const submitted = submittedOptions.find(
           (o) => o.name === original.name,
         );
@@ -597,19 +593,165 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         ),
       );
       expect(existingNamesInSubmittedOrder).toEqual(
-        storiesWithDescriptiveNoStoryAndInterleavedExtras.map((o) => o.name),
+        storiesWithDescriptiveNoStoryAndInterleavedExtras
+          .map((o) => o.name)
+          .filter((name) => name !== 'regular / WORKFLOW BLOCKER'),
       );
     });
 
-    it('should insert regular / inquiry directly below regular / WORKFLOW BLOCKER when extras are interleaved', async () => {
+    it('should insert regular / inquiry directly below regular / NO STORY when extras are interleaved', async () => {
       const submittedOptions = await runWithStories(
         storiesWithDescriptiveNoStoryAndInterleavedExtras,
       );
 
       const submittedNames = (submittedOptions ?? []).map((o) => o.name);
       expect(submittedNames.indexOf('regular / inquiry')).toBe(
-        submittedNames.indexOf('regular / WORKFLOW BLOCKER') + 1,
+        submittedNames.indexOf(
+          "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        ) + 1,
       );
+    });
+
+    describe('retired story option "regular / WORKFLOW BLOCKER"', () => {
+      const retiredOptionName = 'regular / WORKFLOW BLOCKER';
+      const storyFieldNames = [
+        'Title',
+        'Status',
+        'Story',
+        'Next Action Date',
+        'Next Action Hour',
+        'Depended Issue URL separated by comma',
+      ];
+
+      it('should not add the retired option to a board that lacks it', async () => {
+        const boardWithoutInquiry = existingStoriesComplete.filter(
+          (o) => o.name !== 'regular / inquiry',
+        );
+        const { projectRepository, useCase } = createUseCase(
+          storyFieldNames,
+          buildProjectWithStory(boardWithoutInquiry),
+        );
+
+        await useCase.run({ projectUrl });
+
+        const submittedNames = projectRepository.updateStoryList.mock.calls
+          .flatMap((call) => call[1])
+          .map((o) => o.name);
+        expect(submittedNames).toContain('regular / inquiry');
+        expect(submittedNames).not.toContain(retiredOptionName);
+      });
+
+      it('should remove an existing retired option whatever its casing, spacing or punctuation', async () => {
+        const retiredVariants = [
+          'regular / WORKFLOW BLOCKER',
+          'Regular / workflow blocker',
+          'regular/workflow-blocker',
+          'REGULAR  /  WORKFLOW (BLOCKER)',
+        ];
+        for (const variant of retiredVariants) {
+          const board: FieldOption[] = [
+            existingStoriesComplete[0],
+            { id: 'opt_retired', name: variant, color: 'RED', description: '' },
+            ...existingStoriesComplete.slice(1),
+          ];
+          const { projectRepository, useCase } = createUseCase(
+            storyFieldNames,
+            buildProjectWithStory(board),
+          );
+
+          await useCase.run({ projectUrl });
+
+          expect(projectRepository.updateStoryList).toHaveBeenCalledTimes(1);
+          const submittedNames =
+            projectRepository.updateStoryList.mock.calls[0][1].map(
+              (o) => o.name,
+            );
+          expect({
+            variant,
+            remaining: submittedNames.filter(
+              (name) =>
+                normalizeProjectFieldName(name) ===
+                normalizeProjectFieldName(retiredOptionName),
+            ),
+          }).toEqual({ variant, remaining: [] });
+        }
+      });
+
+      it('should keep an existing option whose name only starts with the retired name', async () => {
+        const extraNames = [
+          'regular / WORKFLOW BLOCKER extra',
+          'regular / WORKFLOW BLOCKERS',
+          'regular / workflow blocker (archived)',
+        ];
+        for (const extraName of extraNames) {
+          const board: FieldOption[] = [
+            ...existingStoriesComplete,
+            {
+              id: 'opt_prefix_extra',
+              name: extraName,
+              color: 'GRAY',
+              description: '',
+            },
+          ];
+          const { projectRepository, useCase } = createUseCase(
+            storyFieldNames,
+            buildProjectWithStory(board),
+          );
+
+          await useCase.run({ projectUrl });
+
+          expect({
+            extraName,
+            updateCalls: projectRepository.updateStoryList.mock.calls.length,
+          }).toEqual({ extraName, updateCalls: 0 });
+        }
+      });
+
+      it('should keep id, name, color, description and order of every other option when the retired option is removed', async () => {
+        const board: FieldOption[] = [
+          existingStoriesComplete[0],
+          {
+            id: 'opt_retired',
+            name: retiredOptionName,
+            color: 'RED',
+            description: 'retired description',
+          },
+          ...existingStoriesComplete.slice(1).map((o) => ({
+            ...o,
+            description: `description of ${o.id}`,
+          })),
+        ];
+        const { projectRepository, useCase } = createUseCase(
+          storyFieldNames,
+          buildProjectWithStory(board),
+        );
+
+        await useCase.run({ projectUrl });
+
+        const submittedOptions =
+          projectRepository.updateStoryList.mock.calls[0][1];
+        expect(
+          submittedOptions.filter((o) => o.name !== retiredOptionName),
+        ).toEqual(board.filter((o) => o.name !== retiredOptionName));
+      });
+
+      it('should keep id, name, color, description and order of every existing option when a missing option is added', async () => {
+        const boardWithoutRetired = existingStoriesWithoutInquiry
+          .filter((o) => o.name !== retiredOptionName)
+          .map((o) => ({ ...o, description: `description of ${o.id}` }));
+        const { projectRepository, useCase } = createUseCase(
+          storyFieldNames,
+          buildProjectWithStory(boardWithoutRetired),
+        );
+
+        await useCase.run({ projectUrl });
+
+        const submittedOptions =
+          projectRepository.updateStoryList.mock.calls[0][1];
+        expect(submittedOptions.filter((o) => o.id !== null)).toEqual(
+          boardWithoutRetired,
+        );
+      });
     });
 
     it('should preserve story options added to GitHub between the initial read and updateStoryList when reconcileStoryOptions re-fetches', async () => {
