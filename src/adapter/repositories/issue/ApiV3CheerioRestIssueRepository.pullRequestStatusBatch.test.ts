@@ -434,8 +434,9 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('keeps checking the other recorded pull requests and then rejects when an individual status fetch fails', async () => {
-    const fetchSpy = mockFetchRoutes({
+  it('leaves the issue unresolved and warns with the failed recorded pull request when an individual status fetch fails', async () => {
+    const requestedSingleNumbers: number[] = [];
+    mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: () =>
         buildRecordedUrlsResponse([recordedComment(1), recordedComment(2)]),
       slimPullRequestBatch: () => ({
@@ -450,24 +451,25 @@ describe('ApiV3CheerioRestIssueRepository pull request status batch migration', 
           },
         ],
       }),
-      slimPullRequest: (number) =>
-        number === 2
+      slimPullRequest: (number) => {
+        requestedSingleNumbers.push(number);
+        return number === 2
           ? new Response('boom', { status: 500 })
-          : buildSlimPullRequestResponse(number),
+          : buildSlimPullRequestResponse(number);
+      },
     });
 
-    const resultPromise = new Promise<unknown>((resolve, reject) => {
-      createRepository()
-        .findRelatedOpenPrUrls([issueUrl])
-        .then(resolve, reject);
-    });
-    await expect(resultPromise).rejects.toThrow();
-    const rejection = await resultPromise.catch((error: unknown) => error);
-    expect(rejection).toBeInstanceOf(Error);
-    expect(
-      rejection instanceof Error ? rejection.message : String(rejection),
-    ).toEqual(expect.stringContaining(pullRequestUrl(2)));
-    expect(countSingleQueries(fetchSpy)).toBe(1);
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
+    const result = await createRepository().findRelatedOpenPrUrls([issueUrl]);
+
+    expect(result.has(issueUrl)).toBe(false);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(pullRequestUrl(2)),
+    );
+    expect(new Set(requestedSingleNumbers)).toEqual(new Set([2]));
   });
 
   it('omits a recorded pull request that is not found and keeps the other open URL', async () => {
