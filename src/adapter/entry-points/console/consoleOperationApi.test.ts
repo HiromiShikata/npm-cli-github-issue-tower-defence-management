@@ -1306,7 +1306,7 @@ describe('consoleOperationApi', () => {
           body:
             expectedStatus === 200
               ? { ok: true, closedAtMs: anyClosedAtMs }
-              : { error: closeError.message },
+              : { error: 'internal server error' },
         });
         expect(issueRepository.closeIssueByUrl).toHaveBeenCalledTimes(1);
         expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
@@ -1383,8 +1383,8 @@ describe('consoleOperationApi', () => {
         expect(response).toEqual({
           statusCode: 502,
           body: rateLimited
-            ? { error: closeError.message, rateLimitResetAt: resetAt }
-            : { error: closeError.message },
+            ? { error: 'GitHub API rate limit exceeded', rateLimitResetAt: resetAt }
+            : { error: 'internal server error' },
         });
         expectCompletionCount(0);
       },

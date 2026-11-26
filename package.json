@@ -129,6 +129,7 @@
     "yaml": "^2.9.1"
   },
   "overrides": {
+    "minimatch": "11.0.8",
     "buffer-equal-constant-time": "file:./lib/buffer-equal-constant-time-compat",
     "@actions/http-client": {
       "undici": "6.29.1"

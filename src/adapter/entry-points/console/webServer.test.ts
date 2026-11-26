@@ -75,6 +75,16 @@ const reserveHttpsPort = (): Promise<number> =>
     probe.on('error', reject);
   });
 
+const parseErrorBody = (body: string): { error: unknown } => {
+  const parsed: unknown = JSON.parse(body);
+  return {
+    error:
+      typeof parsed === 'object' && parsed !== null && 'error' in parsed
+        ? parsed.error
+        : undefined,
+  };
+};
+
 describe('webServer pure helpers', () => {
   describe('DEFAULT_WEB_PORT', () => {
     it('is 9980', () => {
@@ -1234,7 +1244,7 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = JSON.parse(response.body) as { error: unknown };
+      const responseBody = parseErrorBody(response.body);
       expect(typeof responseBody.error).toBe('string');
       expect(responseBody.error).not.toContain('HTTP 405');
     } finally {
@@ -1372,7 +1382,7 @@ describe('webServer new routes integration', () => {
         { nameWithOwner: 'o/r', title: 'New workflow issue' },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = JSON.parse(response.body) as { error: unknown };
+      const responseBody = parseErrorBody(response.body);
       expect(typeof responseBody.error).toBe('string');
       expect(responseBody.error).not.toContain(operationError.message);
       expect(response.body).not.toContain('    at ');
@@ -1417,7 +1427,7 @@ describe('webServer new routes integration', () => {
         { nameWithOwner: 'o/r', title: 'New workflow issue' },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = JSON.parse(response.body) as { error: unknown };
+      const responseBody = parseErrorBody(response.body);
       expect(typeof responseBody.error).toBe('string');
       expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1458,11 +1468,9 @@ describe('webServer new routes integration', () => {
         { nameWithOwner: 'o/r', title: 'New workflow issue' },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = JSON.parse(response.body) as {
-        error: unknown;
-        rateLimitResetAt: string;
-      };
-      expect(responseBody.rateLimitResetAt).toBe(rateLimitResetAt);
+      const parsedBody: unknown = JSON.parse(response.body);
+      expect(parsedBody).toEqual(expect.objectContaining({ rateLimitResetAt }));
+      const responseBody = parseErrorBody(response.body);
       expect(typeof responseBody.error).toBe('string');
       expect(responseBody.error).not.toContain(rateLimitError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1544,7 +1552,7 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = JSON.parse(response.body) as { error: unknown };
+      const responseBody = parseErrorBody(response.body);
       expect(typeof responseBody.error).toBe('string');
       expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1626,7 +1634,7 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = JSON.parse(response.body) as { error: unknown };
+      const responseBody = parseErrorBody(response.body);
       expect(typeof responseBody.error).toBe('string');
       expect(responseBody.error).not.toContain(operationError.message);
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -2032,7 +2040,7 @@ describe('webServer new routes integration', () => {
         { pjcode: 'acme', storyOptionId: 'opt_first', direction: 'down' },
       );
       expect(response.statusCode).toBe(502);
-      const responseBody = JSON.parse(response.body) as { error: unknown };
+      const responseBody = parseErrorBody(response.body);
       expect(typeof responseBody.error).toBe('string');
       expect(responseBody.error).not.toContain(gitHubMessage);
     } finally {

@@ -238,51 +238,19 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
   });
 
-  it('resolves @eslint/config-array minimatch at or above its patched version threshold', () => {
+  it('resolves every installed minimatch copy in package-lock.json at or above its patched version threshold', () => {
     const packages = readPackageLockPackages();
-    const resolvedVersion = readResolvedVersion(
-      packages,
-      'node_modules/@eslint/config-array/node_modules/minimatch',
+    const minimatchKeys = Object.keys(packages).filter(
+      (key) =>
+        key === 'node_modules/minimatch' ||
+        key.endsWith('/node_modules/minimatch'),
     );
 
-    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
-  });
-
-  it('resolves eslint minimatch at or above its patched version threshold', () => {
-    const packages = readPackageLockPackages();
-    const resolvedVersion = readResolvedVersion(
-      packages,
-      'node_modules/eslint/node_modules/minimatch',
-    );
-
-    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
-  });
-
-  it('resolves glob minimatch at or above its patched version threshold', () => {
-    const packages = readPackageLockPackages();
-    const resolvedVersion = readResolvedVersion(
-      packages,
-      'node_modules/glob/node_modules/minimatch',
-    );
-
-    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
-  });
-
-  it('resolves direct minimatch at or above its patched version threshold', () => {
-    const packages = readPackageLockPackages();
-    const resolvedVersion = readResolvedVersion(packages, 'node_modules/minimatch');
-
-    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
-  });
-
-  it('resolves npm minimatch at or above its patched version threshold', () => {
-    const packages = readPackageLockPackages();
-    const resolvedVersion = readResolvedVersion(
-      packages,
-      'node_modules/npm/node_modules/minimatch',
-    );
-
-    expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
+    expect(minimatchKeys).not.toHaveLength(0);
+    for (const key of minimatchKeys) {
+      const resolvedVersion = readResolvedVersion(packages, key);
+      expect({ key, atLeastPatched: isVersionAtLeast(resolvedVersion, '11.0.1') }).toEqual({ key, atLeastPatched: true });
+    }
   });
 
   it('pins the root minimatch override at or above its patched version threshold', () => {

@@ -174,7 +174,7 @@ const upstreamError = (
   logReadFailure(target, 'responseStatus=502', error);
   return {
     statusCode: 502,
-    body: { error: error instanceof Error ? error.message : String(error) },
+    body: { error: 'internal server error' },
   };
 };
 

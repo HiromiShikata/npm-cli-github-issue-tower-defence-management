@@ -828,11 +828,16 @@ const handleReadApi = async (
   }
 };
 
-const operationErrorMessage = (error: unknown): string => {
-  if (error instanceof Error && error.message.length > 0) {
-    return error.message;
+const internalServerErrorMessage = 'internal server error';
+
+const sanitizeReadErrorResponse = (result: {
+  statusCode: number;
+  body: unknown;
+}): { statusCode: number; body: unknown } => {
+  if (result.statusCode !== 502 || !isRecord(result.body)) {
+    return result;
   }
-  return String(error);
+  return { ...result, body: { ...result.body, error: internalServerErrorMessage } };
 };
 
 const dispatchOperation = (
@@ -902,13 +907,16 @@ const handleOperationApi = async (
     } catch (error) {
       console.error('console operation failed', error);
       if (error instanceof GraphqlRateLimitError) {
-        return { statusCode: 502, body: { error: error.message } };
+        return {
+          statusCode: 502,
+          body: { error: 'GraphQL API rate limit exceeded' },
+        };
       }
       if (error instanceof GitHubRateLimitError) {
         return {
           statusCode: 502,
           body: {
-            error: error.message,
+            error: 'GitHub API rate limit exceeded',
             rateLimitResetAt: error.rateLimitResetAt,
           },
         };
@@ -918,12 +926,7 @@ const handleOperationApi = async (
       }
       return {
         statusCode: 502,
-        body: {
-          error:
-            error instanceof Error && error.message.length > 0
-              ? error.message
-              : String(error),
-        },
+        body: { error: internalServerErrorMessage },
       };
     }
   }
@@ -1003,13 +1006,16 @@ const handleOperationApi = async (
   } catch (error) {
     console.error('console operation failed', error);
     if (error instanceof GraphqlRateLimitError) {
-      return { statusCode: 502, body: { error: error.message } };
+      return {
+        statusCode: 502,
+        body: { error: 'GraphQL API rate limit exceeded' },
+      };
     }
     if (error instanceof GitHubRateLimitError) {
       return {
         statusCode: 502,
         body: {
-          error: error.message,
+          error: 'GitHub API rate limit exceeded',
           rateLimitResetAt: error.rateLimitResetAt,
         },
       };
@@ -1019,7 +1025,7 @@ const handleOperationApi = async (
     }
     return {
       statusCode: 502,
-      body: { error: operationErrorMessage(error) },
+      body: { error: internalServerErrorMessage },
     };
   }
 };
@@ -1207,7 +1213,6 @@ const handleLiveSessionCreate = async (
       );
       sendJson(response, 502, {
         error: 'voice_console_sideband_failed',
-        message,
       });
       return;
     }
@@ -1225,7 +1230,6 @@ const handleLiveSessionCreate = async (
   sendJson(response, 502, {
     error: 'openai_live_session_failed',
     status: result.status,
-    message: result.message,
   });
 };
 
@@ -1285,11 +1289,8 @@ const handleTokenedRequest = async (
           options.resolveGithubToken ?? null,
           searchParams.get('pjcode'),
         );
-        sendJson(
-          response,
-          projectReadmeResult.statusCode,
-          projectReadmeResult.body,
-        );
+        const sanitizedResult = sanitizeReadErrorResponse(projectReadmeResult);
+        sendJson(response, sanitizedResult.statusCode, sanitizedResult.body);
         return;
       }
       const readResult = await handleReadApi(
@@ -1301,7 +1302,8 @@ const handleTokenedRequest = async (
         sendNotFound(response);
         return;
       }
-      sendJson(response, readResult.statusCode, readResult.body);
+      const sanitizedResult = sanitizeReadErrorResponse(readResult);
+      sendJson(response, sanitizedResult.statusCode, sanitizedResult.body);
       return;
     }
     if (method === 'POST') {
