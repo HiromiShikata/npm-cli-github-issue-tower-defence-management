@@ -3951,6 +3951,11 @@ export class ApiV3CheerioRestIssueRepository
       let pullRequest: SlimPullRequest | null;
       if (statesByUrl.has(prUrl)) {
         pullRequest = statesByUrl.get(prUrl) ?? null;
+        if (pullRequest === null) {
+          console.info(
+            `ApiV3CheerioRestIssueRepository: recorded pull request is not found, excluding it from open PR URLs. prUrl: ${prUrl}`,
+          );
+        }
       } else {
         const { owner, repo, issueNumber } = this.parseIssueUrl(prUrl);
         pullRequest = await this.fetchSlimPullRequest(owner, repo, issueNumber);
@@ -4195,6 +4200,7 @@ export class ApiV3CheerioRestIssueRepository
       repo: string;
       prNumber: number;
     }[],
+    absentAliasUnresolved = false,
   ): Promise<Map<string, SlimPullRequest | null>> => {
     const aliasOf = (index: number): string => `pullRequest${index}`;
     const variableDeclarations = references
@@ -4278,7 +4284,7 @@ export class ApiV3CheerioRestIssueRepository
       if (otherErrorAliases.has(alias)) {
         return;
       }
-      if (!responseData.data || !(alias in responseData.data)) {
+      if (absentAliasUnresolved && !(alias in (responseData.data ?? {}))) {
         return;
       }
       const node = responseData.data?.[alias]?.pullRequest ?? null;
@@ -4335,7 +4341,10 @@ export class ApiV3CheerioRestIssueRepository
         start + SLIM_PULL_REQUEST_BATCH_SIZE,
       );
       try {
-        const slimByUrl = await this.fetchSlimPullRequestsInOneQuery(chunk);
+        const slimByUrl = await this.fetchSlimPullRequestsInOneQuery(
+          chunk,
+          true,
+        );
         for (const [prUrl, slimPullRequest] of slimByUrl) {
           resolved.set(prUrl, slimPullRequest);
         }
