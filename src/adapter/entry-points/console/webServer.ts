@@ -127,6 +127,13 @@ export const httpsBaseUrlFor = (input: {
     ? null
     : `https://${input.acmeIpAddress}:${input.httpsPort}`;
 
+const activeHttpsBaseUrl = (options: WebServerOptions): string | null => {
+  const httpsBaseUrl = httpsBaseUrlFor(options);
+  if (httpsBaseUrl === null) return null;
+  const isListening = options.isHttpsListening ?? ((): boolean => true);
+  return isListening() ? httpsBaseUrl : null;
+};
+
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -358,6 +365,7 @@ export type WebServerOptions = {
   httpsPort?: number;
   acmeIpAddress?: string;
   httpTokenAuthDisabled?: boolean;
+  isHttpsListening?: () => boolean;
   acmeDataDirectory?: string;
   acmeServerUrl?: string;
   runLegoCommand?: (
@@ -1478,10 +1486,11 @@ export const handleWebRequest = async (
     return;
   }
 
+  const redirectBaseUrl = activeHttpsBaseUrl(options);
   if (
     !secure &&
     options.httpTokenAuthDisabled === true &&
-    httpsBaseUrl !== null
+    redirectBaseUrl !== null
   ) {
     const providedToken = extractProvidedToken(
       requestUrl.searchParams.get('k'),
@@ -1493,14 +1502,19 @@ export const handleWebRequest = async (
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
       });
-      response.end(JSON.stringify({ error: 'https_required', httpsBaseUrl }));
+      response.end(
+        JSON.stringify({
+          error: 'https_required',
+          httpsBaseUrl: redirectBaseUrl,
+        }),
+      );
       return;
     }
   }
 
   if (
     !secure &&
-    httpsBaseUrl !== null &&
+    redirectBaseUrl !== null &&
     (method === 'GET' || method === 'HEAD') &&
     !requiresToken(requestPath) &&
     requestPath !== '/api' &&
@@ -1508,7 +1522,7 @@ export const handleWebRequest = async (
     requestPath !== DASHBOARD_REQUEST_PATH
   ) {
     response.writeHead(308, {
-      Location: `${httpsBaseUrl}${request.url ?? '/'}`,
+      Location: `${redirectBaseUrl}${request.url ?? '/'}`,
       'Cache-Control': 'no-store',
     });
     response.end();
@@ -1776,7 +1790,11 @@ const certificateAcquisition = async (
 export const startWebServer = async (
   options: StartWebServerOptions,
 ): Promise<http.Server> => {
-  const server = createWebServer(options);
+  let httpsServer: https.Server | null = null;
+  const server = createWebServer({
+    ...options,
+    isHttpsListening: () => httpsServer !== null && httpsServer.listening,
+  });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(options.port, () => {
@@ -1784,7 +1802,6 @@ export const startWebServer = async (
       resolve();
     });
   });
-  let httpsServer: https.Server | null = null;
   if (shouldScheduleCertificateRenewal(options)) {
     httpsServer = await certificateAcquisition(options, httpsServer);
   }

@@ -915,6 +915,35 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
     }
   });
 
+  it.each([
+    { listening: true, expectedStatus: 308 },
+    { listening: false, expectedStatus: 200 },
+  ])(
+    'redirects and rejects tokens only while the HTTPS listener is serving (listening: $listening)',
+    async ({ listening, expectedStatus }) => {
+      const options = {
+        ...buildOptions(true),
+        isHttpsListening: () => listening,
+      };
+      const server = await createPlainTestServer(options);
+      try {
+        const page = await requestServer(server, '/');
+        expect(page.statusCode).toBe(expectedStatus);
+        const tokenRequest = await requestServer(
+          server,
+          `/api/review?k=${accessToken}`,
+        );
+        if (listening) {
+          expect(tokenRequest.statusCode).toBe(403);
+        } else {
+          expect(tokenRequest.statusCode).not.toBe(403);
+        }
+      } finally {
+        await closeServer(server);
+      }
+    },
+  );
+
   it('keeps the endpoint, redirect, and token behavior unchanged when HTTPS is not configured', async () => {
     const options = {
       ...buildOptions(true),
@@ -6182,7 +6211,7 @@ describe('webServer HTTPS certificate handling', () => {
     });
     try {
       expect(consoleErrorSpy).toHaveBeenCalled();
-      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(308);
+      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(200);
     } finally {
       await stopWebServer(server);
       await new Promise<void>((resolve, reject) =>
@@ -6219,7 +6248,7 @@ describe('webServer HTTPS certificate handling', () => {
     try {
       expect(runLegoCommand).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalled();
-      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(308);
+      expect(await requestPlainServer(server, `/?k=${testToken}`)).toBe(200);
     } finally {
       await stopWebServer(server);
       consoleErrorSpy.mockRestore();
@@ -6261,7 +6290,7 @@ describe('webServer HTTPS certificate handling', () => {
         server,
         `/?k=${testToken}`,
       );
-      expect(responseStatusCode).toBe(308);
+      expect(responseStatusCode).toBe(200);
       expect(consoleErrorSpy).toHaveBeenCalled();
     } finally {
       await stopWebServer(server);
