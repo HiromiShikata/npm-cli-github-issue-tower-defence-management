@@ -662,9 +662,10 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
           await useCase.run({ projectUrl });
 
           expect(projectRepository.updateStoryList).toHaveBeenCalledTimes(1);
-          const submittedNames = projectRepository.updateStoryList.mock.calls[0][1].map(
-            (o) => o.name,
-          );
+          const submittedNames =
+            projectRepository.updateStoryList.mock.calls[0][1].map(
+              (o) => o.name,
+            );
           expect({
             variant,
             remaining: submittedNames.filter(
