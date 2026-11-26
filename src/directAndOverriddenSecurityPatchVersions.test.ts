@@ -238,6 +238,31 @@ describe('direct and overridden dependency patched-version thresholds', () => {
     expect(isVersionAtLeast(resolvedVersion, '11.0.1')).toBe(true);
   });
 
+  it('resolves every installed minimatch copy in package-lock.json at or above its patched version threshold', () => {
+    const packages = readPackageLockPackages();
+    const minimatchKeys = Object.keys(packages).filter(
+      (key) =>
+        (key === 'node_modules/minimatch' ||
+          key.endsWith('/node_modules/minimatch')) &&
+        !(isRecord(packages[key]) && packages[key].inBundle === true),
+    );
+
+    expect(minimatchKeys).not.toHaveLength(0);
+    for (const key of minimatchKeys) {
+      const resolvedVersion = readResolvedVersion(packages, key);
+      expect({
+        key,
+        atLeastPatched: isVersionAtLeast(resolvedVersion, '11.0.1'),
+      }).toEqual({ key, atLeastPatched: true });
+    }
+  });
+
+  it('pins the root minimatch override at or above its patched version threshold', () => {
+    const overriddenVersion = readPackageJsonOverrideVersion('minimatch');
+
+    expect(isVersionAtLeast(overriddenVersion, '11.0.1')).toBe(true);
+  });
+
   it('pins source-map-js to at or above its patched version threshold via a package.json override', () => {
     const overriddenVersion = readPackageJsonOverrideVersion('source-map-js');
 

@@ -360,6 +360,15 @@ class FailingLiveSessionSideband implements LiveSessionSideband {
   }
 }
 
+class NonErrorRejectionLiveSessionSideband implements LiveSessionSideband {
+  async attach(): Promise<void> {
+    const nonErrorRejection: unknown = {
+      toString: () => 'INTERNAL_MARKER_non_error_rejection',
+    };
+    throw nonErrorRejection;
+  }
+}
+
 class RecordingLiveSessionCloser {
   readonly closedSessionIds: string[] = [];
 
@@ -407,6 +416,48 @@ describe('webServer live session creation when the voice console sideband cannot
           message: 'OPENAI_API_KEY is not set for the live session sideband',
         },
         closedSessionIds: ['live_9'],
+      });
+    } finally {
+      await close(server);
+    }
+  });
+
+  it('does not echo a non-Error sideband rejection value into the response body', async () => {
+    const repository = new InMemoryLiveSessionRepository({
+      type: 'created',
+      sdpAnswer: 'ANSWER-SDP',
+      sessionId: 'live_12',
+    });
+    const closer = new RecordingLiveSessionCloser();
+    const server = await createTestServer(
+      repository,
+      new NonErrorRejectionLiveSessionSideband(),
+      closer,
+    );
+
+    try {
+      const response = await requestServer(
+        server,
+        'POST',
+        '/api/live/sessions',
+        'OFFER-SDP',
+        'application/sdp',
+      );
+      expect(response.body).not.toContain(
+        'INTERNAL_MARKER_non_error_rejection',
+      );
+      const errorBody: unknown = JSON.parse(response.body);
+      expect({
+        statusCode: response.statusCode,
+        body: errorBody,
+        closedSessionIds: closer.closedSessionIds,
+      }).toEqual({
+        statusCode: 502,
+        body: {
+          error: 'voice_console_sideband_failed',
+          message: 'voice console sideband failed',
+        },
+        closedSessionIds: ['live_12'],
       });
     } finally {
       await close(server);
