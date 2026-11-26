@@ -3994,6 +3994,7 @@ export class ApiV3CheerioRestIssueRepository
     const recordedPrUrls = pullRequestUrlsFromCommentBodies(commentBodies);
     const statesByUrl =
       await this.fetchSlimPullRequestStatesByUrl(recordedPrUrls);
+    const failedPrUrls: { prUrl: string; message: string }[] = [];
     for (const prUrl of recordedPrUrls) {
       let pullRequest: SlimPullRequest | null;
       if (statesByUrl.has(prUrl)) {
@@ -4012,17 +4013,21 @@ export class ApiV3CheerioRestIssueRepository
             issueNumber,
           );
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          console.warn(
-            `ApiV3CheerioRestIssueRepository: fetching recorded pull request status failed, skipping it from open PR URLs. prUrl: ${prUrl} error: ${errorMessage}`,
-          );
+          failedPrUrls.push({
+            prUrl,
+            message: error instanceof Error ? error.message : String(error),
+          });
           continue;
         }
       }
       if (pullRequest?.state === 'OPEN') {
         openPrUrls.push(prUrl);
       }
+    }
+    if (failedPrUrls.length > 0) {
+      throw new Error(
+        `Failed to fetch status of ${failedPrUrls.length} recorded pull request(s): ${failedPrUrls.map(({ prUrl, message }) => `${prUrl} (${message})`).join('; ')}`,
+      );
     }
     return openPrUrls;
   };
