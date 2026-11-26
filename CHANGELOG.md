@@ -1,3 +1,10 @@
+# [2.213.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.212.2...v2.213.0) (2026-11-26)
+
+
+### Features
+
+* **console:** redirect HTTP to HTTPS and add token-disable option ([#3781](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3781)) ([03c2dfa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/03c2dfaa3e8c3a2c9880043571203b9314d6b0da))
+
 ## [2.212.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.212.1...v2.212.2) (2026-11-25)
 
 
