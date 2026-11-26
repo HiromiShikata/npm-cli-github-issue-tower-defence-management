@@ -4339,8 +4339,10 @@ export class ApiV3CheerioRestIssueRepository
         for (const [prUrl, slimPullRequest] of slimByUrl) {
           resolved.set(prUrl, slimPullRequest);
         }
-      } catch {
-        // A failed chunk leaves its URLs absent from the map; each is then resolved by the per-pull-request path, which logs its own failure.
+      } catch (error) {
+        console.info(
+          `ApiV3CheerioRestIssueRepository: batched pull request status query failed, resolving ${chunk.length} pull request(s) per request. error: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
     return resolved;
