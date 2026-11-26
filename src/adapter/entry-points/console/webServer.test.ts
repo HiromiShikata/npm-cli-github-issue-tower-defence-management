@@ -823,6 +823,8 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
     { method: 'GET', requestPath: '/index.html' },
     { method: 'GET', requestPath: '/projects/abc/prs?k=t' },
     { method: 'HEAD', requestPath: '/assets/app.js?version=1' },
+    { method: 'GET', requestPath: '/api-docs' },
+    { method: 'GET', requestPath: '/apiary.html' },
   ])(
     'redirects HTTP $method $requestPath to HTTPS unchanged',
     async ({ method, requestPath }) => {
@@ -845,6 +847,7 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
     { method: 'GET', requestPath: '/data/settings.yaml' },
     { method: 'POST', requestPath: '/projects/abc/prs' },
     { method: 'HEAD', requestPath: CONSOLE_HTTPS_ENDPOINT_PATH },
+    { method: 'GET', requestPath: '/api' },
     { method: 'GET', requestPath: '/tdpm.txt' },
   ])(
     'does not redirect HTTP $method $requestPath',
