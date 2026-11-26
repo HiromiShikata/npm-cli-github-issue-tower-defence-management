@@ -5954,6 +5954,77 @@ describe('webServer HTTPS certificate handling', () => {
     }
   });
 
+  it('serves the endpoint over the live HTTPS listener started by startWebServer', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-https-endpoint-'),
+    );
+    const acmeDataDirectory = path.join(tmpDir, 'acme');
+    writeCertificateFiles(acmeDataDirectory);
+    const runLegoCommand = jest
+      .fn()
+      .mockResolvedValue({ exitCode: 1, output: 'not expected' });
+    const httpsPort = await reserveHttpsPort();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+      httpsPort,
+      acmeIpAddress: '127.0.0.1',
+      acmeDataDirectory,
+      runLegoCommand,
+    });
+    try {
+      const expectedBody = { httpsBaseUrl: `https://127.0.0.1:${httpsPort}` };
+      const readBody = (
+        request: http.ClientRequest,
+      ): Promise<{ statusCode: number; body: string }> =>
+        new Promise((resolve, reject) => {
+          request.on('response', (response) => {
+            const chunks: Uint8Array[] = [];
+            response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+            response.on('end', () =>
+              resolve({
+                statusCode: response.statusCode ?? 0,
+                body: Buffer.concat(chunks).toString('utf-8'),
+              }),
+            );
+          });
+          request.on('error', reject);
+          request.end();
+        });
+      const httpAddress = server.address();
+      if (httpAddress === null || typeof httpAddress === 'string') {
+        throw new Error('server is not listening on a TCP port');
+      }
+      const overHttp = await readBody(
+        http.request({
+          host: '127.0.0.1',
+          port: httpAddress.port,
+          path: CONSOLE_HTTPS_ENDPOINT_PATH,
+        }),
+      );
+      expect(overHttp.statusCode).toBe(200);
+      expect(JSON.parse(overHttp.body)).toEqual(expectedBody);
+      const overHttps = await readBody(
+        https.request({
+          host: '127.0.0.1',
+          port: httpsPort,
+          path: CONSOLE_HTTPS_ENDPOINT_PATH,
+          rejectUnauthorized: false,
+        }),
+      );
+      expect(overHttps.statusCode).toBe(200);
+      expect(JSON.parse(overHttps.body)).toEqual(expectedBody);
+    } finally {
+      await stopWebServer(server);
+    }
+  });
+
   it('keeps HTTP answering after renewal failure', async () => {
     const tmpDir = fs.mkdtempSync(
       path.join(os.tmpdir(), 'console-http-renew-'),

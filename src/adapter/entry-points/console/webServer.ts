@@ -1794,10 +1794,11 @@ export const startWebServer = async (
   options: StartWebServerOptions,
 ): Promise<http.Server> => {
   let httpsServer: https.Server | null = null;
-  const server = createWebServer({
+  const liveOptions: StartWebServerOptions = {
     ...options,
     isHttpsListening: () => httpsServer !== null && httpsServer.listening,
-  });
+  };
+  const server = createWebServer(liveOptions);
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(options.port, () => {
@@ -1806,11 +1807,11 @@ export const startWebServer = async (
     });
   });
   if (shouldScheduleCertificateRenewal(options)) {
-    httpsServer = await certificateAcquisition(options, httpsServer);
+    httpsServer = await certificateAcquisition(liveOptions, httpsServer);
   }
   const renewalTimer = shouldScheduleCertificateRenewal(options)
     ? setInterval(() => {
-        void certificateAcquisition(options, httpsServer).then(
+        void certificateAcquisition(liveOptions, httpsServer).then(
           (updatedServer) => {
             httpsServer = updatedServer;
             const resources = webServerResources.get(server);
