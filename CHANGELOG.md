@@ -1,3 +1,10 @@
+## [2.214.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.0...v2.214.1) (2026-11-26)
+
+
+### Reverts
+
+* console HTTP-to-HTTPS redirect and token-disable option ([#3783](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3783)) ([45f9b95](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/45f9b956c0056337f404a45f37f84d25eaead6a9))
+
 # [2.214.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.213.0...v2.214.0) (2026-11-26)
 
 
