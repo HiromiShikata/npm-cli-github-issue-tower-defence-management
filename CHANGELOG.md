@@ -1,3 +1,10 @@
+## [2.214.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.1...v2.214.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **issue-repository:** resolve pull request states with the existing batched query instead of one PullRequestSlimStatus request per pull request ([#3785](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3785)) ([a61ac80](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a61ac80c52e3be72414dbe42f2d87a03e3a97602))
+
 ## [2.214.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.0...v2.214.1) (2026-11-26)
 
 
