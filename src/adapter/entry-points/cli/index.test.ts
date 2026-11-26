@@ -4911,6 +4911,54 @@ ${removedSettingName}: 'claude-sonnet-4-6'
       expect(helpText).toContain('serveWeb');
     });
 
+    it.each([
+      { flag: [], expected: false },
+      { flag: ['--httpTokenAuthDisabled'], expected: true },
+    ])(
+      'passes httpTokenAuthDisabled=$expected to startWebServer when the flag is $flag',
+      async ({ flag, expected }) => {
+        writeConfig({ ...defaultConfig, consoleAccessToken: 'config-token' });
+        const logSpy = jest.spyOn(console, 'log').mockImplementation();
+        const actualFsModule: typeof fs = jest.requireActual('fs');
+        const expectedUiDistIndexHtmlPath = path.join(
+          __dirname,
+          '..',
+          'console',
+          'ui-dist',
+          'index.html',
+        );
+        jest
+          .mocked(fs.existsSync)
+          .mockImplementation((checkedPath) =>
+            checkedPath === expectedUiDistIndexHtmlPath
+              ? true
+              : actualFsModule.existsSync(checkedPath),
+          );
+
+        await program.parseAsync([
+          'node',
+          'test',
+          'serveWeb',
+          '--configFilePath',
+          configFilePath,
+          '--httpsPort',
+          '9443',
+          '--acmeIpAddress',
+          '127.0.0.1',
+          '--dashboardProjectNames',
+          'acme',
+          ...flag,
+        ]);
+
+        expect(mockStartWebServer).toHaveBeenCalledTimes(1);
+        expect(mockStartWebServer.mock.calls[0][0].httpsPort).toBe(9443);
+        expect(mockStartWebServer.mock.calls[0][0].httpTokenAuthDisabled).toBe(
+          expected,
+        );
+        logSpy.mockRestore();
+      },
+    );
+
     it('should include the HTTP token authentication disable option in help output', () => {
       const serveWebCommand = program.commands.find(
         (command) => command.name() === 'serveWeb',

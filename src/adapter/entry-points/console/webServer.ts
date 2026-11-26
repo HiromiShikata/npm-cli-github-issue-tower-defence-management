@@ -1503,7 +1503,8 @@ export const handleWebRequest = async (
     httpsBaseUrl !== null &&
     (method === 'GET' || method === 'HEAD') &&
     !requiresToken(requestPath) &&
-    !requestPath.startsWith('/api') &&
+    requestPath !== '/api' &&
+    !requestPath.startsWith('/api/') &&
     requestPath !== DASHBOARD_REQUEST_PATH
   ) {
     response.writeHead(308, {

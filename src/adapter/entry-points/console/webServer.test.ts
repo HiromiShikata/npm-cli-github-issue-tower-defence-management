@@ -918,25 +918,43 @@ describe('HTTPS endpoint and HTTP redirect integration', () => {
       httpsPort: undefined,
       acmeIpAddress: undefined,
     };
-    const server = await createPlainTestServer(options);
+    const withFlag = await createPlainTestServer(options);
+    const withoutFlag = await createPlainTestServer({
+      ...options,
+      httpTokenAuthDisabled: false,
+    });
     try {
-      const endpoint = await requestServer(server, CONSOLE_HTTPS_ENDPOINT_PATH);
-      expect(endpoint.statusCode).toBe(404);
-      const unauthenticatedApi = await requestServer(server, '/api/review');
-      expect(unauthenticatedApi.statusCode).toBe(401);
-      const tokenRequest = await requestServer(
-        server,
-        `/api/review?k=${accessToken}`,
+      const endpoint = await requestServer(
+        withFlag,
+        CONSOLE_HTTPS_ENDPOINT_PATH,
       );
-      expect(tokenRequest.statusCode).not.toBe(401);
-      expect(tokenRequest.statusCode).not.toBe(403);
-      const dashboard = await requestServer(server, '/tdpm.txt');
+      expect(endpoint.statusCode).toBe(404);
+      const unauthenticatedApi = await requestServer(withFlag, '/api/review');
+      expect(unauthenticatedApi.statusCode).toBe(401);
+      const dashboard = await requestServer(withFlag, '/tdpm.txt');
       expect(dashboard.statusCode).toBe(401);
-      const page = await requestServer(server, '/');
+      const page = await requestServer(withFlag, '/');
       expect(page.statusCode).toBe(200);
       expect(page.location).toBeUndefined();
+      for (const requestPath of [
+        `/api/review?k=${accessToken}`,
+        `/api/review`,
+        `/?k=${accessToken}`,
+      ]) {
+        const withFlagResponse = await requestServer(withFlag, requestPath);
+        const withoutFlagResponse = await requestServer(
+          withoutFlag,
+          requestPath,
+        );
+        expect(withFlagResponse.statusCode).toBe(
+          withoutFlagResponse.statusCode,
+        );
+        expect(withFlagResponse.body).toBe(withoutFlagResponse.body);
+        expect(withFlagResponse.location).toBe(withoutFlagResponse.location);
+      }
     } finally {
-      await closeServer(server);
+      await closeServer(withFlag);
+      await closeServer(withoutFlag);
     }
   });
 });
