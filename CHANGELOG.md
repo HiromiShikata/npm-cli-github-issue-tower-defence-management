@@ -1,3 +1,10 @@
+# [2.215.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.3...v2.215.0) (2026-11-27)
+
+
+### Features
+
+* **dashboard:** show per-token subagent counts on tdpm.txt ([#3787](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3787)) ([3490c9e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3490c9e2bae60fa1ba51a1886b69b2cf27271a62))
+
 ## [2.214.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.2...v2.214.3) (2026-11-26)
 
 
