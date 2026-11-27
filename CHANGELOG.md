@@ -1,3 +1,15 @@
+# [2.217.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.216.0...v2.217.0) (2026-11-27)
+
+
+### Bug Fixes
+
+* **console:** respond 400 to unparseable request targets ([#3791](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3791)) ([034c616](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/034c6161e43d8a4ca664ea1290a3ae3c95ad6fbe))
+
+
+### Features
+
+* **console:** send browser security headers on every console response ([#3790](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3790)) ([05a204f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/05a204f2f3836a8743273188b7233e0b79865447))
+
 # [2.216.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.215.1...v2.216.0) (2026-11-27)
 
 
