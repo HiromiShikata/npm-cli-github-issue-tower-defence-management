@@ -67,6 +67,10 @@ export const REMOTE_SUBAGENT_FACTS_COMMAND = `for directory in "\${TDPM_PROC_DIR
     [ -n "$config" ] || config="$home/.claude"
     session=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CODE_SESSION_ID=//p')
     printf '%s\\t%s\\tclaude-worker\\t%s\\t-\\n' "$pid" "$ppid" "$issueUrl"
+    if ! cat "$directory/environ" >/dev/null 2>&1; then
+      printf '%s\\tmeta\\t!\\n' "$pid"
+      continue
+    fi
     for project in "$config"/projects/*; do
       [ -d "$project" ] || continue
       if [ -n "$session" ]; then sessions="$project/$session"; else sessions="$project"/*; fi
