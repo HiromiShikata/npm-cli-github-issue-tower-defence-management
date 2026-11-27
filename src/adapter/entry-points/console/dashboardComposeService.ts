@@ -287,6 +287,11 @@ const asCount = (value: unknown): number => {
   return number === null ? 0 : number;
 };
 
+const asRequiredCount = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0
+    ? value
+    : null;
+
 const parseTokenStatus = (value: unknown): TokenStatus | null => {
   if (!isRecord(value) || typeof value.name !== 'string') {
     return null;
@@ -304,6 +309,8 @@ const parseTokenStatus = (value: unknown): TokenStatus | null => {
     color: asTokenColor(value.color),
     prep: asCount(value.prep),
     hum: asCount(value.hum),
+    claudeSubagentCount: asRequiredCount(value.claudeSubagentCount),
+    codexSubagentCount: asRequiredCount(value.codexSubagentCount),
   };
 };
 

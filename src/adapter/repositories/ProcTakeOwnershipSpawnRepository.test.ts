@@ -44,7 +44,7 @@ type FakeProcess = {
   stat?: { parentPid: number; comm: string };
 };
 
-const issueUrl = 'https://github.com/HiromiShikata/example/issues/1';
+const issueUrl = 'https://github.com/example-org/example-repo/issues/101';
 const argv = (...parts: string[]): string => `${parts.join('\0')}\0`;
 
 describe('ProcTakeOwnershipSpawnRepository', () => {
@@ -156,8 +156,8 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
     expect(repository.listSpawns()).toEqual([
-      { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
-      { token: 'claude-token', logPath: '/logs-aw/worker-a.log' },
+      { token: 'claude-token', logPath: '/logs-aw/worker-a.log', issueUrl },
+      { token: 'claude-token', logPath: '/logs-aw/worker-a.log', issueUrl },
     ]);
   });
 
@@ -172,8 +172,8 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
     expect(repository.listSpawns()).toEqual([
-      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log' },
-      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log' },
+      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log', issueUrl },
+      { token: 'wrapper-token', logPath: '/logs-aw/worker-b.log', issueUrl },
     ]);
   });
 
@@ -194,10 +194,26 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
     expect(sortSpawns(repository.listSpawns())).toEqual([
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-c.log' },
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
-      { token: 'shared-claude-token', logPath: '/logs-aw/worker-d.log' },
+      {
+        token: 'shared-claude-token',
+        logPath: '/logs-aw/worker-c.log',
+        issueUrl,
+      },
+      {
+        token: 'shared-claude-token',
+        logPath: '/logs-aw/worker-c.log',
+        issueUrl,
+      },
+      {
+        token: 'shared-claude-token',
+        logPath: '/logs-aw/worker-d.log',
+        issueUrl,
+      },
+      {
+        token: 'shared-claude-token',
+        logPath: '/logs-aw/worker-d.log',
+        issueUrl,
+      },
     ]);
   });
 
@@ -215,7 +231,11 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
     expect(repository.listSpawns()).toEqual([
-      { token: 'token-a', logPath: '/logs-aw/20260626_120000_abc.log' },
+      {
+        token: 'token-a',
+        logPath: '/logs-aw/20260626_120000_abc.log',
+        issueUrl,
+      },
     ]);
   });
 
@@ -280,8 +300,8 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
     const repository = new ProcTakeOwnershipSpawnRepository(procDirectory);
 
     expect(repository.listSpawns()).toEqual([
-      { token: 'token-d', logPath: capturedLogPath },
-      { token: 'token-d', logPath: capturedLogPath },
+      { token: 'token-d', logPath: capturedLogPath, issueUrl },
+      { token: 'token-d', logPath: capturedLogPath, issueUrl: null },
     ]);
   });
 
@@ -346,7 +366,8 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
     });
 
     it('returns URLs from all matching processes', () => {
-      const issueUrl2 = 'https://github.com/HiromiShikata/example/issues/2';
+      const issueUrl2 =
+        'https://github.com/example-org/example-repo/issues/102';
       writeProcess({
         pid: 404,
         cmdline: argv(
@@ -507,7 +528,7 @@ describe('ProcTakeOwnershipSpawnRepository', () => {
 
     it('keeps URL-only print requests and ignores prompts without an exact print flag', () => {
       const nonPrintIssueUrl =
-        'https://github.com/HiromiShikata/example/issues/2';
+        'https://github.com/example-org/example-repo/issues/102';
       const testCases: {
         commandArguments: string[];
         expectedUrls: string[];

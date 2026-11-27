@@ -166,6 +166,8 @@ describe('GenerateTokenStatusUseCase', () => {
         color: 'Y',
         prep: 2,
         hum: 1,
+        claudeSubagentCount: 0,
+        codexSubagentCount: 0,
       },
       {
         name: 'bob',
@@ -176,6 +178,8 @@ describe('GenerateTokenStatusUseCase', () => {
         color: 'Y',
         prep: 0,
         hum: 0,
+        claudeSubagentCount: 0,
+        codexSubagentCount: 0,
       },
     ]);
   });
@@ -241,6 +245,8 @@ describe('computeSevenDayWindowAggregate', () => {
     color: 'G',
     prep: 0,
     hum: 0,
+    claudeSubagentCount: 0,
+    codexSubagentCount: 0,
   });
 
   it('averages the seven day utilization of every token when all values are present', () => {

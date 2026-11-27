@@ -4,6 +4,9 @@ import {
   ComposeDashboardUseCase,
   SEVEN_DAY_UTILIZATION_COLUMN_START,
   TOKEN_SESSION_COLUMN_START,
+  formatTokenRowLine,
+  formatTokenSectionHeaderLine,
+  formatTokenSessionTotalLine,
 } from './ComposeDashboardUseCase';
 import { DashboardRow } from './GenerateDashboardRowUseCase';
 import { TokenStatus } from './GenerateTokenStatusUseCase';
@@ -71,6 +74,8 @@ const tokenStatus = (overrides: Partial<TokenStatus>): TokenStatus => ({
   color: 'G',
   prep: 0,
   hum: 0,
+  claudeSubagentCount: 0,
+  codexSubagentCount: 0,
   ...overrides,
 });
 
@@ -186,6 +191,40 @@ describe('ComposeDashboardUseCase token column alignment', () => {
       expect(displayColumnOf(row, hum)).toBe(TOKEN_SESSION_COLUMN_START + 3);
     },
   );
+
+  it('places the subagent cells right after the unpadded human count', () => {
+    const rowOf = (hum: number) =>
+      formatTokenRowLine(
+        tokenStatus({
+          name: 'alpha',
+          hum,
+          claudeSubagentCount: 5,
+          codexSubagentCount: 4,
+        }),
+      );
+    const oneDigit = rowOf(7);
+    const twoDigits = rowOf(34);
+    expect(oneDigit.endsWith(' 7  5  4')).toBe(true);
+    expect(twoDigits.endsWith(' 34  5  4')).toBe(true);
+    expect(twoDigits.length).toBe(oneDigit.length + 1);
+  });
+
+  it('places the header directly above the totals line when no seven day aggregate exists', () => {
+    const output = unwrapTtLines(
+      new ComposeDashboardUseCase().run({
+        ...alignmentInput,
+        sevenDayWindowAggregate: null,
+      }),
+    );
+    const headerIndex = output.indexOf(formatTokenSectionHeaderLine());
+    expect(headerIndex).toBeGreaterThan(0);
+    expect(output[headerIndex + 1]).toBe(
+      formatTokenSessionTotalLine(
+        alignmentInput.tokens,
+        alignmentInput.codexRunningWorkerCount ?? null,
+      ),
+    );
+  });
 
   it('places the 7-day mean above the 7-day utilization column of the token rows', () => {
     expect(displayColumnOf(totalLine, '63')).toBe(

@@ -4,9 +4,12 @@ import path from 'path';
 import {
   buildSshInvocation,
   parseRemoteMetricsOutput,
+  parseRemoteSubagentFactsOutput,
   parseWorkerHostsYaml,
   REMOTE_COMMAND_TIMEOUT_MS,
   REMOTE_METRICS_COMMAND,
+  REMOTE_SUBAGENT_FACTS_COMMAND,
+  REMOTE_SUBAGENT_FACTS_TIMEOUT_MS,
   type RemoteMachineStatusEntry,
   type RemoteMachineStatusFile,
   writeRemoteMachineStatus,
@@ -84,6 +87,17 @@ const metricsOutput = [
   '1000 200 200',
 ].join('\n');
 
+const encodedMetadata = (content: string): string =>
+  Buffer.from(content).toString('base64');
+
+const factsOutput = [
+  '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t-',
+  `10\tmeta\t${encodedMetadata('{}')}`,
+  `10\tmeta\t${encodedMetadata('{"finished":true}')}`,
+  `10\tmeta\t${encodedMetadata('{"finished":false}')}`,
+  '11\t10\tcodex-launcher\t-\t-',
+].join('\n');
+
 describe('remote machine status writer parsing', () => {
   it('parses valid worker hosts and ignores tdpmBin', () => {
     expect(
@@ -126,6 +140,65 @@ describe('remote machine status writer parsing', () => {
       diskPct: 80,
       load: [3.5, 2.5, 1.5],
     });
+  });
+
+  it('parses remote subagent facts into per-issue-URL counts', () => {
+    expect(parseRemoteSubagentFactsOutput(factsOutput)).toEqual({
+      subagentCounts: {
+        claudeByIssueUrl: {
+          'https://github.com/example-org/example-repo/issues/101': 2,
+        },
+        codexByIssueUrl: {
+          'https://github.com/example-org/example-repo/issues/101': 1,
+        },
+      },
+      unreadableWorkerPids: [],
+      unmeasuredIssueUrls: [],
+    });
+  });
+
+  it('rejects malformed remote subagent facts', () => {
+    expect(() =>
+      parseRemoteSubagentFactsOutput('10\t1\tclaude-worker\tnot-a-key\t2'),
+    ).toThrow(Error);
+  });
+
+  it.each([
+    {
+      name: 'a worker row whose URL field contains whitespace',
+      output: '10\t1\tclaude-worker\thttps://github.com/a b\t-',
+    },
+    {
+      name: 'a worker row with an empty URL field',
+      output: '10\t1\tclaude-worker\t\t-',
+    },
+    {
+      name: 'a worker row carrying a 64-hex token key instead of an issue URL',
+      output:
+        '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t-',
+    },
+    {
+      name: 'a Codex launcher row that carries a URL field',
+      output:
+        '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t-\n11\t10\tcodex-launcher\thttps://github.com/example-org/example-repo/issues/101\t-',
+    },
+    {
+      name: 'a row whose last field is not a dash',
+      output:
+        '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t2',
+    },
+  ])('rejects $name', ({ output }) => {
+    expect(() => parseRemoteSubagentFactsOutput(output)).toThrow(
+      'remote subagent facts are malformed',
+    );
+  });
+
+  it('rejects output with only three sections', () => {
+    expect(() =>
+      parseRemoteMetricsOutput(
+        metricsOutput.split('\n#TDPM-SEP\n').slice(0, 3).join('\n#TDPM-SEP\n'),
+      ),
+    ).toThrow(Error);
   });
 
   it('rejects malformed remote metrics output', () => {
@@ -174,7 +247,14 @@ describe('writeRemoteMachineStatus', () => {
     workerHostsPath = makeTempFile(
       'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
     );
-    const runner = jest.fn().mockResolvedValue(metricsOutput);
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      Promise.resolve(
+        invocation.args[invocation.args.length - 1] ===
+          REMOTE_SUBAGENT_FACTS_COMMAND
+          ? factsOutput
+          : metricsOutput,
+      ),
+    );
     await writeRemoteMachineStatus({
       dashboardDataDir,
       workerHostsPath,
@@ -184,6 +264,10 @@ describe('writeRemoteMachineStatus', () => {
     expect(runner).toHaveBeenCalledWith(
       buildSshInvocation(host, REMOTE_METRICS_COMMAND),
       REMOTE_COMMAND_TIMEOUT_MS,
+    );
+    expect(runner).toHaveBeenCalledWith(
+      buildSshInvocation(host, REMOTE_SUBAGENT_FACTS_COMMAND),
+      REMOTE_SUBAGENT_FACTS_TIMEOUT_MS,
     );
     expect(
       JSON.parse(
@@ -202,10 +286,100 @@ describe('writeRemoteMachineStatus', () => {
           cpuPct: 60,
           diskPct: 80,
           load: [3.5, 2.5, 1.5],
+          subagentCounts: {
+            claudeByIssueUrl: {
+              'https://github.com/example-org/example-repo/issues/101': 2,
+            },
+            codexByIssueUrl: {
+              'https://github.com/example-org/example-repo/issues/101': 1,
+            },
+          },
+          unmeasuredClaudeIssueUrls: [],
           capturedAt: '2026-11-25T00:00:00.000Z',
         },
       ],
     });
+  });
+
+  it('keeps the host metrics and marks its subagent counts unavailable when the facts scan fails', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile(
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+    );
+    const reportError = jest.fn<void, [string]>();
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      invocation.args[invocation.args.length - 1] ===
+      REMOTE_SUBAGENT_FACTS_COMMAND
+        ? Promise.reject(new Error('timed out'))
+        : Promise.resolve(metricsOutput),
+    );
+    await writeRemoteMachineStatus({
+      dashboardDataDir,
+      workerHostsPath,
+      runRemoteCommand: runner,
+      reportError,
+      now: new Date('2026-11-25T00:00:00.000Z'),
+    });
+    const written = parseStatusFile(
+      fs.readFileSync(
+        path.join(dashboardDataDir, 'remote-machine-status.json'),
+        'utf8',
+      ),
+    );
+    expect(written.machines[0]).toMatchObject({
+      name: 'worker-a',
+      reachable: true,
+      memPct: 25,
+      cpuPct: 60,
+      diskPct: 80,
+      subagentCounts: null,
+    });
+    expect(reportError).toHaveBeenCalledWith(
+      'remote machine worker-a subagent counts could not be measured: timed out',
+    );
+  });
+
+  it('keeps the readable counts and lists the unreadable worker issue URL when a worker is unreadable', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile(
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+    );
+    const reportError = jest.fn<void, [string]>();
+    const unreadableFacts = [
+      '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t-',
+      '10\tmeta\t!',
+    ].join('\n');
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      Promise.resolve(
+        invocation.args[invocation.args.length - 1] ===
+          REMOTE_SUBAGENT_FACTS_COMMAND
+          ? unreadableFacts
+          : metricsOutput,
+      ),
+    );
+    await writeRemoteMachineStatus({
+      dashboardDataDir,
+      workerHostsPath,
+      runRemoteCommand: runner,
+      reportError,
+      now: new Date('2026-11-25T00:00:00.000Z'),
+    });
+    const written = parseStatusFile(
+      fs.readFileSync(
+        path.join(dashboardDataDir, 'remote-machine-status.json'),
+        'utf8',
+      ),
+    );
+    expect(written.machines[0]).toMatchObject({
+      reachable: true,
+      subagentCounts: { claudeByIssueUrl: {}, codexByIssueUrl: {} },
+      unmeasuredClaudeIssueUrls: [
+        'https://github.com/example-org/example-repo/issues/101',
+      ],
+    });
+    expect(reportError).toHaveBeenCalledWith(
+      'remote machine worker-a has unreadable Claude worker subagent count for pid 10',
+    );
   });
 
   it('continues after one host fails and reports an unreachable entry', async () => {
@@ -217,7 +391,8 @@ describe('writeRemoteMachineStatus', () => {
     const runner = jest
       .fn()
       .mockRejectedValueOnce(new Error('connection refused'))
-      .mockResolvedValueOnce(metricsOutput);
+      .mockResolvedValueOnce(metricsOutput)
+      .mockResolvedValueOnce(factsOutput);
     await writeRemoteMachineStatus({
       dashboardDataDir,
       workerHostsPath,
@@ -238,12 +413,13 @@ describe('writeRemoteMachineStatus', () => {
       cpuPct: null,
       diskPct: null,
       load: null,
+      subagentCounts: null,
     });
     expect(written.machines[1].reachable).toBe(true);
     expect(reportError).toHaveBeenCalledWith(
       'remote machine worker-a could not be measured: connection refused',
     );
-    expect(runner).toHaveBeenCalledTimes(2);
+    expect(runner).toHaveBeenCalledTimes(3);
   });
 
   it('writes previous hosts as unreachable when the YAML cannot be read', async () => {
@@ -298,6 +474,7 @@ describe('writeRemoteMachineStatus', () => {
         cpuPct: null,
         diskPct: null,
         load: null,
+        subagentCounts: null,
         capturedAt: '2026-11-25T00:00:00.000Z',
       })),
     });
@@ -401,7 +578,14 @@ describe('writeRemoteMachineStatus', () => {
     );
     const renameError = new Error('rename failed for test');
     const reportError = jest.fn<void, [string]>();
-    const runner = jest.fn().mockResolvedValue(metricsOutput);
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      Promise.resolve(
+        invocation.args[invocation.args.length - 1] ===
+          REMOTE_SUBAGENT_FACTS_COMMAND
+          ? factsOutput
+          : metricsOutput,
+      ),
+    );
     jest.spyOn(fs, 'renameSync').mockImplementation(() => {
       throw renameError;
     });

@@ -38,6 +38,8 @@ export type TokenStatus = {
   color: TokenStatusColor;
   prep: number;
   hum: number;
+  claudeSubagentCount: number | null;
+  codexSubagentCount: number | null;
 };
 
 export type SevenDayWindowAggregate = {
@@ -56,6 +58,10 @@ export type GenerateTokenStatusInput = {
   tokens: TokenStatusInput[];
   prepCountByToken: Map<string, number>;
   humCountByToken: Map<string, number>;
+  claudeSubagentCountByToken?: Map<string, number>;
+  codexSubagentCountByToken?: Map<string, number>;
+  subagentCountsMeasured?: boolean;
+  unmeasuredTokens?: Set<string>;
   nowEpochSeconds: number;
 };
 
@@ -117,8 +123,16 @@ export const computeSevenDayWindowAggregate = (
 
 export class GenerateTokenStatusUseCase {
   run = (input: GenerateTokenStatusInput): TokenStatus[] => {
-    const { tokens, prepCountByToken, humCountByToken, nowEpochSeconds } =
-      input;
+    const {
+      tokens,
+      prepCountByToken,
+      humCountByToken,
+      claudeSubagentCountByToken = new Map<string, number>(),
+      codexSubagentCountByToken = new Map<string, number>(),
+      subagentCountsMeasured = true,
+      unmeasuredTokens = new Set<string>(),
+      nowEpochSeconds,
+    } = input;
     return tokens.map((tokenInput) => {
       const decision = this.toDecision(tokenInput.snapshot, nowEpochSeconds);
       const normalized = this.normalizeWindows(
@@ -134,6 +148,14 @@ export class GenerateTokenStatusUseCase {
         color: judgeTokenColor(decision),
         prep: prepCountByToken.get(tokenInput.token) ?? 0,
         hum: humCountByToken.get(tokenInput.token) ?? 0,
+        claudeSubagentCount:
+          subagentCountsMeasured && !unmeasuredTokens.has(tokenInput.token)
+            ? (claudeSubagentCountByToken.get(tokenInput.token) ?? 0)
+            : null,
+        codexSubagentCount:
+          subagentCountsMeasured && !unmeasuredTokens.has(tokenInput.token)
+            ? (codexSubagentCountByToken.get(tokenInput.token) ?? 0)
+            : null,
       };
     });
   };
