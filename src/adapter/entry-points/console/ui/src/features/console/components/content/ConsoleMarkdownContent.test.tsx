@@ -1,7 +1,6 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleMarkdownContent } from './ConsoleMarkdownContent';
 
-
 const multiLineCodeBody = [
   'Intro paragraph.',
   '',

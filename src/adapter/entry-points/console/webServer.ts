@@ -1601,7 +1601,7 @@ const MERMAID_FRAME_CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
   "script-src 'self' https://cdn.jsdelivr.net",
   "style-src 'self' 'unsafe-inline'",
-  "img-src data:",
+  'img-src data:',
   "connect-src 'none'",
   "base-uri 'none'",
   "form-action 'none'",

@@ -7,10 +7,15 @@ const codeFixture = 'graph TD; A-->B;';
 describe('ConsoleMermaidDiagramModalScreen', () => {
   it('shows the diagram at the minimum scale first', () => {
     const { container } = render(
-      <ConsoleMermaidDiagramModalScreen code={codeFixture} onClose={() => {}} />,
+      <ConsoleMermaidDiagramModalScreen
+        code={codeFixture}
+        onClose={() => {}}
+      />,
     );
     expect(
-      container.querySelector('.console-mermaid-modal-canvas iframe[title="Mermaid diagram"]'),
+      container.querySelector(
+        '.console-mermaid-modal-canvas iframe[title="Mermaid diagram"]',
+      ),
     ).not.toBeNull();
     expect(screen.getByText('100%')).toBeInTheDocument();
     const canvas = container.querySelector<HTMLElement>(
@@ -21,7 +26,10 @@ describe('ConsoleMermaidDiagramModalScreen', () => {
 
   it('widens the canvas when zooming in', () => {
     const { container } = render(
-      <ConsoleMermaidDiagramModalScreen code={codeFixture} onClose={() => {}} />,
+      <ConsoleMermaidDiagramModalScreen
+        code={codeFixture}
+        onClose={() => {}}
+      />,
     );
     fireEvent.click(screen.getByLabelText('Zoom in'));
     expect(screen.getByText('150%')).toBeInTheDocument();
@@ -33,7 +41,10 @@ describe('ConsoleMermaidDiagramModalScreen', () => {
 
   it('asks the frame to fill the canvas width', () => {
     render(
-      <ConsoleMermaidDiagramModalScreen code={codeFixture} onClose={() => {}} />,
+      <ConsoleMermaidDiagramModalScreen
+        code={codeFixture}
+        onClose={() => {}}
+      />,
     );
     const frame = screen.getByTitle('Mermaid diagram') as HTMLIFrameElement;
     const frameWindow = frame.contentWindow as Window;
@@ -49,14 +60,20 @@ describe('ConsoleMermaidDiagramModalScreen', () => {
 
   it('cannot zoom out below the minimum', () => {
     render(
-      <ConsoleMermaidDiagramModalScreen code={codeFixture} onClose={() => {}} />,
+      <ConsoleMermaidDiagramModalScreen
+        code={codeFixture}
+        onClose={() => {}}
+      />,
     );
     expect(screen.getByLabelText('Zoom out')).toBeDisabled();
   });
 
   it('stops zooming in at the maximum', () => {
     render(
-      <ConsoleMermaidDiagramModalScreen code={codeFixture} onClose={() => {}} />,
+      <ConsoleMermaidDiagramModalScreen
+        code={codeFixture}
+        onClose={() => {}}
+      />,
     );
     const zoomIn = screen.getByLabelText('Zoom in');
     for (let step = 0; step < 20; step += 1) {

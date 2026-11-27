@@ -11,14 +11,14 @@ describe('mermaid frame protocol', () => {
   });
 
   it('builds a render request carrying the id, code and width mode', () => {
-    expect(createMermaidFrameRenderRequest(3, 'graph TD; A-->B;', true)).toEqual(
-      {
-        type: 'render',
-        requestId: 3,
-        code: 'graph TD; A-->B;',
-        fillWidth: true,
-      },
-    );
+    expect(
+      createMermaidFrameRenderRequest(3, 'graph TD; A-->B;', true),
+    ).toEqual({
+      type: 'render',
+      requestId: 3,
+      code: 'graph TD; A-->B;',
+      fillWidth: true,
+    });
   });
 
   it.each([

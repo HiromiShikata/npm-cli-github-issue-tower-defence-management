@@ -70,7 +70,6 @@ const showDiagram = (svg: string, fillWidth: boolean): void => {
   }
 };
 
-
 let displayedRequestId: number | null = null;
 
 window.addEventListener('message', (event: MessageEvent) => {
@@ -90,13 +89,11 @@ window.addEventListener('message', (event: MessageEvent) => {
         measureHeight: () => document.documentElement.scrollHeight,
       }),
     )
-    .catch(
-      (cause: unknown): MermaidFrameResponse => ({
-        type: 'failed',
-        requestId: request.requestId,
-        message: cause instanceof Error ? cause.message : String(cause),
-      }),
-    )
+    .catch((cause: unknown): MermaidFrameResponse => ({
+      type: 'failed',
+      requestId: request.requestId,
+      message: cause instanceof Error ? cause.message : String(cause),
+    }))
     .then((response) => {
       if (response.type === 'size') {
         displayedRequestId = response.requestId;

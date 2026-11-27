@@ -12,7 +12,9 @@ describe('ConsoleMermaidDiagram', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(screen.getByText('Enlarge diagram'));
     const dialog = screen.getByRole('dialog');
-    expect(dialog.querySelector('iframe[title="Mermaid diagram"]')).not.toBeNull();
+    expect(
+      dialog.querySelector('iframe[title="Mermaid diagram"]'),
+    ).not.toBeNull();
   });
 
   it('closes the enlarged view again', () => {

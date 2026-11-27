@@ -8,7 +8,6 @@ import {
   replacePlaceholderWithMarkdown,
 } from './ConsoleCommentComposer';
 
-
 const stubSubmit = async (body: string): Promise<ConsoleComment> => ({
   id: 1,
   author: 'HiromiShikata',

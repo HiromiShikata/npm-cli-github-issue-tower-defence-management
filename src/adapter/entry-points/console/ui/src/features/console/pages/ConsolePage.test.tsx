@@ -28,7 +28,6 @@ const tabBar = (): HTMLElement => {
   return nav as HTMLElement;
 };
 
-
 jest.mock('../lib/navigation', () => ({
   navigateReplace: jest.fn(),
   navigateAssign: jest.fn(),

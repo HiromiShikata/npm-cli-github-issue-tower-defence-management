@@ -41,7 +41,6 @@ import {
   type ConsoleItemDetailContainerProps,
 } from './ConsoleItemDetailContainer';
 
-
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
 

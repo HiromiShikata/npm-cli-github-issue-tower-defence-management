@@ -116,9 +116,9 @@ test.describe('console content security policy', () => {
 
     const externalVideo = body.locator(`a[href="${EXTERNAL_VIDEO_URL}"]`);
     await expect(externalVideo).toHaveCount(1);
-    await expect(body.locator(`video[src="${EXTERNAL_VIDEO_URL}"]`)).toHaveCount(
-      0,
-    );
+    await expect(
+      body.locator(`video[src="${EXTERNAL_VIDEO_URL}"]`),
+    ).toHaveCount(0);
 
     expect(await readCspViolations(page)).toEqual([]);
   });
@@ -126,9 +126,9 @@ test.describe('console content security policy', () => {
   test('keeps a GitHub-hosted video playable', async ({ page }) => {
     await openCommentWithContent(page);
     const body = page.locator('.console-comment-body-expanded');
-    await expect(
-      body.locator(`video[src="${GITHUB_VIDEO_URL}"]`),
-    ).toHaveCount(1);
+    await expect(body.locator(`video[src="${GITHUB_VIDEO_URL}"]`)).toHaveCount(
+      1,
+    );
     expect(await readCspViolations(page)).toEqual([]);
   });
 

@@ -322,4 +322,3 @@ describe('renderMarkdownToSafeHtml video sources', () => {
     expect(html).toContain('https://github.com/user-attachments/assets/abc');
   });
 });
-

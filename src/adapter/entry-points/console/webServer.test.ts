@@ -6285,7 +6285,7 @@ describe('webServer security headers', () => {
           "default-src 'none'",
           "script-src 'self' https://cdn.jsdelivr.net",
           "style-src 'self' 'unsafe-inline'",
-          "img-src data:",
+          'img-src data:',
           "connect-src 'none'",
           "base-uri 'none'",
           "form-action 'none'",

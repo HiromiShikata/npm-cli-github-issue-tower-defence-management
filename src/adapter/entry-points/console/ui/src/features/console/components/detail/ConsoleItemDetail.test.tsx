@@ -12,7 +12,6 @@ import {
 import { ConsoleReferenceLink } from '../content/ConsoleReferenceLink';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
 
-
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
