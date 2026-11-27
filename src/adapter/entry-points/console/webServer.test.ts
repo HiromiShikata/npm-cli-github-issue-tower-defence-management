@@ -684,7 +684,12 @@ describe('webServer new routes integration', () => {
     method: string,
     requestPath: string,
     body?: unknown,
-  ): Promise<{ statusCode: number; body: string }> => {
+  ): Promise<{
+    statusCode: number;
+    body: string;
+    contentType: string | undefined;
+    cacheControl: string | undefined;
+  }> => {
     const address = server.address();
     if (address === null || typeof address === 'string') {
       throw new Error('server is not listening on a TCP port');
@@ -713,6 +718,8 @@ describe('webServer new routes integration', () => {
             resolve({
               statusCode: response.statusCode ?? 0,
               body: Buffer.concat(chunks).toString('utf-8'),
+              contentType: response.headers['content-type'],
+              cacheControl: response.headers['cache-control'],
             });
           });
         },
@@ -724,6 +731,75 @@ describe('webServer new routes integration', () => {
       httpRequest.end();
     });
   };
+
+  it('returns a plain 400 response without reporting unparseable request targets', async () => {
+    const malformedTargets = [
+      '//[bad',
+      String.raw`/\^[]8;;https://interact.sh"/onmouseover="alert(1)\^Gexample\^[]8;;\^G`,
+    ];
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const consoleErrorReporter = jest.fn(async () => {});
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      consoleErrorReporter,
+      port: 0,
+    });
+    try {
+      for (const requestTarget of malformedTargets) {
+        const response = await request(server, 'GET', requestTarget);
+        expect(response.statusCode).toBe(400);
+        expect(response.contentType).toBe('text/plain; charset=utf-8');
+        expect(response.cacheControl).toBe('no-store');
+        expect(response.body).not.toContain('<html');
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        expect(consoleErrorReporter).not.toHaveBeenCalled();
+      }
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the existing projects route response', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        pjcodes: [],
+        projectUrls: null,
+        fleetTaskCreateUrl: null,
+        nameWithOwnerByPjcode: null,
+        disabledPjcodes: [],
+        workflowStoryEntries: null,
+        workflowAgentOptions: null,
+        actionableCounts: null,
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 
   const buildProject = (): Project => ({
     ...mock<Project>(),

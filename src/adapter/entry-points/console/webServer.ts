@@ -430,6 +430,14 @@ const sendUnauthorized = (response: http.ServerResponse): void => {
   response.end('Unauthorized');
 };
 
+const sendBadRequest = (response: http.ServerResponse): void => {
+  response.writeHead(400, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  response.end('Bad Request');
+};
+
 const serveBootstrapIndex = (response: http.ServerResponse): void => {
   response.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
@@ -1446,7 +1454,13 @@ export const handleWebRequest = async (
   secure = false,
   redirectQueryToken = true,
 ): Promise<void> => {
-  const requestUrl = new URL(request.url ?? '/', 'http://localhost');
+  let requestUrl: URL;
+  try {
+    requestUrl = new URL(request.url ?? '/', 'http://localhost');
+  } catch {
+    sendBadRequest(response);
+    return;
+  }
   const requestPath = requestUrl.pathname;
 
   if (hasDotSegment(requestPath)) {
