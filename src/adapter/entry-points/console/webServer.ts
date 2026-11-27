@@ -1579,6 +1579,7 @@ const CONSOLE_CONTENT_SECURITY_POLICY = [
 
 const CONSOLE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'Content-Security-Policy': CONSOLE_CONTENT_SECURITY_POLICY,
+  'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'X-Permitted-Cross-Domain-Policies': 'none',
