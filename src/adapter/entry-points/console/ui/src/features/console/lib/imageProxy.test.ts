@@ -87,6 +87,7 @@ describe('isCspAllowedImageUrl', () => {
     'https://github.com/user-attachments/assets/abc',
     'https://private-user-images.githubusercontent.com/1/2.png',
     'https://github.com/owner/repo/raw/main/a.png',
+    'https://GitHub.com/user-attachments/assets/abc',
   ])('allows %s', (src) => {
     expect(isCspAllowedImageUrl(src)).toBe(true);
   });
@@ -97,6 +98,9 @@ describe('isCspAllowedImageUrl', () => {
     'http://example.com/a.png',
     '//example.com/a.png',
     'https://githubusercontent.com.evil.example/a.png',
+    '/\\example.com/a.png',
+    '\\\\example.com/a.png',
+    '/\\\\example.com/a.png',
   ])('blocks %s', (src) => {
     expect(isCspAllowedImageUrl(src)).toBe(false);
   });

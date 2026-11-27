@@ -35,22 +35,30 @@ export const rewriteGitHubImageSources = (
 
 const DIRECTLY_LOADABLE_IMAGE_URL =
   /^https:\/\/(github\.com\/|[a-z0-9][a-z0-9.-]*\.githubusercontent\.com\/)/;
-const URL_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:/i;
+const SAME_ORIGIN_PROBE_BASE = 'https://same-origin.invalid/';
 
 // Mirrors the console Content-Security-Policy `img-src` list: data image
-// URLs, same-origin relative URLs, GitHub hosts over https, and the
-// same-origin proxy paths that proxied GitHub images are rewritten to.
+// URLs, same-origin URLs, GitHub hosts over https, and the GitHub
+// user-attachments URLs that the proxy serves. The source is resolved the way
+// the browser resolves it, so `/\host/...` and `\\host/...` are judged as the
+// cross-origin URLs they become.
 export const isCspAllowedImageUrl = (src: string): boolean => {
   if (src.startsWith('data:image/')) {
     return true;
   }
-  if (src.startsWith('//')) {
+  let resolved: URL;
+  try {
+    resolved = new URL(src, SAME_ORIGIN_PROBE_BASE);
+  } catch {
     return false;
   }
-  if (!URL_SCHEME_PATTERN.test(src)) {
+  if (resolved.origin === new URL(SAME_ORIGIN_PROBE_BASE).origin) {
     return true;
   }
-  return DIRECTLY_LOADABLE_IMAGE_URL.test(src) || isProxyableImageUrl(src);
+  return (
+    DIRECTLY_LOADABLE_IMAGE_URL.test(resolved.href) ||
+    isProxyableImageUrl(resolved.href)
+  );
 };
 
 // Replaces every <img> whose source the console CSP would block with a link
