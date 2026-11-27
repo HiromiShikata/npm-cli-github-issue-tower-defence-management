@@ -5326,6 +5326,9 @@ describe('webServer HTTPS certificate handling', () => {
       expect(response.headers['strict-transport-security']).toBeUndefined();
       expect(response.headers['x-content-type-options']).toBe('nosniff');
       expect(response.headers['x-frame-options']).toBe('DENY');
+      expect(response.headers['x-permitted-cross-domain-policies']).toBe(
+        'none',
+      );
       expect(response.headers['set-cookie']?.[0]).not.toContain('Secure');
     } finally {
       await stopWebServer(server);
@@ -5492,6 +5495,9 @@ describe('webServer HTTPS certificate handling', () => {
       );
       expect(response.headers['x-content-type-options']).toBe('nosniff');
       expect(response.headers['x-frame-options']).toBe('DENY');
+      expect(response.headers['x-permitted-cross-domain-policies']).toBe(
+        'none',
+      );
       expect(response.headers['content-security-policy']).toContain(
         "frame-ancestors 'none'",
       );
@@ -6074,6 +6080,7 @@ describe('webServer security headers', () => {
     ],
     xContentTypeOptions: 'nosniff',
     xFrameOptions: 'DENY',
+    xPermittedCrossDomainPolicies: 'none',
     permissionsPolicy:
       'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()',
     crossOriginOpenerPolicy: 'same-origin',
@@ -6123,6 +6130,8 @@ describe('webServer security headers', () => {
           : null,
       xContentTypeOptions: response.headers['x-content-type-options'],
       xFrameOptions: response.headers['x-frame-options'],
+      xPermittedCrossDomainPolicies:
+        response.headers['x-permitted-cross-domain-policies'],
       permissionsPolicy: response.headers['permissions-policy'],
       crossOriginOpenerPolicy: response.headers['cross-origin-opener-policy'],
       crossOriginEmbedderPolicy:

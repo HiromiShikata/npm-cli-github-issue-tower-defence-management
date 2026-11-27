@@ -1580,6 +1580,7 @@ const CONSOLE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'Content-Security-Policy': CONSOLE_CONTENT_SECURITY_POLICY,
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
+  'X-Permitted-Cross-Domain-Policies': 'none',
   'Permissions-Policy':
     'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()',
   'Cross-Origin-Opener-Policy': 'same-origin',
