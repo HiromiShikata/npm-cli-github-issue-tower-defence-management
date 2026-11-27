@@ -727,4 +727,28 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs batched
       ]),
     );
   });
+
+  it('sends one pull request status batch for one hundred one issues recording the same open pull request', async () => {
+    silenceConsole();
+    const issueUrls = Array.from({ length: 101 }, (_, index) =>
+      issueUrlAt(index),
+    );
+    const fetchSpy = mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: (variables) =>
+        buildRelatedBatchResponse(
+          variables,
+          issueUrls.map(() => ({ comments: [recordedComment(1)] })),
+        ),
+      slimPullRequestBatch: (variables) =>
+        buildSlimBatchResponseWithStates(variables, {}),
+      slimPullRequest: (number) => buildSlimSingleResponse(number, {}),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls(issueUrls);
+
+    expect(countBatchQueries(fetchSpy)).toBe(1);
+    expect(result).toEqual(
+      new Map(issueUrls.map((issueUrl) => [issueUrl, [pullRequestUrl(1)]])),
+    );
+  });
 });
