@@ -4,34 +4,34 @@ export type ProcessFact = {
   pid: number;
   ppid: number;
   kind: ProcessKind;
-  tokenKey: string | null;
+  workerKey: string | null;
   unfinishedClaudeSubagentCount: number | null;
 };
 
 export type RunningSubagentCounts = {
-  claudeByTokenKey: Map<string, number>;
-  codexByTokenKey: Map<string, number>;
+  claudeByWorkerKey: Map<string, number>;
+  codexByWorkerKey: Map<string, number>;
   unreadableWorkerPids: number[];
-  unmeasuredTokenKeys: string[];
+  unmeasuredWorkerKeys: string[];
 };
 
-export const countRunningSubagentsByTokenKey = (
+export const countRunningSubagentsByWorkerKey = (
   facts: ProcessFact[],
 ): RunningSubagentCounts => {
   const byPid = new Map(facts.map((fact) => [fact.pid, fact]));
-  const claudeByTokenKey = new Map<string, number>();
-  const codexByTokenKey = new Map<string, number>();
+  const claudeByWorkerKey = new Map<string, number>();
+  const codexByWorkerKey = new Map<string, number>();
   const unreadableWorkerPids: number[] = [];
-  const unmeasuredTokenKeys = new Set<string>();
+  const unmeasuredWorkerKeys = new Set<string>();
   for (const fact of facts) {
     if (fact.kind === 'claude-worker') {
       if (fact.unfinishedClaudeSubagentCount === null) {
         unreadableWorkerPids.push(fact.pid);
-        if (fact.tokenKey !== null) unmeasuredTokenKeys.add(fact.tokenKey);
-      } else if (fact.tokenKey !== null) {
-        claudeByTokenKey.set(
-          fact.tokenKey,
-          (claudeByTokenKey.get(fact.tokenKey) ?? 0) +
+        if (fact.workerKey !== null) unmeasuredWorkerKeys.add(fact.workerKey);
+      } else if (fact.workerKey !== null) {
+        claudeByWorkerKey.set(
+          fact.workerKey,
+          (claudeByWorkerKey.get(fact.workerKey) ?? 0) +
             fact.unfinishedClaudeSubagentCount,
         );
       }
@@ -43,10 +43,10 @@ export const countRunningSubagentsByTokenKey = (
       visited.add(parentPid);
       const parent = byPid.get(parentPid);
       if (parent === undefined) break;
-      if (parent.kind === 'claude-worker' && parent.tokenKey !== null) {
-        codexByTokenKey.set(
-          parent.tokenKey,
-          (codexByTokenKey.get(parent.tokenKey) ?? 0) + 1,
+      if (parent.kind === 'claude-worker' && parent.workerKey !== null) {
+        codexByWorkerKey.set(
+          parent.workerKey,
+          (codexByWorkerKey.get(parent.workerKey) ?? 0) + 1,
         );
         break;
       }
@@ -54,9 +54,9 @@ export const countRunningSubagentsByTokenKey = (
     }
   }
   return {
-    claudeByTokenKey,
-    codexByTokenKey,
+    claudeByWorkerKey,
+    codexByWorkerKey,
     unreadableWorkerPids,
-    unmeasuredTokenKeys: [...unmeasuredTokenKeys].sort(),
+    unmeasuredWorkerKeys: [...unmeasuredWorkerKeys].sort(),
   };
 };

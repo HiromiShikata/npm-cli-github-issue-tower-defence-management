@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { createHash } from 'crypto';
 import type { Issue } from '../../../domain/entities/Issue';
 import { IN_TMUX_STATUS_NAME } from '../../../domain/entities/WorkflowStatus';
 import {
@@ -20,7 +19,7 @@ import { loadTokenEntries } from '../../proxy/TokenListLoader';
 import { ProcClaudeInteractiveSessionRepository } from '../../repositories/ProcClaudeInteractiveSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { ProcRunningSubagentFactsRepository } from '../../repositories/ProcRunningSubagentFactsRepository';
-import { countRunningSubagentsByTokenKey } from '../../../domain/usecases/dashboard/CountRunningSubagentsUseCase';
+import { countRunningSubagentsByWorkerKey } from '../../../domain/usecases/dashboard/CountRunningSubagentsUseCase';
 
 const SEVEN_DAY_SONNET_LIMIT_TYPE = 'seven_day_sonnet';
 const SEVEN_DAY_OPUS_LIMIT_TYPE = 'seven_day_opus';
@@ -31,14 +30,14 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 type RemoteSubagentCounts = {
-  claudeByTokenKey: Record<string, number>;
-  codexByTokenKey: Record<string, number>;
+  claudeByIssueUrl: Record<string, number>;
+  codexByIssueUrl: Record<string, number>;
 };
 
 type RemoteSubagentMachine = {
   reachable: boolean;
   subagentCounts: RemoteSubagentCounts | null;
-  unmeasuredClaudeTokenKeys: string[];
+  unmeasuredClaudeIssueUrls: string[];
 };
 
 const parseRemoteSubagentMachines = (
@@ -49,18 +48,18 @@ const parseRemoteSubagentMachines = (
     if (!isRecord(machine)) return [];
     const subagentCounts = isRecord(machine.subagentCounts)
       ? {
-          claudeByTokenKey: numericRecord(
-            machine.subagentCounts.claudeByTokenKey,
+          claudeByIssueUrl: numericRecord(
+            machine.subagentCounts.claudeByIssueUrl,
           ),
-          codexByTokenKey: numericRecord(
-            machine.subagentCounts.codexByTokenKey,
+          codexByIssueUrl: numericRecord(
+            machine.subagentCounts.codexByIssueUrl,
           ),
         }
       : null;
-    const unmeasuredClaudeTokenKeys = Array.isArray(
-      machine.unmeasuredClaudeTokenKeys,
+    const unmeasuredClaudeIssueUrls = Array.isArray(
+      machine.unmeasuredClaudeIssueUrls,
     )
-      ? machine.unmeasuredClaudeTokenKeys.filter(
+      ? machine.unmeasuredClaudeIssueUrls.filter(
           (key): key is string => typeof key === 'string',
         )
       : [];
@@ -68,7 +67,7 @@ const parseRemoteSubagentMachines = (
       {
         reachable: machine.reachable === true,
         subagentCounts,
-        unmeasuredClaudeTokenKeys,
+        unmeasuredClaudeIssueUrls,
       },
     ];
   });
@@ -248,10 +247,18 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
   const runningSubagentFactsRepository =
     params.runningSubagentFactsRepository ??
     new ProcRunningSubagentFactsRepository();
+  const spawns = spawnRepository.listSpawns();
+  const tokensByIssueUrl = new Map<string, Set<string>>();
+  for (const spawn of spawns) {
+    if (spawn.issueUrl === null) continue;
+    const tokens = tokensByIssueUrl.get(spawn.issueUrl) ?? new Set<string>();
+    tokens.add(spawn.token);
+    tokensByIssueUrl.set(spawn.issueUrl, tokens);
+  }
   let subagentCountsMeasured = true;
   let localCounts;
   try {
-    localCounts = countRunningSubagentsByTokenKey(
+    localCounts = countRunningSubagentsByWorkerKey(
       runningSubagentFactsRepository.listFacts(),
     );
   } catch (error) {
@@ -260,18 +267,21 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     );
     subagentCountsMeasured = false;
     localCounts = {
-      claudeByTokenKey: new Map<string, number>(),
-      codexByTokenKey: new Map<string, number>(),
+      claudeByWorkerKey: new Map<string, number>(),
+      codexByWorkerKey: new Map<string, number>(),
       unreadableWorkerPids: [],
-      unmeasuredTokenKeys: [],
+      unmeasuredWorkerKeys: [],
     };
   }
   for (const pid of localCounts.unreadableWorkerPids) {
     reportError(`unreadable Claude worker subagent count for pid ${pid}`);
   }
-  const unmeasuredTokenKeys = new Set<string>(localCounts.unmeasuredTokenKeys);
-  const claudeCounts = new Map(localCounts.claudeByTokenKey);
-  const codexCounts = new Map(localCounts.codexByTokenKey);
+  const unmeasuredTokens = new Set<string>(localCounts.unmeasuredWorkerKeys);
+  const claudeCounts = new Map(localCounts.claudeByWorkerKey);
+  const codexCounts = new Map(localCounts.codexByWorkerKey);
+  const remoteClaudeByIssueUrl = new Map<string, number>();
+  const remoteCodexByIssueUrl = new Map<string, number>();
+  const remoteUnmeasuredIssueUrls = new Set<string>();
   try {
     const remote: unknown = JSON.parse(
       fs.readFileSync(
@@ -288,16 +298,22 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
         subagentCountsMeasured = false;
         continue;
       }
-      for (const key of machine.unmeasuredClaudeTokenKeys)
-        unmeasuredTokenKeys.add(key);
-      for (const [key, value] of Object.entries(
-        machine.subagentCounts.claudeByTokenKey,
+      for (const issueUrl of machine.unmeasuredClaudeIssueUrls)
+        remoteUnmeasuredIssueUrls.add(issueUrl);
+      for (const [issueUrl, value] of Object.entries(
+        machine.subagentCounts.claudeByIssueUrl,
       ))
-        claudeCounts.set(key, (claudeCounts.get(key) ?? 0) + value);
-      for (const [key, value] of Object.entries(
-        machine.subagentCounts.codexByTokenKey,
+        remoteClaudeByIssueUrl.set(
+          issueUrl,
+          (remoteClaudeByIssueUrl.get(issueUrl) ?? 0) + value,
+        );
+      for (const [issueUrl, value] of Object.entries(
+        machine.subagentCounts.codexByIssueUrl,
       ))
-        codexCounts.set(key, (codexCounts.get(key) ?? 0) + value);
+        remoteCodexByIssueUrl.set(
+          issueUrl,
+          (remoteCodexByIssueUrl.get(issueUrl) ?? 0) + value,
+        );
     }
   } catch (error) {
     const errorCode =
@@ -314,19 +330,37 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
       subagentCountsMeasured = false;
     }
   }
-  const tokenKeyOf = (token: string): string =>
-    createHash('sha256').update(token).digest('hex');
+  const remoteIssueUrls = new Set<string>([
+    ...remoteClaudeByIssueUrl.keys(),
+    ...remoteCodexByIssueUrl.keys(),
+    ...remoteUnmeasuredIssueUrls,
+  ]);
+  for (const issueUrl of remoteIssueUrls) {
+    const tokens = [...(tokensByIssueUrl.get(issueUrl) ?? [])];
+    if (tokens.length !== 1) {
+      reportError(
+        `remote subagent counts for issue ${issueUrl} match ${tokens.length} local spawns and were not counted`,
+      );
+      continue;
+    }
+    const token = tokens[0] ?? '';
+    claudeCounts.set(
+      token,
+      (claudeCounts.get(token) ?? 0) +
+        (remoteClaudeByIssueUrl.get(issueUrl) ?? 0),
+    );
+    codexCounts.set(
+      token,
+      (codexCounts.get(token) ?? 0) +
+        (remoteCodexByIssueUrl.get(issueUrl) ?? 0),
+    );
+    if (remoteUnmeasuredIssueUrls.has(issueUrl)) unmeasuredTokens.add(token);
+  }
   const claudeSubagentCountByToken = new Map(
-    entries.map((entry) => [
-      entry.token,
-      claudeCounts.get(tokenKeyOf(entry.token)) ?? 0,
-    ]),
+    entries.map((entry) => [entry.token, claudeCounts.get(entry.token) ?? 0]),
   );
   const codexSubagentCountByToken = new Map(
-    entries.map((entry) => [
-      entry.token,
-      codexCounts.get(tokenKeyOf(entry.token)) ?? 0,
-    ]),
+    entries.map((entry) => [entry.token, codexCounts.get(entry.token) ?? 0]),
   );
 
   const tokenInputs: TokenStatusInput[] = entries.map((entry) => ({
@@ -336,7 +370,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
   }));
 
   const distinctLogPathsByToken = new Map<string, Set<string>>();
-  for (const spawn of spawnRepository.listSpawns()) {
+  for (const spawn of spawns) {
     const logPaths =
       distinctLogPathsByToken.get(spawn.token) ?? new Set<string>();
     logPaths.add(spawn.logPath);
@@ -405,7 +439,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     subagentCountsMeasured,
     unmeasuredTokens: new Set(
       entries
-        .filter((entry) => unmeasuredTokenKeys.has(tokenKeyOf(entry.token)))
+        .filter((entry) => unmeasuredTokens.has(entry.token))
         .map((entry) => entry.token),
     ),
     nowEpochSeconds: Math.floor(now.getTime() / 1000),

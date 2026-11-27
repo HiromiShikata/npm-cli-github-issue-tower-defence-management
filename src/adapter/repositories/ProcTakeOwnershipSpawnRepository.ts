@@ -36,9 +36,18 @@ export class ProcTakeOwnershipSpawnRepository implements TakeOwnershipSpawnRepos
     this.workerSessionReader.listWorkerSessions().flatMap((session) =>
       session.workerProcesses.flatMap((workerProcess) => {
         const logPath = extractLogPath(workerProcess.rawCommandLine);
+        const issueUrlMatch = workerProcess.rawCommandLine.match(
+          TAKE_OWNERSHIP_ISSUE_URL_PATTERN,
+        );
         return logPath === null
           ? []
-          : [{ token: session.sessionToken, logPath }];
+          : [
+              {
+                token: session.sessionToken,
+                logPath,
+                issueUrl: issueUrlMatch?.[1] ?? null,
+              },
+            ];
       }),
     );
 

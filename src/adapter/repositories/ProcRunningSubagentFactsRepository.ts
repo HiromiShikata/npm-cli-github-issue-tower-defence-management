@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -92,12 +91,7 @@ export class ProcRunningSubagentFactsRepository {
           : codex
             ? 'codex-launcher'
             : 'other';
-        const tokenKey = worker
-          ? crypto
-              .createHash('sha256')
-              .update(environment.CLAUDE_CODE_OAUTH_TOKEN)
-              .digest('hex')
-          : null;
+        const workerKey = worker ? environment.CLAUDE_CODE_OAUTH_TOKEN : null;
         let unfinishedClaudeSubagentCount: number | null = null;
         if (worker) {
           try {
@@ -156,7 +150,7 @@ export class ProcRunningSubagentFactsRepository {
           pid,
           ppid,
           kind,
-          tokenKey,
+          workerKey,
           unfinishedClaudeSubagentCount,
         });
       } catch {

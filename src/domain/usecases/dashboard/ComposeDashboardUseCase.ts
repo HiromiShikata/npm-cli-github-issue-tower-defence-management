@@ -428,7 +428,7 @@ export const formatTokenSectionHeaderLine = (): string =>
   TOKEN_SEGMENT_SEPARATOR +
   padEnd('pp', TOKEN_UTILIZATION_WIDTH, ' ') +
   TOKEN_SEGMENT_SEPARATOR +
-  padStart('h', 2) +
+  'h' +
   TOKEN_SEGMENT_SEPARATOR +
   'sa' +
   TOKEN_SEGMENT_SEPARATOR +
@@ -467,7 +467,7 @@ export const formatTokenSessionTotalLine = (
     padEnd('', TOKEN_SESSION_COLUMN_START, ' ') +
     padStart(capTwoDigits(totalPrep), 2) +
     ' ' +
-    padStart(capTwoDigits(totalHum), 2) +
+    capTwoDigits(totalHum) +
     ' ' +
     formatSubagentCount(totalClaudeSubagents) +
     ' ' +
@@ -507,7 +507,7 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
     token.sevenDayUtilizationPercent,
   );
   const prep = padStart(capTwoDigits(token.prep), 2);
-  const hum = padStart(capTwoDigits(token.hum), 2);
+  const hum = capTwoDigits(token.hum);
   const claudeSubagentCount = formatSubagentCount(token.claudeSubagentCount);
   const codexSubagentCount = formatSubagentCount(token.codexSubagentCount);
   return joinTokenRowSegments([

@@ -11,7 +11,7 @@ import {
   parseMemoryUsedPercent,
 } from '../../repositories/ProcHostMetricsRepository';
 import {
-  countRunningSubagentsByTokenKey,
+  countRunningSubagentsByWorkerKey,
   ProcessFact,
 } from '../../../domain/usecases/dashboard/CountRunningSubagentsUseCase';
 
@@ -60,29 +60,26 @@ export const REMOTE_SUBAGENT_FACTS_COMMAND = `for directory in "\${TDPM_PROC_DIR
   argv=$(cat "$directory/cmdline" 2>/dev/null) || continue
   environment=$(cat "$directory/environ" 2>/dev/null || true)
   first=$(cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '1p')
-  if [ "\${first##*/}" = claude ] && cat "$directory/cmdline" | tr '\\0' '\\n' | awk 'p && /^Take ownership of/ { found=1 } /-p$/ { p=1; next } { p=0 } END { exit found ? 0 : 1 }'; then
-    token=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CODE_OAUTH_TOKEN=//p')
-    if [ -n "$token" ]; then
-      key=$(printf '%s' "$token" | sha256sum | cut -d ' ' -f1)
-      config=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CONFIG_DIR=//p')
-      home=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^HOME=//p')
-      [ -n "$config" ] || config="$home/.claude"
-      session=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CODE_SESSION_ID=//p')
-      printf '%s\\t%s\\tclaude-worker\\t%s\\t-\\n' "$pid" "$ppid" "$key"
-      for project in "$config"/projects/*; do
-        [ -d "$project" ] || continue
-        if [ -n "$session" ]; then sessions="$project/$session"; else sessions="$project"/*; fi
-        for sessionDirectory in $sessions; do
-          [ -d "$sessionDirectory/subagents" ] || continue
-          for meta in "$sessionDirectory/subagents"/*.meta.json; do
-            [ -f "$meta" ] || continue
-            encoded=$(base64 < "$meta" 2>/dev/null | tr -d '\\n') && [ -n "$encoded" ] || encoded='!'
-            printf '%s\\tmeta\\t%s\\n' "$pid" "$encoded"
-          done
+  if [ "\${first##*/}" = claude ] && tr '\\0' '\\n' < "$directory/cmdline" | awk 'prev == "-p" && /^Take ownership of / { found = 1 } { prev = $0 } END { exit found ? 0 : 1 }'; then
+    issueUrl=$(tr '\\0' '\\n' < "$directory/cmdline" | awk 'prev == "-p" && /^Take ownership of / { sub(/^Take ownership of /, ""); print; exit } { prev = $0 }')
+    config=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CONFIG_DIR=//p')
+    home=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^HOME=//p')
+    [ -n "$config" ] || config="$home/.claude"
+    session=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CODE_SESSION_ID=//p')
+    printf '%s\\t%s\\tclaude-worker\\t%s\\t-\\n' "$pid" "$ppid" "$issueUrl"
+    for project in "$config"/projects/*; do
+      [ -d "$project" ] || continue
+      if [ -n "$session" ]; then sessions="$project/$session"; else sessions="$project"/*; fi
+      for sessionDirectory in $sessions; do
+        [ -d "$sessionDirectory/subagents" ] || continue
+        for meta in "$sessionDirectory/subagents"/*.meta.json; do
+          [ -f "$meta" ] || continue
+          encoded=$(base64 < "$meta" 2>/dev/null | tr -d '\\n') && [ -n "$encoded" ] || encoded='!'
+          printf '%s\\tmeta\\t%s\\n' "$pid" "$encoded"
         done
       done
-      continue
-    fi
+    done
+    continue
   fi
   
 if [ "\${first##*/}" = node ] && cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '2p' | grep -q '/codex$' && [ "$(cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '3p')" = exec ]; then printf '%s\\t%s\\tcodex-launcher\\t-\\t-\\n' "$pid" "$ppid"; else printf '%s\\t%s\\tother\\t-\\t-\\n' "$pid" "$ppid"; fi; done`;
@@ -96,8 +93,8 @@ export type RemoteMachineMetrics = {
 };
 
 export type RemoteSubagentCounts = {
-  claudeByTokenKey: Record<string, number>;
-  codexByTokenKey: Record<string, number>;
+  claudeByIssueUrl: Record<string, number>;
+  codexByIssueUrl: Record<string, number>;
 };
 
 const parseRemoteMetricsOutputSections = (stdout: string): string[] => {
@@ -150,12 +147,14 @@ const countUnfinishedFromEncodedMetadata = (
   return count;
 };
 
+const WORKER_ISSUE_URL_FIELD_PATTERN = /^https:\/\/\S+$/;
+
 export const parseRemoteSubagentFactsOutput = (
   stdout: string,
 ): {
   subagentCounts: RemoteSubagentCounts;
   unreadableWorkerPids: number[];
-  unmeasuredClaudeTokenKeys: string[];
+  unmeasuredIssueUrls: string[];
 } => {
   const processRows: ProcessFact[] = [];
   const encodedMetadataByPid = new Map<number, string[]>();
@@ -171,7 +170,7 @@ export const parseRemoteSubagentFactsOutput = (
       ]);
       continue;
     }
-    const [pid, ppid, kind, tokenKey, unfinished] = fields;
+    const [pid, ppid, kind, issueUrl, unfinished] = fields;
     if (
       fields.length !== 5 ||
       !/^\d+$/.test(pid ?? '') ||
@@ -179,19 +178,22 @@ export const parseRemoteSubagentFactsOutput = (
       (kind !== 'claude-worker' &&
         kind !== 'codex-launcher' &&
         kind !== 'other') ||
-      tokenKey === undefined ||
+      issueUrl === undefined ||
       unfinished !== '-'
     )
       throw new Error('remote subagent facts are malformed');
-    if (kind === 'claude-worker' && !/^[0-9a-f]{64}$/.test(tokenKey))
+    if (
+      kind === 'claude-worker' &&
+      !WORKER_ISSUE_URL_FIELD_PATTERN.test(issueUrl)
+    )
       throw new Error('remote subagent facts are malformed');
-    if (kind !== 'claude-worker' && tokenKey !== '-')
+    if (kind !== 'claude-worker' && issueUrl !== '-')
       throw new Error('remote subagent facts are malformed');
     processRows.push({
       pid: Number(pid),
       ppid: Number(ppid),
       kind,
-      tokenKey: tokenKey === '-' ? null : tokenKey,
+      workerKey: issueUrl === '-' ? null : issueUrl,
       unfinishedClaudeSubagentCount: null,
     });
   }
@@ -214,14 +216,14 @@ export const parseRemoteSubagentFactsOutput = (
     if (!workerPids.has(pid))
       throw new Error('remote subagent facts are malformed');
   }
-  const counts = countRunningSubagentsByTokenKey(facts);
+  const counts = countRunningSubagentsByWorkerKey(facts);
   return {
     subagentCounts: {
-      claudeByTokenKey: Object.fromEntries(counts.claudeByTokenKey),
-      codexByTokenKey: Object.fromEntries(counts.codexByTokenKey),
+      claudeByIssueUrl: Object.fromEntries(counts.claudeByWorkerKey),
+      codexByIssueUrl: Object.fromEntries(counts.codexByWorkerKey),
     },
     unreadableWorkerPids: counts.unreadableWorkerPids,
-    unmeasuredClaudeTokenKeys: counts.unmeasuredTokenKeys,
+    unmeasuredIssueUrls: counts.unmeasuredWorkerKeys,
   };
 };
 
@@ -278,10 +280,10 @@ export type RemoteMachineStatusEntry = {
   load: [number, number, number] | null;
   capturedAt: string;
   subagentCounts?: {
-    claudeByTokenKey: Record<string, number>;
-    codexByTokenKey: Record<string, number>;
+    claudeByIssueUrl: Record<string, number>;
+    codexByIssueUrl: Record<string, number>;
   } | null;
-  unmeasuredClaudeTokenKeys?: string[];
+  unmeasuredClaudeIssueUrls?: string[];
 };
 export type RemoteMachineStatusFile = {
   capturedAt: string;
@@ -415,7 +417,7 @@ export const writeRemoteMachineStatus = async (params: {
       continue;
     }
     let subagentCounts: RemoteSubagentCounts | null = null;
-    let unmeasuredClaudeTokenKeys: string[] = [];
+    let unmeasuredClaudeIssueUrls: string[] = [];
     try {
       const measured = parseRemoteSubagentFactsOutput(
         await runRemoteCommand(
@@ -429,7 +431,7 @@ export const writeRemoteMachineStatus = async (params: {
         );
       }
       subagentCounts = measured.subagentCounts;
-      unmeasuredClaudeTokenKeys = measured.unmeasuredClaudeTokenKeys;
+      unmeasuredClaudeIssueUrls = measured.unmeasuredIssueUrls;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       reportError(
@@ -441,7 +443,7 @@ export const writeRemoteMachineStatus = async (params: {
       reachable: true,
       ...metrics,
       subagentCounts,
-      unmeasuredClaudeTokenKeys,
+      unmeasuredClaudeIssueUrls,
       capturedAt,
     });
   }
