@@ -1,3 +1,10 @@
+# [2.216.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.215.1...v2.216.0) (2026-11-27)
+
+
+### Features
+
+* **schedule:** add opt-in to add manager-assigned issues from any author ([#3789](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3789)) ([dc2536f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dc2536f1bdd56f84b0e7d4fac35d3fb92c4e90ee))
+
 ## [2.215.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.215.0...v2.215.1) (2026-11-27)
 
 
