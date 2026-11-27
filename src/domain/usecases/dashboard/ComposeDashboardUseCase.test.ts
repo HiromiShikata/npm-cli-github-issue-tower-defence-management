@@ -1220,7 +1220,9 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     const aggregatePart = ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63';
     const combined = lines.find((line) => line.startsWith(aggregatePart));
     expect(combined).toBeDefined();
-    expect(combined?.slice(TOKEN_SESSION_COLUMN_START).trim()).toBe('0 0  0  0');
+    expect(combined?.slice(TOKEN_SESSION_COLUMN_START).trim()).toBe(
+      '0 0  0  0',
+    );
     expect(lines.filter((line) => line === aggregatePart)).toHaveLength(0);
   });
 
@@ -1353,11 +1355,45 @@ describe('per-token subagent dashboard columns', () => {
     },
     {
       name: 'caps subagent counts at 99',
-      token: { name: 'alpha', claudeSubagentCount: 150, codexSubagentCount: 100 },
+      token: {
+        name: 'alpha',
+        claudeSubagentCount: 150,
+        codexSubagentCount: 100,
+      },
       expected: '🟢ha  0 0d00h00  0 0 99 99',
+    },
+    {
+      name: 'renders a dash in a Claude subagent column whose count is unavailable',
+      token: {
+        name: 'alpha',
+        claudeSubagentCount: null,
+        codexSubagentCount: 3,
+      },
+      expected: '🟢ha  0 0d00h00  0 0  -  3',
+    },
+    {
+      name: 'renders a dash in a Codex subagent column whose count is unavailable',
+      token: {
+        name: 'alpha',
+        claudeSubagentCount: 6,
+        codexSubagentCount: null,
+      },
+      expected: '🟢ha  0 0d00h00  0 0  6  -',
     },
   ])('$name', ({ token, expected }) => {
     expect(formatTokenRowLine(tokenStatus(token))).toBe(expected);
+  });
+
+  it('renders a dash in a subagent total column when any token in that column is unavailable', () => {
+    expect(
+      formatTokenSessionTotalLine(
+        [
+          tokenStatus({ claudeSubagentCount: null, codexSubagentCount: 3 }),
+          tokenStatus({ claudeSubagentCount: 2, codexSubagentCount: 4 }),
+        ],
+        5,
+      ),
+    ).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 5 0  -  7');
   });
 
   it('adds subagent sums without adding Codex workers to those sums', () => {

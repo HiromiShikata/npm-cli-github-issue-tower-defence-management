@@ -71,6 +71,8 @@ const tokenStatus = (overrides: Partial<TokenStatus>): TokenStatus => ({
   color: 'G',
   prep: 0,
   hum: 0,
+  claudeSubagentCount: 0,
+  codexSubagentCount: 0,
   ...overrides,
 });
 

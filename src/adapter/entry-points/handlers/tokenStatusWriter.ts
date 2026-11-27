@@ -234,6 +234,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
   const runningSubagentFactsRepository =
     params.runningSubagentFactsRepository ??
     new ProcRunningSubagentFactsRepository();
+  let subagentCountsMeasured = true;
   let localCounts;
   try {
     localCounts = countRunningSubagentsByTokenKey(
@@ -243,6 +244,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     reportError(
       `could not read local subagent facts: ${error instanceof Error ? error.message : String(error)}`,
     );
+    subagentCountsMeasured = false;
     localCounts = {
       claudeByTokenKey: new Map<string, number>(),
       codexByTokenKey: new Map<string, number>(),
@@ -251,6 +253,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
   }
   for (const pid of localCounts.unreadableWorkerPids) {
     reportError(`unreadable Claude worker subagent count for pid ${pid}`);
+    subagentCountsMeasured = false;
   }
   const claudeCounts = new Map(localCounts.claudeByTokenKey);
   const codexCounts = new Map(localCounts.codexByTokenKey);
@@ -266,8 +269,10 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
         !machine.reachable ||
         machine.subagentCounts === null ||
         machine.subagentCounts === undefined
-      )
+      ) {
+        subagentCountsMeasured = false;
         continue;
+      }
       for (const [key, value] of Object.entries(
         machine.subagentCounts.claudeByTokenKey,
       ))
@@ -279,7 +284,8 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     }
   } catch (error) {
     const errorCode =
-      error instanceof Error &&
+      typeof error === 'object' &&
+      error !== null &&
       'code' in error &&
       typeof error.code === 'string'
         ? error.code
@@ -288,6 +294,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
       reportError(
         `could not read remote machine subagent counts: ${error instanceof Error ? error.message : String(error)}`,
       );
+      subagentCountsMeasured = false;
     }
   }
   const tokenKeyOf = (token: string): string =>
@@ -378,6 +385,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     humCountByToken,
     claudeSubagentCountByToken,
     codexSubagentCountByToken,
+    subagentCountsMeasured,
     nowEpochSeconds: Math.floor(now.getTime() / 1000),
   });
 

@@ -434,6 +434,18 @@ export const formatTokenSectionHeaderLine = (): string =>
   TOKEN_SEGMENT_SEPARATOR +
   'sx';
 
+const UNAVAILABLE_SUBAGENT_COUNT_TEXT = '-';
+
+const formatSubagentCount = (count: number | null): string =>
+  count === null
+    ? padStart(UNAVAILABLE_SUBAGENT_COUNT_TEXT, 2)
+    : padStart(capTwoDigits(count), 2);
+
+const sumSubagentCounts = (counts: (number | null)[]): number | null =>
+  counts.some((count) => count === null)
+    ? null
+    : counts.reduce<number>((sum, count) => sum + (count ?? 0), 0);
+
 export const formatTokenSessionTotalLine = (
   tokens: TokenStatus[],
   runningCodexWorkerCount: number | null,
@@ -445,13 +457,11 @@ export const formatTokenSessionTotalLine = (
   const totalPrep =
     tokens.reduce((sum, t) => sum + t.prep, 0) + codexWorkerCount;
   const totalHum = tokens.reduce((sum, t) => sum + t.hum, 0);
-  const totalClaudeSubagents = tokens.reduce(
-    (sum, token) => sum + (token.claudeSubagentCount ?? 0),
-    0,
+  const totalClaudeSubagents = sumSubagentCounts(
+    tokens.map((token) => token.claudeSubagentCount),
   );
-  const totalCodexSubagents = tokens.reduce(
-    (sum, token) => sum + (token.codexSubagentCount ?? 0),
-    0,
+  const totalCodexSubagents = sumSubagentCounts(
+    tokens.map((token) => token.codexSubagentCount),
   );
   return (
     padEnd('', TOKEN_SESSION_COLUMN_START, ' ') +
@@ -459,9 +469,9 @@ export const formatTokenSessionTotalLine = (
     ' ' +
     capTwoDigits(totalHum) +
     ' ' +
-    padStart(capTwoDigits(totalClaudeSubagents), 2) +
+    formatSubagentCount(totalClaudeSubagents) +
     ' ' +
-    padStart(capTwoDigits(totalCodexSubagents), 2)
+    formatSubagentCount(totalCodexSubagents)
   );
 };
 
@@ -498,14 +508,8 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
   );
   const prep = padStart(capTwoDigits(token.prep), 2);
   const hum = capTwoDigits(token.hum);
-  const claudeSubagentCount = padStart(
-    capTwoDigits(token.claudeSubagentCount ?? 0),
-    2,
-  );
-  const codexSubagentCount = padStart(
-    capTwoDigits(token.codexSubagentCount ?? 0),
-    2,
-  );
+  const claudeSubagentCount = formatSubagentCount(token.claudeSubagentCount);
+  const codexSubagentCount = formatSubagentCount(token.codexSubagentCount);
   return joinTokenRowSegments([
     `${dot}${name}`,
     sevenDayUtilization,

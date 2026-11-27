@@ -38,8 +38,8 @@ export type TokenStatus = {
   color: TokenStatusColor;
   prep: number;
   hum: number;
-  claudeSubagentCount?: number;
-  codexSubagentCount?: number;
+  claudeSubagentCount: number | null;
+  codexSubagentCount: number | null;
 };
 
 export type SevenDayWindowAggregate = {
@@ -60,6 +60,7 @@ export type GenerateTokenStatusInput = {
   humCountByToken: Map<string, number>;
   claudeSubagentCountByToken?: Map<string, number>;
   codexSubagentCountByToken?: Map<string, number>;
+  subagentCountsMeasured?: boolean;
   nowEpochSeconds: number;
 };
 
@@ -127,6 +128,7 @@ export class GenerateTokenStatusUseCase {
       humCountByToken,
       claudeSubagentCountByToken = new Map<string, number>(),
       codexSubagentCountByToken = new Map<string, number>(),
+      subagentCountsMeasured = true,
       nowEpochSeconds,
     } = input;
     return tokens.map((tokenInput) => {
@@ -144,10 +146,12 @@ export class GenerateTokenStatusUseCase {
         color: judgeTokenColor(decision),
         prep: prepCountByToken.get(tokenInput.token) ?? 0,
         hum: humCountByToken.get(tokenInput.token) ?? 0,
-        claudeSubagentCount:
-          claudeSubagentCountByToken.get(tokenInput.token) ?? 0,
-        codexSubagentCount:
-          codexSubagentCountByToken.get(tokenInput.token) ?? 0,
+        claudeSubagentCount: subagentCountsMeasured
+          ? (claudeSubagentCountByToken.get(tokenInput.token) ?? 0)
+          : null,
+        codexSubagentCount: subagentCountsMeasured
+          ? (codexSubagentCountByToken.get(tokenInput.token) ?? 0)
+          : null,
       };
     });
   };

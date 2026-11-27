@@ -333,19 +333,89 @@ describe('buildComposeDashboardInput', () => {
     }
   });
 
-  it.each([
-    ['missing Claude subagent count', { codexSubagentCount: 1 }],
-    ['negative Claude subagent count', { claudeSubagentCount: -1, codexSubagentCount: 1 }],
-    ['non-integer Codex subagent count', { claudeSubagentCount: 1, codexSubagentCount: 1.5 }],
-  ])('rejects %s as malformed', (_name, counts) => {
+  it('keeps every token row of a token-status.json written before the subagent columns existed', () => {
     const dataDir = makeDataDir();
     try {
-      fs.writeFileSync(path.join(dataDir, 'token-status.json'), JSON.stringify({ tokens: [{ name: 'alpha', ...counts }] }));
-      expect(buildComposeDashboardInput({ dashboardDataDir: dataDir, projectNames: [] }).tokens).toEqual([]);
+      fs.writeFileSync(
+        path.join(dataDir, 'token-status.json'),
+        JSON.stringify({
+          tokens: [
+            {
+              name: 'alice',
+              fiveHourUtilizationPercent: 10,
+              fiveHourResetSeconds: 3600,
+              sevenDayUtilizationPercent: 12,
+              sevenDayResetSeconds: 432000,
+              color: 'G',
+              prep: 2,
+              hum: 1,
+            },
+          ],
+          capturedAt: 'x',
+        }),
+      );
+      expect(
+        buildComposeDashboardInput({
+          dashboardDataDir: dataDir,
+          projectNames: [],
+        }).tokens,
+      ).toEqual([
+        {
+          name: 'alice',
+          fiveHourUtilizationPercent: 10,
+          fiveHourResetSeconds: 3600,
+          sevenDayUtilizationPercent: 12,
+          sevenDayResetSeconds: 432000,
+          color: 'G',
+          prep: 2,
+          hum: 1,
+          claudeSubagentCount: null,
+          codexSubagentCount: null,
+        },
+      ]);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
+
+  it.each([
+    [
+      'missing Claude subagent count',
+      { codexSubagentCount: 1 },
+      { claudeSubagentCount: null, codexSubagentCount: 1 },
+    ],
+    [
+      'negative Claude subagent count',
+      { claudeSubagentCount: -1, codexSubagentCount: 1 },
+      { claudeSubagentCount: null, codexSubagentCount: 1 },
+    ],
+    [
+      'non-integer Codex subagent count',
+      { claudeSubagentCount: 1, codexSubagentCount: 1.5 },
+      { claudeSubagentCount: 1, codexSubagentCount: null },
+    ],
+  ])(
+    'reads a token row with %s as an unavailable count instead of dropping it',
+    (_name, counts, expectedCounts) => {
+      const dataDir = makeDataDir();
+      try {
+        fs.writeFileSync(
+          path.join(dataDir, 'token-status.json'),
+          JSON.stringify({
+            tokens: [{ name: 'alpha', prep: 0, hum: 0, ...counts }],
+          }),
+        );
+        const tokens = buildComposeDashboardInput({
+          dashboardDataDir: dataDir,
+          projectNames: [],
+        }).tokens;
+        expect(tokens).toHaveLength(1);
+        expect(tokens[0]).toMatchObject(expectedCounts);
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('reads the seven day window aggregate from token-status.json', () => {
     const dataDir = makeDataDir();

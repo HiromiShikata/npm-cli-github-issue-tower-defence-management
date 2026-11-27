@@ -2459,9 +2459,10 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
     '<tt>&nbsp;&nbsp;pj&nbsp;td&nbsp;ao&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
     '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟢in&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7d&nbsp;&nbsp;&nbsp;reset&nbsp;pp&nbsp;h&nbsp;sa&nbsp;sx</tt><br>\n' +
     '<tt></tt><br>\n' +
-    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
-    '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1</tt><br>\n';
+    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;1&nbsp;&nbsp;-&nbsp;&nbsp;-</tt><br>\n' +
+    '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1&nbsp;&nbsp;-&nbsp;&nbsp;-</tt><br>\n';
 
   const staticDashboardRaw =
     '<tt>STATIC&nbsp;DASHBOARD</tt><br>\n<tt>pj&nbsp;unr&nbsp;tdo</tt><br>\n';

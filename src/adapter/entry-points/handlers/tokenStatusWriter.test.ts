@@ -102,6 +102,7 @@ describe('writeTokenStatus', () => {
     ];
 
     writeTokenStatus({
+      runningSubagentFactsRepository: { listFacts: () => [] },
       dashboardDataDir: dir,
       tokenListJsonPath: tokenListPath,
       issues: [
@@ -189,6 +190,7 @@ describe('writeTokenStatus', () => {
     };
 
     writeTokenStatus({
+      runningSubagentFactsRepository: { listFacts: () => [] },
       dashboardDataDir: dir,
       tokenListJsonPath: tokenListPath,
       pjcode: 'projectA',
@@ -203,6 +205,7 @@ describe('writeTokenStatus', () => {
     });
 
     writeTokenStatus({
+      runningSubagentFactsRepository: { listFacts: () => [] },
       dashboardDataDir: dir,
       tokenListJsonPath: tokenListPath,
       pjcode: 'projectB',
@@ -252,6 +255,7 @@ describe('writeTokenStatus', () => {
 
   it('is a no-op when dashboardDataDir is unset', () => {
     writeTokenStatus({
+      runningSubagentFactsRepository: { listFacts: () => [] },
       dashboardDataDir: null,
       tokenListJsonPath: tokenListPath,
       issues: [],
@@ -264,6 +268,7 @@ describe('writeTokenStatus', () => {
 
   it('is a no-op when the token list path is unset', () => {
     writeTokenStatus({
+      runningSubagentFactsRepository: { listFacts: () => [] },
       dashboardDataDir: dir,
       tokenListJsonPath: null,
       issues: [],
@@ -277,22 +282,56 @@ describe('writeTokenStatus', () => {
 
 describe('writeTokenStatus subagent counts', () => {
   it('combines injected local and remote counts and ignores unmatched token keys', () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'token-subagents-'));
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'token-subagents-'),
+    );
     const tokenListPath = path.join(directory, 'tokens.json');
     try {
-      fs.writeFileSync(tokenListPath, JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]));
-      fs.writeFileSync(path.join(directory, 'remote-machine-status.json'), JSON.stringify({ machines: [{ reachable: true, subagentCounts: { claudeByTokenKey: {}, codexByTokenKey: {} } }] }));
+      fs.writeFileSync(
+        tokenListPath,
+        JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]),
+      );
+      fs.writeFileSync(
+        path.join(directory, 'remote-machine-status.json'),
+        JSON.stringify({
+          machines: [
+            {
+              reachable: true,
+              subagentCounts: { claudeByTokenKey: {}, codexByTokenKey: {} },
+            },
+          ],
+        }),
+      );
       writeTokenStatus({
         dashboardDataDir: directory,
         tokenListJsonPath: tokenListPath,
         issues: [],
         readSnapshot: () => null,
         interactiveSessionRepository: { listInteractiveSessions: () => [] },
-        spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
-        runningSubagentFactsRepository: { listFacts: () => [
-          { pid: 10, ppid: 1, kind: 'claude-worker', tokenKey: createHash('sha256').update('token-alpha').digest('hex'), unfinishedClaudeSubagentCount: 3 },
-          { pid: 11, ppid: 10, kind: 'codex-launcher', tokenKey: null, unfinishedClaudeSubagentCount: null },
-        ] },
+        spawnRepository: {
+          listSpawns: () => [],
+          listRunningIssueUrls: () => [],
+        },
+        runningSubagentFactsRepository: {
+          listFacts: () => [
+            {
+              pid: 10,
+              ppid: 1,
+              kind: 'claude-worker',
+              tokenKey: createHash('sha256')
+                .update('token-alpha')
+                .digest('hex'),
+              unfinishedClaudeSubagentCount: 3,
+            },
+            {
+              pid: 11,
+              ppid: 10,
+              kind: 'codex-launcher',
+              tokenKey: null,
+              unfinishedClaudeSubagentCount: null,
+            },
+          ],
+        },
       });
       const written = readJson(path.join(directory, 'token-status.json'));
       if (
@@ -303,7 +342,10 @@ describe('writeTokenStatus subagent counts', () => {
       ) {
         throw new Error('token-status.json tokens are malformed');
       }
-      expect(written.tokens[0]).toMatchObject({ claudeSubagentCount: 3, codexSubagentCount: 1 });
+      expect(written.tokens[0]).toMatchObject({
+        claudeSubagentCount: 3,
+        codexSubagentCount: 1,
+      });
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
     }
@@ -311,22 +353,42 @@ describe('writeTokenStatus subagent counts', () => {
 
   it('logs every unreadable worker pid without logging token values', () => {
     const reportError = jest.fn();
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'token-subagents-'));
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'token-subagents-'),
+    );
     const tokenListPath = path.join(directory, 'tokens.json');
     try {
-      fs.writeFileSync(tokenListPath, JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]));
+      fs.writeFileSync(
+        tokenListPath,
+        JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]),
+      );
       writeTokenStatus({
         dashboardDataDir: directory,
         tokenListJsonPath: tokenListPath,
         issues: [],
         readSnapshot: () => null,
         interactiveSessionRepository: { listInteractiveSessions: () => [] },
-        spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
-        runningSubagentFactsRepository: { listFacts: () => [{ pid: 10, ppid: 1, kind: 'claude-worker', tokenKey: null, unfinishedClaudeSubagentCount: null }] },
+        spawnRepository: {
+          listSpawns: () => [],
+          listRunningIssueUrls: () => [],
+        },
+        runningSubagentFactsRepository: {
+          listFacts: () => [
+            {
+              pid: 10,
+              ppid: 1,
+              kind: 'claude-worker',
+              tokenKey: null,
+              unfinishedClaudeSubagentCount: null,
+            },
+          ],
+        },
         reportError,
       });
       expect(reportError).toHaveBeenCalledWith(expect.stringContaining('10'));
-      expect(reportError.mock.calls.flat().join(' ')).not.toContain('token-alpha');
+      expect(reportError.mock.calls.flat().join(' ')).not.toContain(
+        'token-alpha',
+      );
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
     }
