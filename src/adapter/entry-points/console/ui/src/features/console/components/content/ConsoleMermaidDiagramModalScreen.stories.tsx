@@ -15,5 +15,9 @@ export default meta;
 type Story = StoryObj<typeof ConsoleMermaidDiagramModalScreen>;
 
 export const WideDiagram: Story = {
-  args: { code: wideDiagramCode, frameSource: MERMAID_FRAME_MOCK_SOURCE, onClose: () => {} },
+  args: {
+    code: wideDiagramCode,
+    frameSource: MERMAID_FRAME_MOCK_SOURCE,
+    onClose: () => {},
+  },
 };

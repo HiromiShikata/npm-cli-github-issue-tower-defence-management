@@ -198,4 +198,3 @@ describe('ConsoleMermaidFrame', () => {
     expect(getFrame().getAttribute('src')).toBe('data:text/html,mock');
   });
 });
-

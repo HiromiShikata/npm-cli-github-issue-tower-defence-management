@@ -220,7 +220,9 @@ describe('replaceBlockedMediaWithLinks poster', () => {
     );
     expect(result).toContain('<video');
     expect(result).not.toContain('poster.png');
-    expect(result).toContain('src="https://github.com/user-attachments/assets/abc"');
+    expect(result).toContain(
+      'src="https://github.com/user-attachments/assets/abc"',
+    );
   });
 
   it('keeps a video poster hosted on GitHub', () => {
@@ -229,4 +231,3 @@ describe('replaceBlockedMediaWithLinks poster', () => {
     expect(replaceBlockedMediaWithLinks(html)).toBe(html);
   });
 });
-

@@ -107,4 +107,3 @@ export const createMermaidFrameMessageHandler =
       deps.post(response);
     });
   };
-

@@ -1,7 +1,5 @@
 import { loadMermaidApi, type MermaidApi } from './mermaidFrameLoader';
-import type {
-  MermaidFrameResponse,
-} from './mermaidFrameProtocol';
+import type { MermaidFrameResponse } from './mermaidFrameProtocol';
 import {
   createMermaidFrameMessageHandler,
   handleMermaidFrameRequest,

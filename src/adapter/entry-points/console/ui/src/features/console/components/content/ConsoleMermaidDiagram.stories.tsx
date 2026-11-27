@@ -13,7 +13,10 @@ export default meta;
 type Story = StoryObj<typeof ConsoleMermaidDiagram>;
 
 export const SequenceDiagram: Story = {
-  args: { code: consoleMermaidCodeFixture, frameSource: MERMAID_FRAME_MOCK_SOURCE },
+  args: {
+    code: consoleMermaidCodeFixture,
+    frameSource: MERMAID_FRAME_MOCK_SOURCE,
+  },
 };
 
 export const FlowDiagram: Story = {
