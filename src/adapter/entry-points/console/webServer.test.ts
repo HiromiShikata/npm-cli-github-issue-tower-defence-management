@@ -5980,6 +5980,32 @@ describe('webServer HTTPS certificate handling', () => {
 describe('webServer security headers', () => {
   const securityHeaderToken = 'security-header-test-token';
 
+  const expectedSecurityHeaders = {
+    contentSecurityPolicyDirectives: [
+      "default-src 'self'",
+      "script-src 'self' https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: http: https:",
+      "media-src 'self' blob: http: https:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "worker-src 'self'",
+      "manifest-src 'self'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ],
+    xContentTypeOptions: 'nosniff',
+    xFrameOptions: 'DENY',
+    permissionsPolicy:
+      'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()',
+    crossOriginOpenerPolicy: 'same-origin',
+    crossOriginEmbedderPolicy: 'credentialless',
+    crossOriginResourcePolicy: 'same-origin',
+    strictTransportSecurity: undefined,
+  };
+
   const requestWithHeaders = (
     server: http.Server,
     requestPath: string,
@@ -6006,12 +6032,44 @@ describe('webServer security headers', () => {
     });
   };
 
+  const observeSecurityHeaders = (
+    name: string,
+    response: { statusCode: number; headers: http.IncomingHttpHeaders },
+  ) => {
+    const contentSecurityPolicy = response.headers['content-security-policy'];
+    return {
+      name,
+      statusCode: response.statusCode,
+      contentType: response.headers['content-type'],
+      contentSecurityPolicyDirectives:
+        typeof contentSecurityPolicy === 'string'
+          ? contentSecurityPolicy.split(';').map((d) => d.trim())
+          : null,
+      xContentTypeOptions: response.headers['x-content-type-options'],
+      xFrameOptions: response.headers['x-frame-options'],
+      permissionsPolicy: response.headers['permissions-policy'],
+      crossOriginOpenerPolicy: response.headers['cross-origin-opener-policy'],
+      crossOriginEmbedderPolicy:
+        response.headers['cross-origin-embedder-policy'],
+      crossOriginResourcePolicy:
+        response.headers['cross-origin-resource-policy'],
+      strictTransportSecurity: response.headers['strict-transport-security'],
+    };
+  };
+
+  const closeTestServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+
   it('sends the browser security headers on every response type of the HTTP console', async () => {
     const tmpDir = fs.mkdtempSync(
       path.join(os.tmpdir(), 'console-security-headers-'),
     );
     const uiDistDir = path.join(tmpDir, 'ui-dist');
+    const dashboardDir = path.join(tmpDir, 'dashboard');
     fs.mkdirSync(path.join(uiDistDir, 'assets'), { recursive: true });
+    fs.mkdirSync(dashboardDir, { recursive: true });
     fs.writeFileSync(
       path.join(uiDistDir, 'index.html'),
       '<!doctype html><title>TDPM Console</title>',
@@ -6020,12 +6078,13 @@ describe('webServer security headers', () => {
       path.join(uiDistDir, 'assets', 'app.js'),
       'console.log("app");',
     );
+    fs.writeFileSync(path.join(dashboardDir, 'tdpm.txt'), 'dashboard');
     const server = await startWebServer({
       accessToken: securityHeaderToken,
       uiDistDir,
       consoleDataOutputDir: null,
       inTmuxDataDir: null,
-      dashboardDir: null,
+      dashboardDir,
       dashboardDataDir: null,
       dashboardProjectNames: [],
       port: 0,
@@ -6048,6 +6107,12 @@ describe('webServer security headers', () => {
           requestPath: '/assets/app.js',
           expectedStatusCode: 200,
           expectedContentType: 'text/javascript; charset=utf-8',
+        },
+        {
+          name: 'dashboard fragment',
+          requestPath: `/tdpm.txt?k=${securityHeaderToken}`,
+          expectedStatusCode: 200,
+          expectedContentType: 'text/html; charset=utf-8',
         },
         {
           name: 'JSON API response',
@@ -6074,71 +6139,51 @@ describe('webServer security headers', () => {
           expectedContentType: undefined,
         },
       ];
-      const expectedCspDirectives = [
-        "default-src 'self'",
-        "script-src 'self' https://cdn.jsdelivr.net",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob: http: https:",
-        "media-src 'self' blob: http: https:",
-        "font-src 'self' data:",
-        "connect-src 'self'",
-        "worker-src 'self'",
-        "manifest-src 'self'",
-        "object-src 'none'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-      ];
       const observed = [];
       for (const testCase of cases) {
         const response = await requestWithHeaders(server, testCase.requestPath);
-        const contentSecurityPolicy =
-          response.headers['content-security-policy'];
-        observed.push({
-          name: testCase.name,
-          statusCode: response.statusCode,
-          contentType: response.headers['content-type'],
-          contentSecurityPolicyDirectives:
-            typeof contentSecurityPolicy === 'string'
-              ? contentSecurityPolicy.split(';').map((d) => d.trim())
-              : null,
-          xContentTypeOptions: response.headers['x-content-type-options'],
-          xFrameOptions: response.headers['x-frame-options'],
-          permissionsPolicy: response.headers['permissions-policy'],
-          crossOriginOpenerPolicy:
-            response.headers['cross-origin-opener-policy'],
-          crossOriginEmbedderPolicy:
-            response.headers['cross-origin-embedder-policy'],
-          crossOriginResourcePolicy:
-            response.headers['cross-origin-resource-policy'],
-          strictTransportSecurity:
-            response.headers['strict-transport-security'],
-        });
-        expect(response.statusCode).toBe(testCase.expectedStatusCode);
+        observed.push(observeSecurityHeaders(testCase.name, response));
       }
-      const expectedHeaders = {
-        contentSecurityPolicyDirectives: expectedCspDirectives,
-        xContentTypeOptions: 'nosniff',
-        xFrameOptions: 'DENY',
-        permissionsPolicy:
-          'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()',
-        crossOriginOpenerPolicy: 'same-origin',
-        crossOriginEmbedderPolicy: 'credentialless',
-        crossOriginResourcePolicy: 'same-origin',
-        strictTransportSecurity: undefined,
-      };
       expect(observed).toEqual(
         cases.map((testCase) => ({
           name: testCase.name,
           statusCode: testCase.expectedStatusCode,
           contentType: testCase.expectedContentType,
-          ...expectedHeaders,
+          ...expectedSecurityHeaders,
         })),
       );
     } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => (error ? reject(error) : resolve()));
-      });
+      await closeTestServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('sends the browser security headers on the bootstrap placeholder page when no UI bundle is built', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-security-headers-'),
+    );
+    const server = await startWebServer({
+      accessToken: securityHeaderToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist-not-built'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await requestWithHeaders(server, '/');
+      expect(observeSecurityHeaders('bootstrap placeholder', response)).toEqual(
+        {
+          name: 'bootstrap placeholder',
+          statusCode: 200,
+          contentType: 'text/html; charset=utf-8',
+          ...expectedSecurityHeaders,
+        },
+      );
+    } finally {
+      await closeTestServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
