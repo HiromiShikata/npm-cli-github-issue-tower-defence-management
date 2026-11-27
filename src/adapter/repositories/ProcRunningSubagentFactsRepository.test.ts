@@ -4,29 +4,72 @@ import path from 'path';
 import crypto from 'crypto';
 import { ProcRunningSubagentFactsRepository } from './ProcRunningSubagentFactsRepository';
 
-const writeProcess = (root: string, pid: number, ppid: number, argv: string[], environment: Record<string, string | undefined>): void => {
+const writeProcess = (
+  root: string,
+  pid: number,
+  ppid: number,
+  argv: string[],
+  environment: Record<string, string | undefined>,
+): void => {
   const directory = path.join(root, String(pid));
   fs.mkdirSync(directory, { recursive: true });
-  fs.writeFileSync(path.join(directory, 'stat'), `${pid} (process) S ${ppid} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0`);
-  fs.writeFileSync(path.join(directory, 'cmdline'), Buffer.from(`${argv.join('\0')}\0`));
-  fs.writeFileSync(path.join(directory, 'environ'), Buffer.from(`${Object.entries(environment).map(([key, value]) => `${key}=${value}`).join('\0')}\0`));
+  fs.writeFileSync(
+    path.join(directory, 'stat'),
+    `${pid} (process) S ${ppid} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0`,
+  );
+  fs.writeFileSync(
+    path.join(directory, 'cmdline'),
+    Buffer.from(`${argv.join('\0')}\0`),
+  );
+  fs.writeFileSync(
+    path.join(directory, 'environ'),
+    Buffer.from(
+      `${Object.entries(environment)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\0')}\0`,
+    ),
+  );
 };
 
 describe('ProcRunningSubagentFactsRepository', () => {
   it.each([
-    { name: 'detects a worker and hashes its token', argv: ['claude', '-p', 'Take ownership of issue'], env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha', HOME: '/home/test' }, kind: 'claude-worker' },
-    { name: 'does not classify a Claude process without the worker prompt', argv: ['claude', '-p', 'other prompt'], env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha' }, kind: 'other' },
-    { name: 'does not classify a worker without a token', argv: ['claude', '-p', 'Take ownership of issue'], env: { HOME: '/home/test' }, kind: 'other' },
-    { name: 'detects a Codex launcher', argv: ['node', '/opt/codex', 'exec'], env: {}, kind: 'codex-launcher' },
+    {
+      name: 'detects a worker and hashes its token',
+      argv: ['claude', '-p', 'Take ownership of issue'],
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha', HOME: '/home/test' },
+      kind: 'claude-worker',
+    },
+    {
+      name: 'does not classify a Claude process without the worker prompt',
+      argv: ['claude', '-p', 'other prompt'],
+      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha' },
+      kind: 'other',
+    },
+    {
+      name: 'does not classify a worker without a token',
+      argv: ['claude', '-p', 'Take ownership of issue'],
+      env: { HOME: '/home/test' },
+      kind: 'other',
+    },
+    {
+      name: 'detects a Codex launcher',
+      argv: ['node', '/opt/codex', 'exec'],
+      env: {},
+      kind: 'codex-launcher',
+    },
   ])('$name', ({ argv, env, kind }) => {
     const procDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-proc-'));
     try {
       writeProcess(procDirectory, 10, 1, argv, env);
-      const facts = new ProcRunningSubagentFactsRepository(procDirectory).listFacts();
+      const facts = new ProcRunningSubagentFactsRepository(
+        procDirectory,
+      ).listFacts();
       expect(facts[0].kind).toBe(kind);
       expect(facts[0]).not.toHaveProperty('token', 'token-alpha');
       if (kind === 'claude-worker') {
-        expect(facts[0].tokenKey).toBe(crypto.createHash('sha256').update('token-alpha').digest('hex'));
+        expect(facts[0].tokenKey).toBe(
+          crypto.createHash('sha256').update('token-alpha').digest('hex'),
+        );
       }
     } finally {
       fs.rmSync(procDirectory, { recursive: true, force: true });
@@ -37,18 +80,41 @@ describe('ProcRunningSubagentFactsRepository', () => {
     const procDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-proc-'));
     try {
       const configDirectory = path.join(procDirectory, 'config');
-      writeProcess(procDirectory, 10, 1, ['claude', '-p', 'Take ownership of issue'], {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha',
-        CLAUDE_CONFIG_DIR: configDirectory,
-      });
-      const sessionDirectory = path.join(configDirectory, 'projects', 'demo', 'session', 'subagents');
+      writeProcess(
+        procDirectory,
+        10,
+        1,
+        ['claude', '-p', 'Take ownership of issue'],
+        {
+          CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha',
+          CLAUDE_CONFIG_DIR: configDirectory,
+        },
+      );
+      const sessionDirectory = path.join(
+        configDirectory,
+        'projects',
+        'demo',
+        'session',
+        'subagents',
+      );
       fs.mkdirSync(sessionDirectory, { recursive: true });
-      fs.writeFileSync(path.join(sessionDirectory, 'finished.meta.json'), JSON.stringify({ finished: true }));
-      fs.writeFileSync(path.join(sessionDirectory, 'unfinished.meta.json'), JSON.stringify({ finished: false }));
-      const facts = new ProcRunningSubagentFactsRepository(procDirectory).listFacts();
+      fs.writeFileSync(
+        path.join(sessionDirectory, 'finished.meta.json'),
+        JSON.stringify({ finished: true }),
+      );
+      fs.writeFileSync(
+        path.join(sessionDirectory, 'unfinished.meta.json'),
+        JSON.stringify({ finished: false }),
+      );
+      const facts = new ProcRunningSubagentFactsRepository(
+        procDirectory,
+      ).listFacts();
       expect(facts[0].unfinishedClaudeSubagentCount).toBe(1);
       fs.rmSync(sessionDirectory, { recursive: true, force: true });
-      expect(new ProcRunningSubagentFactsRepository(procDirectory).listFacts()[0].unfinishedClaudeSubagentCount).toBeNull();
+      expect(
+        new ProcRunningSubagentFactsRepository(procDirectory).listFacts()[0]
+          .unfinishedClaudeSubagentCount,
+      ).toBeNull();
     } finally {
       fs.rmSync(procDirectory, { recursive: true, force: true });
     }

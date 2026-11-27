@@ -3,7 +3,12 @@ import {
   countRunningSubagentsByTokenKey,
 } from './CountRunningSubagentsUseCase';
 
-const worker = (pid: number, ppid: number, tokenKey: string, count: number | null): ProcessFact => ({
+const worker = (
+  pid: number,
+  ppid: number,
+  tokenKey: string,
+  count: number | null,
+): ProcessFact => ({
   pid,
   ppid,
   kind: 'claude-worker',
@@ -37,7 +42,11 @@ describe('countRunningSubagentsByTokenKey', () => {
     {
       name: 'attributes Codex launchers to the nearest worker ancestor',
       facts: [worker(10, 1, 'claude-key', 1), other(11, 10), codex(12, 11)],
-      expected: { claude: [['claude-key', 1]], codex: [['claude-key', 1]], unreadable: [] },
+      expected: {
+        claude: [['claude-key', 1]],
+        codex: [['claude-key', 1]],
+        unreadable: [],
+      },
     },
     {
       name: 'drops Codex launchers without a worker ancestor',

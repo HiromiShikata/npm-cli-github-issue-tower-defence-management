@@ -129,14 +129,22 @@ describe('remote machine status writer parsing', () => {
       diskPct: 80,
       load: [3.5, 2.5, 1.5],
       subagentCounts: {
-        claudeByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2 },
-        codexByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1 },
+        claudeByTokenKey: {
+          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2,
+        },
+        codexByTokenKey: {
+          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1,
+        },
       },
     });
   });
 
   it('rejects output with only four sections', () => {
-    expect(() => parseRemoteMetricsOutput(metricsOutput.split('\n#TDPM-SEP\n').slice(0, 4).join('\n#TDPM-SEP\n'))).toThrow(Error);
+    expect(() =>
+      parseRemoteMetricsOutput(
+        metricsOutput.split('\n#TDPM-SEP\n').slice(0, 4).join('\n#TDPM-SEP\n'),
+      ),
+    ).toThrow(Error);
   });
 
   it('rejects malformed remote metrics output', () => {
@@ -214,8 +222,12 @@ describe('writeRemoteMachineStatus', () => {
           diskPct: 80,
           load: [3.5, 2.5, 1.5],
           subagentCounts: {
-            claudeByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2 },
-            codexByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1 },
+            claudeByTokenKey: {
+              '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2,
+            },
+            codexByTokenKey: {
+              '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1,
+            },
           },
           capturedAt: '2026-11-25T00:00:00.000Z',
         },
