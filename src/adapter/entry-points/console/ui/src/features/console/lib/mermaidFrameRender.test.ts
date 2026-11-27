@@ -155,6 +155,7 @@ describe('showMermaidFrameDiagram page reset', () => {
       false,
     );
     expect(container.style.margin).toBe('0px');
+    expect(container.style.padding).toBe('0px');
     expect(container.style.background).toBe('transparent');
   });
 });

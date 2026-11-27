@@ -126,6 +126,28 @@ describe('installMermaidFrameStyleBridge', () => {
     expect(host.querySelector('p')).toBe(paragraph);
   });
 
+  it('throws the native error for a reference node that is not a child, and inserts nothing', () => {
+    const host = document.createElement('div');
+    const stranger = document.createElement('span');
+    const style = document.createElement('style');
+    style.textContent = '.x{}';
+    expect(() => host.insertBefore(style, stranger)).toThrow();
+    expect(sheets).toEqual([]);
+  });
+
+  it('moves an attached style element out of its old place into a stylesheet', () => {
+    const oldHost = document.createElement('div');
+    const style = document.createElement('style');
+    style.textContent = '.m{}';
+    oldHost.append(style);
+    expect(oldHost.contains(style)).toBe(true);
+    const newHost = document.createElement('div');
+    newHost.appendChild(style);
+    expect(sheets).toEqual(['.m{}']);
+    expect(oldHost.contains(style)).toBe(false);
+    expect(newHost.querySelector('style')).toBeNull();
+  });
+
   it('restores the original methods when uninstalled', () => {
     uninstall();
     const host = document.createElement('div');

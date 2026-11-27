@@ -38,6 +38,7 @@ export const installMermaidFrameStyleBridge = (
     if (!isStyleElement(node)) {
       return false;
     }
+    node.parentNode?.removeChild(node);
     sink(node.textContent ?? '');
     return true;
   };
@@ -56,7 +57,7 @@ export const installMermaidFrameStyleBridge = (
     node: T,
     reference: Node | null,
   ): T {
-    if (takeStyle(node)) {
+    if ((reference === null || reference.parentNode === this) && takeStyle(node)) {
       return node;
     }
     return originalInsertBefore.call(this, node, reference) as T;
