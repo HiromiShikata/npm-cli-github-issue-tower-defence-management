@@ -884,6 +884,78 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       },
     );
 
+    it('skips an issue authored by another login when addManagerAssignedIssuesFromAnyAuthor is false', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        { ...matchedIssue, author: 'automation-bot' },
+      ]);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+        addManagerAssignedIssuesFromAnyAuthor: false,
+      });
+
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      consoleLogSpy.mockRestore();
+    });
+
+    it('adds an issue authored by another login and assigned to the manager when addManagerAssignedIssuesFromAnyAuthor is true', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        { ...matchedIssue, author: 'automation-bot' },
+      ]);
+      mockIssueRepository.isRepositoryArchived.mockResolvedValue(false);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+        addManagerAssignedIssuesFromAnyAuthor: true,
+      });
+
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([
+        [project, matchedIssue.url],
+      ]);
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([]);
+      consoleLogSpy.mockRestore();
+    });
+
+    it('still skips an issue not assigned to the manager when addManagerAssignedIssuesFromAnyAuthor is true', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => undefined);
+      mockIssueRepository.searchIssues.mockResolvedValueOnce([
+        {
+          ...matchedIssue,
+          author: 'automation-bot',
+          assignees: ['someone-else'],
+        },
+      ]);
+      mockIssueRepository.isRepositoryArchived.mockResolvedValue(false);
+
+      await useCase.run({
+        issues: [],
+        manager: 'manager1',
+        cacheUsed: false,
+        projectToAddSearchedIssues: project,
+        queryToAddManagerAssignedIssues: managerQuery,
+        addManagerAssignedIssuesFromAnyAuthor: true,
+      });
+
+      expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual([]);
+      consoleLogSpy.mockRestore();
+    });
+
     it('logs the skip reason when the author is not the manager', async () => {
       const consoleLogSpy = jest
         .spyOn(console, 'log')
