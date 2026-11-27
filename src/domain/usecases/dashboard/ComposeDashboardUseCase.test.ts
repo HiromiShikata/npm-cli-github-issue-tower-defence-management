@@ -879,15 +879,15 @@ describe('ComposeDashboardUseCase', () => {
     '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
-    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7d&nbsp;&nbsp;&nbsp;reset&nbsp;pp&nbsp;&nbsp;h&nbsp;sa&nbsp;sx</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7d&nbsp;&nbsp;&nbsp;reset&nbsp;pp&nbsp;h&nbsp;sa&nbsp;sx</tt><br>\n' +
     '<tt>' +
     '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
-    '&nbsp;3&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>⚪ob&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '&nbsp;3&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>⚪ob&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?' +
     '&nbsp;'.repeat(8) +
-    '1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n';
+    '1&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n';
 
   it('composes byte-identical dashboard text for representative inputs', () => {
     expect(new ComposeDashboardUseCase().run(representativeInput)).toBe(
@@ -1221,7 +1221,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     const combined = lines.find((line) => line.startsWith(aggregatePart));
     expect(combined).toBeDefined();
     expect(combined?.slice(TOKEN_SESSION_COLUMN_START).trim()).toBe(
-      '0  0  0  0',
+      '0 0  0  0',
     );
     expect(lines.filter((line) => line === aggregatePart)).toHaveLength(0);
   });

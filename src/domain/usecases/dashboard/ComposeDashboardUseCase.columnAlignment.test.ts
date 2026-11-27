@@ -320,15 +320,13 @@ describe('ComposeDashboardUseCase token column alignment with single-digit total
       expect(displayColumnOf(row, utilization)).toBe(5);
       expect(displayColumnOf(row, reset)).toBe(8);
       expect(displayColumnOf(row, prep)).toBe(16);
-      expect(displayColumnOf(row, hum)).toBe(
-        /^\d+$/.test(hum) ? 20 - (hum.length - 1) : 19,
-      );
+      expect(displayColumnOf(row, hum)).toBe(19);
     },
   );
 
-  it('places the 7-day mean at column 5, the one-digit prep total at column 16 and the one-digit hum total at column 20 of the total line', () => {
+  it('places the 7-day mean at column 5, the one-digit prep total at column 16 and the one-digit hum total at column 19 of the total line', () => {
     expect(displayColumnOf(totalLine, '63')).toBe(5);
     expect(displayColumnOf(totalLine, ' 7')).toBe(16);
-    expect(displayColumnOf(totalLine, '5')).toBe(20);
+    expect(displayColumnOf(totalLine, '5')).toBe(19);
   });
 });
