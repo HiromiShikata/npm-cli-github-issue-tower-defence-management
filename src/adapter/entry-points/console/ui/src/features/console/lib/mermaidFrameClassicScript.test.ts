@@ -24,11 +24,11 @@ describe('toClassicMermaidFrameHtml', () => {
   });
 
   it('rewrites an upper-case script tag as well', () => {
-    const html = '<SCRIPT type="module" crossorigin src="/assets/mermaid-frame.js"></SCRIPT>';
+    const html =
+      '<SCRIPT type="module" crossorigin src="/assets/mermaid-frame.js"></SCRIPT>';
     const result = toClassicMermaidFrameHtml(html);
     expect(result).not.toMatch(/type="module"/i);
     expect(result).not.toMatch(/crossorigin/i);
     expect(result).toContain('src="/assets/mermaid-frame.js"');
   });
 });
-
