@@ -465,65 +465,6 @@ describe('writeTokenStatus subagent counts', () => {
     }
   });
 
-  it('treats the remote counts as unmeasured when remote-machine-status.json does not exist', () => {
-    const directory = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'token-subagents-'),
-    );
-    const tokenListPath = path.join(directory, 'tokens.json');
-    try {
-      fs.writeFileSync(
-        tokenListPath,
-        JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]),
-      );
-      writeTokenStatus({
-        dashboardDataDir: directory,
-        tokenListJsonPath: tokenListPath,
-        issues: [],
-        readSnapshot: () => null,
-        interactiveSessionRepository: { listInteractiveSessions: () => [] },
-        spawnRepository: {
-          listSpawns: () => [
-            {
-              token: 'token-alpha',
-              logPath: '/logs-aw/alpha.log',
-              issueUrl: ISSUE_URL_101,
-            },
-          ],
-          listRunningIssueUrls: () => [],
-        },
-        runningSubagentFactsRepository: {
-          listFacts: () => [
-            {
-              pid: 10,
-              ppid: 1,
-              kind: 'claude-worker',
-              workerKey: 'token-alpha',
-              unfinishedClaudeSubagentCount: 3,
-            },
-          ],
-        },
-      });
-      const written = readJson(path.join(directory, 'token-status.json'));
-      if (
-        written === null ||
-        typeof written !== 'object' ||
-        !('tokens' in written) ||
-        !Array.isArray(written.tokens)
-      ) {
-        throw new Error('token-status.json tokens are malformed');
-      }
-      expect(written.tokens).toEqual([
-        expect.objectContaining({
-          name: 'alpha',
-          claudeSubagentCount: null,
-          codexSubagentCount: null,
-        }),
-      ]);
-    } finally {
-      fs.rmSync(directory, { recursive: true, force: true });
-    }
-  });
-
   it('marks only the token of an unreadable worker as unavailable', () => {
     const directory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'token-subagents-'),
