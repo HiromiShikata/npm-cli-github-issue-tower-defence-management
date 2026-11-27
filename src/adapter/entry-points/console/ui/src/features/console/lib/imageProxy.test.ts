@@ -101,6 +101,10 @@ describe('isCspAllowedImageUrl', () => {
     '/\\example.com/a.png',
     '\\\\example.com/a.png',
     '/\\\\example.com/a.png',
+    'https://same-origin.invalid/a.png',
+    '//same-origin.invalid/a.png',
+    '/\\same-origin.invalid/a.png',
+    '\t//same-origin.invalid/a.png',
   ])('blocks %s', (src) => {
     expect(isCspAllowedImageUrl(src)).toBe(false);
   });

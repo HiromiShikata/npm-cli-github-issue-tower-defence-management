@@ -36,11 +36,43 @@ export const rewriteGitHubImageSources = (
 const DIRECTLY_LOADABLE_IMAGE_URL =
   /^https:\/\/(github\.com\/|[a-z0-9][a-z0-9.-]*\.githubusercontent\.com\/)/;
 const SAME_ORIGIN_PROBE_BASE = 'https://same-origin.invalid/';
+const SAME_ORIGIN_PROBE_ORIGIN = 'https://same-origin.invalid';
+const URL_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:/i;
+const AUTHORITY_PREFIX_PATTERN = /^[\\/]{2}/;
+
+// A browser drops ASCII tab and newline characters and leading control or space
+// characters before it parses a URL, so the checks run on the same form.
+const ASCII_SPACE_OR_CONTROL_MAX_CODE = 0x20;
+const ASCII_TAB_OR_NEWLINE_CODES: ReadonlySet<number> = new Set([
+  0x09, 0x0a, 0x0d,
+]);
+
+const toBrowserParsableForm = (src: string): string => {
+  const withoutTabsAndNewlines = Array.from(src)
+    .filter((char) => !ASCII_TAB_OR_NEWLINE_CODES.has(char.charCodeAt(0)))
+    .join('');
+  let start = 0;
+  while (
+    start < withoutTabsAndNewlines.length &&
+    withoutTabsAndNewlines.charCodeAt(start) <= ASCII_SPACE_OR_CONTROL_MAX_CODE
+  ) {
+    start += 1;
+  }
+  return withoutTabsAndNewlines.slice(start);
+};
+
+const isSchemeLessPathReference = (src: string): boolean => {
+  const parsable = toBrowserParsableForm(src);
+  return (
+    !URL_SCHEME_PATTERN.test(parsable) &&
+    !AUTHORITY_PREFIX_PATTERN.test(parsable)
+  );
+};
 
 // Mirrors the console Content-Security-Policy `img-src` list: data image
-// URLs, same-origin URLs, GitHub hosts over https, and the GitHub
-// user-attachments URLs that the proxy serves. The source is resolved the way
-// the browser resolves it, so `/\host/...` and `\\host/...` are judged as the
+// URLs, same-origin path references, GitHub hosts over https, and the GitHub
+// user-attachments URLs that the proxy serves. A source is resolved the way the
+// browser resolves it, so `/\host/...` and `\\host/...` are judged as the
 // cross-origin URLs they become.
 export const isCspAllowedImageUrl = (src: string): boolean => {
   if (src.startsWith('data:image/')) {
@@ -52,7 +84,10 @@ export const isCspAllowedImageUrl = (src: string): boolean => {
   } catch {
     return false;
   }
-  if (resolved.origin === new URL(SAME_ORIGIN_PROBE_BASE).origin) {
+  if (
+    isSchemeLessPathReference(src) &&
+    resolved.origin === SAME_ORIGIN_PROBE_ORIGIN
+  ) {
     return true;
   }
   return (
