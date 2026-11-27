@@ -97,7 +97,9 @@ describe('installMermaidFrameStyleBridge', () => {
     document.body.appendChild(host);
     (window as unknown as { bridgeRan?: boolean }).bridgeRan = undefined;
     host.innerHTML = '<script>window.bridgeRan = true;</script><p>kept</p>';
-    expect((window as unknown as { bridgeRan?: boolean }).bridgeRan).toBeUndefined();
+    expect(
+      (window as unknown as { bridgeRan?: boolean }).bridgeRan,
+    ).toBeUndefined();
     expect(host.querySelector('script')).toBeNull();
     expect(host.querySelector('p')?.textContent).toBe('kept');
     host.remove();
