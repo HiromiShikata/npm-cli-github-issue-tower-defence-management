@@ -2,6 +2,7 @@ import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { toClassicMermaidFrameHtml } from './src/features/console/lib/mermaidFrameClassicScript';
 
 const MERMAID_FRAME_MODE = 'mermaid-frame';
 
@@ -10,11 +11,7 @@ const classicMermaidFrameScript = {
   apply: 'build' as const,
   transformIndexHtml: {
     order: 'post' as const,
-    handler: (html: string) =>
-      html.replace(
-        /<script type="module" crossorigin src="([^"]+)"><\/script>/g,
-        '<script src="$1"></script>',
-      ),
+    handler: toClassicMermaidFrameHtml,
   },
 };
 

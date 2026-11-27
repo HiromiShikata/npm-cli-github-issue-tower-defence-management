@@ -105,6 +105,27 @@ describe('installMermaidFrameStyleBridge', () => {
     host.remove();
   });
 
+  it('clears the element when null is assigned through innerHTML, as the native setter does', () => {
+    const host = document.createElement('div');
+    host.innerHTML = '<p>old</p>';
+    host.innerHTML = null as unknown as string;
+    expect(host.childNodes.length).toBe(0);
+    expect(host.textContent).toBe('');
+  });
+
+  it('moves a style element inside a fragment appended to the page into a stylesheet', () => {
+    const host = document.createElement('div');
+    const fragment = document.createDocumentFragment();
+    const style = document.createElement('style');
+    style.textContent = '.f{}';
+    const paragraph = document.createElement('p');
+    fragment.append(style, paragraph);
+    host.appendChild(fragment);
+    expect(sheets).toEqual(['.f{}']);
+    expect(host.querySelector('style')).toBeNull();
+    expect(host.querySelector('p')).toBe(paragraph);
+  });
+
   it('restores the original methods when uninstalled', () => {
     uninstall();
     const host = document.createElement('div');

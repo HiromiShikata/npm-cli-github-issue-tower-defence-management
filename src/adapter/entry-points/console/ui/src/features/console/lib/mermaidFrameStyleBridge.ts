@@ -20,7 +20,21 @@ export const installMermaidFrameStyleBridge = (
   }
   const originalInnerHtmlSet = innerHtmlDescriptor.set;
 
+  const prepareFragment = (fragment: DocumentFragment): void => {
+    fragment.querySelectorAll('script').forEach((script) => {
+      script.remove();
+    });
+    fragment.querySelectorAll('style').forEach((style) => {
+      sink(style.textContent ?? '');
+      style.remove();
+    });
+  };
+
   const takeStyle = (node: Node): boolean => {
+    if (node instanceof DocumentFragment) {
+      prepareFragment(node);
+      return false;
+    }
     if (!isStyleElement(node)) {
       return false;
     }
@@ -62,21 +76,15 @@ export const installMermaidFrameStyleBridge = (
     configurable: true,
     enumerable: innerHtmlDescriptor.enumerable,
     get: innerHtmlDescriptor.get,
-    set(this: Element, value: string) {
+    set(this: Element, value: string | null) {
       if (isStyleElement(this) || this.nodeName.toUpperCase() === 'TEMPLATE') {
         originalInnerHtmlSet.call(this, value);
         return;
       }
       const range = document.createRange();
       range.selectNodeContents(this);
-      const fragment = range.createContextualFragment(value);
-      fragment.querySelectorAll('script').forEach((script) => {
-        script.remove();
-      });
-      fragment.querySelectorAll('style').forEach((style) => {
-        sink(style.textContent ?? '');
-        style.remove();
-      });
+      const fragment = range.createContextualFragment(value ?? '');
+      prepareFragment(fragment);
       this.replaceChildren(fragment);
     },
   });
