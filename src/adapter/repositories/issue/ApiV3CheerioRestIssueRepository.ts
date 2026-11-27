@@ -291,6 +291,27 @@ const ISSUE_EVENTS_PAGE_SIZE = 100;
 const ISSUE_EVENT_COUNT_AT_WHICH_GITHUB_STOPS_LISTING_ISSUE_EVENTS = 310;
 const REOPENED_TIMELINE_ITEM_COUNT_AT_WHICH_GITHUB_STOPS_LISTING_REOPENED_TIMELINE_ITEMS = 310;
 
+type RelatedOpenPrUrlReference = {
+  issueUrl: string;
+  owner: string;
+  repo: string;
+  issueNumber: number;
+};
+
+type RelatedOpenPrUrlLookup =
+  | { kind: 'decided'; reference: RelatedOpenPrUrlReference; prUrls: string[] }
+  | {
+      kind: 'recorded';
+      reference: RelatedOpenPrUrlReference;
+      timelinePrUrls: string[];
+      recordedPrUrls: string[];
+    };
+
+const recordedPrUrlsOfLookups = (lookups: RelatedOpenPrUrlLookup[]): string[] =>
+  lookups.flatMap((lookup) =>
+    lookup.kind === 'recorded' ? lookup.recordedPrUrls : [],
+  );
+
 type IssueRelatedOpenPullRequestUrlsBatchResponse = {
   data?: Record<
     string,
@@ -3708,12 +3729,7 @@ export class ApiV3CheerioRestIssueRepository
   findRelatedOpenPrUrls = async (
     issueUrls: string[],
   ): Promise<Map<string, string[]>> => {
-    const references: {
-      issueUrl: string;
-      owner: string;
-      repo: string;
-      issueNumber: number;
-    }[] = [];
+    const references: RelatedOpenPrUrlReference[] = [];
     for (const issueUrl of Array.from(new Set(issueUrls))) {
       const parsedUrl = this.parseIssueUrl(issueUrl);
       if (parsedUrl.isPr) {
@@ -3727,7 +3743,7 @@ export class ApiV3CheerioRestIssueRepository
       });
     }
 
-    const resolved = new Map<string, string[]>();
+    const lookups: RelatedOpenPrUrlLookup[] = [];
     for (
       let start = 0;
       start < references.length;
@@ -3737,27 +3753,45 @@ export class ApiV3CheerioRestIssueRepository
         start,
         start + RELATED_OPEN_PULL_REQUEST_URLS_BATCH_SIZE,
       );
-      const prUrlsByIssueUrl =
-        await this.resolveRelatedOpenPrUrlsByBisectingFailedBatches(
+      lookups.push(
+        ...(await this.collectRelatedOpenPrLookupsByBisectingFailedBatches(
           batchReferences,
+        )),
+      );
+    }
+
+    const statesByUrl = await this.fetchSlimPullRequestStatesByUrl(
+      recordedPrUrlsOfLookups(lookups),
+    );
+    const resolved = new Map<string, string[]>();
+    for (const lookup of lookups) {
+      try {
+        resolved.set(
+          lookup.reference.issueUrl,
+          await this.resolveRelatedOpenPrUrlsOfLookup(lookup, statesByUrl),
         );
-      for (const [issueUrl, prUrls] of prUrlsByIssueUrl) {
-        resolved.set(issueUrl, prUrls);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.info(
+          `ApiV3CheerioRestIssueRepository: recorded pull request state resolution failed for issue ${lookup.reference.issueUrl}, retrying that issue alone. error: ${errorMessage}`,
+        );
+        const retriedResolved = await this.resolveRelatedOpenPrUrlsForOneIssue(
+          lookup.reference,
+        );
+        for (const [issueUrl, prUrls] of retriedResolved) {
+          resolved.set(issueUrl, prUrls);
+        }
       }
     }
     return resolved;
   };
 
-  private resolveRelatedOpenPrUrlsByBisectingFailedBatches = async (
-    references: {
-      issueUrl: string;
-      owner: string;
-      repo: string;
-      issueNumber: number;
-    }[],
-  ): Promise<Map<string, string[]>> => {
+  private collectRelatedOpenPrLookupsByBisectingFailedBatches = async (
+    references: RelatedOpenPrUrlReference[],
+  ): Promise<RelatedOpenPrUrlLookup[]> => {
     try {
-      return await this.fetchRelatedOpenPrUrlsInOneQuery(references);
+      return await this.collectRelatedOpenPrLookupsInOneQuery(references);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -3765,33 +3799,73 @@ export class ApiV3CheerioRestIssueRepository
         console.warn(
           `ApiV3CheerioRestIssueRepository: related open pull request query failed for issue ${references[0].issueUrl}, leaving it unresolved. error: ${errorMessage}`,
         );
-        return new Map<string, string[]>();
+        return [];
       }
       const splitPoint = Math.ceil(references.length / 2);
-      const firstHalfResolved =
-        await this.resolveRelatedOpenPrUrlsByBisectingFailedBatches(
+      const firstHalfLookups =
+        await this.collectRelatedOpenPrLookupsByBisectingFailedBatches(
           references.slice(0, splitPoint),
         );
-      const secondHalfResolved =
-        await this.resolveRelatedOpenPrUrlsByBisectingFailedBatches(
+      const secondHalfLookups =
+        await this.collectRelatedOpenPrLookupsByBisectingFailedBatches(
           references.slice(splitPoint),
         );
-      const merged = new Map<string, string[]>(firstHalfResolved);
-      for (const [issueUrl, prUrls] of secondHalfResolved) {
-        merged.set(issueUrl, prUrls);
-      }
-      return merged;
+      return [...firstHalfLookups, ...secondHalfLookups];
+    }
+  };
+
+  private resolveRelatedOpenPrUrlsForOneIssue = async (
+    reference: RelatedOpenPrUrlReference,
+  ): Promise<Map<string, string[]>> => {
+    try {
+      return await this.fetchRelatedOpenPrUrlsInOneQuery([reference]);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: related open pull request query failed for issue ${reference.issueUrl}, leaving it unresolved. error: ${errorMessage}`,
+      );
+      return new Map<string, string[]>();
     }
   };
 
   private fetchRelatedOpenPrUrlsInOneQuery = async (
-    references: {
-      issueUrl: string;
-      owner: string;
-      repo: string;
-      issueNumber: number;
-    }[],
+    references: RelatedOpenPrUrlReference[],
   ): Promise<Map<string, string[]>> => {
+    const lookups =
+      await this.collectRelatedOpenPrLookupsInOneQuery(references);
+    const statesByUrl = await this.fetchSlimPullRequestStatesByUrl(
+      recordedPrUrlsOfLookups(lookups),
+    );
+    const prUrlsByIssueUrl = new Map<string, string[]>();
+    for (const lookup of lookups) {
+      prUrlsByIssueUrl.set(
+        lookup.reference.issueUrl,
+        await this.resolveRelatedOpenPrUrlsOfLookup(lookup, statesByUrl),
+      );
+    }
+    return prUrlsByIssueUrl;
+  };
+
+  private resolveRelatedOpenPrUrlsOfLookup = async (
+    lookup: RelatedOpenPrUrlLookup,
+    statesByUrl: Map<string, SlimPullRequest | null>,
+  ): Promise<string[]> => {
+    if (lookup.kind === 'decided') {
+      return lookup.prUrls;
+    }
+    const openRecordedPrUrls = await this.resolveOpenRecordedPrUrls(
+      lookup.recordedPrUrls,
+      statesByUrl,
+    );
+    return Array.from(
+      new Set([...lookup.timelinePrUrls, ...openRecordedPrUrls]),
+    );
+  };
+
+  private collectRelatedOpenPrLookupsInOneQuery = async (
+    references: RelatedOpenPrUrlReference[],
+  ): Promise<RelatedOpenPrUrlLookup[]> => {
     const aliasOf = (index: number): string => `issue${index}`;
     const variableDeclarations = references
       .map(
@@ -3882,7 +3956,7 @@ export class ApiV3CheerioRestIssueRepository
       throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
     }
 
-    const prUrlsByIssueUrl = new Map<string, string[]>();
+    const lookups: RelatedOpenPrUrlLookup[] = [];
     for (const [index, reference] of references.entries()) {
       const alias = aliasOf(index);
       if (otherErrorAliases.has(alias)) {
@@ -3891,14 +3965,18 @@ export class ApiV3CheerioRestIssueRepository
       const issueNode = responseData.data?.[alias]?.issue ?? null;
       if (!issueNode) {
         if (notFoundAliases.has(alias) || !errors.length) {
-          prUrlsByIssueUrl.set(reference.issueUrl, []);
+          lookups.push({
+            kind: 'decided',
+            reference,
+            prUrls: [],
+          });
         }
         continue;
       }
       if (issueNode.timelineItems.pageInfo.hasNextPage) {
         continue;
       }
-      const prUrls = new Set<string>();
+      const timelinePrUrls = new Set<string>();
       for (const item of issueNode.timelineItems.nodes) {
         if (
           !this.isRelatedOpenPullRequestTimelineItem(item, reference.issueUrl)
@@ -3907,26 +3985,27 @@ export class ApiV3CheerioRestIssueRepository
         }
         const prUrl = item.source.url || '';
         if (!prUrl) continue;
-        prUrls.add(prUrl);
+        timelinePrUrls.add(prUrl);
       }
       const comments = issueNode.comments;
-      if (comments) {
-        const commentBodies = comments.nodes.flatMap((node) =>
-          node?.body ? [node.body] : [],
-        );
-        const recordedPrUrls = await this.fetchRecordedOpenPrUrls(
-          reference,
-          commentBodies,
-          comments.pageInfo.hasNextPage ? comments.pageInfo.endCursor : null,
-        );
-        recordedPrUrls.forEach((prUrl) => prUrls.add(prUrl));
-      }
-      prUrlsByIssueUrl.set(reference.issueUrl, Array.from(prUrls));
+      const recordedPrUrls = comments
+        ? await this.fetchRecordedPrUrls(
+            reference,
+            comments.nodes.flatMap((node) => (node?.body ? [node.body] : [])),
+            comments.pageInfo.hasNextPage ? comments.pageInfo.endCursor : null,
+          )
+        : [];
+      lookups.push({
+        kind: 'recorded',
+        reference,
+        timelinePrUrls: Array.from(timelinePrUrls),
+        recordedPrUrls,
+      });
     }
-    return prUrlsByIssueUrl;
+    return lookups;
   };
 
-  private fetchRecordedOpenPrUrls = async (
+  private fetchRecordedPrUrls = async (
     reference: {
       issueUrl: string;
       owner: string;
@@ -3990,10 +4069,14 @@ export class ApiV3CheerioRestIssueRepository
         : null;
     }
 
+    return pullRequestUrlsFromCommentBodies(commentBodies);
+  };
+
+  private resolveOpenRecordedPrUrls = async (
+    recordedPrUrls: string[],
+    statesByUrl: Map<string, SlimPullRequest | null>,
+  ): Promise<string[]> => {
     const openPrUrls: string[] = [];
-    const recordedPrUrls = pullRequestUrlsFromCommentBodies(commentBodies);
-    const statesByUrl =
-      await this.fetchSlimPullRequestStatesByUrl(recordedPrUrls);
     const failedPrUrls: { prUrl: string; message: string }[] = [];
     for (const prUrl of recordedPrUrls) {
       let pullRequest: SlimPullRequest | null;
