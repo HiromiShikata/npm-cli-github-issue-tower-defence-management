@@ -5248,8 +5248,8 @@ describe('webServer HTTPS certificate handling', () => {
         },
       );
       expect(response.headers['strict-transport-security']).toBeUndefined();
-      expect(response.headers['x-content-type-options']).toBeUndefined();
-      expect(response.headers['x-frame-options']).toBeUndefined();
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['x-frame-options']).toBe('DENY');
       expect(response.headers['set-cookie']?.[0]).not.toContain('Secure');
     } finally {
       await stopWebServer(server);
@@ -5416,7 +5416,9 @@ describe('webServer HTTPS certificate handling', () => {
       );
       expect(response.headers['x-content-type-options']).toBe('nosniff');
       expect(response.headers['x-frame-options']).toBe('DENY');
-      expect(response.headers['content-security-policy']).toBeUndefined();
+      expect(response.headers['content-security-policy']).toContain(
+        "frame-ancestors 'none'",
+      );
       expect(response.headers['set-cookie']?.[0]).toContain('Secure');
       expect(runLegoCommand).toHaveBeenCalledWith(
         buildLegoDockerArgs({
@@ -6076,8 +6078,8 @@ describe('webServer security headers', () => {
         "default-src 'self'",
         "script-src 'self' https://cdn.jsdelivr.net",
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob: https:",
-        "media-src 'self' blob: https:",
+        "img-src 'self' data: blob: http: https:",
+        "media-src 'self' blob: http: https:",
         "font-src 'self' data:",
         "connect-src 'self'",
         "worker-src 'self'",
@@ -6119,7 +6121,7 @@ describe('webServer security headers', () => {
         xContentTypeOptions: 'nosniff',
         xFrameOptions: 'DENY',
         permissionsPolicy:
-          'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()',
+          'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()',
         crossOriginOpenerPolicy: 'same-origin',
         crossOriginEmbedderPolicy: 'credentialless',
         crossOriginResourcePolicy: 'same-origin',
