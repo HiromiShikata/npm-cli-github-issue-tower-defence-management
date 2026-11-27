@@ -57,7 +57,10 @@ export const installMermaidFrameStyleBridge = (
     node: T,
     reference: Node | null,
   ): T {
-    if ((reference === null || reference.parentNode === this) && takeStyle(node)) {
+    if (
+      (reference === null || reference.parentNode === this) &&
+      takeStyle(node)
+    ) {
       return node;
     }
     return originalInsertBefore.call(this, node, reference) as T;
