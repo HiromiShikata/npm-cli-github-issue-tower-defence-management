@@ -1,6 +1,8 @@
 import {
   buildImageProxyUrl,
+  isCspAllowedImageUrl,
   isProxyableImageUrl,
+  replaceBlockedImagesWithLinks,
   rewriteGitHubImageSources,
 } from './imageProxy';
 
@@ -74,5 +76,74 @@ describe('rewriteGitHubImageSources', () => {
   it('returns the original html when there is no image to rewrite', () => {
     const html = '<p>no images here</p>';
     expect(rewriteGitHubImageSources(html, buildProxyUrl)).toBe(html);
+  });
+});
+
+describe('isCspAllowedImageUrl', () => {
+  it.each([
+    'data:image/png;base64,AAAA',
+    '/relative/image.png',
+    'image.png',
+    'https://github.com/user-attachments/assets/abc',
+    'https://private-user-images.githubusercontent.com/1/2.png',
+    'https://github.com/owner/repo/raw/main/a.png',
+    'https://GitHub.com/user-attachments/assets/abc',
+  ])('allows %s', (src) => {
+    expect(isCspAllowedImageUrl(src)).toBe(true);
+  });
+
+  it.each([
+    'https://example.com/avatar.png',
+    'http://github.com/owner/repo/raw/main/a.png',
+    'http://example.com/a.png',
+    '//example.com/a.png',
+    'https://githubusercontent.com.evil.example/a.png',
+    '/\\example.com/a.png',
+    '\\\\example.com/a.png',
+    '/\\\\example.com/a.png',
+    'https://same-origin.invalid/a.png',
+    '//same-origin.invalid/a.png',
+    '/\\same-origin.invalid/a.png',
+    '\t//same-origin.invalid/a.png',
+  ])('blocks %s', (src) => {
+    expect(isCspAllowedImageUrl(src)).toBe(false);
+  });
+});
+
+describe('replaceBlockedImagesWithLinks', () => {
+  it('replaces a non-allowed image with a link to its original url', () => {
+    const externalSrc = 'https://example.com/shot.png';
+    const result = replaceBlockedImagesWithLinks(
+      `<p><img src="${externalSrc}" alt="shot" /></p>`,
+    );
+    expect(result).not.toContain('<img');
+    expect(result).toContain(`<a href="${externalSrc}">shot</a>`);
+  });
+
+  it('uses the url as link text when the image has no alt text', () => {
+    const externalSrc = 'https://example.com/shot.png';
+    const result = replaceBlockedImagesWithLinks(
+      `<img src="${externalSrc}" />`,
+    );
+    expect(result).toContain(`<a href="${externalSrc}">${externalSrc}</a>`);
+  });
+
+  it('keeps allowed images untouched', () => {
+    const githubSrc = 'https://github.com/user-attachments/assets/abc';
+    const html = `<img src="${githubSrc}" alt="x" />`;
+    expect(replaceBlockedImagesWithLinks(html)).toBe(html);
+  });
+
+  it('returns the original html when no image is blocked', () => {
+    const html = '<p>plain</p>';
+    expect(replaceBlockedImagesWithLinks(html)).toBe(html);
+  });
+});
+
+describe('isProxyableImageUrl host case', () => {
+  it('accepts a GitHub user-attachments URL whose host is written in upper case', () => {
+    expect(
+      isProxyableImageUrl('https://GitHub.com/user-attachments/assets/abc'),
+    ).toBe(true);
   });
 });

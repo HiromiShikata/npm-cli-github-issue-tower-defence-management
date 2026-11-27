@@ -1564,8 +1564,8 @@ const CONSOLE_CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' https://cdn.jsdelivr.net",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: http: https:",
-  "media-src 'self' blob: http: https:",
+  "img-src 'self' data: blob: https://github.com https://*.githubusercontent.com",
+  "media-src 'self' blob: https://github.com https://*.githubusercontent.com",
   "font-src 'self' data:",
   "connect-src 'self'",
   "worker-src 'self'",
@@ -1580,6 +1580,7 @@ const CONSOLE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
   'Content-Security-Policy': CONSOLE_CONTENT_SECURITY_POLICY,
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
+  'X-Permitted-Cross-Domain-Policies': 'none',
   'Permissions-Policy':
     'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()',
   'Cross-Origin-Opener-Policy': 'same-origin',

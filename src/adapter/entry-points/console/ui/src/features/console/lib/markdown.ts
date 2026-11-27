@@ -3,6 +3,7 @@ import { nameToEmoji } from 'gemoji';
 import { marked, type Tokens } from 'marked';
 import { markedEmoji } from 'marked-emoji';
 import type { ConsoleRepoContext } from '../logic/references';
+import { replaceBlockedImagesWithLinks } from './imageProxy';
 
 export type { ConsoleRepoContext } from '../logic/references';
 
@@ -141,7 +142,9 @@ export const renderMarkdownToSafeHtml = (
     const parsed = marked.parse(source, { async: false });
     const rawHtml = typeof parsed === 'string' ? parsed : '';
     return withCheckboxIndexes(
-      withLinksOpeningInNewTab(DOMPurify.sanitize(rawHtml)),
+      withLinksOpeningInNewTab(
+        replaceBlockedImagesWithLinks(DOMPurify.sanitize(rawHtml)),
+      ),
       checkboxIndexOffset,
     );
   } finally {

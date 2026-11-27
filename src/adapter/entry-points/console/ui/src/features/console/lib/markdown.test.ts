@@ -282,3 +282,23 @@ describe('renderMarkdownToSafeHtml link targets', () => {
     expect(html).toContain('target="_blank"');
   });
 });
+
+describe('renderMarkdownToSafeHtml CSP-compatible output', () => {
+  it('shows a non-allowed external image as a link to its original url', () => {
+    const html = renderMarkdownToSafeHtml(
+      '![diagram](https://example.com/diagram.png)',
+    );
+    expect(html).not.toContain('<img');
+    expect(html).toContain(
+      '<a href="https://example.com/diagram.png" target="_blank" rel="noopener noreferrer">diagram</a>',
+    );
+  });
+
+  it('keeps a GitHub user-attachments image as an image', () => {
+    const html = renderMarkdownToSafeHtml(
+      '![shot](https://github.com/user-attachments/assets/abc)',
+    );
+    expect(html).toContain('<img');
+    expect(html).toContain('https://github.com/user-attachments/assets/abc');
+  });
+});
