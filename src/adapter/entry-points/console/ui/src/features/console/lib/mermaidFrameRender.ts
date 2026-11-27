@@ -42,7 +42,10 @@ export const sanitizeMermaidFrameSvg = (svg: string): string =>
     ADD_TAGS: ['foreignObject'],
   });
 
-export type MermaidFrameHandleDeps = Omit<MermaidFrameRenderDeps, 'renderDiagram'> & {
+export type MermaidFrameHandleDeps = Omit<
+  MermaidFrameRenderDeps,
+  'renderDiagram'
+> & {
   loadMermaid: () => Promise<Pick<MermaidApi, 'render'>>;
 };
 

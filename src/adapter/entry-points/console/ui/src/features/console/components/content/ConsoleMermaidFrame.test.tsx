@@ -144,7 +144,11 @@ describe('ConsoleMermaidFrame', () => {
     try {
       render(<ConsoleMermaidFrame code="graph TD; A-->B;" fillWidth={false} />);
       const frameWindow = loadFrame();
-      respondFromFrame(frameWindow, { type: 'size', requestId: 1, height: 200 });
+      respondFromFrame(frameWindow, {
+        type: 'size',
+        requestId: 1,
+        height: 200,
+      });
       act(() => {
         jest.advanceTimersByTime(MERMAID_FRAME_RESPONSE_TIMEOUT_MS * 2);
       });
