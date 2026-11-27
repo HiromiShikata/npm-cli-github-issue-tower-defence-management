@@ -401,4 +401,19 @@ describe('ConsoleMarkdownContent', () => {
       container.querySelector('.console-markdown-reference-host'),
     ).toBeNull();
   });
+
+  it('forwards the mermaid frame source to the diagram', async () => {
+    const { container } = render(
+      <ConsoleMarkdownContent
+        body={'```mermaid\ngraph TD; A-->B;\n```'}
+        mermaidFrameSource="data:text/html,mock"
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        container.querySelector('iframe.console-mermaid-frame')?.getAttribute('src'),
+      ).toBe('data:text/html,mock');
+    });
+  });
 });
+

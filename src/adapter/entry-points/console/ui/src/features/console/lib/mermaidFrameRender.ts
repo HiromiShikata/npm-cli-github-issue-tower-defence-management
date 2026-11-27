@@ -11,6 +11,7 @@ export type MermaidFrameRenderDeps = {
   sanitizeSvg: (svg: string) => string;
   showDiagram: (svg: string, fillWidth: boolean) => void;
   measureHeight: () => number;
+  isLatest?: () => boolean;
 };
 
 export const renderMermaidFrameRequest = async (
@@ -22,6 +23,13 @@ export const renderMermaidFrameRequest = async (
       `mermaid-frame-${request.requestId}`,
       request.code,
     );
+    if (deps.isLatest !== undefined && !deps.isLatest()) {
+      return {
+        type: 'failed',
+        requestId: request.requestId,
+        message: 'superseded by a newer request',
+      };
+    }
     deps.showDiagram(deps.sanitizeSvg(svg), request.fillWidth);
     return {
       type: 'size',
@@ -85,14 +93,19 @@ export const showMermaidFrameDiagram = (
 
 export type MermaidFrameMessageHandlerDeps = {
   isParentSource: (source: unknown) => boolean;
-  handle: (request: MermaidFrameRenderRequest) => Promise<MermaidFrameResponse>;
+  handle: (
+    request: MermaidFrameRenderRequest,
+    isLatest: () => boolean,
+  ) => Promise<MermaidFrameResponse>;
   post: (response: MermaidFrameResponse) => void;
   onSized: (requestId: number) => void;
 };
 
-export const createMermaidFrameMessageHandler =
-  (deps: MermaidFrameMessageHandlerDeps) =>
-  (event: { source: unknown; data: unknown }): void => {
+export const createMermaidFrameMessageHandler = (
+  deps: MermaidFrameMessageHandlerDeps,
+) => {
+  let latestRequestId: number | null = null;
+  return (event: { source: unknown; data: unknown }): void => {
     if (!deps.isParentSource(event.source)) {
       return;
     }
@@ -100,10 +113,15 @@ export const createMermaidFrameMessageHandler =
     if (request === null) {
       return;
     }
-    void deps.handle(request).then((response) => {
+    latestRequestId = request.requestId;
+    const requestId = request.requestId;
+    const isLatest = () => latestRequestId === requestId;
+    void deps.handle(request, isLatest).then((response) => {
       if (response.type === 'size') {
         deps.onSized(response.requestId);
       }
       deps.post(response);
     });
   };
+};
+

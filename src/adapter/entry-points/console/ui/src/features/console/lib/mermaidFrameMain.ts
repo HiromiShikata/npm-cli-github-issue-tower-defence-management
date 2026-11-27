@@ -30,9 +30,10 @@ window.addEventListener(
   'message',
   createMermaidFrameMessageHandler({
     isParentSource: (source) => source === window.parent,
-    handle: (request) =>
+    handle: (request, isLatest) =>
       handleMermaidFrameRequest(request, {
         loadMermaid,
+        isLatest,
         sanitizeSvg: sanitizeMermaidFrameSvg,
         showDiagram: (svg, fillWidth) =>
           showMermaidFrameDiagram(document.body, svg, fillWidth),

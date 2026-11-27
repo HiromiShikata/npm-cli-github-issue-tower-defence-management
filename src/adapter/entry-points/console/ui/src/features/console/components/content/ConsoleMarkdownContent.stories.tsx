@@ -8,6 +8,7 @@ import {
   consoleMermaidBodyFixture,
   consoleReferenceStatesFixture,
 } from '../../testing/fixtures';
+import { MERMAID_FRAME_MOCK_SOURCE } from '../../testing/mermaidFrameMock';
 import { ConsoleMarkdownContent } from './ConsoleMarkdownContent';
 import { ConsoleReferenceLink } from './ConsoleReferenceLink';
 
@@ -25,7 +26,7 @@ export const RichMarkdown: Story = {
 };
 
 export const WithMermaidFence: Story = {
-  args: { body: consoleMermaidBodyFixture },
+  args: { body: consoleMermaidBodyFixture, mermaidFrameSource: MERMAID_FRAME_MOCK_SOURCE },
 };
 
 export const WithCodeFence: Story = {

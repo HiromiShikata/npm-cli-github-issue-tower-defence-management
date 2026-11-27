@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import {
   type ConsoleE2eHarness,
@@ -5,6 +6,7 @@ import {
 } from './consoleTestHarness';
 
 const CSP_VIOLATION_RECORD = 'consoleCspViolations';
+const SAMPLE_VIDEO_PATH = path.join(__dirname, 'fixtures', 'csp-sample.webm');
 
 const tabByLabel = (page: Page, label: string) =>
   page.locator('.console-tab', { hasText: label });
@@ -124,11 +126,18 @@ test.describe('console content security policy', () => {
   });
 
   test('keeps a GitHub-hosted video playable', async ({ page }) => {
+    await page.route(GITHUB_VIDEO_URL, (route) =>
+      route.fulfill({ path: SAMPLE_VIDEO_PATH, contentType: 'video/webm' }),
+    );
     await openCommentWithContent(page);
     const body = page.locator('.console-comment-body-expanded');
-    await expect(body.locator(`video[src="${GITHUB_VIDEO_URL}"]`)).toHaveCount(
-      1,
-    );
+    const video = body.locator(`video[src="${GITHUB_VIDEO_URL}"]`);
+    await expect(video).toHaveCount(1);
+    await expect
+      .poll(() =>
+        video.evaluate((element: HTMLVideoElement) => element.readyState),
+      )
+      .toBeGreaterThanOrEqual(1);
     expect(await readCspViolations(page)).toEqual([]);
   });
 

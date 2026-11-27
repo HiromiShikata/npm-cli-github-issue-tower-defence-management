@@ -135,11 +135,7 @@ describe('showMermaidFrameDiagram', () => {
 
   it('keeps the diagram at its own width when not asked to fill it', () => {
     const container = document.createElement('div');
-    showMermaidFrameDiagram(
-      container,
-      '<svg id="d" style="max-width: 320px;"></svg>',
-      false,
-    );
+    showMermaidFrameDiagram(container, '<svg id="d" style="max-width: 320px;"></svg>', false);
     const diagram = container.querySelector<SVGSVGElement>('svg#d');
     expect(diagram?.style.width).toBe('');
     expect(diagram?.style.maxWidth).toBe('320px');
@@ -177,19 +173,12 @@ describe('createMermaidFrameMessageHandler', () => {
   it('ignores data that is not a render request', () => {
     const handle = jest.fn();
     const { handler } = build(handle);
-    handler({
-      source: 'parent',
-      data: { type: 'eval' },
-    } as unknown as MessageEvent);
+    handler({ source: 'parent', data: { type: 'eval' } } as unknown as MessageEvent);
     expect(handle).not.toHaveBeenCalled();
   });
 
   it('posts the failed response of a diagram that did not load', async () => {
-    const failed = {
-      type: 'failed' as const,
-      requestId: 4,
-      message: 'mermaid script failed to load',
-    };
+    const failed = { type: 'failed' as const, requestId: 4, message: 'mermaid script failed to load' };
     const handle = jest.fn(async () => failed);
     const { handler, post, onSized } = build(handle);
     handler({ source: 'parent', data: request } as unknown as MessageEvent);
@@ -208,3 +197,47 @@ describe('createMermaidFrameMessageHandler', () => {
     expect(onSized).toHaveBeenCalledWith(4);
   });
 });
+
+describe('superseded render requests', () => {
+  it('does not show a diagram that a newer request has superseded', async () => {
+    const showDiagram = jest.fn();
+    const response = await renderMermaidFrameRequest(request, {
+      renderDiagram: jest.fn(async () => ({ svg: '<svg id="old"></svg>' })),
+      sanitizeSvg: (svg: string) => svg,
+      showDiagram,
+      measureHeight: () => 100,
+      isLatest: () => false,
+    });
+    expect(showDiagram).not.toHaveBeenCalled();
+    expect(response).toEqual({
+      type: 'failed',
+      requestId: 7,
+      message: 'superseded by a newer request',
+    });
+  });
+
+  it('tells each render whether a newer request has started since it was received', () => {
+    const handle = jest.fn(
+      async (_request: MermaidFrameRenderRequest, _isLatest: () => boolean) => ({
+        type: 'size' as const,
+        requestId: 1,
+        height: 1,
+      }),
+    );
+    const handler = createMermaidFrameMessageHandler({
+      isParentSource: (source) => source === 'parent',
+      handle,
+      post: jest.fn(),
+      onSized: jest.fn(),
+    });
+    const first = { type: 'render', requestId: 1, code: 'a', fillWidth: false };
+    const second = { type: 'render', requestId: 2, code: 'b', fillWidth: false };
+    handler({ source: 'parent', data: first });
+    const firstIsLatest = handle.mock.calls[0][1];
+    handler({ source: 'parent', data: second });
+    const secondIsLatest = handle.mock.calls[1][1];
+    expect(firstIsLatest()).toBe(false);
+    expect(secondIsLatest()).toBe(true);
+  });
+});
+
