@@ -37,7 +37,7 @@ describe('renderMermaidFrameRequest', () => {
     }));
     const { deps, showDiagram } = buildDeps({
       renderDiagram,
-      sanitizeSvg: (svg) => svg.replace(/<script>.*<\/script>/, ''),
+      sanitizeSvg: (svg) => svg.split('<script>alert(1)</script>').join(''),
       height: 310,
     });
     const response = await renderMermaidFrameRequest(
