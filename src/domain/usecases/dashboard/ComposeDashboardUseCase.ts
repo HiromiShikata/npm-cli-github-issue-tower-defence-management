@@ -420,6 +420,20 @@ export const TOKEN_SESSION_COLUMN_START =
   TOKEN_RESET_WIDTH +
   TOKEN_SEGMENT_SEPARATOR.length;
 
+export const formatTokenSectionHeaderLine = (): string =>
+  padEnd('', SEVEN_DAY_UTILIZATION_COLUMN_START, ' ') +
+  padEnd('7d', TOKEN_UTILIZATION_WIDTH, ' ') +
+  TOKEN_SEGMENT_SEPARATOR +
+  padStart('reset', TOKEN_RESET_WIDTH) +
+  TOKEN_SEGMENT_SEPARATOR +
+  padEnd('pp', TOKEN_UTILIZATION_WIDTH, ' ') +
+  TOKEN_SEGMENT_SEPARATOR +
+  'h' +
+  TOKEN_SEGMENT_SEPARATOR +
+  'sa' +
+  TOKEN_SEGMENT_SEPARATOR +
+  'sx';
+
 export const formatTokenSessionTotalLine = (
   tokens: TokenStatus[],
   runningCodexWorkerCount: number | null,
@@ -431,11 +445,23 @@ export const formatTokenSessionTotalLine = (
   const totalPrep =
     tokens.reduce((sum, t) => sum + t.prep, 0) + codexWorkerCount;
   const totalHum = tokens.reduce((sum, t) => sum + t.hum, 0);
+  const totalClaudeSubagents = tokens.reduce(
+    (sum, token) => sum + (token.claudeSubagentCount ?? 0),
+    0,
+  );
+  const totalCodexSubagents = tokens.reduce(
+    (sum, token) => sum + (token.codexSubagentCount ?? 0),
+    0,
+  );
   return (
     padEnd('', TOKEN_SESSION_COLUMN_START, ' ') +
     padStart(capTwoDigits(totalPrep), 2) +
     ' ' +
-    capTwoDigits(totalHum)
+    capTwoDigits(totalHum) +
+    ' ' +
+    padStart(capTwoDigits(totalClaudeSubagents), 2) +
+    ' ' +
+    padStart(capTwoDigits(totalCodexSubagents), 2)
   );
 };
 
@@ -472,12 +498,22 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
   );
   const prep = padStart(capTwoDigits(token.prep), 2);
   const hum = capTwoDigits(token.hum);
+  const claudeSubagentCount = padStart(
+    capTwoDigits(token.claudeSubagentCount ?? 0),
+    2,
+  );
+  const codexSubagentCount = padStart(
+    capTwoDigits(token.codexSubagentCount ?? 0),
+    2,
+  );
   return joinTokenRowSegments([
     `${dot}${name}`,
     sevenDayUtilization,
     sevenDayReset,
     prep,
     hum,
+    claudeSubagentCount,
+    codexSubagentCount,
   ]);
 };
 
@@ -643,7 +679,9 @@ export class ComposeDashboardUseCase {
     const lines = [
       ...statsLines,
       ...projectLines,
-      ...aggrTotalLines,
+      ...(aggrTotalLines.some((line) => line.length > 0)
+        ? [formatTokenSectionHeaderLine(), ...aggrTotalLines]
+        : aggrTotalLines),
       ...tokenLines,
       ...codexLines,
     ];

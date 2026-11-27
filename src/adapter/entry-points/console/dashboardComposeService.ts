@@ -287,10 +287,18 @@ const asCount = (value: unknown): number => {
   return number === null ? 0 : number;
 };
 
+const asRequiredCount = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0
+    ? value
+    : null;
+
 const parseTokenStatus = (value: unknown): TokenStatus | null => {
   if (!isRecord(value) || typeof value.name !== 'string') {
     return null;
   }
+  const claudeSubagentCount = asRequiredCount(value.claudeSubagentCount);
+  const codexSubagentCount = asRequiredCount(value.codexSubagentCount);
+  if (claudeSubagentCount === null || codexSubagentCount === null) return null;
   return {
     name: value.name,
     fiveHourUtilizationPercent: asNullableNumber(
@@ -304,6 +312,8 @@ const parseTokenStatus = (value: unknown): TokenStatus | null => {
     color: asTokenColor(value.color),
     prep: asCount(value.prep),
     hum: asCount(value.hum),
+    claudeSubagentCount,
+    codexSubagentCount,
   };
 };
 

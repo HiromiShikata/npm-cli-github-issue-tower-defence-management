@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 import type { Issue } from '../../../domain/entities/Issue';
 import { IN_TMUX_STATUS_NAME } from '../../../domain/entities/WorkflowStatus';
 import {
@@ -18,11 +19,56 @@ import { RateLimitSnapshot, readRateLimit } from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
 import { ProcClaudeInteractiveSessionRepository } from '../../repositories/ProcClaudeInteractiveSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
+import { ProcRunningSubagentFactsRepository } from '../../repositories/ProcRunningSubagentFactsRepository';
+import { countRunningSubagentsByTokenKey } from '../../../domain/usecases/dashboard/CountRunningSubagentsUseCase';
 
 const SEVEN_DAY_SONNET_LIMIT_TYPE = 'seven_day_sonnet';
 const SEVEN_DAY_OPUS_LIMIT_TYPE = 'seven_day_opus';
 
 const IN_TMUX_PROJECTS_DIR_NAME = 'token-status-in-tmux';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+type RemoteSubagentCounts = {
+  claudeByTokenKey: Record<string, number>;
+  codexByTokenKey: Record<string, number>;
+};
+
+type RemoteSubagentMachine = {
+  reachable: boolean;
+  subagentCounts: RemoteSubagentCounts | null;
+};
+
+const parseRemoteSubagentMachines = (
+  value: unknown,
+): RemoteSubagentMachine[] => {
+  if (!isRecord(value) || !Array.isArray(value.machines)) return [];
+  return value.machines.flatMap((machine): RemoteSubagentMachine[] => {
+    if (!isRecord(machine)) return [];
+    const subagentCounts = isRecord(machine.subagentCounts)
+      ? {
+          claudeByTokenKey: numericRecord(
+            machine.subagentCounts.claudeByTokenKey,
+          ),
+          codexByTokenKey: numericRecord(
+            machine.subagentCounts.codexByTokenKey,
+          ),
+        }
+      : null;
+    return [{ reachable: machine.reachable === true, subagentCounts }];
+  });
+};
+
+const numericRecord = (value: unknown): Record<string, number> => {
+  if (!isRecord(value)) return {};
+  const result: Record<string, number> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === 'number' && Number.isFinite(entry))
+      result[key] = entry;
+  }
+  return result;
+};
 
 export type TokenStatusWriterParams = {
   dashboardDataDir: string | null | undefined;
@@ -33,6 +79,10 @@ export type TokenStatusWriterParams = {
   readSnapshot?: (token: string) => RateLimitSnapshot | null;
   interactiveSessionRepository?: ClaudeInteractiveSessionRepository;
   spawnRepository?: TakeOwnershipSpawnRepository;
+  runningSubagentFactsRepository?: {
+    listFacts: () => import('../../../domain/usecases/dashboard/CountRunningSubagentsUseCase').ProcessFact[];
+  };
+  reportError?: (message: string) => void;
 };
 
 export type TokenStatusFile = {
@@ -150,6 +200,8 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
   if (!dashboardDataDir || !tokenListJsonPath) {
     return;
   }
+  const reportError =
+    params.reportError ?? ((message: string) => console.error(message));
 
   const entries = loadTokenEntries(tokenListJsonPath);
   if (entries === null) {
@@ -179,6 +231,79 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     new ProcClaudeInteractiveSessionRepository();
   const spawnRepository =
     params.spawnRepository ?? new ProcTakeOwnershipSpawnRepository();
+  const runningSubagentFactsRepository =
+    params.runningSubagentFactsRepository ??
+    new ProcRunningSubagentFactsRepository();
+  let localCounts;
+  try {
+    localCounts = countRunningSubagentsByTokenKey(
+      runningSubagentFactsRepository.listFacts(),
+    );
+  } catch (error) {
+    reportError(
+      `could not read local subagent facts: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    localCounts = {
+      claudeByTokenKey: new Map<string, number>(),
+      codexByTokenKey: new Map<string, number>(),
+      unreadableWorkerPids: [],
+    };
+  }
+  for (const pid of localCounts.unreadableWorkerPids) {
+    reportError(`unreadable Claude worker subagent count for pid ${pid}`);
+  }
+  const claudeCounts = new Map(localCounts.claudeByTokenKey);
+  const codexCounts = new Map(localCounts.codexByTokenKey);
+  try {
+    const remote: unknown = JSON.parse(
+      fs.readFileSync(
+        path.join(dashboardDataDir, 'remote-machine-status.json'),
+        'utf8',
+      ),
+    );
+    for (const machine of parseRemoteSubagentMachines(remote)) {
+      if (
+        !machine.reachable ||
+        machine.subagentCounts === null ||
+        machine.subagentCounts === undefined
+      )
+        continue;
+      for (const [key, value] of Object.entries(
+        machine.subagentCounts.claudeByTokenKey,
+      ))
+        claudeCounts.set(key, (claudeCounts.get(key) ?? 0) + value);
+      for (const [key, value] of Object.entries(
+        machine.subagentCounts.codexByTokenKey,
+      ))
+        codexCounts.set(key, (codexCounts.get(key) ?? 0) + value);
+    }
+  } catch (error) {
+    const errorCode =
+      error instanceof Error &&
+      'code' in error &&
+      typeof error.code === 'string'
+        ? error.code
+        : null;
+    if (errorCode !== 'ENOENT') {
+      reportError(
+        `could not read remote machine subagent counts: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+  const tokenKeyOf = (token: string): string =>
+    createHash('sha256').update(token).digest('hex');
+  const claudeSubagentCountByToken = new Map(
+    entries.map((entry) => [
+      entry.token,
+      claudeCounts.get(tokenKeyOf(entry.token)) ?? 0,
+    ]),
+  );
+  const codexSubagentCountByToken = new Map(
+    entries.map((entry) => [
+      entry.token,
+      codexCounts.get(tokenKeyOf(entry.token)) ?? 0,
+    ]),
+  );
 
   const tokenInputs: TokenStatusInput[] = entries.map((entry) => ({
     name: entry.name,
@@ -251,6 +376,8 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     tokens: tokenInputs,
     prepCountByToken,
     humCountByToken,
+    claudeSubagentCountByToken,
+    codexSubagentCountByToken,
     nowEpochSeconds: Math.floor(now.getTime() / 1000),
   });
 

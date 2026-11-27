@@ -10,6 +10,10 @@ import {
   parseLoadAverages,
   parseMemoryUsedPercent,
 } from '../../repositories/ProcHostMetricsRepository';
+import {
+  countRunningSubagentsByTokenKey,
+  ProcessFact,
+} from '../../../domain/usecases/dashboard/CountRunningSubagentsUseCase';
 
 export type WorkerHost = {
   name: string;
@@ -48,21 +52,25 @@ export const parseWorkerHostsYaml = (text: string): WorkerHost[] => {
 };
 
 export const REMOTE_METRICS_SEPARATOR = '#TDPM-SEP';
-export const REMOTE_METRICS_COMMAND =
-  "cat /proc/meminfo; echo '#TDPM-SEP'; grep '^cpu ' /proc/stat; sleep 0.4; grep '^cpu ' /proc/stat; echo '#TDPM-SEP'; cat /proc/loadavg; echo '#TDPM-SEP'; stat -f -c '%b %f %a' /";
+export const REMOTE_SUBAGENT_FACTS_COMMAND = `for directory in "\${TDPM_PROC_DIR:-/proc}"/[0-9]*; do [ -d "$directory" ] || continue; pid=\${directory##*/}; stat=$(cat "$directory/stat" 2>/dev/null) || continue; ppid=$(printf '%s\\n' "$stat" | sed 's/.*) //; s/^[^ ]* //; s/ .*//'); argv=$(cat "$directory/cmdline" 2>/dev/null) || continue; environment=$(cat "$directory/environ" 2>/dev/null || true); first=$(cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '1p'); if [ "\${first##*/}" = claude ] && cat "$directory/cmdline" | tr '\\0' '\\n' | awk 'p && /^Take ownership of/ { found=1 } /-p$/ { p=1; next } { p=0 } END { exit found ? 0 : 1 }'; then token=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CODE_OAUTH_TOKEN=//p'); if [ -n "$token" ]; then key=$(printf '%s' "$token" | sha256sum | cut -d ' ' -f1); config=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CONFIG_DIR=//p'); home=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^HOME=//p'); [ -n "$config" ] || config="$home/.claude"; session=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CODE_SESSION_ID=//p'); count=0; unreadable=0; [ -d "$config/projects" ] || unreadable=1; for project in "$config"/projects/*; do [ -d "$project" ] || continue; if [ -n "$session" ]; then sessions="$project/$session"; else sessions="$project"/*; fi; for sessionDirectory in $sessions; do [ -d "$sessionDirectory/subagents" ] || { unreadable=1; continue; }; for meta in "$sessionDirectory/subagents"/*.meta.json; do [ -f "$meta" ] || { unreadable=1; continue; }; content=$(cat "$meta" 2>/dev/null) || { unreadable=1; continue; }; printf '%s' "$content" | grep -Eq '"finished"[[:space:]]*:[[:space:]]*true' || count=$((count + 1)); done; done; done; [ "$unreadable" -eq 0 ] && unfinished="$count" || unfinished='?'; printf '%s\\t%s\\tclaude-worker\\t%s\\t%s\\n' "$pid" "$ppid" "$key" "$unfinished"; continue; fi; fi; if [ "\${first##*/}" = node ] && cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '2p' | grep -q '/codex$' && [ "$(cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '3p')" = exec ]; then printf '%s\\t%s\\tcodex-launcher\\t-\\t-\\n' "$pid" "$ppid"; else printf '%s\\t%s\\tother\\t-\\t-\\n' "$pid" "$ppid"; fi; done`;
+export const REMOTE_METRICS_COMMAND = `cat /proc/meminfo; echo '${REMOTE_METRICS_SEPARATOR}'; grep '^cpu ' /proc/stat; sleep 0.4; grep '^cpu ' /proc/stat; echo '${REMOTE_METRICS_SEPARATOR}'; cat /proc/loadavg; echo '${REMOTE_METRICS_SEPARATOR}'; stat -f -c '%b %f %a' /; echo '${REMOTE_METRICS_SEPARATOR}'; ${REMOTE_SUBAGENT_FACTS_COMMAND}`;
 
 export type RemoteMachineMetrics = {
   memPct: number;
   cpuPct: number;
   diskPct: number;
   load: [number, number, number];
+  subagentCounts: {
+    claudeByTokenKey: Record<string, number>;
+    codexByTokenKey: Record<string, number>;
+  };
 };
 
-export const parseRemoteMetricsOutput = (
+const parseRemoteMetricsOutputWithFacts = (
   stdout: string,
-): RemoteMachineMetrics => {
+): { metrics: RemoteMachineMetrics; unreadableWorkerPids: number[] } => {
   const sections = stdout.split(/^(?:#TDPM-SEP)\s*$/m);
-  if (sections.length !== 4)
+  if (sections.length !== 5)
     throw new Error('remote metrics sections are malformed');
   const cpuLines = sections[1]
     .split('\n')
@@ -73,16 +81,63 @@ export const parseRemoteMetricsOutput = (
   if (stat.length !== 3 || stat.some((value) => !Number.isFinite(value)))
     throw new Error('remote disk sample is malformed');
   const load = parseLoadAverages(sections[2]);
+  const facts: ProcessFact[] = sections[4]
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [pid, ppid, kind, tokenKey, unfinished] = line.split('\t');
+      if (
+        !/^\d+$/.test(pid ?? '') ||
+        !/^\d+$/.test(ppid ?? '') ||
+        (kind !== 'claude-worker' &&
+          kind !== 'codex-launcher' &&
+          kind !== 'other') ||
+        tokenKey === undefined ||
+        unfinished === undefined
+      )
+        throw new Error('remote subagent facts are malformed');
+      if (kind === 'claude-worker' && !/^[0-9a-f]{64}$/.test(tokenKey))
+        throw new Error('remote subagent facts are malformed');
+      if (kind !== 'claude-worker' && (tokenKey !== '-' || unfinished !== '-'))
+        throw new Error('remote subagent facts are malformed');
+      if (
+        kind === 'claude-worker' &&
+        unfinished !== '?' &&
+        !/^\d+$/.test(unfinished)
+      )
+        throw new Error('remote subagent facts are malformed');
+      return {
+        pid: Number(pid),
+        ppid: Number(ppid),
+        kind,
+        tokenKey: tokenKey === '-' ? null : tokenKey,
+        unfinishedClaudeSubagentCount:
+          unfinished === '?' || unfinished === '-' ? null : Number(unfinished),
+      };
+    });
+  const counts = countRunningSubagentsByTokenKey(facts);
   return {
-    memPct: parseMemoryUsedPercent(sections[0]),
-    cpuPct: cpuUsedPercentFromSamples(
-      parseCpuSample(cpuLines[0]),
-      parseCpuSample(cpuLines[1]),
-    ),
-    diskPct: parseDiskUsedPercent(stat[0], stat[1], stat[2]),
-    load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
+    metrics: {
+      memPct: parseMemoryUsedPercent(sections[0]),
+      cpuPct: cpuUsedPercentFromSamples(
+        parseCpuSample(cpuLines[0]),
+        parseCpuSample(cpuLines[1]),
+      ),
+      diskPct: parseDiskUsedPercent(stat[0], stat[1], stat[2]),
+      load: [load.oneMinute, load.fiveMinute, load.fifteenMinute],
+      subagentCounts: {
+        claudeByTokenKey: Object.fromEntries(counts.claudeByTokenKey),
+        codexByTokenKey: Object.fromEntries(counts.codexByTokenKey),
+      },
+    },
+    unreadableWorkerPids: counts.unreadableWorkerPids,
   };
 };
+
+export const parseRemoteMetricsOutput = (
+  stdout: string,
+): RemoteMachineMetrics => parseRemoteMetricsOutputWithFacts(stdout).metrics;
 
 export const buildSshInvocation = (
   host: WorkerHost,
@@ -135,6 +190,10 @@ export type RemoteMachineStatusEntry = {
   diskPct: number | null;
   load: [number, number, number] | null;
   capturedAt: string;
+  subagentCounts?: {
+    claudeByTokenKey: Record<string, number>;
+    codexByTokenKey: Record<string, number>;
+  } | null;
 };
 export type RemoteMachineStatusFile = {
   capturedAt: string;
@@ -175,6 +234,8 @@ export const writeRemoteMachineStatus = async (params: {
   reportError?: (message: string) => void;
 }): Promise<void> => {
   if (!params.dashboardDataDir) return;
+  const reportError =
+    params.reportError ?? ((message: string) => console.error(message));
   const outputPath = path.join(
     params.dashboardDataDir,
     REMOTE_MACHINE_STATUS_FILE_NAME,
@@ -198,7 +259,7 @@ export const writeRemoteMachineStatus = async (params: {
     hosts = parseWorkerHostsYaml(readFile(params.workerHostsPath));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    params.reportError?.(`could not read or parse worker hosts: ${message}`);
+    reportError(`could not read or parse worker hosts: ${message}`);
     let previousNames: string[] = [];
     try {
       const previousText = fs.readFileSync(outputPath, 'utf8');
@@ -222,6 +283,7 @@ export const writeRemoteMachineStatus = async (params: {
       cpuPct: null,
       diskPct: null,
       load: null,
+      subagentCounts: null,
       capturedAt,
     }));
     fs.mkdirSync(params.dashboardDataDir, { recursive: true });
@@ -231,7 +293,7 @@ export const writeRemoteMachineStatus = async (params: {
         capturedAt,
         machines,
       } satisfies RemoteMachineStatusFile),
-      params.reportError,
+      reportError,
     );
     return;
   }
@@ -240,12 +302,17 @@ export const writeRemoteMachineStatus = async (params: {
   const machines: RemoteMachineStatusEntry[] = [];
   for (const host of hosts) {
     try {
-      const metrics = parseRemoteMetricsOutput(
-        await runRemoteCommand(
-          buildSshInvocation(host, REMOTE_METRICS_COMMAND),
-          REMOTE_COMMAND_TIMEOUT_MS,
-        ),
+      const remoteOutput = await runRemoteCommand(
+        buildSshInvocation(host, REMOTE_METRICS_COMMAND),
+        REMOTE_COMMAND_TIMEOUT_MS,
       );
+      const { metrics, unreadableWorkerPids } =
+        parseRemoteMetricsOutputWithFacts(remoteOutput);
+      for (const pid of unreadableWorkerPids) {
+        reportError(
+          `remote machine ${host.name} has unreadable Claude worker subagent count for pid ${pid}`,
+        );
+      }
       machines.push({
         name: host.name,
         reachable: true,
@@ -254,7 +321,7 @@ export const writeRemoteMachineStatus = async (params: {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      params.reportError?.(
+      reportError(
         `remote machine ${host.name} could not be measured: ${message}`,
       );
       machines.push({
@@ -264,6 +331,7 @@ export const writeRemoteMachineStatus = async (params: {
         cpuPct: null,
         diskPct: null,
         load: null,
+        subagentCounts: null,
         capturedAt,
       });
     }
@@ -272,6 +340,6 @@ export const writeRemoteMachineStatus = async (params: {
   writeJsonAtomically(
     outputPath,
     JSON.stringify({ capturedAt, machines } satisfies RemoteMachineStatusFile),
-    params.reportError,
+    reportError,
   );
 };
