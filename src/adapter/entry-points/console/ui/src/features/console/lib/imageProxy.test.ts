@@ -139,3 +139,11 @@ describe('replaceBlockedImagesWithLinks', () => {
     expect(replaceBlockedImagesWithLinks(html)).toBe(html);
   });
 });
+
+describe('isProxyableImageUrl host case', () => {
+  it('accepts a GitHub user-attachments URL whose host is written in upper case', () => {
+    expect(
+      isProxyableImageUrl('https://GitHub.com/user-attachments/assets/abc'),
+    ).toBe(true);
+  });
+});

@@ -1,8 +1,17 @@
 const ALLOWED_IMAGE_URL =
   /^https:\/\/github\.com\/user-attachments\/|^https:\/\/[a-z0-9][a-z0-9.-]*\.githubusercontent\.com\//;
 
-export const isProxyableImageUrl = (src: string): boolean =>
-  ALLOWED_IMAGE_URL.test(src);
+// The URL parser lower-cases the host, so the host case of the source does not
+// change which images the proxy serves.
+export const isProxyableImageUrl = (src: string): boolean => {
+  let canonical: string;
+  try {
+    canonical = new URL(src).href;
+  } catch {
+    return false;
+  }
+  return ALLOWED_IMAGE_URL.test(canonical);
+};
 
 export type ImageProxyUrlBuilder = (src: string) => string;
 
