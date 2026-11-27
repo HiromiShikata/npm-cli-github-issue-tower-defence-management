@@ -1,7 +1,6 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { createHash } from 'crypto';
 import { Issue } from '../../../domain/entities/Issue';
 import { ClaudeInteractiveSession } from '../../../domain/usecases/adapter-interfaces/ClaudeInteractiveSessionRepository';
 import { TakeOwnershipSpawn } from '../../../domain/usecases/adapter-interfaces/TakeOwnershipSpawnRepository';
@@ -96,9 +95,9 @@ describe('writeTokenStatus', () => {
       },
     ];
     const spawns: TakeOwnershipSpawn[] = [
-      { token: 'token-a', logPath: '/logs-aw/x.log' },
-      { token: 'token-a', logPath: '/logs-aw/x.log' },
-      { token: 'token-a', logPath: '/logs-aw/y.log' },
+      { token: 'token-a', logPath: '/logs-aw/x.log', issueUrl: null },
+      { token: 'token-a', logPath: '/logs-aw/x.log', issueUrl: null },
+      { token: 'token-a', logPath: '/logs-aw/y.log', issueUrl: null },
     ];
 
     writeTokenStatus({
@@ -280,16 +279,24 @@ describe('writeTokenStatus', () => {
   });
 });
 
+const ISSUE_URL_101 = 'https://github.com/example-org/example-repo/issues/101';
+const ISSUE_URL_102 = 'https://github.com/example-org/example-repo/issues/102';
+const ISSUE_URL_999 = 'https://github.com/example-org/example-repo/issues/999';
+
 describe('writeTokenStatus subagent counts', () => {
-  it('combines injected local and remote counts and ignores unmatched token keys', () => {
+  it('joins remote counts to the token whose local spawn has the same issue URL and ignores unmatched URLs', () => {
     const directory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'token-subagents-'),
     );
     const tokenListPath = path.join(directory, 'tokens.json');
+    const reportError = jest.fn<void, [string]>();
     try {
       fs.writeFileSync(
         tokenListPath,
-        JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]),
+        JSON.stringify([
+          { name: 'alpha', token: 'token-alpha' },
+          { name: 'beta', token: 'token-beta' },
+        ]),
       );
       fs.writeFileSync(
         path.join(directory, 'remote-machine-status.json'),
@@ -297,7 +304,17 @@ describe('writeTokenStatus subagent counts', () => {
           machines: [
             {
               reachable: true,
-              subagentCounts: { claudeByTokenKey: {}, codexByTokenKey: {} },
+              subagentCounts: {
+                claudeByIssueUrl: {
+                  [ISSUE_URL_101]: 2,
+                  [ISSUE_URL_999]: 5,
+                },
+                codexByIssueUrl: {
+                  [ISSUE_URL_101]: 1,
+                  [ISSUE_URL_999]: 4,
+                },
+              },
+              unmeasuredClaudeIssueUrls: [],
             },
           ],
         }),
@@ -309,7 +326,13 @@ describe('writeTokenStatus subagent counts', () => {
         readSnapshot: () => null,
         interactiveSessionRepository: { listInteractiveSessions: () => [] },
         spawnRepository: {
-          listSpawns: () => [],
+          listSpawns: () => [
+            {
+              token: 'token-beta',
+              logPath: '/logs-aw/beta.log',
+              issueUrl: ISSUE_URL_101,
+            },
+          ],
           listRunningIssueUrls: () => [],
         },
         runningSubagentFactsRepository: {
@@ -318,20 +341,19 @@ describe('writeTokenStatus subagent counts', () => {
               pid: 10,
               ppid: 1,
               kind: 'claude-worker',
-              tokenKey: createHash('sha256')
-                .update('token-alpha')
-                .digest('hex'),
+              workerKey: 'token-alpha',
               unfinishedClaudeSubagentCount: 3,
             },
             {
               pid: 11,
               ppid: 10,
               kind: 'codex-launcher',
-              tokenKey: null,
+              workerKey: null,
               unfinishedClaudeSubagentCount: null,
             },
           ],
         },
+        reportError,
       });
       const written = readJson(path.join(directory, 'token-status.json'));
       if (
@@ -342,10 +364,102 @@ describe('writeTokenStatus subagent counts', () => {
       ) {
         throw new Error('token-status.json tokens are malformed');
       }
-      expect(written.tokens[0]).toMatchObject({
-        claudeSubagentCount: 3,
-        codexSubagentCount: 1,
+      expect(written.tokens).toEqual([
+        expect.objectContaining({
+          name: 'alpha',
+          claudeSubagentCount: 3,
+          codexSubagentCount: 1,
+        }),
+        expect.objectContaining({
+          name: 'beta',
+          claudeSubagentCount: 2,
+          codexSubagentCount: 1,
+        }),
+      ]);
+      expect(reportError).toHaveBeenCalled();
+      expect(reportError.mock.calls.flat().join(' ')).not.toContain(
+        'token-beta',
+      );
+      expect(reportError.mock.calls.flat().join(' ')).not.toContain(
+        'token-alpha',
+      );
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('marks the subagent counts of the token whose spawn has an unmeasured remote issue URL as unavailable', () => {
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'token-subagents-'),
+    );
+    const tokenListPath = path.join(directory, 'tokens.json');
+    try {
+      fs.writeFileSync(
+        tokenListPath,
+        JSON.stringify([
+          { name: 'alpha', token: 'token-alpha' },
+          { name: 'beta', token: 'token-beta' },
+        ]),
+      );
+      fs.writeFileSync(
+        path.join(directory, 'remote-machine-status.json'),
+        JSON.stringify({
+          machines: [
+            {
+              reachable: true,
+              subagentCounts: {
+                claudeByIssueUrl: { [ISSUE_URL_101]: 2 },
+                codexByIssueUrl: { [ISSUE_URL_101]: 1 },
+              },
+              unmeasuredClaudeIssueUrls: [ISSUE_URL_102],
+            },
+          ],
+        }),
+      );
+      writeTokenStatus({
+        dashboardDataDir: directory,
+        tokenListJsonPath: tokenListPath,
+        issues: [],
+        readSnapshot: () => null,
+        interactiveSessionRepository: { listInteractiveSessions: () => [] },
+        spawnRepository: {
+          listSpawns: () => [
+            {
+              token: 'token-alpha',
+              logPath: '/logs-aw/alpha.log',
+              issueUrl: ISSUE_URL_101,
+            },
+            {
+              token: 'token-beta',
+              logPath: '/logs-aw/beta.log',
+              issueUrl: ISSUE_URL_102,
+            },
+          ],
+          listRunningIssueUrls: () => [],
+        },
+        runningSubagentFactsRepository: { listFacts: () => [] },
       });
+      const written = readJson(path.join(directory, 'token-status.json'));
+      if (
+        written === null ||
+        typeof written !== 'object' ||
+        !('tokens' in written) ||
+        !Array.isArray(written.tokens)
+      ) {
+        throw new Error('token-status.json tokens are malformed');
+      }
+      expect(written.tokens).toEqual([
+        expect.objectContaining({
+          name: 'alpha',
+          claudeSubagentCount: 2,
+          codexSubagentCount: 1,
+        }),
+        expect.objectContaining({
+          name: 'beta',
+          claudeSubagentCount: null,
+          codexSubagentCount: null,
+        }),
+      ]);
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
     }
@@ -364,8 +478,6 @@ describe('writeTokenStatus subagent counts', () => {
           { name: 'beta', token: 'token-beta' },
         ]),
       );
-      const keyOf = (token: string): string =>
-        createHash('sha256').update(token).digest('hex');
       writeTokenStatus({
         dashboardDataDir: directory,
         tokenListJsonPath: tokenListPath,
@@ -382,21 +494,21 @@ describe('writeTokenStatus subagent counts', () => {
               pid: 10,
               ppid: 1,
               kind: 'claude-worker',
-              tokenKey: keyOf('token-alpha'),
+              workerKey: 'token-alpha',
               unfinishedClaudeSubagentCount: null,
             },
             {
               pid: 20,
               ppid: 1,
               kind: 'claude-worker',
-              tokenKey: keyOf('token-beta'),
+              workerKey: 'token-beta',
               unfinishedClaudeSubagentCount: 2,
             },
             {
               pid: 21,
               ppid: 20,
               kind: 'codex-launcher',
-              tokenKey: null,
+              workerKey: null,
               unfinishedClaudeSubagentCount: null,
             },
           ],
@@ -455,7 +567,7 @@ describe('writeTokenStatus subagent counts', () => {
               pid: 10,
               ppid: 1,
               kind: 'claude-worker',
-              tokenKey: null,
+              workerKey: 'token-alpha',
               unfinishedClaudeSubagentCount: null,
             },
           ],

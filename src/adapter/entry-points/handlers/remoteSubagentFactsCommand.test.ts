@@ -1,5 +1,4 @@
 import { execFileSync } from 'child_process';
-import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -9,11 +8,14 @@ import {
 } from './remoteMachineStatusWriter';
 
 const TOKEN = 'token-alpha';
-const TOKEN_KEY = crypto.createHash('sha256').update(TOKEN).digest('hex');
+const ISSUE_URL = 'https://github.com/example-org/example-repo/issues/101';
+const WORKER_ROW = `10\t1\tclaude-worker\t${ISSUE_URL}\t-`;
+const CODEX_ROW = '11\t10\tcodex-launcher\t-\t-';
 
 type Scenario = {
   metadataFiles: Record<string, string | undefined> | null;
   createProjects: boolean;
+  withToken: boolean;
 };
 
 const runFactsCommand = (scenario: Scenario) => {
@@ -32,14 +34,28 @@ const runFactsCommand = (scenario: Scenario) => {
     );
     fs.writeFileSync(
       path.join(processDirectory, 'cmdline'),
-      Buffer.from('claude\0-p\0Take ownership of issue\0'),
+      Buffer.from(`claude\0-p\0Take ownership of ${ISSUE_URL}\0`),
     );
+    const environment = [
+      ...(scenario.withToken ? [`CLAUDE_CODE_OAUTH_TOKEN=${TOKEN}`] : []),
+      `CLAUDE_CONFIG_DIR=${configDirectory}`,
+      'CLAUDE_CODE_SESSION_ID=session-one',
+    ];
     fs.writeFileSync(
       path.join(processDirectory, 'environ'),
-      Buffer.from(
-        `CLAUDE_CODE_OAUTH_TOKEN=${TOKEN}\0CLAUDE_CONFIG_DIR=${configDirectory}\0CLAUDE_CODE_SESSION_ID=session-one\0`,
-      ),
+      Buffer.from(environment.map((entry) => `${entry}\0`).join('')),
     );
+    const codexDirectory = path.join(procDirectory, '11');
+    fs.mkdirSync(codexDirectory, { recursive: true });
+    fs.writeFileSync(
+      path.join(codexDirectory, 'stat'),
+      '11 (node) S 10 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0',
+    );
+    fs.writeFileSync(
+      path.join(codexDirectory, 'cmdline'),
+      Buffer.from('node\0/opt/codex\0exec\0'),
+    );
+    fs.writeFileSync(path.join(codexDirectory, 'environ'), '');
     if (scenario.createProjects) {
       fs.mkdirSync(
         path.join(configDirectory, 'projects', 'demo', 'session-one'),
@@ -72,14 +88,29 @@ const runFactsCommand = (scenario: Scenario) => {
 };
 
 describe('REMOTE_SUBAGENT_FACTS_COMMAND', () => {
-  it('prints the worker row without token values and parses it with the metadata count', () => {
+  it('prints the worker row keyed by its issue URL and the Codex row, with no token or hash', () => {
     const { output, parsed } = runFactsCommand({
       metadataFiles: { 'a.meta.json': '{"finished":false}' },
       createProjects: true,
+      withToken: true,
     });
+    expect(output.split('\n')).toContain(WORKER_ROW);
+    expect(output.split('\n')).toContain(CODEX_ROW);
     expect(output).not.toContain(TOKEN);
-    expect(parsed.subagentCounts.claudeByTokenKey[TOKEN_KEY]).toBe(1);
-    expect(parsed.unmeasuredClaudeTokenKeys).toEqual([]);
+    expect(output).not.toMatch(/[0-9a-f]{64}/);
+    expect(parsed.subagentCounts.claudeByIssueUrl[ISSUE_URL]).toBe(1);
+    expect(parsed.subagentCounts.codexByIssueUrl[ISSUE_URL]).toBe(1);
+    expect(parsed.unmeasuredIssueUrls).toEqual([]);
+  });
+
+  it('prints the worker row when the worker environment has no token', () => {
+    const { output, parsed } = runFactsCommand({
+      metadataFiles: null,
+      createProjects: true,
+      withToken: false,
+    });
+    expect(output.split('\n')).toContain(WORKER_ROW);
+    expect(parsed.subagentCounts.claudeByIssueUrl[ISSUE_URL]).toBe(0);
   });
 
   it.each([
@@ -109,29 +140,33 @@ describe('REMOTE_SUBAGENT_FACTS_COMMAND', () => {
       unmeasured: [],
     },
     {
-      name: 'marks the token unmeasured when metadata is wrapped in braces but is not JSON',
+      name: 'marks the issue URL unmeasured when metadata is wrapped in braces but is not JSON',
       metadataFiles: { 'broken.meta.json': '{garbage}' },
       createProjects: true,
       claude: undefined,
-      unmeasured: [TOKEN_KEY],
+      unmeasured: [ISSUE_URL],
     },
     {
-      name: 'marks the token unmeasured when metadata is truncated JSON',
+      name: 'marks the issue URL unmeasured when metadata is truncated JSON',
       metadataFiles: { 'truncated.meta.json': '{"finished": tr' },
       createProjects: true,
       claude: undefined,
-      unmeasured: [TOKEN_KEY],
+      unmeasured: [ISSUE_URL],
     },
     {
-      name: 'marks the token unmeasured when metadata parses to an array',
+      name: 'marks the issue URL unmeasured when metadata parses to an array',
       metadataFiles: { 'array.meta.json': '[]' },
       createProjects: true,
       claude: undefined,
-      unmeasured: [TOKEN_KEY],
+      unmeasured: [ISSUE_URL],
     },
   ])('$name', ({ metadataFiles, createProjects, claude, unmeasured }) => {
-    const { parsed } = runFactsCommand({ metadataFiles, createProjects });
-    expect(parsed.subagentCounts.claudeByTokenKey[TOKEN_KEY]).toBe(claude);
-    expect(parsed.unmeasuredClaudeTokenKeys).toEqual(unmeasured);
+    const { parsed } = runFactsCommand({
+      metadataFiles,
+      createProjects,
+      withToken: true,
+    });
+    expect(parsed.subagentCounts.claudeByIssueUrl[ISSUE_URL]).toBe(claude);
+    expect(parsed.unmeasuredIssueUrls).toEqual(unmeasured);
   });
 });

@@ -1,18 +1,18 @@
 import {
   ProcessFact,
-  countRunningSubagentsByTokenKey,
+  countRunningSubagentsByWorkerKey,
 } from './CountRunningSubagentsUseCase';
 
 const worker = (
   pid: number,
   ppid: number,
-  tokenKey: string,
+  workerKey: string,
   count: number | null,
 ): ProcessFact => ({
   pid,
   ppid,
   kind: 'claude-worker',
-  tokenKey,
+  workerKey,
   unfinishedClaudeSubagentCount: count,
 });
 
@@ -20,7 +20,7 @@ const codex = (pid: number, ppid: number): ProcessFact => ({
   pid,
   ppid,
   kind: 'codex-launcher',
-  tokenKey: null,
+  workerKey: null,
   unfinishedClaudeSubagentCount: null,
 });
 
@@ -28,23 +28,34 @@ const other = (pid: number, ppid: number): ProcessFact => ({
   pid,
   ppid,
   kind: 'other',
-  tokenKey: null,
+  workerKey: null,
   unfinishedClaudeSubagentCount: null,
 });
 
-describe('countRunningSubagentsByTokenKey', () => {
+describe('countRunningSubagentsByWorkerKey', () => {
   it.each([
     {
       name: 'sums unfinished Claude subagents per worker token',
-      facts: [worker(10, 1, 'claude-key', 2), worker(20, 1, 'claude-key', 3)],
-      expected: { claude: [['claude-key', 5]], codex: [], unreadable: [] },
+      facts: [
+        worker(10, 1, 'claude-worker-key', 2),
+        worker(20, 1, 'claude-worker-key', 3),
+      ],
+      expected: {
+        claude: [['claude-worker-key', 5]],
+        codex: [],
+        unreadable: [],
+      },
     },
     {
       name: 'attributes Codex launchers to the nearest worker ancestor',
-      facts: [worker(10, 1, 'claude-key', 1), other(11, 10), codex(12, 11)],
+      facts: [
+        worker(10, 1, 'claude-worker-key', 1),
+        other(11, 10),
+        codex(12, 11),
+      ],
       expected: {
-        claude: [['claude-key', 1]],
-        codex: [['claude-key', 1]],
+        claude: [['claude-worker-key', 1]],
+        codex: [['claude-worker-key', 1]],
         unreadable: [],
       },
     },
@@ -55,8 +66,16 @@ describe('countRunningSubagentsByTokenKey', () => {
     },
     {
       name: 'does not count timeout wrappers or native Codex processes',
-      facts: [worker(10, 1, 'claude-key', 0), other(11, 10), other(12, 10)],
-      expected: { claude: [['claude-key', 0]], codex: [], unreadable: [] },
+      facts: [
+        worker(10, 1, 'claude-worker-key', 0),
+        other(11, 10),
+        other(12, 10),
+      ],
+      expected: {
+        claude: [['claude-worker-key', 0]],
+        codex: [],
+        unreadable: [],
+      },
     },
     {
       name: 'ignores dead workers because they are absent from facts',
@@ -65,8 +84,12 @@ describe('countRunningSubagentsByTokenKey', () => {
     },
     {
       name: 'reports unreadable worker counts without counting them',
-      facts: [worker(10, 1, 'claude-key', null), codex(12, 10)],
-      expected: { claude: [], codex: [['claude-key', 1]], unreadable: [10] },
+      facts: [worker(10, 1, 'claude-worker-key', null), codex(12, 10)],
+      expected: {
+        claude: [],
+        codex: [['claude-worker-key', 1]],
+        unreadable: [10],
+      },
     },
     {
       name: 'terminates on a parent cycle or missing parent',
@@ -74,9 +97,24 @@ describe('countRunningSubagentsByTokenKey', () => {
       expected: { claude: [], codex: [], unreadable: [] },
     },
   ])('$name', ({ facts, expected }) => {
-    const result = countRunningSubagentsByTokenKey(facts);
-    expect([...result.claudeByTokenKey]).toEqual(expected.claude);
-    expect([...result.codexByTokenKey]).toEqual(expected.codex);
+    const result = countRunningSubagentsByWorkerKey(facts);
+    expect([...result.claudeByWorkerKey]).toEqual(expected.claude);
+    expect([...result.codexByWorkerKey]).toEqual(expected.codex);
     expect(result.unreadableWorkerPids).toEqual(expected.unreadable);
+  });
+
+  it('lists each unmeasured worker key once, sorted, and keeps readable keys out of it', () => {
+    const result = countRunningSubagentsByWorkerKey([
+      worker(10, 1, 'worker-beta', null),
+      worker(11, 1, 'worker-alpha', null),
+      worker(12, 1, 'worker-beta', null),
+      worker(13, 1, 'worker-gamma', 4),
+    ]);
+    expect(result.unmeasuredWorkerKeys).toEqual([
+      'worker-alpha',
+      'worker-beta',
+    ]);
+    expect(result.unreadableWorkerPids).toEqual([10, 11, 12]);
+    expect([...result.claudeByWorkerKey]).toEqual([['worker-gamma', 4]]);
   });
 });

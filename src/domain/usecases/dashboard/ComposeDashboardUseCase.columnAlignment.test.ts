@@ -188,15 +188,11 @@ describe('ComposeDashboardUseCase token column alignment', () => {
         SEVEN_DAY_UTILIZATION_COLUMN_START + 3,
       );
       expect(displayColumnOf(row, prep)).toBe(TOKEN_SESSION_COLUMN_START);
-      expect(displayColumnOf(row, hum)).toBe(
-        /^\d+$/.test(hum)
-          ? TOKEN_SESSION_COLUMN_START + 3 + (2 - hum.length)
-          : TOKEN_SESSION_COLUMN_START + 3,
-      );
+      expect(displayColumnOf(row, hum)).toBe(TOKEN_SESSION_COLUMN_START + 3);
     },
   );
 
-  it('keeps the subagent cells at the same columns whether the human count has one or two digits', () => {
+  it('places the subagent cells right after the unpadded human count', () => {
     const rowOf = (hum: number) =>
       formatTokenRowLine(
         tokenStatus({
@@ -210,7 +206,7 @@ describe('ComposeDashboardUseCase token column alignment', () => {
     const twoDigits = rowOf(34);
     expect(oneDigit.endsWith(' 7  5  4')).toBe(true);
     expect(twoDigits.endsWith(' 34  5  4')).toBe(true);
-    expect(twoDigits.length).toBe(oneDigit.length);
+    expect(twoDigits.length).toBe(oneDigit.length + 1);
   });
 
   it('places the header directly above the totals line when no seven day aggregate exists', () => {

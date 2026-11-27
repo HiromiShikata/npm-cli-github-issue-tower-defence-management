@@ -91,7 +91,7 @@ const encodedMetadata = (content: string): string =>
   Buffer.from(content).toString('base64');
 
 const factsOutput = [
-  '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t-',
+  '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t-',
   `10\tmeta\t${encodedMetadata('{}')}`,
   `10\tmeta\t${encodedMetadata('{"finished":true}')}`,
   `10\tmeta\t${encodedMetadata('{"finished":false}')}`,
@@ -142,18 +142,18 @@ describe('remote machine status writer parsing', () => {
     });
   });
 
-  it('parses remote subagent facts into per-token counts', () => {
+  it('parses remote subagent facts into per-issue-URL counts', () => {
     expect(parseRemoteSubagentFactsOutput(factsOutput)).toEqual({
       subagentCounts: {
-        claudeByTokenKey: {
-          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2,
+        claudeByIssueUrl: {
+          'https://github.com/example-org/example-repo/issues/101': 2,
         },
-        codexByTokenKey: {
-          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1,
+        codexByIssueUrl: {
+          'https://github.com/example-org/example-repo/issues/101': 1,
         },
       },
       unreadableWorkerPids: [],
-      unmeasuredClaudeTokenKeys: [],
+      unmeasuredIssueUrls: [],
     });
   });
 
@@ -161,6 +161,36 @@ describe('remote machine status writer parsing', () => {
     expect(() =>
       parseRemoteSubagentFactsOutput('10\t1\tclaude-worker\tnot-a-key\t2'),
     ).toThrow(Error);
+  });
+
+  it.each([
+    {
+      name: 'a worker row whose URL field contains whitespace',
+      output: '10\t1\tclaude-worker\thttps://github.com/a b\t-',
+    },
+    {
+      name: 'a worker row with an empty URL field',
+      output: '10\t1\tclaude-worker\t\t-',
+    },
+    {
+      name: 'a worker row carrying a 64-hex token key instead of an issue URL',
+      output:
+        '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t-',
+    },
+    {
+      name: 'a Codex launcher row that carries a URL field',
+      output:
+        '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t-\n11\t10\tcodex-launcher\thttps://github.com/example-org/example-repo/issues/101\t-',
+    },
+    {
+      name: 'a row whose last field is not a dash',
+      output:
+        '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t2',
+    },
+  ])('rejects $name', ({ output }) => {
+    expect(() => parseRemoteSubagentFactsOutput(output)).toThrow(
+      'remote subagent facts are malformed',
+    );
   });
 
   it('rejects output with only three sections', () => {
@@ -257,14 +287,14 @@ describe('writeRemoteMachineStatus', () => {
           diskPct: 80,
           load: [3.5, 2.5, 1.5],
           subagentCounts: {
-            claudeByTokenKey: {
-              '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2,
+            claudeByIssueUrl: {
+              'https://github.com/example-org/example-repo/issues/101': 2,
             },
-            codexByTokenKey: {
-              '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1,
+            codexByIssueUrl: {
+              'https://github.com/example-org/example-repo/issues/101': 1,
             },
           },
-          unmeasuredClaudeTokenKeys: [],
+          unmeasuredClaudeIssueUrls: [],
           capturedAt: '2026-11-25T00:00:00.000Z',
         },
       ],
@@ -309,14 +339,14 @@ describe('writeRemoteMachineStatus', () => {
     );
   });
 
-  it('keeps the readable counts and lists the unreadable worker token when a worker is unreadable', async () => {
+  it('keeps the readable counts and lists the unreadable worker issue URL when a worker is unreadable', async () => {
     dashboardDataDir = makeTempDirectory();
     workerHostsPath = makeTempFile(
       'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
     );
     const reportError = jest.fn<void, [string]>();
     const unreadableFacts = [
-      '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t-',
+      '10\t1\tclaude-worker\thttps://github.com/example-org/example-repo/issues/101\t-',
       '10\tmeta\t!',
     ].join('\n');
     const runner = jest.fn((invocation: { args: string[] }) =>
@@ -342,9 +372,9 @@ describe('writeRemoteMachineStatus', () => {
     );
     expect(written.machines[0]).toMatchObject({
       reachable: true,
-      subagentCounts: { claudeByTokenKey: {}, codexByTokenKey: {} },
-      unmeasuredClaudeTokenKeys: [
-        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      subagentCounts: { claudeByIssueUrl: {}, codexByIssueUrl: {} },
+      unmeasuredClaudeIssueUrls: [
+        'https://github.com/example-org/example-repo/issues/101',
       ],
     });
     expect(reportError).toHaveBeenCalledWith(

@@ -1,7 +1,6 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import crypto from 'crypto';
 import { ProcRunningSubagentFactsRepository } from './ProcRunningSubagentFactsRepository';
 
 const writeProcess = (
@@ -34,7 +33,7 @@ const writeProcess = (
 describe('ProcRunningSubagentFactsRepository', () => {
   it.each([
     {
-      name: 'detects a worker and hashes its token',
+      name: 'detects a worker and keys it by its raw token',
       argv: ['claude', '-p', 'Take ownership of issue'],
       env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha', HOME: '/home/test' },
       kind: 'claude-worker',
@@ -67,9 +66,8 @@ describe('ProcRunningSubagentFactsRepository', () => {
       expect(facts[0].kind).toBe(kind);
       expect(facts[0]).not.toHaveProperty('token', 'token-alpha');
       if (kind === 'claude-worker') {
-        expect(facts[0].tokenKey).toBe(
-          crypto.createHash('sha256').update('token-alpha').digest('hex'),
-        );
+        expect(facts[0].workerKey).toBe('token-alpha');
+        expect(facts[0].workerKey).not.toMatch(/^[0-9a-f]{64}$/);
       }
     } finally {
       fs.rmSync(procDirectory, { recursive: true, force: true });
