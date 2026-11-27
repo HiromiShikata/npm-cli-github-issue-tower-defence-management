@@ -715,7 +715,7 @@ describe('formatTokenRowLine', () => {
         prep: 2,
         hum: 1,
       },
-      expected: '🟢ce 12 5d00h00  2 1',
+      expected: '🟢ce 12 5d00h00  2 1  0  0',
     },
     {
       name: 'uses the last two characters of the name and caps utilization at 99',
@@ -727,7 +727,7 @@ describe('formatTokenRowLine', () => {
         prep: 0,
         hum: 0,
       },
-      expected: '⚪ob 99 0d02h00  0 0',
+      expected: '⚪ob 99 0d02h00  0 0  0  0',
     },
     {
       name: 'renders question marks for utilization and reset when window data is unavailable',
@@ -739,7 +739,7 @@ describe('formatTokenRowLine', () => {
         prep: 1,
         hum: 0,
       },
-      expected: `🟡xx  ? ${'?'.padEnd(7)}  1 0`,
+      expected: `🟡xx  ? ${'?'.padEnd(7)}  1 0  0  0`,
     },
     {
       name: 'renders a double dash padded to the reset width when only the reset is unknown',
@@ -751,7 +751,7 @@ describe('formatTokenRowLine', () => {
         prep: 2,
         hum: 1,
       },
-      expected: `🟢ce 12 ${'--'.padEnd(7)}  2 1`,
+      expected: `🟢ce 12 ${'--'.padEnd(7)}  2 1  0  0`,
     },
     {
       name: 'renders a question mark for utilization when only utilization is unknown',
@@ -763,7 +763,7 @@ describe('formatTokenRowLine', () => {
         prep: 2,
         hum: 1,
       },
-      expected: '🟢ce  ? 1d00h00  2 1',
+      expected: '🟢ce  ? 1d00h00  2 1  0  0',
     },
     {
       name: 'renders a zero reset as the zero countdown',
@@ -775,7 +775,7 @@ describe('formatTokenRowLine', () => {
         prep: 2,
         hum: 1,
       },
-      expected: '🟢ce 12 0d00h00  2 1',
+      expected: '🟢ce 12 0d00h00  2 1  0  0',
     },
     {
       name: 'caps prep at 99 when above 99',
@@ -787,7 +787,7 @@ describe('formatTokenRowLine', () => {
         prep: 100,
         hum: 0,
       },
-      expected: '🟢ce 12 1d00h00 99 0',
+      expected: '🟢ce 12 1d00h00 99 0  0  0',
     },
     {
       name: 'caps hum at 99 when above 99',
@@ -799,7 +799,7 @@ describe('formatTokenRowLine', () => {
         prep: 0,
         hum: 100,
       },
-      expected: '🟢ce 12 1d00h00  0 99',
+      expected: '🟢ce 12 1d00h00  0 99  0  0',
     },
   ];
 
@@ -878,15 +878,16 @@ describe('ComposeDashboardUseCase', () => {
     '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7d&nbsp;&nbsp;&nbsp;reset&nbsp;pp&nbsp;h&nbsp;sa&nbsp;sx</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>' +
     '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
-    '&nbsp;3&nbsp;1</tt><br>\n' +
-    '<tt>⚪ob&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;0</tt><br>\n' +
-    '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
+    '&nbsp;3&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>⚪ob&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟢ce&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?' +
     '&nbsp;'.repeat(8) +
-    '1&nbsp;0</tt><br>\n';
+    '1&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n';
 
   it('composes byte-identical dashboard text for representative inputs', () => {
     expect(new ComposeDashboardUseCase().run(representativeInput)).toBe(
@@ -1195,13 +1196,14 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
       line.startsWith(aggregatePart),
     );
     expect(combinedIndex).toBeGreaterThan(-1);
-    expect(lines[combinedIndex - 1]).toBe(
+    expect(lines[combinedIndex - 2]).toBe(
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ todo: 1 }),
         closeEventCounts: noCloseEvents,
       }),
     );
+    expect(lines[combinedIndex - 1]).toBe('     7d   reset pp h sa sx');
     expect(lines[combinedIndex + 1]).toContain('ce');
   });
 
@@ -1218,7 +1220,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     const aggregatePart = ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63';
     const combined = lines.find((line) => line.startsWith(aggregatePart));
     expect(combined).toBeDefined();
-    expect(combined?.slice(TOKEN_SESSION_COLUMN_START).trim()).toBe('0 0');
+    expect(combined?.slice(TOKEN_SESSION_COLUMN_START).trim()).toBe('0 0  0  0');
     expect(lines.filter((line) => line === aggregatePart)).toHaveLength(0);
   });
 
@@ -1268,7 +1270,7 @@ describe('formatTokenSessionTotalLine', () => {
       name: 'shows only the running Codex worker count in the prep total when there are no Claude tokens',
       tokens: [],
       runningCodexWorkerCount: 2,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 2 0',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 2 0  0  0',
     },
     {
       name: 'sums prep and hum across tokens at the session column start position',
@@ -1278,7 +1280,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'carolxx', prep: 1, hum: 0 },
       ],
       runningCodexWorkerCount: null,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 3 1',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 3 1  0  0',
     },
     {
       name: 'adds the running Codex worker count to the prep total and leaves the hum total unchanged',
@@ -1288,7 +1290,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'carolxx', prep: 1, hum: 0 },
       ],
       runningCodexWorkerCount: 2,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 5 1',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 5 1  0  0',
     },
     {
       name: 'renders zero totals when all tokens have no assigned sessions and no Codex worker is running',
@@ -1297,7 +1299,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'bob', prep: 0, hum: 0 },
       ],
       runningCodexWorkerCount: 0,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 0 0',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 0 0  0  0',
     },
     {
       name: 'caps total prep at 99 when the sum including the Codex count exceeds 99',
@@ -1306,7 +1308,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'bob', prep: 0, hum: 0 },
       ],
       runningCodexWorkerCount: 20,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0  0  0',
     },
     {
       name: 'caps total prep at 99 when the Claude sum exceeds 99',
@@ -1315,7 +1317,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'bob', prep: 51, hum: 0 },
       ],
       runningCodexWorkerCount: 0,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0  0  0',
     },
     {
       name: 'caps total hum at 99 when the sum exceeds 99',
@@ -1324,7 +1326,7 @@ describe('formatTokenSessionTotalLine', () => {
         { name: 'bob', prep: 0, hum: 60 },
       ],
       runningCodexWorkerCount: null,
-      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 0 99',
+      expected: ' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 0 99  0  0',
     },
   ];
 
@@ -1382,8 +1384,15 @@ describe('per-token subagent dashboard columns', () => {
       },
       codexRunningWorkerCount: 1,
     });
-    const lines = output.split('<br>').map((line) => line.replace(/<tt>|<\/tt>/g, ''));
-    const totalIndex = lines.findIndex((line) => line.includes(' 1 0  0  0'));
+    const lines = output.split('<br>').map((line) =>
+      line
+        .replace(/^\n/, '')
+        .replace(/<tt>|<\/tt>/g, '')
+        .replace(/&nbsp;/g, ' '),
+    );
+    const totalIndex = lines.findIndex(
+      (line) => line.includes('43') && line.includes(' 1 0  0  0'),
+    );
     expect(lines[totalIndex - 1]).toBe('     7d   reset pp h sa sx');
   });
 

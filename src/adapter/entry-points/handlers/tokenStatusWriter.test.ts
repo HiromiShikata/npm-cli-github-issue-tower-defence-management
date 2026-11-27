@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { createHash } from 'crypto';
 import { Issue } from '../../../domain/entities/Issue';
 import { ClaudeInteractiveSession } from '../../../domain/usecases/adapter-interfaces/ClaudeInteractiveSessionRepository';
 import { TakeOwnershipSpawn } from '../../../domain/usecases/adapter-interfaces/TakeOwnershipSpawnRepository';
@@ -146,6 +147,8 @@ describe('writeTokenStatus', () => {
           color: 'G',
           prep: 2,
           hum: 1,
+          claudeSubagentCount: 0,
+          codexSubagentCount: 0,
         },
         {
           name: 'bob',
@@ -156,6 +159,8 @@ describe('writeTokenStatus', () => {
           color: 'Y',
           prep: 0,
           hum: 0,
+          claudeSubagentCount: 0,
+          codexSubagentCount: 0,
         },
       ],
     };
@@ -221,6 +226,8 @@ describe('writeTokenStatus', () => {
       color: 'Y',
       prep: 0,
       hum: 2,
+      claudeSubagentCount: 0,
+      codexSubagentCount: 0,
     };
     expect(written).toEqual({
       capturedAt: '2026-06-26T12:00:00.000Z',
@@ -236,6 +243,8 @@ describe('writeTokenStatus', () => {
           color: 'Y',
           prep: 0,
           hum: 0,
+          claudeSubagentCount: 0,
+          codexSubagentCount: 0,
         },
       ],
     });
@@ -281,11 +290,20 @@ describe('writeTokenStatus subagent counts', () => {
         interactiveSessionRepository: { listInteractiveSessions: () => [] },
         spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
         runningSubagentFactsRepository: { listFacts: () => [
-          { pid: 10, ppid: 1, kind: 'claude-worker', tokenKey: require('crypto').createHash('sha256').update('token-alpha').digest('hex'), unfinishedClaudeSubagentCount: 3 },
+          { pid: 10, ppid: 1, kind: 'claude-worker', tokenKey: createHash('sha256').update('token-alpha').digest('hex'), unfinishedClaudeSubagentCount: 3 },
           { pid: 11, ppid: 10, kind: 'codex-launcher', tokenKey: null, unfinishedClaudeSubagentCount: null },
         ] },
       });
-      expect(JSON.parse(fs.readFileSync(path.join(directory, 'token-status.json'), 'utf8')).tokens[0]).toMatchObject({ claudeSubagentCount: 3, codexSubagentCount: 1 });
+      const written = readJson(path.join(directory, 'token-status.json'));
+      if (
+        written === null ||
+        typeof written !== 'object' ||
+        !('tokens' in written) ||
+        !Array.isArray(written.tokens)
+      ) {
+        throw new Error('token-status.json tokens are malformed');
+      }
+      expect(written.tokens[0]).toMatchObject({ claudeSubagentCount: 3, codexSubagentCount: 1 });
     } finally {
       fs.rmSync(directory, { recursive: true, force: true });
     }
