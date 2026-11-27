@@ -13,9 +13,6 @@ import {
 } from '../testing/fixtures';
 import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
 
-jest.mock('../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
-}));
 
 const issueItem = consoleListItemsFixture[2];
 const relatedPullRequestFixture = consoleRelatedPullRequestsFixture[0];

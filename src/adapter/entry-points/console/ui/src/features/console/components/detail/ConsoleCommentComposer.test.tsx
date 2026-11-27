@@ -8,9 +8,6 @@ import {
   replacePlaceholderWithMarkdown,
 } from './ConsoleCommentComposer';
 
-jest.mock('../../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
-}));
 
 const stubSubmit = async (body: string): Promise<ConsoleComment> => ({
   id: 1,

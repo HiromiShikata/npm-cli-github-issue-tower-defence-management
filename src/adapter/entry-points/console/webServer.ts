@@ -1541,6 +1541,7 @@ export const handleWebRequest = async (
     sendNotFound(response);
     return;
   }
+  applyStaticFileHeaders(requestPath, response);
   response.writeHead(200, {
     'Content-Type': contentTypeForPath(staticFilePath),
     'Cache-Control': 'no-store',
@@ -1563,7 +1564,7 @@ const sendInternalServerError = (response: http.ServerResponse): void => {
 const CONSOLE_CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' https://cdn.jsdelivr.net",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'",
   "img-src 'self' data: blob: https://github.com https://*.githubusercontent.com",
   "media-src 'self' blob: https://github.com https://*.githubusercontent.com",
   "font-src 'self' data:",
@@ -1591,6 +1592,35 @@ const CONSOLE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
 const applyConsoleSecurityHeaders = (response: http.ServerResponse): void => {
   for (const [name, value] of Object.entries(CONSOLE_SECURITY_HEADERS)) {
     response.setHeader(name, value);
+  }
+};
+
+const MERMAID_FRAME_PATH = '/mermaid-frame.html';
+const MERMAID_FRAME_SCRIPT_PATH = '/assets/mermaid-frame.js';
+const MERMAID_FRAME_CONTENT_SECURITY_POLICY = [
+  "default-src 'none'",
+  "script-src 'self' https://cdn.jsdelivr.net",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src data:",
+  "connect-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'self'",
+].join('; ');
+
+const applyStaticFileHeaders = (
+  requestPath: string,
+  response: http.ServerResponse,
+): void => {
+  if (requestPath === MERMAID_FRAME_PATH) {
+    response.setHeader(
+      'Content-Security-Policy',
+      MERMAID_FRAME_CONTENT_SECURITY_POLICY,
+    );
+    response.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  }
+  if (requestPath === MERMAID_FRAME_SCRIPT_PATH) {
+    response.setHeader('Access-Control-Allow-Origin', '*');
   }
 };
 

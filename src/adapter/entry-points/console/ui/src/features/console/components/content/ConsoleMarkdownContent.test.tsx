@@ -1,11 +1,6 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleMarkdownContent } from './ConsoleMarkdownContent';
 
-jest.mock('../../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(
-    async () => '<svg data-testid="mermaid-svg"></svg>',
-  ),
-}));
 
 const multiLineCodeBody = [
   'Intro paragraph.',
@@ -53,7 +48,7 @@ describe('ConsoleMarkdownContent', () => {
     );
     await waitFor(() => {
       expect(
-        container.querySelector('.console-mermaid-rendered'),
+        container.querySelector('iframe.console-mermaid-frame'),
       ).not.toBeNull();
     });
   });
@@ -175,7 +170,7 @@ describe('ConsoleMarkdownContent', () => {
       );
       await waitFor(() => {
         expect(
-          container.querySelector('.console-mermaid-rendered'),
+          container.querySelector('iframe.console-mermaid-frame'),
         ).not.toBeNull();
       });
       expect(queryAllByRole('button', { name: 'Copy code' })).toHaveLength(0);

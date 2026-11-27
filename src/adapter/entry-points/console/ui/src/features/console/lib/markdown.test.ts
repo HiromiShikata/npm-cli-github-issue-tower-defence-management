@@ -302,3 +302,24 @@ describe('renderMarkdownToSafeHtml CSP-compatible output', () => {
     expect(html).toContain('https://github.com/user-attachments/assets/abc');
   });
 });
+
+describe('renderMarkdownToSafeHtml video sources', () => {
+  it('shows a video on a non-GitHub host as a link to its original url', () => {
+    const html = renderMarkdownToSafeHtml(
+      '<video src="https://example.com/demo.mp4" controls></video>',
+    );
+    expect(html).not.toContain('<video');
+    expect(html).toContain(
+      '<a href="https://example.com/demo.mp4" target="_blank" rel="noopener noreferrer">https://example.com/demo.mp4</a>',
+    );
+  });
+
+  it('keeps a video on a GitHub host as a playable video', () => {
+    const html = renderMarkdownToSafeHtml(
+      '<video src="https://github.com/user-attachments/assets/abc" controls></video>',
+    );
+    expect(html).toContain('<video');
+    expect(html).toContain('https://github.com/user-attachments/assets/abc');
+  });
+});
+

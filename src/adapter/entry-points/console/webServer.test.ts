@@ -6066,7 +6066,7 @@ describe('webServer security headers', () => {
     contentSecurityPolicyDirectives: [
       "default-src 'self'",
       "script-src 'self' https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self'",
       "img-src 'self' data: blob: https://github.com https://*.githubusercontent.com",
       "media-src 'self' blob: https://github.com https://*.githubusercontent.com",
       "font-src 'self' data:",
@@ -6237,6 +6237,80 @@ describe('webServer security headers', () => {
           ...expectedSecurityHeaders,
         })),
       );
+    } finally {
+      await closeTestServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('serves the Mermaid frame with its own policy and keeps the console policy strict', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-mermaid-frame-'),
+    );
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(path.join(uiDistDir, 'assets'), { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'index.html'),
+      '<!doctype html><title>TDPM Console</title>',
+    );
+    fs.writeFileSync(
+      path.join(uiDistDir, 'mermaid-frame.html'),
+      '<!doctype html><title>Mermaid diagram</title>',
+    );
+    fs.writeFileSync(
+      path.join(uiDistDir, 'assets', 'mermaid-frame.js'),
+      'void 0;',
+    );
+    const server = await startWebServer({
+      accessToken: securityHeaderToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const frameResponse = await requestWithHeaders(
+        server,
+        '/mermaid-frame.html',
+      );
+      expect(frameResponse.statusCode).toBe(200);
+      expect(frameResponse.headers['content-type']).toBe(
+        'text/html; charset=utf-8',
+      );
+      expect(frameResponse.headers['content-security-policy']).toBe(
+        [
+          "default-src 'none'",
+          "script-src 'self' https://cdn.jsdelivr.net",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src data:",
+          "connect-src 'none'",
+          "base-uri 'none'",
+          "form-action 'none'",
+          "frame-ancestors 'self'",
+        ].join('; '),
+      );
+      expect(frameResponse.headers['x-frame-options']).toBe('SAMEORIGIN');
+      expect(frameResponse.headers['x-content-type-options']).toBe('nosniff');
+
+      const frameScriptResponse = await requestWithHeaders(
+        server,
+        '/assets/mermaid-frame.js',
+      );
+      expect(frameScriptResponse.statusCode).toBe(200);
+      expect(frameScriptResponse.headers['access-control-allow-origin']).toBe(
+        '*',
+      );
+
+      const consoleResponse = await requestWithHeaders(server, '/');
+      const consolePolicy = String(
+        consoleResponse.headers['content-security-policy'],
+      );
+      expect(consolePolicy).toContain("style-src 'self';");
+      expect(consolePolicy).not.toContain('unsafe-inline');
+      expect(consoleResponse.headers['x-frame-options']).toBe('DENY');
     } finally {
       await closeTestServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

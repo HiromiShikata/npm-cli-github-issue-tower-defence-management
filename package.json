@@ -11,7 +11,7 @@
     "lint": "eslint src --cache --cache-strategy content",
     "lint-fix": "eslint src --fix",
     "fmt": "npm run prettier && npm run lint-fix",
-    "build:console-ui": "vite build --config src/adapter/entry-points/console/ui/vite.config.ts",
+    "build:console-ui": "vite build --config src/adapter/entry-points/console/ui/vite.config.ts && vite build --config src/adapter/entry-points/console/ui/vite.config.ts --mode mermaid-frame",
     "build": "tsc -p ./tsconfig.build.json",
     "postbuild": "node scripts/copyConsoleUiDist.mjs",
     "console-ui:lint": "biome check src/adapter/entry-points/console/ui",

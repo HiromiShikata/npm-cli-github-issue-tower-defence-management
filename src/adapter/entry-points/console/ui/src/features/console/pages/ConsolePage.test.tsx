@@ -28,9 +28,6 @@ const tabBar = (): HTMLElement => {
   return nav as HTMLElement;
 };
 
-jest.mock('../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
-}));
 
 jest.mock('../lib/navigation', () => ({
   navigateReplace: jest.fn(),

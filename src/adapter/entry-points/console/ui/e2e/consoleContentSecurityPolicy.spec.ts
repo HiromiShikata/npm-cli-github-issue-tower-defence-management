@@ -17,6 +17,7 @@ const GITHUB_IMAGE_URL =
 const GITHUB_VIDEO_URL =
   'https://github.com/user-attachments/assets/test-csp-video';
 const EXTERNAL_IMAGE_URL = 'https://example.com/csp-external-diagram.png';
+const EXTERNAL_VIDEO_URL = 'https://example.com/csp-external-demo.mp4';
 
 const COMMENT_BODY = [
   `![Attachment image](${GITHUB_IMAGE_URL})`,
@@ -26,6 +27,8 @@ const COMMENT_BODY = [
   `[demo video](${GITHUB_VIDEO_URL})`,
   '',
   `![External diagram](${EXTERNAL_IMAGE_URL})`,
+  '',
+  `<video src="${EXTERNAL_VIDEO_URL}" controls></video>`,
   '',
   '```mermaid',
   'graph TD; A-->B;',
@@ -72,14 +75,19 @@ const openCommentWithContent = async (page: Page): Promise<void> => {
   await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
 };
 
-const readCspViolations = async (page: Page): Promise<string[]> =>
-  (
-    await page.evaluate(
-      (recordKey: string) =>
-        (window as unknown as Record<string, string[]>)[recordKey] ?? [],
-      CSP_VIOLATION_RECORD,
-    )
-  ).filter((entry) => /^(img|media)-src/.test(entry));
+const readCspViolations = async (page: Page): Promise<string[]> => {
+  const violations: string[] = [];
+  for (const frame of page.frames()) {
+    violations.push(
+      ...(await frame.evaluate(
+        (recordKey: string) =>
+          (window as unknown as Record<string, string[]>)[recordKey] ?? [],
+        CSP_VIOLATION_RECORD,
+      )),
+    );
+  }
+  return violations;
+};
 
 test.describe('console content security policy', () => {
   test('renders a GitHub image through the proxy and a non-GitHub image as a link without CSP violations', async ({
@@ -106,6 +114,30 @@ test.describe('console content security policy', () => {
       0,
     );
 
+    const externalVideo = body.locator(`a[href="${EXTERNAL_VIDEO_URL}"]`);
+    await expect(externalVideo).toHaveCount(1);
+    await expect(body.locator(`video[src="${EXTERNAL_VIDEO_URL}"]`)).toHaveCount(
+      0,
+    );
+
+    expect(await readCspViolations(page)).toEqual([]);
+  });
+
+  test('keeps a GitHub-hosted video playable', async ({ page }) => {
+    await openCommentWithContent(page);
+    const body = page.locator('.console-comment-body-expanded');
+    await expect(
+      body.locator(`video[src="${GITHUB_VIDEO_URL}"]`),
+    ).toHaveCount(1);
+    expect(await readCspViolations(page)).toEqual([]);
+  });
+
+  test('renders a Mermaid diagram in its frame without CSP violations', async ({
+    page,
+  }) => {
+    await openCommentWithContent(page);
+    const diagram = page.frameLocator('iframe[title="Mermaid diagram"]');
+    await expect(diagram.locator('svg')).toBeVisible();
     expect(await readCspViolations(page)).toEqual([]);
   });
 });

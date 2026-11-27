@@ -12,9 +12,6 @@ import {
 import { ConsoleReferenceLink } from '../content/ConsoleReferenceLink';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
 
-jest.mock('../../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
-}));
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 const prItem = consoleListItemsFixture[0];
