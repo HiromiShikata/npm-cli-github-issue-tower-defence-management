@@ -322,3 +322,18 @@ describe('renderMarkdownToSafeHtml video sources', () => {
     expect(html).toContain('https://github.com/user-attachments/assets/abc');
   });
 });
+
+describe('renderMarkdownToSafeHtml inline style removal', () => {
+  it('removes style attributes from raw html so the console policy does not block them', () => {
+    const html = renderMarkdownToSafeHtml('<p style="color:red">styled</p>');
+    expect(html).not.toContain('style=');
+    expect(html).toContain('styled');
+  });
+
+  it('removes style elements from raw html', () => {
+    const html = renderMarkdownToSafeHtml('<style>p{color:blue}</style>\n\ntext');
+    expect(html).not.toContain('<style');
+    expect(html).toContain('text');
+  });
+});
+

@@ -143,7 +143,12 @@ export const renderMarkdownToSafeHtml = (
     const rawHtml = typeof parsed === 'string' ? parsed : '';
     return withCheckboxIndexes(
       withLinksOpeningInNewTab(
-        replaceBlockedMediaWithLinks(DOMPurify.sanitize(rawHtml)),
+        replaceBlockedMediaWithLinks(
+          DOMPurify.sanitize(rawHtml, {
+            FORBID_TAGS: ['style'],
+            FORBID_ATTR: ['style'],
+          }),
+        ),
       ),
       checkboxIndexOffset,
     );
