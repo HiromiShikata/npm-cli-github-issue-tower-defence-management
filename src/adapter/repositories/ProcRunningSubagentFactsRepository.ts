@@ -38,6 +38,22 @@ export class ProcRunningSubagentFactsRepository {
       fs.readdirSync(directoryPath),
   ) {}
 
+  private listEntriesOrEmpty = (directory: string): string[] => {
+    try {
+      return this.listFiles(directory);
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error.code === 'ENOENT' || error.code === 'ENOTDIR')
+      ) {
+        return [];
+      }
+      throw error;
+    }
+  };
+
   listFacts = (): ProcessFact[] => {
     let processIds: string[];
     try {
@@ -99,7 +115,7 @@ export class ProcRunningSubagentFactsRepository {
               );
               const sessions =
                 environment.CLAUDE_CODE_SESSION_ID === undefined
-                  ? this.listFiles(projectDirectory)
+                  ? this.listEntriesOrEmpty(projectDirectory)
                   : [environment.CLAUDE_CODE_SESSION_ID];
               for (const session of sessions) {
                 const subagentsDirectory = path.join(
@@ -107,7 +123,9 @@ export class ProcRunningSubagentFactsRepository {
                   session,
                   'subagents',
                 );
-                for (const file of this.listFiles(subagentsDirectory)) {
+                for (const file of this.listEntriesOrEmpty(
+                  subagentsDirectory,
+                )) {
                   if (!file.endsWith('.meta.json')) continue;
                   const parsed: unknown = JSON.parse(
                     this.readText(path.join(subagentsDirectory, file)),

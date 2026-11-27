@@ -110,11 +110,44 @@ describe('ProcRunningSubagentFactsRepository', () => {
         procDirectory,
       ).listFacts();
       expect(facts[0].unfinishedClaudeSubagentCount).toBe(1);
-      fs.rmSync(sessionDirectory, { recursive: true, force: true });
+      fs.writeFileSync(
+        path.join(sessionDirectory, 'broken.meta.json'),
+        '{not json',
+      );
       expect(
         new ProcRunningSubagentFactsRepository(procDirectory).listFacts()[0]
           .unfinishedClaudeSubagentCount,
       ).toBeNull();
+    } finally {
+      fs.rmSync(procDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it('counts a session whose subagents directory does not exist yet as zero', () => {
+    const procDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-proc-'));
+    try {
+      const configDirectory = path.join(procDirectory, 'config');
+      writeProcess(
+        procDirectory,
+        10,
+        1,
+        ['claude', '-p', 'Take ownership of issue'],
+        {
+          CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha',
+          CLAUDE_CONFIG_DIR: configDirectory,
+        },
+      );
+      fs.mkdirSync(path.join(configDirectory, 'projects', 'demo', 'session'), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(configDirectory, 'projects', 'stray-file.txt'),
+        'not a project directory',
+      );
+      expect(
+        new ProcRunningSubagentFactsRepository(procDirectory).listFacts()[0]
+          .unfinishedClaudeSubagentCount,
+      ).toBe(0);
     } finally {
       fs.rmSync(procDirectory, { recursive: true, force: true });
     }
