@@ -1,3 +1,10 @@
+## [2.217.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.3...v2.217.4) (2026-11-27)
+
+
+### Bug Fixes
+
+* **console:** send Referrer-Policy on every console response ([#3795](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3795)) ([4f9d42b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4f9d42b29a96804d5efa9b34244beda2098ccc70))
+
 ## [2.217.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.2...v2.217.3) (2026-11-27)
 
 
