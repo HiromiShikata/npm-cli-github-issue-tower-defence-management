@@ -28,6 +28,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     queryToAddProjectEnabled?: boolean | null;
     queryToAddProject?: string | null;
     queryToAddManagerAssignedIssues?: string | null;
+    addManagerAssignedIssuesFromAnyAuthor?: boolean | null;
     projectScope?: ProjectRepositoryScope | null;
   }): Promise<void> => {
     const authorAllowList =
@@ -67,6 +68,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
         manager: input.manager,
         projectItemUrls,
         projectScope: input.projectScope ?? null,
+        addFromAnyAuthor: input.addManagerAssignedIssuesFromAnyAuthor === true,
       });
     }
     if (!input.queryToAddProjectEnabled || !project || !query) {
@@ -118,6 +120,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
     manager: Member['name'];
     projectItemUrls: Set<string>;
     projectScope: ProjectRepositoryScope | null;
+    addFromAnyAuthor: boolean;
   }): Promise<void> => {
     const searchedIssues = await this.searchIssues(input.query);
     const archivedByRepository = new Map<string, boolean>();
@@ -129,7 +132,7 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       ) {
         continue;
       }
-      if (searchedIssue.author !== input.manager) {
+      if (!input.addFromAnyAuthor && searchedIssue.author !== input.manager) {
         console.log(
           `Skipped issue ${searchedIssue.url}: author ${searchedIssue.author} is not ${input.manager}`,
         );
