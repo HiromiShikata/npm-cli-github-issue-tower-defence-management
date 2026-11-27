@@ -1560,13 +1560,45 @@ const sendInternalServerError = (response: http.ServerResponse): void => {
   response.end('Internal Server Error');
 };
 
+const CONSOLE_CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' https://cdn.jsdelivr.net",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: http: https:",
+  "media-src 'self' blob: http: https:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+const CONSOLE_SECURITY_HEADERS: Readonly<Record<string, string>> = {
+  'Content-Security-Policy': CONSOLE_CONTENT_SECURITY_POLICY,
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Permissions-Policy':
+    'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), accelerometer=(), gyroscope=(), magnetometer=()',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+};
+
+const applyConsoleSecurityHeaders = (response: http.ServerResponse): void => {
+  for (const [name, value] of Object.entries(CONSOLE_SECURITY_HEADERS)) {
+    response.setHeader(name, value);
+  }
+};
+
 const createRequestHandler =
   (options: WebServerOptions, secure: boolean, redirectQueryToken = true) =>
   (request: http.IncomingMessage, response: http.ServerResponse): void => {
+    applyConsoleSecurityHeaders(response);
     if (secure) {
       response.setHeader('Strict-Transport-Security', 'max-age=31536000');
-      response.setHeader('X-Content-Type-Options', 'nosniff');
-      response.setHeader('X-Frame-Options', 'DENY');
     }
     handleWebRequest(
       options,
