@@ -6,6 +6,13 @@ import {
   sanitizeMermaidFrameSvg,
   showMermaidFrameDiagram,
 } from './mermaidFrameRender';
+import { installMermaidFrameStyleBridge } from './mermaidFrameStyleBridge';
+
+installMermaidFrameStyleBridge((cssText) => {
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(cssText);
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+});
 
 let mermaidApiPromise: Promise<MermaidApi> | null = null;
 

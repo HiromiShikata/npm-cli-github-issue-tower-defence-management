@@ -5,12 +5,29 @@ import { defineConfig } from 'vite';
 
 const MERMAID_FRAME_MODE = 'mermaid-frame';
 
+const classicMermaidFrameScript = {
+  name: 'classic-mermaid-frame-script',
+  apply: 'build' as const,
+  transformIndexHtml: {
+    order: 'post' as const,
+    handler: (html: string) =>
+      html.replace(
+        /<script type="module" crossorigin src="([^"]+)"><\/script>/g,
+        '<script src="$1"></script>',
+      ),
+  },
+};
+
 export default defineConfig(({ mode }) => {
   const isMermaidFrameBuild = mode === MERMAID_FRAME_MODE;
   return {
     root: path.resolve(__dirname),
     base: '/',
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      ...(isMermaidFrameBuild ? [classicMermaidFrameScript] : []),
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
@@ -25,6 +42,7 @@ export default defineConfig(({ mode }) => {
           : { index: path.resolve(__dirname, 'index.html') },
         output: {
           codeSplitting: false,
+          format: isMermaidFrameBuild ? 'iife' : 'es',
           entryFileNames: isMermaidFrameBuild
             ? 'assets/mermaid-frame.js'
             : 'assets/[name]-[hash].js',

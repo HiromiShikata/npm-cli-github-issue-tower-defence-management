@@ -146,6 +146,15 @@ describe('showMermaidFrameDiagram', () => {
   });
 });
 
+describe('showMermaidFrameDiagram page reset', () => {
+  it('removes the default page margin and background so the diagram sits at the frame origin', () => {
+    const container = document.createElement('div');
+    showMermaidFrameDiagram(container, '<svg xmlns="http://www.w3.org/2000/svg"></svg>', false);
+    expect(container.style.margin).toBe('0px');
+    expect(container.style.background).toBe('transparent');
+  });
+});
+
 describe('createMermaidFrameMessageHandler', () => {
   const request = {
     type: 'render' as const,
