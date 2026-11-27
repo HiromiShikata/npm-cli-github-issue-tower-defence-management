@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import type { MermaidApi } from './mermaidFrameLoader';
 import type {
   MermaidFrameRenderRequest,
   MermaidFrameResponse,
@@ -40,3 +41,27 @@ export const sanitizeMermaidFrameSvg = (svg: string): string =>
     USE_PROFILES: { svg: true, svgFilters: true },
     ADD_TAGS: ['foreignObject'],
   });
+
+export type MermaidFrameHandleDeps = Omit<MermaidFrameRenderDeps, 'renderDiagram'> & {
+  loadMermaid: () => Promise<Pick<MermaidApi, 'render'>>;
+};
+
+export const handleMermaidFrameRequest = async (
+  request: MermaidFrameRenderRequest,
+  deps: MermaidFrameHandleDeps,
+): Promise<MermaidFrameResponse> => {
+  let mermaid: Pick<MermaidApi, 'render'>;
+  try {
+    mermaid = await deps.loadMermaid();
+  } catch (cause) {
+    return {
+      type: 'failed',
+      requestId: request.requestId,
+      message: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+  return renderMermaidFrameRequest(request, {
+    ...deps,
+    renderDiagram: (id, code) => mermaid.render(id, code),
+  });
+};

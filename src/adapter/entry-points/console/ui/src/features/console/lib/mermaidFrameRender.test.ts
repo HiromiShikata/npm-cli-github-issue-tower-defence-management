@@ -1,5 +1,6 @@
 import type { MermaidFrameRenderRequest } from './mermaidFrameProtocol';
 import {
+  handleMermaidFrameRequest,
   renderMermaidFrameRequest,
   sanitizeMermaidFrameSvg,
 } from './mermaidFrameRender';
@@ -86,5 +87,37 @@ describe('sanitizeMermaidFrameSvg', () => {
     );
     expect(sanitized).toContain('<foreignObject>Alpha</foreignObject>');
     expect(sanitized).not.toContain('<script');
+  });
+});
+
+describe('handleMermaidFrameRequest', () => {
+  it('reports the loader failure as a failed response and shows nothing', async () => {
+    const showDiagram = jest.fn();
+    const response = await handleMermaidFrameRequest(request, {
+      loadMermaid: jest.fn(async () => {
+        throw new Error('mermaid script failed to load');
+      }),
+      sanitizeSvg: (svg: string) => svg,
+      showDiagram,
+      measureHeight: () => 0,
+    });
+    expect(showDiagram).not.toHaveBeenCalled();
+    expect(response).toEqual({
+      type: 'failed',
+      requestId: 7,
+      message: 'mermaid script failed to load',
+    });
+  });
+
+  it('renders through the loaded api and reports the size', async () => {
+    const render = jest.fn(async () => ({ svg: '<svg><g></g></svg>' }));
+    const response = await handleMermaidFrameRequest(request, {
+      loadMermaid: jest.fn(async () => ({ render })),
+      sanitizeSvg: (svg: string) => svg,
+      showDiagram: jest.fn(),
+      measureHeight: () => 180,
+    });
+    expect(render).toHaveBeenCalledWith('mermaid-frame-7', request.code);
+    expect(response).toEqual({ type: 'size', requestId: 7, height: 180 });
   });
 });

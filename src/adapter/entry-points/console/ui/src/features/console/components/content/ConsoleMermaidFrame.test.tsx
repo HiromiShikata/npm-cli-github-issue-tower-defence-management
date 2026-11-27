@@ -1,5 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ConsoleMermaidFrame } from './ConsoleMermaidFrame';
+import {
+  ConsoleMermaidFrame,
+  MERMAID_FRAME_RESPONSE_TIMEOUT_MS,
+} from './ConsoleMermaidFrame';
 
 const getFrame = (): HTMLIFrameElement =>
   screen.getByTitle('Mermaid diagram') as HTMLIFrameElement;
@@ -115,5 +118,51 @@ describe('ConsoleMermaidFrame', () => {
       },
       '*',
     );
+  });
+
+  it('shows the source with an error when the frame does not answer in time', () => {
+    jest.useFakeTimers();
+    try {
+      render(<ConsoleMermaidFrame code="graph TD; A-->B;" fillWidth={false} />);
+      loadFrame();
+      expect(screen.getByText('Rendering diagram...')).toBeInTheDocument();
+      act(() => {
+        jest.advanceTimersByTime(MERMAID_FRAME_RESPONSE_TIMEOUT_MS);
+      });
+      expect(
+        screen.getByText(/Mermaid render error: Mermaid frame did not respond/),
+      ).toBeInTheDocument();
+      expect(screen.getByText('graph TD; A-->B;')).toBeInTheDocument();
+      expect(screen.queryByText('Rendering diagram...')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a diagram that answered in time and does not fail it later', () => {
+    jest.useFakeTimers();
+    try {
+      render(<ConsoleMermaidFrame code="graph TD; A-->B;" fillWidth={false} />);
+      const frameWindow = loadFrame();
+      respondFromFrame(frameWindow, { type: 'size', requestId: 1, height: 200 });
+      act(() => {
+        jest.advanceTimersByTime(MERMAID_FRAME_RESPONSE_TIMEOUT_MS * 2);
+      });
+      expect(getFrame().style.height).toBe('200px');
+      expect(screen.queryByText(/did not respond/)).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('loads the frame from the source it is given', () => {
+    render(
+      <ConsoleMermaidFrame
+        code="graph TD; A-->B;"
+        fillWidth={false}
+        frameSource="data:text/html,mock"
+      />,
+    );
+    expect(getFrame().getAttribute('src')).toBe('data:text/html,mock');
   });
 });
