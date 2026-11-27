@@ -3882,7 +3882,15 @@ export class ApiV3CheerioRestIssueRepository
       throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
     }
 
-    const prUrlsByIssueUrl = new Map<string, string[]>();
+    type RelatedOpenPrUrlLookup =
+      | { kind: 'decided'; issueUrl: string; prUrls: string[] }
+      | {
+          kind: 'recorded';
+          issueUrl: string;
+          timelinePrUrls: string[];
+          recordedPrUrls: string[];
+        };
+    const lookups: RelatedOpenPrUrlLookup[] = [];
     for (const [index, reference] of references.entries()) {
       const alias = aliasOf(index);
       if (otherErrorAliases.has(alias)) {
@@ -3891,14 +3899,18 @@ export class ApiV3CheerioRestIssueRepository
       const issueNode = responseData.data?.[alias]?.issue ?? null;
       if (!issueNode) {
         if (notFoundAliases.has(alias) || !errors.length) {
-          prUrlsByIssueUrl.set(reference.issueUrl, []);
+          lookups.push({
+            kind: 'decided',
+            issueUrl: reference.issueUrl,
+            prUrls: [],
+          });
         }
         continue;
       }
       if (issueNode.timelineItems.pageInfo.hasNextPage) {
         continue;
       }
-      const prUrls = new Set<string>();
+      const timelinePrUrls = new Set<string>();
       for (const item of issueNode.timelineItems.nodes) {
         if (
           !this.isRelatedOpenPullRequestTimelineItem(item, reference.issueUrl)
@@ -3907,26 +3919,48 @@ export class ApiV3CheerioRestIssueRepository
         }
         const prUrl = item.source.url || '';
         if (!prUrl) continue;
-        prUrls.add(prUrl);
+        timelinePrUrls.add(prUrl);
       }
       const comments = issueNode.comments;
-      if (comments) {
-        const commentBodies = comments.nodes.flatMap((node) =>
-          node?.body ? [node.body] : [],
-        );
-        const recordedPrUrls = await this.fetchRecordedOpenPrUrls(
-          reference,
-          commentBodies,
-          comments.pageInfo.hasNextPage ? comments.pageInfo.endCursor : null,
-        );
-        recordedPrUrls.forEach((prUrl) => prUrls.add(prUrl));
+      const recordedPrUrls = comments
+        ? await this.fetchRecordedPrUrls(
+            reference,
+            comments.nodes.flatMap((node) => (node?.body ? [node.body] : [])),
+            comments.pageInfo.hasNextPage ? comments.pageInfo.endCursor : null,
+          )
+        : [];
+      lookups.push({
+        kind: 'recorded',
+        issueUrl: reference.issueUrl,
+        timelinePrUrls: Array.from(timelinePrUrls),
+        recordedPrUrls,
+      });
+    }
+
+    const statesByUrl = await this.fetchSlimPullRequestStatesByUrl(
+      lookups.flatMap((lookup) =>
+        lookup.kind === 'recorded' ? lookup.recordedPrUrls : [],
+      ),
+    );
+
+    const prUrlsByIssueUrl = new Map<string, string[]>();
+    for (const lookup of lookups) {
+      if (lookup.kind === 'decided') {
+        prUrlsByIssueUrl.set(lookup.issueUrl, lookup.prUrls);
+        continue;
       }
-      prUrlsByIssueUrl.set(reference.issueUrl, Array.from(prUrls));
+      const openRecordedPrUrls = await this.resolveOpenRecordedPrUrls(
+        lookup.recordedPrUrls,
+        statesByUrl,
+      );
+      const prUrls = new Set(lookup.timelinePrUrls);
+      openRecordedPrUrls.forEach((prUrl) => prUrls.add(prUrl));
+      prUrlsByIssueUrl.set(lookup.issueUrl, Array.from(prUrls));
     }
     return prUrlsByIssueUrl;
   };
 
-  private fetchRecordedOpenPrUrls = async (
+  private fetchRecordedPrUrls = async (
     reference: {
       issueUrl: string;
       owner: string;
@@ -3990,10 +4024,14 @@ export class ApiV3CheerioRestIssueRepository
         : null;
     }
 
+    return pullRequestUrlsFromCommentBodies(commentBodies);
+  };
+
+  private resolveOpenRecordedPrUrls = async (
+    recordedPrUrls: string[],
+    statesByUrl: Map<string, SlimPullRequest | null>,
+  ): Promise<string[]> => {
     const openPrUrls: string[] = [];
-    const recordedPrUrls = pullRequestUrlsFromCommentBodies(commentBodies);
-    const statesByUrl =
-      await this.fetchSlimPullRequestStatesByUrl(recordedPrUrls);
     const failedPrUrls: { prUrl: string; message: string }[] = [];
     for (const prUrl of recordedPrUrls) {
       let pullRequest: SlimPullRequest | null;
