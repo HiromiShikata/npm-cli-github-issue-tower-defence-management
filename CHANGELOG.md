@@ -1,3 +1,10 @@
+## [2.217.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.0...v2.217.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **console:** restrict CSP img-src and media-src to explicit GitHub hosts ([#3792](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3792)) ([5a16cad](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5a16cad74e36a6df6e8f845cdffd23e541fb52b2))
+
 # [2.217.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.216.0...v2.217.0) (2026-11-27)
 
 
