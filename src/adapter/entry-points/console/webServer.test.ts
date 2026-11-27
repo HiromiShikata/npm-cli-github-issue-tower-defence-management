@@ -5974,3 +5974,170 @@ describe('webServer HTTPS certificate handling', () => {
     }
   });
 });
+
+describe('webServer security headers', () => {
+  const securityHeaderToken = 'security-header-test-token';
+
+  const requestWithHeaders = (
+    server: http.Server,
+    requestPath: string,
+  ): Promise<{ statusCode: number; headers: http.IncomingHttpHeaders }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    return new Promise((resolve, reject) => {
+      const request = http.request(
+        { host: '127.0.0.1', port: address.port, path: requestPath },
+        (response) => {
+          response.on('end', () =>
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              headers: response.headers,
+            }),
+          );
+          response.resume();
+        },
+      );
+      request.on('error', reject);
+      request.end();
+    });
+  };
+
+  it('sends the browser security headers on every response type of the HTTP console', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-security-headers-'),
+    );
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(path.join(uiDistDir, 'assets'), { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'index.html'),
+      '<!doctype html><title>TDPM Console</title>',
+    );
+    fs.writeFileSync(
+      path.join(uiDistDir, 'assets', 'app.js'),
+      'console.log("app");',
+    );
+    const server = await startWebServer({
+      accessToken: securityHeaderToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const cases: ReadonlyArray<{
+        name: string;
+        requestPath: string;
+        expectedStatusCode: number;
+        expectedContentType: string | undefined;
+      }> = [
+        {
+          name: 'HTML document',
+          requestPath: '/',
+          expectedStatusCode: 200,
+          expectedContentType: 'text/html; charset=utf-8',
+        },
+        {
+          name: 'static asset',
+          requestPath: '/assets/app.js',
+          expectedStatusCode: 200,
+          expectedContentType: 'text/javascript; charset=utf-8',
+        },
+        {
+          name: 'JSON API response',
+          requestPath: `/api/projects?k=${securityHeaderToken}`,
+          expectedStatusCode: 200,
+          expectedContentType: 'application/json; charset=utf-8',
+        },
+        {
+          name: 'unauthorized error',
+          requestPath: '/api/review',
+          expectedStatusCode: 401,
+          expectedContentType: 'text/plain; charset=utf-8',
+        },
+        {
+          name: 'not found error',
+          requestPath: '/assets/missing.js',
+          expectedStatusCode: 404,
+          expectedContentType: 'text/plain; charset=utf-8',
+        },
+        {
+          name: 'token redirect',
+          requestPath: `/?k=${securityHeaderToken}`,
+          expectedStatusCode: 302,
+          expectedContentType: undefined,
+        },
+      ];
+      const expectedCspDirectives = [
+        "default-src 'self'",
+        "script-src 'self' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob: https:",
+        "media-src 'self' blob: https:",
+        "font-src 'self' data:",
+        "connect-src 'self'",
+        "worker-src 'self'",
+        "manifest-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+      ];
+      const observed = [];
+      for (const testCase of cases) {
+        const response = await requestWithHeaders(server, testCase.requestPath);
+        const contentSecurityPolicy =
+          response.headers['content-security-policy'];
+        observed.push({
+          name: testCase.name,
+          statusCode: response.statusCode,
+          contentType: response.headers['content-type'],
+          contentSecurityPolicyDirectives:
+            typeof contentSecurityPolicy === 'string'
+              ? contentSecurityPolicy.split(';').map((d) => d.trim())
+              : null,
+          xContentTypeOptions: response.headers['x-content-type-options'],
+          xFrameOptions: response.headers['x-frame-options'],
+          permissionsPolicy: response.headers['permissions-policy'],
+          crossOriginOpenerPolicy:
+            response.headers['cross-origin-opener-policy'],
+          crossOriginEmbedderPolicy:
+            response.headers['cross-origin-embedder-policy'],
+          crossOriginResourcePolicy:
+            response.headers['cross-origin-resource-policy'],
+          strictTransportSecurity:
+            response.headers['strict-transport-security'],
+        });
+        expect(response.statusCode).toBe(testCase.expectedStatusCode);
+      }
+      const expectedHeaders = {
+        contentSecurityPolicyDirectives: expectedCspDirectives,
+        xContentTypeOptions: 'nosniff',
+        xFrameOptions: 'DENY',
+        permissionsPolicy:
+          'camera=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), bluetooth=(), accelerometer=(), gyroscope=(), magnetometer=()',
+        crossOriginOpenerPolicy: 'same-origin',
+        crossOriginEmbedderPolicy: 'credentialless',
+        crossOriginResourcePolicy: 'same-origin',
+        strictTransportSecurity: undefined,
+      };
+      expect(observed).toEqual(
+        cases.map((testCase) => ({
+          name: testCase.name,
+          statusCode: testCase.expectedStatusCode,
+          contentType: testCase.expectedContentType,
+          ...expectedHeaders,
+        })),
+      );
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
