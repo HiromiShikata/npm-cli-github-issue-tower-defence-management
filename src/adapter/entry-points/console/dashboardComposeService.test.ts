@@ -302,6 +302,8 @@ describe('buildComposeDashboardInput', () => {
               color: 'G',
               prep: 2,
               hum: 1,
+              claudeSubagentCount: 4,
+              codexSubagentCount: 2,
             },
             { fiveHourUtilizationPercent: 5 },
           ],
@@ -322,8 +324,24 @@ describe('buildComposeDashboardInput', () => {
           color: 'G',
           prep: 2,
           hum: 1,
+          claudeSubagentCount: 4,
+          codexSubagentCount: 2,
         },
       ]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ['missing Claude subagent count', { codexSubagentCount: 1 }],
+    ['negative Claude subagent count', { claudeSubagentCount: -1, codexSubagentCount: 1 }],
+    ['non-integer Codex subagent count', { claudeSubagentCount: 1, codexSubagentCount: 1.5 }],
+  ])('rejects %s as malformed', (_name, counts) => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(path.join(dataDir, 'token-status.json'), JSON.stringify({ tokens: [{ name: 'alpha', ...counts }] }));
+      expect(buildComposeDashboardInput({ dashboardDataDir: dataDir, projectNames: [] }).tokens).toEqual([]);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

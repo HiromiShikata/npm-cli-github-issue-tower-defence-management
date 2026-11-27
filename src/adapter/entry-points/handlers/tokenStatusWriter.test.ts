@@ -265,3 +265,52 @@ describe('writeTokenStatus', () => {
     expect(fs.existsSync(path.join(dir, 'token-status.json'))).toBe(false);
   });
 });
+
+describe('writeTokenStatus subagent counts', () => {
+  it('combines injected local and remote counts and ignores unmatched token keys', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'token-subagents-'));
+    const tokenListPath = path.join(directory, 'tokens.json');
+    try {
+      fs.writeFileSync(tokenListPath, JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]));
+      fs.writeFileSync(path.join(directory, 'remote-machine-status.json'), JSON.stringify({ machines: [{ reachable: true, subagentCounts: { claudeByTokenKey: {}, codexByTokenKey: {} } }] }));
+      writeTokenStatus({
+        dashboardDataDir: directory,
+        tokenListJsonPath: tokenListPath,
+        issues: [],
+        readSnapshot: () => null,
+        interactiveSessionRepository: { listInteractiveSessions: () => [] },
+        spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
+        runningSubagentFactsRepository: { listFacts: () => [
+          { pid: 10, ppid: 1, kind: 'claude-worker', tokenKey: require('crypto').createHash('sha256').update('token-alpha').digest('hex'), unfinishedClaudeSubagentCount: 3 },
+          { pid: 11, ppid: 10, kind: 'codex-launcher', tokenKey: null, unfinishedClaudeSubagentCount: null },
+        ] },
+      });
+      expect(JSON.parse(fs.readFileSync(path.join(directory, 'token-status.json'), 'utf8')).tokens[0]).toMatchObject({ claudeSubagentCount: 3, codexSubagentCount: 1 });
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('logs every unreadable worker pid without logging token values', () => {
+    const reportError = jest.fn();
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'token-subagents-'));
+    const tokenListPath = path.join(directory, 'tokens.json');
+    try {
+      fs.writeFileSync(tokenListPath, JSON.stringify([{ name: 'alpha', token: 'token-alpha' }]));
+      writeTokenStatus({
+        dashboardDataDir: directory,
+        tokenListJsonPath: tokenListPath,
+        issues: [],
+        readSnapshot: () => null,
+        interactiveSessionRepository: { listInteractiveSessions: () => [] },
+        spawnRepository: { listSpawns: () => [], listRunningIssueUrls: () => [] },
+        runningSubagentFactsRepository: { listFacts: () => [{ pid: 10, ppid: 1, kind: 'claude-worker', tokenKey: null, unfinishedClaudeSubagentCount: null }] },
+        reportError,
+      });
+      expect(reportError).toHaveBeenCalledWith(expect.stringContaining('10'));
+      expect(reportError.mock.calls.flat().join(' ')).not.toContain('token-alpha');
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+});

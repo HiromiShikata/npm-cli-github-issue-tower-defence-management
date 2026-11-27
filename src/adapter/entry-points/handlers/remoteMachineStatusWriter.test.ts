@@ -82,6 +82,9 @@ const metricsOutput = [
   '3.5 2.5 1.5 1/100 200',
   '#TDPM-SEP',
   '1000 200 200',
+  '#TDPM-SEP',
+  '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t2',
+  '11\t10\tcodex-launcher\t-\t-',
 ].join('\n');
 
 describe('remote machine status writer parsing', () => {
@@ -125,7 +128,15 @@ describe('remote machine status writer parsing', () => {
       cpuPct: 60,
       diskPct: 80,
       load: [3.5, 2.5, 1.5],
+      subagentCounts: {
+        claudeByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2 },
+        codexByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1 },
+      },
     });
+  });
+
+  it('rejects output with only four sections', () => {
+    expect(() => parseRemoteMetricsOutput(metricsOutput.split('\n#TDPM-SEP\n').slice(0, 4).join('\n#TDPM-SEP\n'))).toThrow(Error);
   });
 
   it('rejects malformed remote metrics output', () => {
@@ -202,6 +213,10 @@ describe('writeRemoteMachineStatus', () => {
           cpuPct: 60,
           diskPct: 80,
           load: [3.5, 2.5, 1.5],
+          subagentCounts: {
+            claudeByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2 },
+            codexByTokenKey: { '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1 },
+          },
           capturedAt: '2026-11-25T00:00:00.000Z',
         },
       ],
@@ -238,6 +253,7 @@ describe('writeRemoteMachineStatus', () => {
       cpuPct: null,
       diskPct: null,
       load: null,
+      subagentCounts: null,
     });
     expect(written.machines[1].reachable).toBe(true);
     expect(reportError).toHaveBeenCalledWith(
@@ -298,6 +314,7 @@ describe('writeRemoteMachineStatus', () => {
         cpuPct: null,
         diskPct: null,
         load: null,
+        subagentCounts: null,
         capturedAt: '2026-11-25T00:00:00.000Z',
       })),
     });

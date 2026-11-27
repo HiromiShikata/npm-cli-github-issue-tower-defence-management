@@ -17,6 +17,7 @@ import {
   formatResetCountdown,
   formatSevenDayWindowAggregateLine,
   formatTokenRowLine,
+  formatTokenSectionHeaderLine,
   formatTokenSessionTotalLine,
   roundHalfToEven,
 } from './ComposeDashboardUseCase';
@@ -51,6 +52,8 @@ const tokenStatus = (overrides: Partial<TokenStatus>): TokenStatus => ({
   color: 'G',
   prep: 0,
   hum: 0,
+  claudeSubagentCount: 0,
+  codexSubagentCount: 0,
   ...overrides,
 });
 
@@ -1332,6 +1335,67 @@ describe('formatTokenSessionTotalLine', () => {
         runningCodexWorkerCount,
       ),
     ).toBe(expected);
+  });
+});
+
+describe('per-token subagent dashboard columns', () => {
+  it('formats the token section header from the shared column layout', () => {
+    expect(formatTokenSectionHeaderLine()).toBe('     7d   reset pp h sa sx');
+  });
+
+  it.each([
+    {
+      name: 'renders Claude and Codex subagent counts',
+      token: { name: 'alpha', claudeSubagentCount: 6, codexSubagentCount: 3 },
+      expected: '🟢ha  0 0d00h00  0 0  6  3',
+    },
+    {
+      name: 'caps subagent counts at 99',
+      token: { name: 'alpha', claudeSubagentCount: 150, codexSubagentCount: 100 },
+      expected: '🟢ha  0 0d00h00  0 0 99 99',
+    },
+  ])('$name', ({ token, expected }) => {
+    expect(formatTokenRowLine(tokenStatus(token))).toBe(expected);
+  });
+
+  it('adds subagent sums without adding Codex workers to those sums', () => {
+    expect(
+      formatTokenSessionTotalLine(
+        [
+          tokenStatus({ claudeSubagentCount: 150, codexSubagentCount: 3 }),
+          tokenStatus({ claudeSubagentCount: 2, codexSubagentCount: 4 }),
+        ],
+        5,
+      ),
+    ).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + ' 5 0 99  7');
+  });
+
+  it('places the header immediately above a non-empty aggregate block', () => {
+    const output = new ComposeDashboardUseCase().run({
+      projects: [],
+      machineStatus: null,
+      tokens: [tokenStatus({ name: 'alpha' })],
+      sevenDayWindowAggregate: {
+        usedPercent: 43,
+        includedTokenCount: 1,
+        totalTokenCount: 1,
+      },
+      codexRunningWorkerCount: 1,
+    });
+    const lines = output.split('<br>').map((line) => line.replace(/<tt>|<\/tt>/g, ''));
+    const totalIndex = lines.findIndex((line) => line.includes(' 1 0  0  0'));
+    expect(lines[totalIndex - 1]).toBe('     7d   reset pp h sa sx');
+  });
+
+  it('omits the header when the aggregate block is empty', () => {
+    const output = new ComposeDashboardUseCase().run({
+      projects: [],
+      machineStatus: null,
+      tokens: [],
+      sevenDayWindowAggregate: null,
+      codexRunningWorkerCount: 0,
+    });
+    expect(output).not.toContain('7d&nbsp;&nbsp;&nbsp;reset pp h sa sx');
   });
 });
 
