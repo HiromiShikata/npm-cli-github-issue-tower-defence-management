@@ -569,6 +569,32 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
     );
   });
 
+  it('keeps the open pull requests of an issue when its first status resolution fails and the retry succeeds', async () => {
+    const { warn } = silenceConsole();
+    let slimCallCount = 0;
+    mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: (variables) =>
+        buildRelatedBatchResponse(variables, [
+          { comments: [recordedComment(1)] },
+        ]),
+      slimPullRequestBatch: () => new Response('boom', { status: 500 }),
+      slimPullRequest: (number) => {
+        slimCallCount += 1;
+        return slimCallCount === 1
+          ? new Response('boom', { status: 500 })
+          : buildSlimSingleResponse(number, {});
+      },
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([
+      issueUrlAt(0),
+    ]);
+
+    expect(result).toEqual(new Map([[issueUrlAt(0), [pullRequestUrl(1)]]]));
+    expect(slimCallCount).toBe(2);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('maps an issue reported not found to an empty list and keeps the other issue pull request', async () => {
     type MissingIssueCase = {
       name: string;
