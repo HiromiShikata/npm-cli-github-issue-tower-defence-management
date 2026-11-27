@@ -1,3 +1,10 @@
+## [2.215.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.215.0...v2.215.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **daemon:** resolve recorded pull request states once per related open pull request lookup ([#3788](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3788)) ([975aa5e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/975aa5e41b95dcfcd34621cea349bdb756c265d8))
+
 # [2.215.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.214.3...v2.215.0) (2026-11-27)
 
 
