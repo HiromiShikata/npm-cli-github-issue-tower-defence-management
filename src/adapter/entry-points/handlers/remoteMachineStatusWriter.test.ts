@@ -87,8 +87,14 @@ const metricsOutput = [
   '1000 200 200',
 ].join('\n');
 
+const encodedMetadata = (content: string): string =>
+  Buffer.from(content).toString('base64');
+
 const factsOutput = [
-  '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t2',
+  '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t-',
+  `10\tmeta\t${encodedMetadata('{}')}`,
+  `10\tmeta\t${encodedMetadata('{"finished":true}')}`,
+  `10\tmeta\t${encodedMetadata('{"finished":false}')}`,
   '11\t10\tcodex-launcher\t-\t-',
 ].join('\n');
 
@@ -147,6 +153,7 @@ describe('remote machine status writer parsing', () => {
         },
       },
       unreadableWorkerPids: [],
+      unmeasuredClaudeTokenKeys: [],
     });
   });
 
@@ -257,64 +264,93 @@ describe('writeRemoteMachineStatus', () => {
               '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1,
             },
           },
+          unmeasuredClaudeTokenKeys: [],
           capturedAt: '2026-11-25T00:00:00.000Z',
         },
       ],
     });
   });
 
-  it.each([
-    {
-      name: 'the facts scan fails',
-      facts: () => Promise.reject(new Error('timed out')),
-      unreadable: false,
-    },
-    {
-      name: 'a worker has an unreadable count',
-      facts: () =>
-        Promise.resolve(
-          '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t?',
-        ),
-      unreadable: true,
-    },
-  ])(
-    'keeps the host metrics and marks its subagent counts unmeasured when $name',
-    async ({ facts }) => {
-      dashboardDataDir = makeTempDirectory();
-      workerHostsPath = makeTempFile(
-        'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
-      );
-      const reportError = jest.fn<void, [string]>();
-      const runner = jest.fn((invocation: { args: string[] }) =>
+  it('keeps the host metrics and marks its subagent counts unavailable when the facts scan fails', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile(
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+    );
+    const reportError = jest.fn<void, [string]>();
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      invocation.args[invocation.args.length - 1] ===
+      REMOTE_SUBAGENT_FACTS_COMMAND
+        ? Promise.reject(new Error('timed out'))
+        : Promise.resolve(metricsOutput),
+    );
+    await writeRemoteMachineStatus({
+      dashboardDataDir,
+      workerHostsPath,
+      runRemoteCommand: runner,
+      reportError,
+      now: new Date('2026-11-25T00:00:00.000Z'),
+    });
+    const written = parseStatusFile(
+      fs.readFileSync(
+        path.join(dashboardDataDir, 'remote-machine-status.json'),
+        'utf8',
+      ),
+    );
+    expect(written.machines[0]).toMatchObject({
+      name: 'worker-a',
+      reachable: true,
+      memPct: 25,
+      cpuPct: 60,
+      diskPct: 80,
+      subagentCounts: null,
+    });
+    expect(reportError).toHaveBeenCalledWith(
+      'remote machine worker-a subagent counts could not be measured: timed out',
+    );
+  });
+
+  it('keeps the readable counts and lists the unreadable worker token when a worker is unreadable', async () => {
+    dashboardDataDir = makeTempDirectory();
+    workerHostsPath = makeTempFile(
+      'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+    );
+    const reportError = jest.fn<void, [string]>();
+    const unreadableFacts = [
+      '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t-',
+      '10\tmeta\t!',
+    ].join('\n');
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      Promise.resolve(
         invocation.args[invocation.args.length - 1] ===
-        REMOTE_SUBAGENT_FACTS_COMMAND
-          ? facts()
-          : Promise.resolve(metricsOutput),
-      );
-      await writeRemoteMachineStatus({
-        dashboardDataDir,
-        workerHostsPath,
-        runRemoteCommand: runner,
-        reportError,
-        now: new Date('2026-11-25T00:00:00.000Z'),
-      });
-      const written = parseStatusFile(
-        fs.readFileSync(
-          path.join(dashboardDataDir, 'remote-machine-status.json'),
-          'utf8',
-        ),
-      );
-      expect(written.machines[0]).toMatchObject({
-        name: 'worker-a',
-        reachable: true,
-        memPct: 25,
-        cpuPct: 60,
-        diskPct: 80,
-        subagentCounts: null,
-      });
-      expect(reportError).toHaveBeenCalled();
-    },
-  );
+          REMOTE_SUBAGENT_FACTS_COMMAND
+          ? unreadableFacts
+          : metricsOutput,
+      ),
+    );
+    await writeRemoteMachineStatus({
+      dashboardDataDir,
+      workerHostsPath,
+      runRemoteCommand: runner,
+      reportError,
+      now: new Date('2026-11-25T00:00:00.000Z'),
+    });
+    const written = parseStatusFile(
+      fs.readFileSync(
+        path.join(dashboardDataDir, 'remote-machine-status.json'),
+        'utf8',
+      ),
+    );
+    expect(written.machines[0]).toMatchObject({
+      reachable: true,
+      subagentCounts: { claudeByTokenKey: {}, codexByTokenKey: {} },
+      unmeasuredClaudeTokenKeys: [
+        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      ],
+    });
+    expect(reportError).toHaveBeenCalledWith(
+      'remote machine worker-a has unreadable Claude worker subagent count for pid 10',
+    );
+  });
 
   it('continues after one host fails and reports an unreachable entry', async () => {
     dashboardDataDir = makeTempDirectory();

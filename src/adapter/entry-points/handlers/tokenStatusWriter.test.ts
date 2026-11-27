@@ -351,6 +351,83 @@ describe('writeTokenStatus subagent counts', () => {
     }
   });
 
+  it('marks only the token of an unreadable worker as unavailable', () => {
+    const directory = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'token-subagents-'),
+    );
+    const tokenListPath = path.join(directory, 'tokens.json');
+    try {
+      fs.writeFileSync(
+        tokenListPath,
+        JSON.stringify([
+          { name: 'alpha', token: 'token-alpha' },
+          { name: 'beta', token: 'token-beta' },
+        ]),
+      );
+      const keyOf = (token: string): string =>
+        createHash('sha256').update(token).digest('hex');
+      writeTokenStatus({
+        dashboardDataDir: directory,
+        tokenListJsonPath: tokenListPath,
+        issues: [],
+        readSnapshot: () => null,
+        interactiveSessionRepository: { listInteractiveSessions: () => [] },
+        spawnRepository: {
+          listSpawns: () => [],
+          listRunningIssueUrls: () => [],
+        },
+        runningSubagentFactsRepository: {
+          listFacts: () => [
+            {
+              pid: 10,
+              ppid: 1,
+              kind: 'claude-worker',
+              tokenKey: keyOf('token-alpha'),
+              unfinishedClaudeSubagentCount: null,
+            },
+            {
+              pid: 20,
+              ppid: 1,
+              kind: 'claude-worker',
+              tokenKey: keyOf('token-beta'),
+              unfinishedClaudeSubagentCount: 2,
+            },
+            {
+              pid: 21,
+              ppid: 20,
+              kind: 'codex-launcher',
+              tokenKey: null,
+              unfinishedClaudeSubagentCount: null,
+            },
+          ],
+        },
+      });
+      const written = readJson(path.join(directory, 'token-status.json'));
+      if (
+        written === null ||
+        typeof written !== 'object' ||
+        !('tokens' in written) ||
+        !Array.isArray(written.tokens)
+      ) {
+        throw new Error('token-status.json tokens are malformed');
+      }
+      expect(written.tokens).toEqual([
+        expect.objectContaining({
+          name: 'alpha',
+          claudeSubagentCount: null,
+          codexSubagentCount: null,
+        }),
+        expect.objectContaining({
+          name: 'beta',
+          claudeSubagentCount: 2,
+          codexSubagentCount: 1,
+        }),
+      ]);
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('logs every unreadable worker pid without logging token values', () => {
     const reportError = jest.fn();
     const directory = fs.mkdtempSync(

@@ -61,4 +61,30 @@ describe('GenerateTokenStatusUseCase subagent counts', () => {
       })),
     ).toEqual(expected);
   });
+  it('reports unavailable counts only for the tokens listed as unmeasured', () => {
+    const result = new GenerateTokenStatusUseCase().run({
+      tokens: [
+        { name: 'alpha', token: 'token-alpha', snapshot: null },
+        { name: 'beta', token: 'token-beta', snapshot: null },
+      ],
+      prepCountByToken: new Map(),
+      humCountByToken: new Map(),
+      claudeSubagentCountByToken: new Map([
+        ['token-alpha', 0],
+        ['token-beta', 2],
+      ]),
+      codexSubagentCountByToken: new Map([['token-beta', 1]]),
+      unmeasuredTokens: new Set(['token-alpha']),
+      nowEpochSeconds: 1_000_000,
+    });
+    expect(
+      result.map(({ claudeSubagentCount, codexSubagentCount }) => ({
+        claudeSubagentCount,
+        codexSubagentCount,
+      })),
+    ).toEqual([
+      { claudeSubagentCount: null, codexSubagentCount: null },
+      { claudeSubagentCount: 2, codexSubagentCount: 1 },
+    ]);
+  });
 });

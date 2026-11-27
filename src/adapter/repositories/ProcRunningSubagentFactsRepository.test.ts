@@ -175,4 +175,35 @@ describe('ProcRunningSubagentFactsRepository', () => {
       fs.rmSync(procDirectory, { recursive: true, force: true });
     }
   });
+  it('treats subagent metadata that parses to a non-object as unreadable', () => {
+    const procDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-proc-'));
+    try {
+      const configDirectory = path.join(procDirectory, 'config');
+      writeProcess(
+        procDirectory,
+        10,
+        1,
+        ['claude', '-p', 'Take ownership of issue'],
+        {
+          CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha',
+          CLAUDE_CONFIG_DIR: configDirectory,
+        },
+      );
+      const sessionDirectory = path.join(
+        configDirectory,
+        'projects',
+        'demo',
+        'session',
+        'subagents',
+      );
+      fs.mkdirSync(sessionDirectory, { recursive: true });
+      fs.writeFileSync(path.join(sessionDirectory, 'array.meta.json'), '[]');
+      expect(
+        new ProcRunningSubagentFactsRepository(procDirectory).listFacts()[0]
+          .unfinishedClaudeSubagentCount,
+      ).toBeNull();
+    } finally {
+      fs.rmSync(procDirectory, { recursive: true, force: true });
+    }
+  });
 });

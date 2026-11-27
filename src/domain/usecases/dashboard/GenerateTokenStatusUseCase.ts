@@ -61,6 +61,7 @@ export type GenerateTokenStatusInput = {
   claudeSubagentCountByToken?: Map<string, number>;
   codexSubagentCountByToken?: Map<string, number>;
   subagentCountsMeasured?: boolean;
+  unmeasuredTokens?: Set<string>;
   nowEpochSeconds: number;
 };
 
@@ -129,6 +130,7 @@ export class GenerateTokenStatusUseCase {
       claudeSubagentCountByToken = new Map<string, number>(),
       codexSubagentCountByToken = new Map<string, number>(),
       subagentCountsMeasured = true,
+      unmeasuredTokens = new Set<string>(),
       nowEpochSeconds,
     } = input;
     return tokens.map((tokenInput) => {
@@ -146,12 +148,14 @@ export class GenerateTokenStatusUseCase {
         color: judgeTokenColor(decision),
         prep: prepCountByToken.get(tokenInput.token) ?? 0,
         hum: humCountByToken.get(tokenInput.token) ?? 0,
-        claudeSubagentCount: subagentCountsMeasured
-          ? (claudeSubagentCountByToken.get(tokenInput.token) ?? 0)
-          : null,
-        codexSubagentCount: subagentCountsMeasured
-          ? (codexSubagentCountByToken.get(tokenInput.token) ?? 0)
-          : null,
+        claudeSubagentCount:
+          subagentCountsMeasured && !unmeasuredTokens.has(tokenInput.token)
+            ? (claudeSubagentCountByToken.get(tokenInput.token) ?? 0)
+            : null,
+        codexSubagentCount:
+          subagentCountsMeasured && !unmeasuredTokens.has(tokenInput.token)
+            ? (codexSubagentCountByToken.get(tokenInput.token) ?? 0)
+            : null,
       };
     });
   };

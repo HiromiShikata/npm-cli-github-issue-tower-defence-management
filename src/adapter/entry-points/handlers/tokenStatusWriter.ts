@@ -38,6 +38,7 @@ type RemoteSubagentCounts = {
 type RemoteSubagentMachine = {
   reachable: boolean;
   subagentCounts: RemoteSubagentCounts | null;
+  unmeasuredClaudeTokenKeys: string[];
 };
 
 const parseRemoteSubagentMachines = (
@@ -56,7 +57,20 @@ const parseRemoteSubagentMachines = (
           ),
         }
       : null;
-    return [{ reachable: machine.reachable === true, subagentCounts }];
+    const unmeasuredClaudeTokenKeys = Array.isArray(
+      machine.unmeasuredClaudeTokenKeys,
+    )
+      ? machine.unmeasuredClaudeTokenKeys.filter(
+          (key): key is string => typeof key === 'string',
+        )
+      : [];
+    return [
+      {
+        reachable: machine.reachable === true,
+        subagentCounts,
+        unmeasuredClaudeTokenKeys,
+      },
+    ];
   });
 };
 
@@ -249,12 +263,13 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
       claudeByTokenKey: new Map<string, number>(),
       codexByTokenKey: new Map<string, number>(),
       unreadableWorkerPids: [],
+      unmeasuredTokenKeys: [],
     };
   }
   for (const pid of localCounts.unreadableWorkerPids) {
     reportError(`unreadable Claude worker subagent count for pid ${pid}`);
-    subagentCountsMeasured = false;
   }
+  const unmeasuredTokenKeys = new Set<string>(localCounts.unmeasuredTokenKeys);
   const claudeCounts = new Map(localCounts.claudeByTokenKey);
   const codexCounts = new Map(localCounts.codexByTokenKey);
   try {
@@ -273,6 +288,8 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
         subagentCountsMeasured = false;
         continue;
       }
+      for (const key of machine.unmeasuredClaudeTokenKeys)
+        unmeasuredTokenKeys.add(key);
       for (const [key, value] of Object.entries(
         machine.subagentCounts.claudeByTokenKey,
       ))
@@ -386,6 +403,11 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     claudeSubagentCountByToken,
     codexSubagentCountByToken,
     subagentCountsMeasured,
+    unmeasuredTokens: new Set(
+      entries
+        .filter((entry) => unmeasuredTokenKeys.has(tokenKeyOf(entry.token)))
+        .map((entry) => entry.token),
+    ),
     nowEpochSeconds: Math.floor(now.getTime() / 1000),
   });
 

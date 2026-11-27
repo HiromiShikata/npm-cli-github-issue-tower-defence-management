@@ -12,6 +12,7 @@ export type RunningSubagentCounts = {
   claudeByTokenKey: Map<string, number>;
   codexByTokenKey: Map<string, number>;
   unreadableWorkerPids: number[];
+  unmeasuredTokenKeys: string[];
 };
 
 export const countRunningSubagentsByTokenKey = (
@@ -21,10 +22,12 @@ export const countRunningSubagentsByTokenKey = (
   const claudeByTokenKey = new Map<string, number>();
   const codexByTokenKey = new Map<string, number>();
   const unreadableWorkerPids: number[] = [];
+  const unmeasuredTokenKeys = new Set<string>();
   for (const fact of facts) {
     if (fact.kind === 'claude-worker') {
       if (fact.unfinishedClaudeSubagentCount === null) {
         unreadableWorkerPids.push(fact.pid);
+        if (fact.tokenKey !== null) unmeasuredTokenKeys.add(fact.tokenKey);
       } else if (fact.tokenKey !== null) {
         claudeByTokenKey.set(
           fact.tokenKey,
@@ -50,5 +53,10 @@ export const countRunningSubagentsByTokenKey = (
       parentPid = parent.ppid;
     }
   }
-  return { claudeByTokenKey, codexByTokenKey, unreadableWorkerPids };
+  return {
+    claudeByTokenKey,
+    codexByTokenKey,
+    unreadableWorkerPids,
+    unmeasuredTokenKeys: [...unmeasuredTokenKeys].sort(),
+  };
 };

@@ -130,6 +130,13 @@ export class ProcRunningSubagentFactsRepository {
                   const parsed: unknown = JSON.parse(
                     this.readText(path.join(subagentsDirectory, file)),
                   );
+                  if (
+                    parsed === null ||
+                    typeof parsed !== 'object' ||
+                    Array.isArray(parsed)
+                  ) {
+                    throw new Error('subagent metadata is not an object');
+                  }
                   if (!(
                     parsed !== null &&
                     typeof parsed === 'object' &&
