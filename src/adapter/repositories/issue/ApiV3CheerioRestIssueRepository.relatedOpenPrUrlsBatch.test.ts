@@ -242,6 +242,21 @@ const countSingleQueries = (fetchSpy: FetchSpy): number =>
       body.includes('PullRequestSlimStatus') &&
       !body.includes('PullRequestSlimStatusBatch'),
   );
+const countBatchQueries = (fetchSpy: FetchSpy): number =>
+  countCallsMatching(fetchSpy, (body) =>
+    body.includes('PullRequestSlimStatusBatch'),
+  );
+const countPullRequestNumberInBatchQueries = (
+  fetchSpy: FetchSpy,
+  prNumber: number,
+): number =>
+  fetchSpy.mock.calls.flatMap(([, init]) =>
+    requestBodyOf(init).includes('PullRequestSlimStatusBatch')
+      ? Object.entries(graphqlBodyOf(init).variables).filter(
+          ([key, value]) => /^prNumber\d+$/.test(key) && value === prNumber,
+        )
+      : [],
+  ).length;
 const silenceConsole = () => ({
   info: jest.spyOn(console, 'info').mockImplementation(() => undefined),
   warn: jest.spyOn(console, 'warn').mockImplementation(() => undefined),
@@ -562,6 +577,103 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
     );
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(pullRequestUrl(1)),
+    );
+  });
+});
+
+describe('ApiV3CheerioRestIssueRepository related open pull request URLs batched across issues', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('sends one pull request status batch for three issues with one open recorded pull request each', async () => {
+    silenceConsole();
+    const fetchSpy = mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: (variables) =>
+        buildRelatedBatchResponse(variables, [
+          { comments: [recordedComment(1)] },
+          { comments: [recordedComment(2)] },
+          { comments: [recordedComment(3)] },
+        ]),
+      slimPullRequestBatch: (variables) =>
+        buildSlimBatchResponseWithStates(variables, {}),
+      slimPullRequest: (number) => buildSlimSingleResponse(number, {}),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([
+      issueUrlAt(0),
+      issueUrlAt(1),
+      issueUrlAt(2),
+    ]);
+
+    expect(countBatchQueries(fetchSpy)).toBe(1);
+    expect(result).toEqual(
+      new Map([
+        [issueUrlAt(0), [pullRequestUrl(1)]],
+        [issueUrlAt(1), [pullRequestUrl(2)]],
+        [issueUrlAt(2), [pullRequestUrl(3)]],
+      ]),
+    );
+  });
+
+  it('sends two pull request status batches for one hundred one unique recorded pull requests across three issues', async () => {
+    silenceConsole();
+    const firstIssueNumbers = Array.from({ length: 50 }, (_, index) => index + 1);
+    const secondIssueNumbers = Array.from(
+      { length: 50 },
+      (_, index) => index + 51,
+    );
+    const thirdIssueNumbers = [101];
+    const fetchSpy = mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: (variables) =>
+        buildRelatedBatchResponse(variables, [
+          { comments: firstIssueNumbers.map(recordedComment) },
+          { comments: secondIssueNumbers.map(recordedComment) },
+          { comments: thirdIssueNumbers.map(recordedComment) },
+        ]),
+      slimPullRequestBatch: (variables) =>
+        buildSlimBatchResponseWithStates(variables, {}),
+      slimPullRequest: (number) => buildSlimSingleResponse(number, {}),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([
+      issueUrlAt(0),
+      issueUrlAt(1),
+      issueUrlAt(2),
+    ]);
+
+    expect(countBatchQueries(fetchSpy)).toBe(2);
+    expect(result).toEqual(
+      new Map([
+        [issueUrlAt(0), firstIssueNumbers.map(pullRequestUrl)],
+        [issueUrlAt(1), secondIssueNumbers.map(pullRequestUrl)],
+        [issueUrlAt(2), thirdIssueNumbers.map(pullRequestUrl)],
+      ]),
+    );
+  });
+
+  it('requests a pull request recorded by two issues once and returns it to both issues', async () => {
+    silenceConsole();
+    const fetchSpy = mockFetchRoutes({
+      relatedOpenPullRequestUrlsBatch: (variables) =>
+        buildRelatedBatchResponse(variables, [
+          { comments: [recordedComment(1)] },
+          { comments: [recordedComment(1)] },
+        ]),
+      slimPullRequestBatch: (variables) =>
+        buildSlimBatchResponseWithStates(variables, {}),
+      slimPullRequest: (number) => buildSlimSingleResponse(number, {}),
+    });
+
+    const result = await createRepository().findRelatedOpenPrUrls([
+      issueUrlAt(0),
+      issueUrlAt(1),
+    ]);
+
+    expect(countPullRequestNumberInBatchQueries(fetchSpy, 1)).toBe(1);
+    expect(result).toEqual(
+      new Map([
+        [issueUrlAt(0), [pullRequestUrl(1)]],
+        [issueUrlAt(1), [pullRequestUrl(1)]],
+      ]),
     );
   });
 });
