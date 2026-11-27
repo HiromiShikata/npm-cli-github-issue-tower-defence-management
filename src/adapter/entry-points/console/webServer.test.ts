@@ -6301,7 +6301,9 @@ describe('webServer security headers', () => {
         '/assets/mermaid-frame.js',
       );
       expect(frameScriptResponse.statusCode).toBe(200);
-      expect(frameScriptResponse.headers['access-control-allow-origin']).toBeUndefined();
+      expect(
+        frameScriptResponse.headers['access-control-allow-origin'],
+      ).toBeUndefined();
       expect(frameScriptResponse.headers['cross-origin-resource-policy']).toBe(
         'cross-origin',
       );
