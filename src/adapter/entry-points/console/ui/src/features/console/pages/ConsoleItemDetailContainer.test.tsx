@@ -41,10 +41,6 @@ import {
   type ConsoleItemDetailContainerProps,
 } from './ConsoleItemDetailContainer';
 
-jest.mock('../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
-}));
-
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
 

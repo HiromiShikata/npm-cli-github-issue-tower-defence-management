@@ -28,6 +28,7 @@ export type ConsoleCheckboxToggleHandler = (
 
 export type ConsoleMarkdownViewProps = {
   body: string;
+  mermaidFrameSource?: string;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
@@ -250,6 +251,7 @@ const ConsoleMarkdownHtmlBlock = ({
 
 export const ConsoleMarkdownContent = ({
   body,
+  mermaidFrameSource,
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
@@ -269,7 +271,11 @@ export const ConsoleMarkdownContent = ({
     <div className="console-markdown-view">
       {segments.map((segment, segmentIndex) =>
         segment.kind === 'mermaid' ? (
-          <ConsoleMermaidDiagram key={segment.key} code={segment.code} />
+          <ConsoleMermaidDiagram
+            key={segment.key}
+            code={segment.code}
+            frameSource={mermaidFrameSource}
+          />
         ) : (
           <ConsoleMarkdownHtmlBlock
             key={segment.key}

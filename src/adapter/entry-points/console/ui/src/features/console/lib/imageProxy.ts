@@ -83,10 +83,7 @@ const isSchemeLessPathReference = (src: string): boolean => {
 // user-attachments URLs that the proxy serves. A source is resolved the way the
 // browser resolves it, so `/\host/...` and `\\host/...` are judged as the
 // cross-origin URLs they become.
-export const isCspAllowedImageUrl = (src: string): boolean => {
-  if (src.startsWith('data:image/')) {
-    return true;
-  }
+const isSameOriginOrGitHubUrl = (src: string): boolean => {
   let resolved: URL;
   try {
     resolved = new URL(src, SAME_ORIGIN_PROBE_BASE);
@@ -99,10 +96,37 @@ export const isCspAllowedImageUrl = (src: string): boolean => {
   ) {
     return true;
   }
-  return (
-    DIRECTLY_LOADABLE_IMAGE_URL.test(resolved.href) ||
-    isProxyableImageUrl(resolved.href)
-  );
+  return DIRECTLY_LOADABLE_IMAGE_URL.test(resolved.href);
+};
+
+export const isCspAllowedImageUrl = (src: string): boolean => {
+  if (src.startsWith('data:image/')) {
+    return true;
+  }
+  if (isSameOriginOrGitHubUrl(src)) {
+    return true;
+  }
+  let resolved: URL;
+  try {
+    resolved = new URL(src, SAME_ORIGIN_PROBE_BASE);
+  } catch {
+    return false;
+  }
+  return isProxyableImageUrl(resolved.href);
+};
+
+export const isCspAllowedMediaUrl = (src: string): boolean =>
+  src.startsWith('blob:') || isSameOriginOrGitHubUrl(src);
+
+const replaceElementWithLink = (
+  element: Element,
+  href: string,
+  text: string,
+): void => {
+  const link = element.ownerDocument.createElement('a');
+  link.setAttribute('href', href);
+  link.textContent = text;
+  element.replaceWith(link);
 };
 
 // Replaces every <img> whose source the console CSP would block with a link
@@ -119,11 +143,43 @@ export const replaceBlockedImagesWithLinks = (html: string): string => {
     if (isCspAllowedImageUrl(src)) {
       return;
     }
-    const link = document.createElement('a');
-    link.setAttribute('href', src);
-    link.textContent = image.getAttribute('alt') || src;
-    image.replaceWith(link);
+    replaceElementWithLink(image, src, image.getAttribute('alt') || src);
     replaced = true;
   });
   return replaced ? template.innerHTML : html;
 };
+
+const mediaSourceOf = (video: Element): string | null => {
+  const direct = video.getAttribute('src');
+  if (direct !== null) {
+    return direct;
+  }
+  const source = video.querySelector('source[src]');
+  return source === null ? null : source.getAttribute('src');
+};
+
+export const replaceBlockedVideosWithLinks = (html: string): string => {
+  if (typeof document === 'undefined') {
+    return html;
+  }
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  let replaced = false;
+  template.content.querySelectorAll('video').forEach((video) => {
+    const src = mediaSourceOf(video);
+    if (src === null || isCspAllowedMediaUrl(src)) {
+      const poster = video.getAttribute('poster');
+      if (poster !== null && !isCspAllowedImageUrl(poster)) {
+        video.removeAttribute('poster');
+        replaced = true;
+      }
+      return;
+    }
+    replaceElementWithLink(video, src, src);
+    replaced = true;
+  });
+  return replaced ? template.innerHTML : html;
+};
+
+export const replaceBlockedMediaWithLinks = (html: string): string =>
+  replaceBlockedVideosWithLinks(replaceBlockedImagesWithLinks(html));

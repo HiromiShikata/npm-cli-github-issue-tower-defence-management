@@ -3214,6 +3214,16 @@ body {
   font-size: 0.875rem;
 }
 
+.console-mermaid-diagram {
+  display: block;
+}
+
+.console-mermaid-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+}
+
 .console-mermaid-source {
   font-family: monospace;
   font-size: 0.8125rem;
@@ -3221,10 +3231,6 @@ body {
   background: #161b22;
   padding: 8px;
   border-radius: 4px;
-}
-
-.console-mermaid-rendered {
-  overflow-x: auto;
 }
 
 .console-file-stat {

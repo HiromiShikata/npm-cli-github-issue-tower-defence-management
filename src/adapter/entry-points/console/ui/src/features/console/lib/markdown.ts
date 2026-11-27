@@ -3,7 +3,7 @@ import { nameToEmoji } from 'gemoji';
 import { marked, type Tokens } from 'marked';
 import { markedEmoji } from 'marked-emoji';
 import type { ConsoleRepoContext } from '../logic/references';
-import { replaceBlockedImagesWithLinks } from './imageProxy';
+import { replaceBlockedMediaWithLinks } from './imageProxy';
 
 export type { ConsoleRepoContext } from '../logic/references';
 
@@ -143,7 +143,12 @@ export const renderMarkdownToSafeHtml = (
     const rawHtml = typeof parsed === 'string' ? parsed : '';
     return withCheckboxIndexes(
       withLinksOpeningInNewTab(
-        replaceBlockedImagesWithLinks(DOMPurify.sanitize(rawHtml)),
+        replaceBlockedMediaWithLinks(
+          DOMPurify.sanitize(rawHtml, {
+            FORBID_TAGS: ['style'],
+            FORBID_ATTR: ['style'],
+          }),
+        ),
       ),
       checkboxIndexOffset,
     );

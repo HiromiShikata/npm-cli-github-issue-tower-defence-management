@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   formatMermaidZoomScale,
   isMermaidZoomScaleAtMaximum,
@@ -8,32 +8,20 @@ import {
   mermaidZoomScaleIn,
   mermaidZoomScaleOut,
 } from '../../lib/mermaidZoom';
+import { ConsoleMermaidFrame } from './ConsoleMermaidFrame';
 
 export type ConsoleMermaidDiagramModalScreenProps = {
-  svg: string;
+  code: string;
+  frameSource?: string;
   onClose: () => void;
 };
 
 export const ConsoleMermaidDiagramModalScreen = ({
-  svg,
+  code,
+  frameSource,
   onClose,
 }: ConsoleMermaidDiagramModalScreenProps) => {
   const [scale, setScale] = useState<number>(MERMAID_ZOOM_MIN_SCALE);
-  const canvasRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas === null) {
-      return;
-    }
-    canvas.innerHTML = svg;
-    const diagram = canvas.querySelector('svg');
-    if (diagram !== null) {
-      diagram.style.removeProperty('max-width');
-      diagram.style.setProperty('width', '100%');
-      diagram.style.setProperty('height', 'auto');
-    }
-  }, [svg]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -87,10 +75,15 @@ export const ConsoleMermaidDiagramModalScreen = ({
       </div>
       <div className="console-mermaid-modal-viewport">
         <div
-          ref={canvasRef}
           className="console-mermaid-modal-canvas"
           style={{ width: mermaidZoomCanvasWidth(scale) }}
-        />
+        >
+          <ConsoleMermaidFrame
+            code={code}
+            fillWidth
+            frameSource={frameSource}
+          />
+        </div>
       </div>
     </div>
   );

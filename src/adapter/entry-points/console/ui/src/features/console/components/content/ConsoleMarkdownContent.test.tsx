@@ -1,12 +1,6 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleMarkdownContent } from './ConsoleMarkdownContent';
 
-jest.mock('../../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(
-    async () => '<svg data-testid="mermaid-svg"></svg>',
-  ),
-}));
-
 const multiLineCodeBody = [
   'Intro paragraph.',
   '',
@@ -53,7 +47,7 @@ describe('ConsoleMarkdownContent', () => {
     );
     await waitFor(() => {
       expect(
-        container.querySelector('.console-mermaid-rendered'),
+        container.querySelector('iframe.console-mermaid-frame'),
       ).not.toBeNull();
     });
   });
@@ -175,7 +169,7 @@ describe('ConsoleMarkdownContent', () => {
       );
       await waitFor(() => {
         expect(
-          container.querySelector('.console-mermaid-rendered'),
+          container.querySelector('iframe.console-mermaid-frame'),
         ).not.toBeNull();
       });
       expect(queryAllByRole('button', { name: 'Copy code' })).toHaveLength(0);
@@ -406,5 +400,21 @@ describe('ConsoleMarkdownContent', () => {
     expect(
       container.querySelector('.console-markdown-reference-host'),
     ).toBeNull();
+  });
+
+  it('forwards the mermaid frame source to the diagram', async () => {
+    const { container } = render(
+      <ConsoleMarkdownContent
+        body={'```mermaid\ngraph TD; A-->B;\n```'}
+        mermaidFrameSource="data:text/html,mock"
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        container
+          .querySelector('iframe.console-mermaid-frame')
+          ?.getAttribute('src'),
+      ).toBe('data:text/html,mock');
+    });
   });
 });

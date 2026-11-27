@@ -7,10 +7,6 @@ import {
 } from '../../testing/fixtures';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
 
-jest.mock('../../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
-}));
-
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 const pullRequest = consoleRelatedPullRequestsFixture[0];
 const pullRequestReference = parseGitHubReferenceUrl(pullRequest.url);
