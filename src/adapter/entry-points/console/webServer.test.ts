@@ -6284,7 +6284,8 @@ describe('webServer security headers', () => {
         [
           "default-src 'none'",
           "script-src 'self' https://cdn.jsdelivr.net",
-          "style-src 'self' 'unsafe-inline'",
+          "style-src 'self'",
+          "style-src-attr 'unsafe-inline'",
           'img-src data:',
           "connect-src 'none'",
           "base-uri 'none'",
@@ -6300,8 +6301,11 @@ describe('webServer security headers', () => {
         '/assets/mermaid-frame.js',
       );
       expect(frameScriptResponse.statusCode).toBe(200);
-      expect(frameScriptResponse.headers['access-control-allow-origin']).toBe(
-        '*',
+      expect(
+        frameScriptResponse.headers['access-control-allow-origin'],
+      ).toBeUndefined();
+      expect(frameScriptResponse.headers['cross-origin-resource-policy']).toBe(
+        'cross-origin',
       );
 
       const consoleResponse = await requestWithHeaders(server, '/');

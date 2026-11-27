@@ -1600,7 +1600,8 @@ const MERMAID_FRAME_SCRIPT_PATH = '/assets/mermaid-frame.js';
 const MERMAID_FRAME_CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
   "script-src 'self' https://cdn.jsdelivr.net",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self'",
+  "style-src-attr 'unsafe-inline'",
   'img-src data:',
   "connect-src 'none'",
   "base-uri 'none'",
@@ -1620,7 +1621,7 @@ const applyStaticFileHeaders = (
     response.setHeader('X-Frame-Options', 'SAMEORIGIN');
   }
   if (requestPath === MERMAID_FRAME_SCRIPT_PATH) {
-    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   }
 };
 

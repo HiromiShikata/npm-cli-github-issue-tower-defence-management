@@ -83,6 +83,9 @@ export const showMermaidFrameDiagram = (
   svg: string,
   fillWidth: boolean,
 ): void => {
+  container.style.margin = '0';
+  container.style.padding = '0';
+  container.style.background = 'transparent';
   container.innerHTML = svg;
   const diagram = container.querySelector('svg');
   if (diagram !== null && fillWidth) {
