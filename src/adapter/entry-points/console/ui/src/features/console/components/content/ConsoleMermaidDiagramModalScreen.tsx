@@ -12,11 +12,13 @@ import { ConsoleMermaidFrame } from './ConsoleMermaidFrame';
 
 export type ConsoleMermaidDiagramModalScreenProps = {
   code: string;
+  frameSource?: string;
   onClose: () => void;
 };
 
 export const ConsoleMermaidDiagramModalScreen = ({
   code,
+  frameSource,
   onClose,
 }: ConsoleMermaidDiagramModalScreenProps) => {
   const [scale, setScale] = useState<number>(MERMAID_ZOOM_MIN_SCALE);
@@ -76,7 +78,11 @@ export const ConsoleMermaidDiagramModalScreen = ({
           className="console-mermaid-modal-canvas"
           style={{ width: mermaidZoomCanvasWidth(scale) }}
         >
-          <ConsoleMermaidFrame code={code} fillWidth />
+          <ConsoleMermaidFrame
+            code={code}
+            fillWidth
+            frameSource={frameSource}
+          />
         </div>
       </div>
     </div>

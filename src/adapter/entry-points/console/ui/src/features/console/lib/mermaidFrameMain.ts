@@ -1,11 +1,12 @@
 import { loadMermaidApi, type MermaidApi } from './mermaidFrameLoader';
-import {
-  type MermaidFrameResponse,
-  parseMermaidFrameRequest,
+import type {
+  MermaidFrameResponse,
 } from './mermaidFrameProtocol';
 import {
+  createMermaidFrameMessageHandler,
   handleMermaidFrameRequest,
   sanitizeMermaidFrameSvg,
+  showMermaidFrameDiagram,
 } from './mermaidFrameRender';
 
 let mermaidApiPromise: Promise<MermaidApi> | null = null;
@@ -25,37 +26,26 @@ const postToParent = (response: MermaidFrameResponse): void => {
   window.parent.postMessage(response, '*');
 };
 
-const showDiagram = (svg: string, fillWidth: boolean): void => {
-  document.body.innerHTML = svg;
-  const diagram = document.body.querySelector('svg');
-  if (diagram !== null && fillWidth) {
-    diagram.style.setProperty('width', '100%');
-    diagram.style.setProperty('height', 'auto');
-  }
-};
-
 let displayedRequestId: number | null = null;
 
-window.addEventListener('message', (event: MessageEvent) => {
-  if (event.source !== window.parent) {
-    return;
-  }
-  const request = parseMermaidFrameRequest(event.data);
-  if (request === null) {
-    return;
-  }
-  void handleMermaidFrameRequest(request, {
-    loadMermaid,
-    sanitizeSvg: sanitizeMermaidFrameSvg,
-    showDiagram,
-    measureHeight: () => document.documentElement.scrollHeight,
-  }).then((response) => {
-    if (response.type === 'size') {
-      displayedRequestId = response.requestId;
-    }
-    postToParent(response);
-  });
-});
+window.addEventListener(
+  'message',
+  createMermaidFrameMessageHandler({
+    isParentSource: (source) => source === window.parent,
+    handle: (request) =>
+      handleMermaidFrameRequest(request, {
+        loadMermaid,
+        sanitizeSvg: sanitizeMermaidFrameSvg,
+        showDiagram: (svg, fillWidth) =>
+          showMermaidFrameDiagram(document.body, svg, fillWidth),
+        measureHeight: () => document.documentElement.scrollHeight,
+      }),
+    post: postToParent,
+    onSized: (requestId) => {
+      displayedRequestId = requestId;
+    },
+  }),
+);
 
 if (typeof ResizeObserver !== 'undefined') {
   new ResizeObserver(() => {

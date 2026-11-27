@@ -23,4 +23,22 @@ describe('ConsoleMermaidDiagram', () => {
     fireEvent.click(screen.getByLabelText('Close enlarged diagram'));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+
+  it('forwards the frame source to the diagram and to the enlarged view', () => {
+    render(
+      <ConsoleMermaidDiagram
+        code="graph TD; A-->B;"
+        frameSource="data:text/html,mock"
+      />,
+    );
+    expect(screen.getByTitle('Mermaid diagram').getAttribute('src')).toBe(
+      'data:text/html,mock',
+    );
+    fireEvent.click(screen.getByText('Enlarge diagram'));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.querySelector('iframe')?.getAttribute('src')).toBe(
+      'data:text/html,mock',
+    );
+  });
 });
+

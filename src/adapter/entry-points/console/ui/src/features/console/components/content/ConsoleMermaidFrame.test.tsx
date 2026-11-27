@@ -169,4 +169,33 @@ describe('ConsoleMermaidFrame', () => {
     );
     expect(getFrame().getAttribute('src')).toBe('data:text/html,mock');
   });
+
+  it('shows the source with an error when the frame never finishes loading', () => {
+    jest.useFakeTimers();
+    try {
+      render(<ConsoleMermaidFrame code="graph TD; A-->B;" fillWidth={false} />);
+      expect(screen.getByText('Rendering diagram...')).toBeInTheDocument();
+      act(() => {
+        jest.advanceTimersByTime(MERMAID_FRAME_RESPONSE_TIMEOUT_MS);
+      });
+      expect(
+        screen.getByText(/Mermaid render error: Mermaid frame did not respond/),
+      ).toBeInTheDocument();
+      expect(screen.getByText('graph TD; A-->B;')).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('forwards the frame source to the diagram iframe', () => {
+    render(
+      <ConsoleMermaidFrame
+        code="graph TD; A-->B;"
+        fillWidth={false}
+        frameSource="data:text/html,mock"
+      />,
+    );
+    expect(getFrame().getAttribute('src')).toBe('data:text/html,mock');
+  });
 });
+

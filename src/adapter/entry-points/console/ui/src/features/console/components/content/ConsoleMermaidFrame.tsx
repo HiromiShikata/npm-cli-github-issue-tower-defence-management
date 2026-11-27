@@ -33,30 +33,31 @@ export const ConsoleMermaidFrame = ({
   frameSource = MERMAID_FRAME_PATH,
 }: ConsoleMermaidFrameProps) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const latestRequestIdRef = useRef<number>(0);
+  const requestIdRef = useRef<number>(0);
+  const generationRef = useRef<number>(0);
   const responseTimerRef = useRef<number | null>(null);
   const [isFrameLoaded, setIsFrameLoaded] = useState<boolean>(false);
   const [state, setState] = useState<MermaidFrameState>({ status: 'loading' });
 
   useEffect(() => {
-    const frameWindow = frameRef.current?.contentWindow;
-    if (!isFrameLoaded || frameWindow === null || frameWindow === undefined) {
-      return;
-    }
-    latestRequestIdRef.current += 1;
-    const requestId = latestRequestIdRef.current;
+    generationRef.current += 1;
+    const generation = generationRef.current;
     setState({ status: 'loading' });
     clearResponseTimer(responseTimerRef);
     responseTimerRef.current = window.setTimeout(() => {
       responseTimerRef.current = null;
-      if (latestRequestIdRef.current === requestId) {
+      if (generationRef.current === generation) {
         setState({ status: 'failed', message: TIMEOUT_MESSAGE });
       }
     }, MERMAID_FRAME_RESPONSE_TIMEOUT_MS);
-    frameWindow.postMessage(
-      createMermaidFrameRenderRequest(requestId, code, fillWidth),
-      '*',
-    );
+    const frameWindow = frameRef.current?.contentWindow;
+    if (isFrameLoaded && frameWindow !== null && frameWindow !== undefined) {
+      requestIdRef.current += 1;
+      frameWindow.postMessage(
+        createMermaidFrameRenderRequest(requestIdRef.current, code, fillWidth),
+        '*',
+      );
+    }
   }, [code, fillWidth, isFrameLoaded]);
 
   useEffect(() => {
@@ -66,10 +67,7 @@ export const ConsoleMermaidFrame = ({
         return;
       }
       const response = parseMermaidFrameResponse(event.data);
-      if (
-        response === null ||
-        response.requestId !== latestRequestIdRef.current
-      ) {
+      if (response === null || response.requestId !== requestIdRef.current) {
         return;
       }
       clearResponseTimer(responseTimerRef);

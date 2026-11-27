@@ -212,3 +212,21 @@ describe('replaceBlockedMediaWithLinks', () => {
     expect(replaceBlockedMediaWithLinks(html)).toBe(html);
   });
 });
+
+describe('replaceBlockedMediaWithLinks poster', () => {
+  it('drops a video poster that the console CSP would block', () => {
+    const result = replaceBlockedMediaWithLinks(
+      '<video src="https://github.com/user-attachments/assets/abc" poster="https://example.com/poster.png" controls></video>',
+    );
+    expect(result).toContain('<video');
+    expect(result).not.toContain('poster.png');
+    expect(result).toContain('src="https://github.com/user-attachments/assets/abc"');
+  });
+
+  it('keeps a video poster hosted on GitHub', () => {
+    const html =
+      '<video src="https://github.com/user-attachments/assets/abc" poster="https://github.com/user-attachments/assets/poster"></video>';
+    expect(replaceBlockedMediaWithLinks(html)).toBe(html);
+  });
+});
+

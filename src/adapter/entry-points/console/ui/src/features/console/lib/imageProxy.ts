@@ -168,6 +168,11 @@ export const replaceBlockedVideosWithLinks = (html: string): string => {
   template.content.querySelectorAll('video').forEach((video) => {
     const src = mediaSourceOf(video);
     if (src === null || isCspAllowedMediaUrl(src)) {
+      const poster = video.getAttribute('poster');
+      if (poster !== null && !isCspAllowedImageUrl(poster)) {
+        video.removeAttribute('poster');
+        replaced = true;
+      }
       return;
     }
     replaceElementWithLink(video, src, src);

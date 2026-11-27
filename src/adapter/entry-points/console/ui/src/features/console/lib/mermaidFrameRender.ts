@@ -1,8 +1,9 @@
 import DOMPurify from 'dompurify';
 import type { MermaidApi } from './mermaidFrameLoader';
-import type {
-  MermaidFrameRenderRequest,
-  MermaidFrameResponse,
+import {
+  type MermaidFrameRenderRequest,
+  type MermaidFrameResponse,
+  parseMermaidFrameRequest,
 } from './mermaidFrameProtocol';
 
 export type MermaidFrameRenderDeps = {
@@ -68,3 +69,42 @@ export const handleMermaidFrameRequest = async (
     renderDiagram: (id, code) => mermaid.render(id, code),
   });
 };
+
+export const showMermaidFrameDiagram = (
+  container: HTMLElement,
+  svg: string,
+  fillWidth: boolean,
+): void => {
+  container.innerHTML = svg;
+  const diagram = container.querySelector('svg');
+  if (diagram !== null && fillWidth) {
+    diagram.style.setProperty('width', '100%');
+    diagram.style.setProperty('height', 'auto');
+  }
+};
+
+export type MermaidFrameMessageHandlerDeps = {
+  isParentSource: (source: unknown) => boolean;
+  handle: (request: MermaidFrameRenderRequest) => Promise<MermaidFrameResponse>;
+  post: (response: MermaidFrameResponse) => void;
+  onSized: (requestId: number) => void;
+};
+
+export const createMermaidFrameMessageHandler =
+  (deps: MermaidFrameMessageHandlerDeps) =>
+  (event: { source: unknown; data: unknown }): void => {
+    if (!deps.isParentSource(event.source)) {
+      return;
+    }
+    const request = parseMermaidFrameRequest(event.data);
+    if (request === null) {
+      return;
+    }
+    void deps.handle(request).then((response) => {
+      if (response.type === 'size') {
+        deps.onSized(response.requestId);
+      }
+      deps.post(response);
+    });
+  };
+

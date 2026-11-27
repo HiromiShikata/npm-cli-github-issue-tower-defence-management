@@ -1,8 +1,10 @@
 import type { MermaidFrameRenderRequest } from './mermaidFrameProtocol';
 import {
+  createMermaidFrameMessageHandler,
   handleMermaidFrameRequest,
   renderMermaidFrameRequest,
   sanitizeMermaidFrameSvg,
+  showMermaidFrameDiagram,
 } from './mermaidFrameRender';
 
 const request: MermaidFrameRenderRequest = {
@@ -121,3 +123,78 @@ describe('handleMermaidFrameRequest', () => {
     expect(response).toEqual({ type: 'size', requestId: 7, height: 180 });
   });
 });
+
+describe('showMermaidFrameDiagram', () => {
+  it('sets the diagram to the full width when asked to fill it', () => {
+    const container = document.createElement('div');
+    showMermaidFrameDiagram(container, '<svg id="d"></svg>', true);
+    const diagram = container.querySelector<SVGSVGElement>('svg#d');
+    expect(diagram?.style.width).toBe('100%');
+    expect(diagram?.style.height).toBe('auto');
+  });
+
+  it('keeps the diagram at its own width when not asked to fill it', () => {
+    const container = document.createElement('div');
+    showMermaidFrameDiagram(container, '<svg id="d" style="max-width: 320px;"></svg>', false);
+    const diagram = container.querySelector<SVGSVGElement>('svg#d');
+    expect(diagram?.style.width).toBe('');
+    expect(diagram?.style.maxWidth).toBe('320px');
+  });
+});
+
+describe('createMermaidFrameMessageHandler', () => {
+  const request = {
+    type: 'render' as const,
+    requestId: 4,
+    code: 'graph TD; A-->B;',
+    fillWidth: false,
+  };
+
+  const build = (handle: jest.Mock) => {
+    const post = jest.fn();
+    const onSized = jest.fn();
+    const handler = createMermaidFrameMessageHandler({
+      isParentSource: (source) => source === 'parent',
+      handle,
+      post,
+      onSized,
+    });
+    return { handler, post, onSized };
+  };
+
+  it('ignores messages from any source other than the parent', () => {
+    const handle = jest.fn();
+    const { handler, post } = build(handle);
+    handler({ source: 'other', data: request } as unknown as MessageEvent);
+    expect(handle).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('ignores data that is not a render request', () => {
+    const handle = jest.fn();
+    const { handler } = build(handle);
+    handler({ source: 'parent', data: { type: 'eval' } } as unknown as MessageEvent);
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it('posts the failed response of a diagram that did not load', async () => {
+    const failed = { type: 'failed' as const, requestId: 4, message: 'mermaid script failed to load' };
+    const handle = jest.fn(async () => failed);
+    const { handler, post, onSized } = build(handle);
+    handler({ source: 'parent', data: request } as unknown as MessageEvent);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(post).toHaveBeenCalledWith(failed);
+    expect(onSized).not.toHaveBeenCalled();
+  });
+
+  it('posts the size response and records the displayed request', async () => {
+    const size = { type: 'size' as const, requestId: 4, height: 210 };
+    const handle = jest.fn(async () => size);
+    const { handler, post, onSized } = build(handle);
+    handler({ source: 'parent', data: request } as unknown as MessageEvent);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(post).toHaveBeenCalledWith(size);
+    expect(onSized).toHaveBeenCalledWith(4);
+  });
+});
+
