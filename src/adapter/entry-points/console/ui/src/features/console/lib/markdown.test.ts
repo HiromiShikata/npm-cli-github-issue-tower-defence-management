@@ -331,9 +331,10 @@ describe('renderMarkdownToSafeHtml inline style removal', () => {
   });
 
   it('removes style elements from raw html', () => {
-    const html = renderMarkdownToSafeHtml('<style>p{color:blue}</style>\n\ntext');
+    const html = renderMarkdownToSafeHtml(
+      '<style>p{color:blue}</style>\n\ntext',
+    );
     expect(html).not.toContain('<style');
     expect(html).toContain('text');
   });
 });
-
