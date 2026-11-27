@@ -70,6 +70,9 @@ export const installMermaidFrameStyleBridge = (
       const range = document.createRange();
       range.selectNodeContents(this);
       const fragment = range.createContextualFragment(value);
+      fragment.querySelectorAll('script').forEach((script) => {
+        script.remove();
+      });
       fragment.querySelectorAll('style').forEach((style) => {
         sink(style.textContent ?? '');
         style.remove();

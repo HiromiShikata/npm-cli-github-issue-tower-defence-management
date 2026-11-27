@@ -62,6 +62,47 @@ describe('installMermaidFrameStyleBridge', () => {
     expect(template.content.querySelector('span')?.textContent).toBe('kept');
   });
 
+  it('moves a style element swapped in with replaceChild into a stylesheet and removes the replaced node', () => {
+    const host = document.createElement('div');
+    const old = document.createElement('span');
+    host.appendChild(old);
+    const style = document.createElement('style');
+    style.textContent = '.r{}';
+    const returned = host.replaceChild(style, old);
+    expect(returned).toBe(old);
+    expect(sheets).toEqual(['.r{}']);
+    expect(host.contains(old)).toBe(false);
+    expect(host.querySelector('style')).toBeNull();
+  });
+
+  it('keeps an ordinary node swapped in with replaceChild in place', () => {
+    const host = document.createElement('div');
+    const old = document.createElement('span');
+    host.appendChild(old);
+    const replacement = document.createElement('em');
+    host.replaceChild(replacement, old);
+    expect(host.firstElementChild).toBe(replacement);
+    expect(sheets).toEqual([]);
+  });
+
+  it('assigns text to a style element through innerHTML without making a stylesheet from the markup', () => {
+    const style = document.createElement('style');
+    style.innerHTML = '.s{}';
+    expect(style.textContent).toBe('.s{}');
+    expect(sheets).toEqual([]);
+  });
+
+  it('never runs script elements assigned through innerHTML', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    (window as unknown as { bridgeRan?: boolean }).bridgeRan = undefined;
+    host.innerHTML = '<script>window.bridgeRan = true;</script><p>kept</p>';
+    expect((window as unknown as { bridgeRan?: boolean }).bridgeRan).toBeUndefined();
+    expect(host.querySelector('script')).toBeNull();
+    expect(host.querySelector('p')?.textContent).toBe('kept');
+    host.remove();
+  });
+
   it('restores the original methods when uninstalled', () => {
     uninstall();
     const host = document.createElement('div');
