@@ -6321,6 +6321,75 @@ describe('webServer security headers', () => {
     }
   });
 
+  it('sends the same shared security headers on the console page, the Mermaid frame page, and the frame script', async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-frame-headers-'),
+    );
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(path.join(uiDistDir, 'assets'), { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'index.html'),
+      '<!doctype html><title>TDPM Console</title>',
+    );
+    fs.writeFileSync(
+      path.join(uiDistDir, 'mermaid-frame.html'),
+      '<!doctype html><title>Mermaid diagram</title>',
+    );
+    fs.writeFileSync(
+      path.join(uiDistDir, 'assets', 'mermaid-frame.js'),
+      'void 0;',
+    );
+    const server = await startWebServer({
+      accessToken: securityHeaderToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const sharedHeaderNames = [
+        'referrer-policy',
+        'x-content-type-options',
+        'permissions-policy',
+        'cross-origin-opener-policy',
+        'cross-origin-embedder-policy',
+        'x-permitted-cross-domain-policies',
+      ];
+      const pick = (headers: http.IncomingHttpHeaders) =>
+        Object.fromEntries(
+          sharedHeaderNames.map((name) => [name, headers[name]]),
+        );
+      const consoleResponse = await requestWithHeaders(server, '/');
+      const frameResponse = await requestWithHeaders(
+        server,
+        '/mermaid-frame.html',
+      );
+      const frameScriptResponse = await requestWithHeaders(
+        server,
+        '/assets/mermaid-frame.js',
+      );
+      expect(pick(consoleResponse.headers)['referrer-policy']).toBe(
+        'no-referrer',
+      );
+      expect(pick(frameResponse.headers)).toEqual(
+        pick(consoleResponse.headers),
+      );
+      expect(pick(frameScriptResponse.headers)).toEqual(
+        pick(consoleResponse.headers),
+      );
+      expect(frameResponse.headers['x-frame-options']).toBe('SAMEORIGIN');
+      expect(frameScriptResponse.headers['cross-origin-resource-policy']).toBe(
+        'cross-origin',
+      );
+    } finally {
+      await closeTestServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('sends the browser security headers on the bootstrap placeholder page when no UI bundle is built', async () => {
     const tmpDir = fs.mkdtempSync(
       path.join(os.tmpdir(), 'console-security-headers-'),
