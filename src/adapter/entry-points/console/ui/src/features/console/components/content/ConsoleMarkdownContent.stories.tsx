@@ -26,7 +26,10 @@ export const RichMarkdown: Story = {
 };
 
 export const WithMermaidFence: Story = {
-  args: { body: consoleMermaidBodyFixture, mermaidFrameSource: MERMAID_FRAME_MOCK_SOURCE },
+  args: {
+    body: consoleMermaidBodyFixture,
+    mermaidFrameSource: MERMAID_FRAME_MOCK_SOURCE,
+  },
 };
 
 export const WithCodeFence: Story = {

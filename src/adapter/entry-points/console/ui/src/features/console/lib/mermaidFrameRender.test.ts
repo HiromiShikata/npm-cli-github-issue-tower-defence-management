@@ -135,7 +135,11 @@ describe('showMermaidFrameDiagram', () => {
 
   it('keeps the diagram at its own width when not asked to fill it', () => {
     const container = document.createElement('div');
-    showMermaidFrameDiagram(container, '<svg id="d" style="max-width: 320px;"></svg>', false);
+    showMermaidFrameDiagram(
+      container,
+      '<svg id="d" style="max-width: 320px;"></svg>',
+      false,
+    );
     const diagram = container.querySelector<SVGSVGElement>('svg#d');
     expect(diagram?.style.width).toBe('');
     expect(diagram?.style.maxWidth).toBe('320px');
@@ -173,12 +177,19 @@ describe('createMermaidFrameMessageHandler', () => {
   it('ignores data that is not a render request', () => {
     const handle = jest.fn();
     const { handler } = build(handle);
-    handler({ source: 'parent', data: { type: 'eval' } } as unknown as MessageEvent);
+    handler({
+      source: 'parent',
+      data: { type: 'eval' },
+    } as unknown as MessageEvent);
     expect(handle).not.toHaveBeenCalled();
   });
 
   it('posts the failed response of a diagram that did not load', async () => {
-    const failed = { type: 'failed' as const, requestId: 4, message: 'mermaid script failed to load' };
+    const failed = {
+      type: 'failed' as const,
+      requestId: 4,
+      message: 'mermaid script failed to load',
+    };
     const handle = jest.fn(async () => failed);
     const { handler, post, onSized } = build(handle);
     handler({ source: 'parent', data: request } as unknown as MessageEvent);
@@ -218,7 +229,10 @@ describe('superseded render requests', () => {
 
   it('tells each render whether a newer request has started since it was received', () => {
     const handle = jest.fn(
-      async (_request: MermaidFrameRenderRequest, _isLatest: () => boolean) => ({
+      async (
+        _request: MermaidFrameRenderRequest,
+        _isLatest: () => boolean,
+      ) => ({
         type: 'size' as const,
         requestId: 1,
         height: 1,
@@ -231,7 +245,12 @@ describe('superseded render requests', () => {
       onSized: jest.fn(),
     });
     const first = { type: 'render', requestId: 1, code: 'a', fillWidth: false };
-    const second = { type: 'render', requestId: 2, code: 'b', fillWidth: false };
+    const second = {
+      type: 'render',
+      requestId: 2,
+      code: 'b',
+      fillWidth: false,
+    };
     handler({ source: 'parent', data: first });
     const firstIsLatest = handle.mock.calls[0][1];
     handler({ source: 'parent', data: second });
@@ -240,4 +259,3 @@ describe('superseded render requests', () => {
     expect(secondIsLatest()).toBe(true);
   });
 });
-

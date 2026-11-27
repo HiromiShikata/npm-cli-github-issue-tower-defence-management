@@ -411,9 +411,10 @@ describe('ConsoleMarkdownContent', () => {
     );
     await waitFor(() => {
       expect(
-        container.querySelector('iframe.console-mermaid-frame')?.getAttribute('src'),
+        container
+          .querySelector('iframe.console-mermaid-frame')
+          ?.getAttribute('src'),
       ).toBe('data:text/html,mock');
     });
   });
 });
-
