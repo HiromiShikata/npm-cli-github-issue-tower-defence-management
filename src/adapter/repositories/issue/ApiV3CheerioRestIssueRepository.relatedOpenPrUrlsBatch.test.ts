@@ -203,7 +203,9 @@ const mockFetchRoutes = (routes: FetchRoutes) =>
             body.query.includes('IssueRelatedOpenPullRequestUrlsBatch') &&
             routes.relatedOpenPullRequestUrlsBatch
           ) {
-            return toResponse(routes.relatedOpenPullRequestUrlsBatch(body.variables));
+            return toResponse(
+              routes.relatedOpenPullRequestUrlsBatch(body.variables),
+            );
           }
           if (
             body.query.includes('IssueRecordedPullRequestComments') &&
@@ -291,8 +293,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
     silenceConsole();
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: (variables) =>
-        buildRelatedBatchResponse(
-          variables,[
+        buildRelatedBatchResponse(variables, [
           { comments: [recordedComment(1)] },
           { comments: [recordedComment(2)] },
         ]),
@@ -390,9 +391,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
         ),
       }).toEqual({
         name: testCase.name,
-        actual: testCase.expected.map((numbers) =>
-          numbers.map(pullRequestUrl),
-        ),
+        actual: testCase.expected.map((numbers) => numbers.map(pullRequestUrl)),
       });
       jest.restoreAllMocks();
     }
@@ -400,15 +399,17 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
 
   it('distributes one hundred one recorded pull requests across two issues to their own issues', async () => {
     silenceConsole();
-    const firstIssueNumbers = Array.from({ length: 60 }, (_, index) => index + 1);
+    const firstIssueNumbers = Array.from(
+      { length: 60 },
+      (_, index) => index + 1,
+    );
     const secondIssueNumbers = Array.from(
       { length: 41 },
       (_, index) => index + 61,
     );
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: (variables) =>
-        buildRelatedBatchResponse(
-          variables,[
+        buildRelatedBatchResponse(variables, [
           { comments: firstIssueNumbers.map(recordedComment) },
           { comments: secondIssueNumbers.map(recordedComment) },
         ]),
@@ -434,8 +435,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
     silenceConsole();
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: (variables) =>
-        buildRelatedBatchResponse(
-          variables,[
+        buildRelatedBatchResponse(variables, [
           {
             comments: [recordedComment(1)],
             commentsNextCursor: 'cursor-1',
@@ -466,8 +466,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
     const { warn } = silenceConsole();
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: (variables) =>
-        buildRelatedBatchResponse(
-          variables,[
+        buildRelatedBatchResponse(variables, [
           {
             comments: [recordedComment(1)],
             commentsNextCursor: 'cursor-1',
@@ -485,12 +484,8 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
       issueUrlAt(1),
     ]);
 
-    expect(result).toEqual(
-      new Map([[issueUrlAt(1), [pullRequestUrl(3)]]]),
-    );
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining(issueUrlAt(0)),
-    );
+    expect(result).toEqual(new Map([[issueUrlAt(1), [pullRequestUrl(3)]]]));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining(issueUrlAt(0)));
   });
 
   it('resolves each issue per request and keeps its open pull requests when the batch status request fails', async () => {
@@ -515,8 +510,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
       const { info } = silenceConsole();
       const fetchSpy = mockFetchRoutes({
         relatedOpenPullRequestUrlsBatch: (variables) =>
-          buildRelatedBatchResponse(
-            variables,[
+          buildRelatedBatchResponse(variables, [
             { comments: [recordedComment(1)] },
             { comments: [recordedComment(2)] },
           ]),
@@ -534,9 +528,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
         actual: [result.get(issueUrlAt(0)), result.get(issueUrlAt(1))],
         singleQueries: countSingleQueries(fetchSpy),
         fallbackLogged: info.mock.calls.some(([message]) =>
-          String(message).includes(
-            'batched pull request status query failed',
-          ),
+          String(message).includes('batched pull request status query failed'),
         ),
       }).toEqual({
         name: testCase.name,
@@ -552,8 +544,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
     const { warn } = silenceConsole();
     mockFetchRoutes({
       relatedOpenPullRequestUrlsBatch: (variables) =>
-        buildRelatedBatchResponse(
-          variables,[
+        buildRelatedBatchResponse(variables, [
           { comments: [recordedComment(1)] },
           { comments: [recordedComment(2)] },
         ]),
@@ -572,9 +563,7 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
       issueUrlAt(1),
     ]);
 
-    expect(result).toEqual(
-      new Map([[issueUrlAt(1), [pullRequestUrl(2)]]]),
-    );
+    expect(result).toEqual(new Map([[issueUrlAt(1), [pullRequestUrl(2)]]]));
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(pullRequestUrl(1)),
     );
@@ -616,7 +605,10 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs batched
 
   it('sends two pull request status batches for one hundred one unique recorded pull requests across three issues', async () => {
     silenceConsole();
-    const firstIssueNumbers = Array.from({ length: 50 }, (_, index) => index + 1);
+    const firstIssueNumbers = Array.from(
+      { length: 50 },
+      (_, index) => index + 1,
+    );
     const secondIssueNumbers = Array.from(
       { length: 50 },
       (_, index) => index + 51,
