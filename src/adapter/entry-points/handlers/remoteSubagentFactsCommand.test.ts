@@ -16,6 +16,8 @@ type Scenario = {
   metadataFiles: Record<string, string | undefined> | null;
   createProjects: boolean;
   withToken: boolean;
+  issueUrl?: string;
+  environMode?: 'readable' | 'absent';
 };
 
 const runFactsCommand = (scenario: Scenario) => {
@@ -34,17 +36,20 @@ const runFactsCommand = (scenario: Scenario) => {
     );
     fs.writeFileSync(
       path.join(processDirectory, 'cmdline'),
-      Buffer.from(`claude\0-p\0Take ownership of ${ISSUE_URL}\0`),
+      Buffer.from(
+        `claude\0-p\0Take ownership of ${scenario.issueUrl ?? ISSUE_URL}\0`,
+      ),
     );
     const environment = [
       ...(scenario.withToken ? [`CLAUDE_CODE_OAUTH_TOKEN=${TOKEN}`] : []),
       `CLAUDE_CONFIG_DIR=${configDirectory}`,
       'CLAUDE_CODE_SESSION_ID=session-one',
     ];
-    fs.writeFileSync(
-      path.join(processDirectory, 'environ'),
-      Buffer.from(environment.map((entry) => `${entry}\0`).join('')),
-    );
+    if (scenario.environMode !== 'absent')
+      fs.writeFileSync(
+        path.join(processDirectory, 'environ'),
+        Buffer.from(environment.map((entry) => `${entry}\0`).join('')),
+      );
     const codexDirectory = path.join(procDirectory, '11');
     fs.mkdirSync(codexDirectory, { recursive: true });
     fs.writeFileSync(
@@ -111,6 +116,23 @@ describe('REMOTE_SUBAGENT_FACTS_COMMAND', () => {
     });
     expect(output.split('\n')).toContain(WORKER_ROW);
     expect(parsed.subagentCounts.claudeByIssueUrl[ISSUE_URL]).toBe(0);
+  });
+
+  it('prints the worker row and an unreadable marker when the worker environ file cannot be read', () => {
+    const issueUrl = 'https://github.com/example-org/example-repo/issues/202';
+    const { output, parsed } = runFactsCommand({
+      metadataFiles: null,
+      createProjects: true,
+      withToken: true,
+      issueUrl,
+      environMode: 'absent',
+    });
+    expect(output.split('\n')).toContain(
+      `10\t1\tclaude-worker\t${issueUrl}\t-`,
+    );
+    expect(output.split('\n')).toContain('10\tmeta\t!');
+    expect(parsed.unmeasuredIssueUrls).toEqual([issueUrl]);
+    expect(parsed.subagentCounts.claudeByIssueUrl[issueUrl]).toBeUndefined();
   });
 
   it.each([
