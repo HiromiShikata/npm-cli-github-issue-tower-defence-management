@@ -4,6 +4,9 @@ import {
   ComposeDashboardUseCase,
   SEVEN_DAY_UTILIZATION_COLUMN_START,
   TOKEN_SESSION_COLUMN_START,
+  formatTokenRowLine,
+  formatTokenSectionHeaderLine,
+  formatTokenSessionTotalLine,
 } from './ComposeDashboardUseCase';
 import { DashboardRow } from './GenerateDashboardRowUseCase';
 import { TokenStatus } from './GenerateTokenStatusUseCase';
@@ -185,9 +188,47 @@ describe('ComposeDashboardUseCase token column alignment', () => {
         SEVEN_DAY_UTILIZATION_COLUMN_START + 3,
       );
       expect(displayColumnOf(row, prep)).toBe(TOKEN_SESSION_COLUMN_START);
-      expect(displayColumnOf(row, hum)).toBe(TOKEN_SESSION_COLUMN_START + 3);
+      expect(displayColumnOf(row, hum)).toBe(
+        /^\d+$/.test(hum)
+          ? TOKEN_SESSION_COLUMN_START + 3 + (2 - hum.length)
+          : TOKEN_SESSION_COLUMN_START + 3,
+      );
     },
   );
+
+  it('keeps the subagent cells at the same columns whether the human count has one or two digits', () => {
+    const rowOf = (hum: number) =>
+      formatTokenRowLine(
+        tokenStatus({
+          name: 'alpha',
+          hum,
+          claudeSubagentCount: 5,
+          codexSubagentCount: 4,
+        }),
+      );
+    const oneDigit = rowOf(7);
+    const twoDigits = rowOf(34);
+    expect(oneDigit.endsWith(' 7  5  4')).toBe(true);
+    expect(twoDigits.endsWith(' 34  5  4')).toBe(true);
+    expect(twoDigits.length).toBe(oneDigit.length);
+  });
+
+  it('places the header directly above the totals line when no seven day aggregate exists', () => {
+    const output = unwrapTtLines(
+      new ComposeDashboardUseCase().run({
+        ...alignmentInput,
+        sevenDayWindowAggregate: null,
+      }),
+    );
+    const headerIndex = output.indexOf(formatTokenSectionHeaderLine());
+    expect(headerIndex).toBeGreaterThan(0);
+    expect(output[headerIndex + 1]).toBe(
+      formatTokenSessionTotalLine(
+        alignmentInput.tokens,
+        alignmentInput.codexRunningWorkerCount ?? null,
+      ),
+    );
+  });
 
   it('places the 7-day mean above the 7-day utilization column of the token rows', () => {
     expect(displayColumnOf(totalLine, '63')).toBe(
@@ -283,13 +324,15 @@ describe('ComposeDashboardUseCase token column alignment with single-digit total
       expect(displayColumnOf(row, utilization)).toBe(5);
       expect(displayColumnOf(row, reset)).toBe(8);
       expect(displayColumnOf(row, prep)).toBe(16);
-      expect(displayColumnOf(row, hum)).toBe(19);
+      expect(displayColumnOf(row, hum)).toBe(
+        /^\d+$/.test(hum) ? 20 - (hum.length - 1) : 19,
+      );
     },
   );
 
-  it('places the 7-day mean at column 5, the one-digit prep total at column 16 and the one-digit hum total at column 19 of the total line', () => {
+  it('places the 7-day mean at column 5, the one-digit prep total at column 16 and the one-digit hum total at column 20 of the total line', () => {
     expect(displayColumnOf(totalLine, '63')).toBe(5);
     expect(displayColumnOf(totalLine, ' 7')).toBe(16);
-    expect(displayColumnOf(totalLine, '5')).toBe(19);
+    expect(displayColumnOf(totalLine, '5')).toBe(20);
   });
 });

@@ -105,7 +105,7 @@ export class ProcRunningSubagentFactsRepository {
               environment.CLAUDE_CONFIG_DIR ??
               path.join(environment.HOME ?? '', '.claude');
             let count = 0;
-            for (const project of this.listFiles(
+            for (const project of this.listEntriesOrEmpty(
               path.join(configDirectory, 'projects'),
             )) {
               const projectDirectory = path.join(

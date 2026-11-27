@@ -428,7 +428,7 @@ export const formatTokenSectionHeaderLine = (): string =>
   TOKEN_SEGMENT_SEPARATOR +
   padEnd('pp', TOKEN_UTILIZATION_WIDTH, ' ') +
   TOKEN_SEGMENT_SEPARATOR +
-  'h' +
+  padStart('h', 2) +
   TOKEN_SEGMENT_SEPARATOR +
   'sa' +
   TOKEN_SEGMENT_SEPARATOR +
@@ -467,7 +467,7 @@ export const formatTokenSessionTotalLine = (
     padEnd('', TOKEN_SESSION_COLUMN_START, ' ') +
     padStart(capTwoDigits(totalPrep), 2) +
     ' ' +
-    capTwoDigits(totalHum) +
+    padStart(capTwoDigits(totalHum), 2) +
     ' ' +
     formatSubagentCount(totalClaudeSubagents) +
     ' ' +
@@ -507,7 +507,7 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
     token.sevenDayUtilizationPercent,
   );
   const prep = padStart(capTwoDigits(token.prep), 2);
-  const hum = capTwoDigits(token.hum);
+  const hum = padStart(capTwoDigits(token.hum), 2);
   const claudeSubagentCount = formatSubagentCount(token.claudeSubagentCount);
   const codexSubagentCount = formatSubagentCount(token.codexSubagentCount);
   return joinTokenRowSegments([
@@ -665,13 +665,17 @@ export class ComposeDashboardUseCase {
           ' ',
         );
         return [
+          formatTokenSectionHeaderLine(),
           aggrPadded + sessionTotalLine.slice(TOKEN_SESSION_COLUMN_START),
         ];
       }
-      return [
-        aggregateLine !== null ? aggregateLine : '',
-        ...(sessionTotalLine !== null ? [sessionTotalLine] : []),
-      ];
+      if (aggregateLine !== null) {
+        return [formatTokenSectionHeaderLine(), aggregateLine];
+      }
+      if (sessionTotalLine !== null) {
+        return ['', formatTokenSectionHeaderLine(), sessionTotalLine];
+      }
+      return [''];
     })();
     const codexLines = formatCodexSevenDayWindowLines(
       input.codexSevenDayWindows ?? null,
@@ -683,9 +687,7 @@ export class ComposeDashboardUseCase {
     const lines = [
       ...statsLines,
       ...projectLines,
-      ...(aggrTotalLines.some((line) => line.length > 0)
-        ? [formatTokenSectionHeaderLine(), ...aggrTotalLines]
-        : aggrTotalLines),
+      ...aggrTotalLines,
       ...tokenLines,
       ...codexLines,
     ];

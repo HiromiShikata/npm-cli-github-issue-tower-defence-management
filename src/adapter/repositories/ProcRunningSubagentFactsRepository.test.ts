@@ -152,4 +152,27 @@ describe('ProcRunningSubagentFactsRepository', () => {
       fs.rmSync(procDirectory, { recursive: true, force: true });
     }
   });
+  it('counts a config directory without a projects directory as zero', () => {
+    const procDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-proc-'));
+    try {
+      const configDirectory = path.join(procDirectory, 'config');
+      fs.mkdirSync(configDirectory, { recursive: true });
+      writeProcess(
+        procDirectory,
+        10,
+        1,
+        ['claude', '-p', 'Take ownership of issue'],
+        {
+          CLAUDE_CODE_OAUTH_TOKEN: 'token-alpha',
+          CLAUDE_CONFIG_DIR: configDirectory,
+        },
+      );
+      expect(
+        new ProcRunningSubagentFactsRepository(procDirectory).listFacts()[0]
+          .unfinishedClaudeSubagentCount,
+      ).toBe(0);
+    } finally {
+      fs.rmSync(procDirectory, { recursive: true, force: true });
+    }
+  });
 });

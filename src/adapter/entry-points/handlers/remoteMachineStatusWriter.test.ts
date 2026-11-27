@@ -4,9 +4,12 @@ import path from 'path';
 import {
   buildSshInvocation,
   parseRemoteMetricsOutput,
+  parseRemoteSubagentFactsOutput,
   parseWorkerHostsYaml,
   REMOTE_COMMAND_TIMEOUT_MS,
   REMOTE_METRICS_COMMAND,
+  REMOTE_SUBAGENT_FACTS_COMMAND,
+  REMOTE_SUBAGENT_FACTS_TIMEOUT_MS,
   type RemoteMachineStatusEntry,
   type RemoteMachineStatusFile,
   writeRemoteMachineStatus,
@@ -82,7 +85,9 @@ const metricsOutput = [
   '3.5 2.5 1.5 1/100 200',
   '#TDPM-SEP',
   '1000 200 200',
-  '#TDPM-SEP',
+].join('\n');
+
+const factsOutput = [
   '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t2',
   '11\t10\tcodex-launcher\t-\t-',
 ].join('\n');
@@ -128,6 +133,11 @@ describe('remote machine status writer parsing', () => {
       cpuPct: 60,
       diskPct: 80,
       load: [3.5, 2.5, 1.5],
+    });
+  });
+
+  it('parses remote subagent facts into per-token counts', () => {
+    expect(parseRemoteSubagentFactsOutput(factsOutput)).toEqual({
       subagentCounts: {
         claudeByTokenKey: {
           '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 2,
@@ -136,13 +146,20 @@ describe('remote machine status writer parsing', () => {
           '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef': 1,
         },
       },
+      unreadableWorkerPids: [],
     });
   });
 
-  it('rejects output with only four sections', () => {
+  it('rejects malformed remote subagent facts', () => {
+    expect(() =>
+      parseRemoteSubagentFactsOutput('10\t1\tclaude-worker\tnot-a-key\t2'),
+    ).toThrow(Error);
+  });
+
+  it('rejects output with only three sections', () => {
     expect(() =>
       parseRemoteMetricsOutput(
-        metricsOutput.split('\n#TDPM-SEP\n').slice(0, 4).join('\n#TDPM-SEP\n'),
+        metricsOutput.split('\n#TDPM-SEP\n').slice(0, 3).join('\n#TDPM-SEP\n'),
       ),
     ).toThrow(Error);
   });
@@ -193,7 +210,14 @@ describe('writeRemoteMachineStatus', () => {
     workerHostsPath = makeTempFile(
       'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
     );
-    const runner = jest.fn().mockResolvedValue(metricsOutput);
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      Promise.resolve(
+        invocation.args[invocation.args.length - 1] ===
+          REMOTE_SUBAGENT_FACTS_COMMAND
+          ? factsOutput
+          : metricsOutput,
+      ),
+    );
     await writeRemoteMachineStatus({
       dashboardDataDir,
       workerHostsPath,
@@ -203,6 +227,10 @@ describe('writeRemoteMachineStatus', () => {
     expect(runner).toHaveBeenCalledWith(
       buildSshInvocation(host, REMOTE_METRICS_COMMAND),
       REMOTE_COMMAND_TIMEOUT_MS,
+    );
+    expect(runner).toHaveBeenCalledWith(
+      buildSshInvocation(host, REMOTE_SUBAGENT_FACTS_COMMAND),
+      REMOTE_SUBAGENT_FACTS_TIMEOUT_MS,
     );
     expect(
       JSON.parse(
@@ -235,6 +263,59 @@ describe('writeRemoteMachineStatus', () => {
     });
   });
 
+  it.each([
+    {
+      name: 'the facts scan fails',
+      facts: () => Promise.reject(new Error('timed out')),
+      unreadable: false,
+    },
+    {
+      name: 'a worker has an unreadable count',
+      facts: () =>
+        Promise.resolve(
+          '10\t1\tclaude-worker\t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t?',
+        ),
+      unreadable: true,
+    },
+  ])(
+    'keeps the host metrics and marks its subagent counts unmeasured when $name',
+    async ({ facts }) => {
+      dashboardDataDir = makeTempDirectory();
+      workerHostsPath = makeTempFile(
+        'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+      );
+      const reportError = jest.fn<void, [string]>();
+      const runner = jest.fn((invocation: { args: string[] }) =>
+        invocation.args[invocation.args.length - 1] ===
+        REMOTE_SUBAGENT_FACTS_COMMAND
+          ? facts()
+          : Promise.resolve(metricsOutput),
+      );
+      await writeRemoteMachineStatus({
+        dashboardDataDir,
+        workerHostsPath,
+        runRemoteCommand: runner,
+        reportError,
+        now: new Date('2026-11-25T00:00:00.000Z'),
+      });
+      const written = parseStatusFile(
+        fs.readFileSync(
+          path.join(dashboardDataDir, 'remote-machine-status.json'),
+          'utf8',
+        ),
+      );
+      expect(written.machines[0]).toMatchObject({
+        name: 'worker-a',
+        reachable: true,
+        memPct: 25,
+        cpuPct: 60,
+        diskPct: 80,
+        subagentCounts: null,
+      });
+      expect(reportError).toHaveBeenCalled();
+    },
+  );
+
   it('continues after one host fails and reports an unreachable entry', async () => {
     dashboardDataDir = makeTempDirectory();
     workerHostsPath = makeTempFile(
@@ -244,7 +325,8 @@ describe('writeRemoteMachineStatus', () => {
     const runner = jest
       .fn()
       .mockRejectedValueOnce(new Error('connection refused'))
-      .mockResolvedValueOnce(metricsOutput);
+      .mockResolvedValueOnce(metricsOutput)
+      .mockResolvedValueOnce(factsOutput);
     await writeRemoteMachineStatus({
       dashboardDataDir,
       workerHostsPath,
@@ -271,7 +353,7 @@ describe('writeRemoteMachineStatus', () => {
     expect(reportError).toHaveBeenCalledWith(
       'remote machine worker-a could not be measured: connection refused',
     );
-    expect(runner).toHaveBeenCalledTimes(2);
+    expect(runner).toHaveBeenCalledTimes(3);
   });
 
   it('writes previous hosts as unreachable when the YAML cannot be read', async () => {
@@ -430,7 +512,14 @@ describe('writeRemoteMachineStatus', () => {
     );
     const renameError = new Error('rename failed for test');
     const reportError = jest.fn<void, [string]>();
-    const runner = jest.fn().mockResolvedValue(metricsOutput);
+    const runner = jest.fn((invocation: { args: string[] }) =>
+      Promise.resolve(
+        invocation.args[invocation.args.length - 1] ===
+          REMOTE_SUBAGENT_FACTS_COMMAND
+          ? factsOutput
+          : metricsOutput,
+      ),
+    );
     jest.spyOn(fs, 'renameSync').mockImplementation(() => {
       throw renameError;
     });
