@@ -1,3 +1,10 @@
+## [2.217.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.2...v2.217.3) (2026-11-27)
+
+
+### Bug Fixes
+
+* **console:** drop frame style-src unsafe-inline and the frame script CORS wildcard ([#3794](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3794)) ([1865686](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/18656860f7809f2c6284c2d5c22a8dfefdce60f8))
+
 ## [2.217.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.1...v2.217.2) (2026-11-27)
 
 
