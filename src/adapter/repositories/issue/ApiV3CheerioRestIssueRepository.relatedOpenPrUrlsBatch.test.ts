@@ -568,6 +568,65 @@ describe('ApiV3CheerioRestIssueRepository related open pull request URLs across 
       expect.stringContaining(pullRequestUrl(1)),
     );
   });
+
+  it('maps an issue reported not found to an empty list and keeps the other issue pull request', async () => {
+    type MissingIssueCase = {
+      name: string;
+      errors: { message: string; type: string; path: string[] }[];
+    };
+    const cases: MissingIssueCase[] = [
+      {
+        name: 'issue alias carries a NOT_FOUND error',
+        errors: [
+          {
+            message: 'Could not resolve to an Issue',
+            type: 'NOT_FOUND',
+            path: ['issue0', 'issue'],
+          },
+        ],
+      },
+      {
+        name: 'issue alias is null without any error',
+        errors: [],
+      },
+    ];
+
+    for (const testCase of cases) {
+      silenceConsole();
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: (variables) => {
+          const response = buildRelatedBatchResponse(variables, [
+            { comments: [recordedComment(1)] },
+            { comments: [recordedComment(2)] },
+          ]);
+          return {
+            data: { ...response.data, issue0: { issue: null } },
+            errors: testCase.errors,
+          };
+        },
+        slimPullRequestBatch: (variables) =>
+          buildSlimBatchResponseWithStates(variables, {}),
+        slimPullRequest: (number) => buildSlimSingleResponse(number, {}),
+      });
+
+      const result = await createRepository().findRelatedOpenPrUrls([
+        issueUrlAt(0),
+        issueUrlAt(1),
+      ]);
+
+      expect({
+        name: testCase.name,
+        actual: Array.from(result.entries()),
+      }).toEqual({
+        name: testCase.name,
+        actual: [
+          [issueUrlAt(0), []],
+          [issueUrlAt(1), [pullRequestUrl(2)]],
+        ],
+      });
+      jest.restoreAllMocks();
+    }
+  });
 });
 
 describe('ApiV3CheerioRestIssueRepository related open pull request URLs batched across issues', () => {
