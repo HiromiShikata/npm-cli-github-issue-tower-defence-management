@@ -1,3 +1,10 @@
+## [2.217.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.1...v2.217.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **console:** remove unsafe-inline from console style-src and link non-GitHub videos ([#3793](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3793)) ([e7032d4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e7032d4a070526f69c79c2555f1ad057c8b6e2d1))
+
 ## [2.217.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.0...v2.217.1) (2026-11-27)
 
 
