@@ -117,6 +117,11 @@ const badGateway = (message: string): ConsoleOperationResponse => ({
   body: { error: message },
 });
 
+const forbidden = (message: string): ConsoleOperationResponse => ({
+  statusCode: 403,
+  body: { error: message },
+});
+
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
 
@@ -270,6 +275,49 @@ const resolveBinding = async (
     return badRequest(`no project configured for pjcode "${pjcode}"`);
   }
   return binding;
+};
+
+const rejectWhenPullRequestIsNotLinkedToProjectItem = async (
+  issueRepository: IssueRepository,
+  project: Project,
+  prUrl: string,
+  projectItemId: string,
+): Promise<ConsoleOperationResponse | null> => {
+  const { issues } = await issueRepository.getAllIssues(project.id);
+  const item = issues.find((issue) => issue.itemId === projectItemId);
+  if (item === undefined) {
+    return badRequest(`project item "${projectItemId}" not found in project`);
+  }
+  const associatedPullRequestUrls = item.isPr
+    ? [item.url]
+    : (await issueRepository.findRelatedOpenPRs(item.url)).map(
+        (pullRequest) => pullRequest.url,
+      );
+  if (!associatedPullRequestUrls.includes(prUrl)) {
+    return forbidden(
+      `pull request "${prUrl}" is not linked to project item "${projectItemId}"`,
+    );
+  }
+  return null;
+};
+
+const rejectWhenUrlIsNotProjectItemUrl = async (
+  issueRepository: IssueRepository,
+  project: Project,
+  url: string,
+  projectItemId: string,
+): Promise<ConsoleOperationResponse | null> => {
+  const { issues } = await issueRepository.getAllIssues(project.id);
+  const item = issues.find((issue) => issue.itemId === projectItemId);
+  if (item === undefined) {
+    return badRequest(`project item "${projectItemId}" not found in project`);
+  }
+  if (item.url !== url) {
+    return forbidden(
+      `url "${url}" is not the url of project item "${projectItemId}"`,
+    );
+  }
+  return null;
 };
 
 const isOperationResponse = <T extends object>(
@@ -602,6 +650,19 @@ export const handleReview = async (
     if (typeof pjcodeResult !== 'string') {
       return pjcodeResult;
     }
+    const binding = await context.resolveProject(pjcodeResult);
+    if (binding === null) {
+      return badRequest(`no project configured for pjcode "${pjcodeResult}"`);
+    }
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      context.resolveIssueRepository(prUrl),
+      binding.project,
+      prUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
     await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (isNonEmptyString(body.commentBody)) {
       await context
@@ -610,10 +671,6 @@ export const handleReview = async (
     }
     const issueUrl = body.issueUrl;
     if (isNonEmptyString(issueUrl)) {
-      const binding = await context.resolveProject(pjcodeResult);
-      if (binding === null) {
-        return badRequest(`no project configured for pjcode "${pjcodeResult}"`);
-      }
       const statusFailure = await updateStatusByName(
         context.resolveIssueRepository(issueUrl),
         binding.project,
@@ -643,6 +700,15 @@ export const handleReview = async (
     const issueUrl = body.issueUrl;
     if (!isNonEmptyString(issueUrl)) {
       return badRequest('issueUrl is required for unnecessary');
+    }
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      context.resolveIssueRepository(prUrl),
+      project,
+      prUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
     }
     await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (isNonEmptyString(body.commentBody)) {
@@ -682,6 +748,15 @@ export const handleReview = async (
 
   if (action === 'approve_and_merge') {
     const issueRepository = context.resolveIssueRepository(prUrl);
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      issueRepository,
+      project,
+      prUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
     const prStatus = await issueRepository.getOpenPullRequest(prUrl);
     if (prStatus === null) {
       return badRequest(
@@ -782,6 +857,15 @@ export const handleReview = async (
     if (!isNonEmptyString(commentBody)) {
       return badRequest('commentBody is required for request_changes');
     }
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      context.resolveIssueRepository(prUrl),
+      project,
+      prUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
     const changedFilePath = isNonEmptyString(body.changedFilePath)
       ? body.changedFilePath
       : null;
@@ -842,6 +926,19 @@ const handleTriageImpl = async (
     if (typeof pjcodeResult !== 'string') {
       return pjcodeResult;
     }
+    const binding = await context.resolveProject(pjcodeResult);
+    if (binding === null) {
+      return badRequest(`no project configured for pjcode "${pjcodeResult}"`);
+    }
+    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      binding.project,
+      issueUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
     if (isNonEmptyString(body.commentBody)) {
       await context
         .resolveIssueRepository(issueUrl)
@@ -868,6 +965,15 @@ const handleTriageImpl = async (
     return binding;
   }
   const { project, pjcode } = binding;
+  const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+    context.resolveIssueRepository(issueUrl),
+    project,
+    issueUrl,
+    projectItemId,
+  );
+  if (linkFailure !== null) {
+    return linkFailure;
+  }
 
   if (action === 'set_status') {
     const previousResult = context.priorAttempt?.body;
@@ -1858,6 +1964,15 @@ export const handleIntmux = async (
     return binding;
   }
   const { project, pjcode } = binding;
+  const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+    context.resolveIssueRepository(issueUrl),
+    project,
+    issueUrl,
+    projectItemId,
+  );
+  if (linkFailure !== null) {
+    return linkFailure;
+  }
   const failure = await updateStatusByName(
     context.resolveIssueRepository(issueUrl),
     project,
