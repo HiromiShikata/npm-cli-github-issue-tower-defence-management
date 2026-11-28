@@ -144,6 +144,19 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
         '\n\n\n![origin.png](https://github.com/user-attachments/origin)\n',
       );
     });
+    rerender(
+      <ConsoleCommentComposer
+        key="task-a"
+        initiallyOpen
+        initialDraft="\n\n\n![origin.png](https://github.com/user-attachments/origin)\n"
+        onSubmit={submitComment}
+        onDraftChange={onDraftChange}
+        onUploadFile={uploadFile}
+      />,
+    );
+    expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+      '\n\n\n![origin.png](https://github.com/user-attachments/origin)\n',
+    );
   });
 
   it('aborts an upload after 300000 ms and clears placeholders with a retryable error', async () => {

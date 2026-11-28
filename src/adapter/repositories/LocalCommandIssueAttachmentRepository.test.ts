@@ -68,6 +68,24 @@ describe('relabelAttachmentMarkdown', () => {
 describe('LocalCommandIssueAttachmentRepository', () => {
   const resolveGithubToken = (): string => 'default-token';
 
+  type BatchUploadRequest = {
+    issueOrPullRequestUrl: string;
+    files: { fileName: string; content: Uint8Array }[];
+  };
+  type BatchUploadResult =
+    | { fileName: string; status: 'uploaded'; markdown: string }
+    | { fileName: string; status: 'failed'; error: string };
+  type BatchAttachmentRepository = {
+    uploadAttachment: (
+      request: BatchUploadRequest,
+    ) => Promise<BatchUploadResult[]>;
+  };
+
+  const asBatchRepository = (
+    repository: LocalCommandIssueAttachmentRepository,
+  ): BatchAttachmentRepository =>
+    repository as unknown as BatchAttachmentRepository;
+
   it('should run the upload command with the github token resolved for the item url', async () => {
     const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
     const received: {
@@ -189,5 +207,146 @@ describe('LocalCommandIssueAttachmentRepository', () => {
         content: new Uint8Array([1]),
       }),
     ).rejects.toThrow(`${UPLOAD_COMMAND} returned no markdown`);
+  });
+
+  it.each([
+    {
+      name: 'maps uploaded and failed JSONL records independently',
+      fileNames: ['first.png', 'broken.png', 'last.txt'],
+      exitCode: 0,
+      output: (paths: string[]) =>
+        [
+          {
+            filePath: paths[0],
+            status: 'uploaded',
+            url: 'https://github.com/user-attachments/first',
+            markdown:
+              '![attachment](https://github.com/user-attachments/first)',
+          },
+          {
+            filePath: paths[1],
+            status: 'failed',
+            error: 'upload failed',
+          },
+          {
+            filePath: paths[2],
+            status: 'uploaded',
+            url: 'https://github.com/user-attachments/last',
+            markdown: '[attachment](https://github.com/user-attachments/last)',
+          },
+        ]
+          .map((line) => JSON.stringify(line))
+          .join('\n'),
+      stderr: '',
+      expected: [
+        {
+          fileName: 'first.png',
+          status: 'uploaded',
+          markdown: '![first.png](https://github.com/user-attachments/first)',
+        },
+        { fileName: 'broken.png', status: 'failed', error: 'upload failed' },
+        {
+          fileName: 'last.txt',
+          status: 'uploaded',
+          markdown: '[last.txt](https://github.com/user-attachments/last)',
+        },
+      ],
+    },
+    {
+      name: 'uses command stderr for a file with no JSONL record',
+      fileNames: ['first.png', 'missing.txt'],
+      exitCode: 0,
+      output: (paths: string[]) =>
+        JSON.stringify({
+          filePath: paths[0],
+          status: 'uploaded',
+          url: 'https://github.com/user-attachments/first',
+          markdown: '![attachment](https://github.com/user-attachments/first)',
+        }),
+      stderr: 'command stderr\n',
+      expected: [
+        {
+          fileName: 'first.png',
+          status: 'uploaded',
+          markdown: '![first.png](https://github.com/user-attachments/first)',
+        },
+        { fileName: 'missing.txt', status: 'failed', error: 'command stderr' },
+      ],
+    },
+    {
+      name: 'keeps reported successes when the command exits non-zero',
+      fileNames: ['first.png', 'second.txt'],
+      exitCode: 3,
+      output: (paths: string[]) =>
+        paths
+          .map((filePath) =>
+            JSON.stringify({
+              filePath,
+              status: 'uploaded',
+              url: `https://github.com/user-attachments/${filePath}`,
+              markdown:
+                '![attachment](https://github.com/user-attachments/all)',
+            }),
+          )
+          .join('\n'),
+      stderr: 'policy failure\n',
+      expected: [
+        {
+          fileName: 'first.png',
+          status: 'uploaded',
+          markdown: '![first.png](https://github.com/user-attachments/all)',
+        },
+        {
+          fileName: 'second.txt',
+          status: 'uploaded',
+          markdown: '![second.png](https://github.com/user-attachments/all)',
+        },
+      ],
+    },
+  ])('$name', async ({ exitCode, output, stderr, expected, fileNames }) => {
+    const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
+    const calls: { program: string; args: string[] }[] = [];
+    const runner: LocalCommandRunner = {
+      runCommand: async (program, args) => {
+        calls.push({ program, args });
+        return {
+          stdout: output(args.slice(1, -1)),
+          stderr,
+          exitCode,
+        };
+      },
+      spawnInteractive: jest.fn(),
+    };
+    const repository = asBatchRepository(
+      new LocalCommandIssueAttachmentRepository(
+        runner,
+        resolveGithubToken,
+        root,
+      ),
+    );
+
+    const actual = await repository.uploadAttachment({
+      issueOrPullRequestUrl: 'https://github.com/owner/repo/issues/1',
+      files: fileNames.map((fileName, index) => ({
+        fileName,
+        content: new Uint8Array([index + 1]),
+      })),
+    });
+
+    expect(actual).toEqual(expected);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].program).toBe(UPLOAD_COMMAND);
+    expect(calls[0].args[0]).toBe('--output-format=jsonl');
+    expect(calls[0].args.at(-1)).toBe('https://github.com/owner/repo/issues/1');
+    expect(calls[0].args.slice(1, -1)).toHaveLength(fileNames.length);
+    expect(
+      calls[0].args
+        .slice(1, -1)
+        .map((filePath) => (filePath.endsWith('.txt') ? '.txt' : '.png')),
+    ).toEqual(
+      fileNames.map((fileName) =>
+        fileName.endsWith('.txt') ? '.txt' : '.png',
+      ),
+    );
   });
 });

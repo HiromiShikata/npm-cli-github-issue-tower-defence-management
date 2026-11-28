@@ -1,8 +1,19 @@
 import type { ConsoleOperationContext } from './consoleOperationApi';
 import { handleAttachmentUpload } from './consoleOperationApi';
 
+type AttachmentUploadRequest = {
+  issueOrPullRequestUrl: string;
+  files: { fileName: string; content: Uint8Array }[];
+};
+
+type AttachmentUploadResult =
+  | { fileName: string; status: 'uploaded'; markdown: string }
+  | { fileName: string; status: 'failed'; error: string };
+
 const uploadContext = (
-  uploadAttachment: ConsoleOperationContext['issueAttachmentRepository'],
+  uploadAttachment: (
+    request: AttachmentUploadRequest,
+  ) => Promise<AttachmentUploadResult[]>,
 ): ConsoleOperationContext => ({
   resolveIssueRepository: () => {
     throw new Error('issue repository is not used by attachment upload');
@@ -10,7 +21,9 @@ const uploadContext = (
   resolveProject: async () => null,
   isPjcodeConfigured: () => true,
   consoleDataOutputDir: null,
-  issueAttachmentRepository: uploadAttachment,
+  issueAttachmentRepository: {
+    uploadAttachment,
+  } as unknown as ConsoleOperationContext['issueAttachmentRepository'],
   resolveProjectRepository: null,
   invalidateProject: null,
   updateProjectCacheEntry: null,
@@ -22,13 +35,20 @@ const uploadContext = (
 describe('multi-file console attachment upload contract', () => {
   it('accepts one request containing every file and returns one result per file', async () => {
     const uploadAttachment = {
-      uploadAttachment: jest.fn(
-        async () => '![unused](https://example.test/u)',
+      uploadAttachment: jest.fn(async (request: AttachmentUploadRequest) =>
+        request.files.map((file) => ({
+          fileName: file.fileName,
+          status: 'uploaded' as const,
+          markdown:
+            file.fileName === 'first.png'
+              ? '![first.png](https://github.com/user-attachments/first)'
+              : '[second.txt](https://github.com/user-attachments/second)',
+        })),
       ),
     };
 
     const response = await handleAttachmentUpload(
-      uploadContext(uploadAttachment),
+      uploadContext(uploadAttachment.uploadAttachment),
       {
         pjcode: 'acme',
         url: 'https://github.com/o/r/issues/1',
@@ -59,13 +79,39 @@ describe('multi-file console attachment upload contract', () => {
       },
     });
     expect(uploadAttachment.uploadAttachment).toHaveBeenCalledTimes(1);
+    expect(uploadAttachment.uploadAttachment).toHaveBeenCalledWith({
+      issueOrPullRequestUrl: 'https://github.com/o/r/issues/1',
+      files: [
+        { fileName: 'first.png', content: new Uint8Array([1, 2]) },
+        { fileName: 'second.txt', content: new Uint8Array([3, 4]) },
+      ],
+    });
   });
 
   it('returns success and failure results for all files without stopping after one failure', async () => {
     const response = await handleAttachmentUpload(
-      uploadContext({
-        uploadAttachment: jest.fn(),
-      }),
+      uploadContext(async (request) =>
+        request.files.map((file) =>
+          file.fileName === 'first.png'
+            ? {
+                fileName: file.fileName,
+                status: 'uploaded' as const,
+                markdown:
+                  '![first.png](https://github.com/user-attachments/first)',
+              }
+            : file.fileName === 'broken.png'
+              ? {
+                  fileName: file.fileName,
+                  status: 'failed' as const,
+                  error: 'upload failed',
+                }
+              : {
+                  fileName: file.fileName,
+                  status: 'failed' as const,
+                  error: 'command stderr',
+                },
+        ),
+      ),
       {
         pjcode: 'acme',
         url: 'https://github.com/o/r/issues/1',
@@ -104,9 +150,13 @@ describe('multi-file console attachment upload contract', () => {
 
   it('returns a timeout failure for each file not reported before 300000 ms', async () => {
     const response = await handleAttachmentUpload(
-      uploadContext({
-        uploadAttachment: jest.fn(),
-      }),
+      uploadContext(async (request) =>
+        request.files.map((file) => ({
+          fileName: file.fileName,
+          status: 'failed' as const,
+          error: 'upload timed out',
+        })),
+      ),
       {
         pjcode: 'acme',
         url: 'https://github.com/o/r/issues/1',

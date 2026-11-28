@@ -42,6 +42,38 @@ describe('NodeLocalCommandRunner', () => {
       });
     });
 
+    it('kills a long-running command after five minutes and reports a timeout', async () => {
+      const timeoutError = Object.assign(new Error('Command timed out'), {
+        code: 1,
+        killed: true,
+        signal: 'SIGTERM',
+        stdout: '',
+        stderr: '',
+      });
+      mockExecFileAsync.mockRejectedValue(timeoutError);
+
+      const result = await runner.runCommand('upload-file-to-gh-issue', [
+        '--output-format=jsonl',
+        '/tmp/attachment.png',
+        'https://github.com/o/r/issues/1',
+      ]);
+
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        'upload-file-to-gh-issue',
+        [
+          '--output-format=jsonl',
+          '/tmp/attachment.png',
+          'https://github.com/o/r/issues/1',
+        ],
+        expect.objectContaining({
+          timeout: 300000,
+          killSignal: 'SIGTERM',
+        }),
+      );
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toMatch(/timed out/i);
+    });
+
     it('should handle command errors with exit code', async () => {
       const error = Object.assign(new Error('Command failed'), {
         code: 2,
