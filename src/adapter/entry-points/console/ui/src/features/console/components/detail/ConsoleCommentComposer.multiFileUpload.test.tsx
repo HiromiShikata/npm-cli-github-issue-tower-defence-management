@@ -217,9 +217,7 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
       fireEvent.change(getByLabelText('Attach files'), {
         target: { files: [file] },
       });
-      expect(textarea).toHaveValue(
-        '\n\n\n![uploading slow.png]()\n',
-      );
+      expect(textarea).toHaveValue('\n\n\n![uploading slow.png]()\n');
       await act(async () => {
         await jest.advanceTimersByTimeAsync(300000);
       });

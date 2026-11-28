@@ -567,12 +567,7 @@ describe('ConsolePage', () => {
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
     }) as unknown as typeof fetch;
 
-    const {
-      getByText,
-      getByLabelText,
-      getByPlaceholderText,
-      findByText,
-    } =
+    const { getByText, getByLabelText, getByPlaceholderText, findByText } =
       render(<ConsolePage />);
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
@@ -633,12 +628,7 @@ describe('ConsolePage', () => {
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
     }) as unknown as typeof fetch;
 
-    const {
-      getByText,
-      getByLabelText,
-      getByPlaceholderText,
-      findByText,
-    } =
+    const { getByText, getByLabelText, getByPlaceholderText, findByText } =
       render(<ConsolePage />);
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
