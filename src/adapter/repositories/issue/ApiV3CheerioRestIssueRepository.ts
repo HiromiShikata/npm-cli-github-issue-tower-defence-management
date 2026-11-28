@@ -1355,16 +1355,21 @@ export class ApiV3CheerioRestIssueRepository
 
   getAllIssues = async (
     projectId: Project['id'],
+    options?: { refresh: boolean },
   ): Promise<{
     issues: Issue[];
     project: Project;
     cacheUsed: boolean;
   }> => {
-    const memoized = this.getAllIssuesRefreshMemo.get(projectId);
+    const memoized = options?.refresh
+      ? undefined
+      : this.getAllIssuesRefreshMemo.get(projectId);
     if (memoized) {
       return memoized;
     }
-    const inFlight = this.getAllIssuesInFlight.get(projectId);
+    const inFlight = options?.refresh
+      ? undefined
+      : this.getAllIssuesInFlight.get(projectId);
     if (inFlight) {
       return inFlight;
     }

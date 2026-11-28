@@ -85,6 +85,7 @@ export type PullRequestReviewInlineLocation = {
 export interface IssueRepository {
   getAllIssues: (
     projectId: Project['id'],
+    options?: { refresh: boolean },
   ) => Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }>;
   appendIssueToProjectCache: (
     projectId: Project['id'],
