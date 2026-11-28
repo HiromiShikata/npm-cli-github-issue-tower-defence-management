@@ -566,8 +566,10 @@ export const ConsolePage = () => {
               | { status?: string; markdown?: string; error?: string }
               | undefined;
             if (result?.status !== 'uploaded') {
-              const error = result?.error ?? 'failed to upload file';
-              actionQueue.showError(error, error);
+              actionQueue.showError(
+                `Upload failed: ${file.name}`,
+                result?.error ?? 'failed to upload file',
+              );
             }
             draft =
               result?.status === 'uploaded' &&
