@@ -11633,7 +11633,7 @@ describe('createIssueWithAttachments attachment submission progress', () => {
       files: [{ name: 'A.png', outcome: 'success' }],
       createIssueBehavior: 'failure',
       commentBehavior: 'notCalled',
-      expectCreateIssueCalls: 1,
+      expectCreateIssueCalls: 3,
       expectAttachmentCalls: 0,
       expectCommentCalls: 0,
       expectOutcome: {
