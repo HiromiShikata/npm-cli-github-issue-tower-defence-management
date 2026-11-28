@@ -705,7 +705,19 @@ const createStubIssueRepository = (
   updateIssueBodyCalls: ConsoleE2eUpdateIssueBodyCall[],
   updateIssueCommentBodyCalls: ConsoleE2eUpdateIssueCommentBodyCall[],
 ): IssueRepository => ({
-  getAllIssues: () => notImplemented('getAllIssues'),
+  getAllIssues: async (
+    _projectId: Project['id'],
+    _options?: { refresh: boolean },
+  ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => ({
+    issues: Object.values(CONSOLE_E2E_TAB_ITEMS)
+      .flat()
+      .map((item) => ({
+        ...buildIssueForUrl(item.url),
+        itemId: item.projectItemId,
+      })),
+    project: buildE2eProject(),
+    cacheUsed: false,
+  }),
   appendIssueToProjectCache: async (): Promise<void> => undefined,
   removeIssueFromProjectCache: async (): Promise<void> => undefined,
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
