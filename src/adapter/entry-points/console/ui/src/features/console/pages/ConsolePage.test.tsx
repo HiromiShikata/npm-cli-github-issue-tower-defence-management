@@ -8,6 +8,7 @@ import {
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
+import { CREATE_ISSUE_MAX_ATTEMPTS } from '../lib/createIssueWithRetry';
 import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
 import { colorFromEnum } from '../logic/colors';
 import { overlayStorageKey, writeOverlayEntry } from '../logic/overlay';
@@ -7666,7 +7667,11 @@ describe('ConsolePage task creation action queue', () => {
         return {
           ok: false,
           status: 500,
-          text: async () => 'Internal Server Error',
+          json: async () => ({
+            ok: false,
+            issueCreated: false,
+            error: 'Failed to create the task. Please try again.',
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -8097,7 +8102,7 @@ describe('ConsolePage task creation action queue', () => {
         expect(
           getByRole('dialog', { name: 'Create new task' }),
         ).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
       const reopenedDialog = getByRole('dialog', { name: 'Create new task' });
       expect(within(reopenedDialog).getByLabelText('Title')).toHaveValue(
         'Failing project task',
@@ -8164,7 +8169,7 @@ describe('ConsolePage task creation action queue', () => {
         expect(
           container.querySelector('.console-error-toast-message'),
         ).not.toBeNull();
-      });
+      }, { timeout: 5000 });
       const toastTitle = container.querySelector('.console-error-toast-title');
       const toastMessage = container.querySelector(
         '.console-error-toast-message',
@@ -8686,7 +8691,11 @@ describe('ConsolePage workflow issue creation', () => {
           return {
             ok: false,
             status: 500,
-            text: async () => 'Internal Server Error',
+            json: async () => ({
+              ok: false,
+              issueCreated: false,
+              error: 'Failed to create the task. Please try again.',
+            }),
           };
         }
         return {
@@ -8921,7 +8930,7 @@ describe('ConsolePage workflow issue creation', () => {
             'Operation failed: Failed to create the task. Please try again.',
           ),
         ).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
       const reopenedDialog = getByRole('dialog');
       expect(reopenedDialog).toBeInTheDocument();
       expect(getByLabelText('Title')).toHaveValue('Failing task');
@@ -9082,6 +9091,13 @@ describe('ConsolePage workflow issue creation', () => {
         jest.advanceTimersByTime(5100);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
       const fleetDialogContainer = document.body.querySelector(
@@ -9650,7 +9666,11 @@ describe('ConsolePage task-creation failure toast after navigating away before t
           return {
             ok: false,
             status: 500,
-            text: async () => 'Internal Server Error',
+            json: async () => ({
+              ok: false,
+              issueCreated: false,
+              error: 'Failed to create the task. Please try again.',
+            }),
           };
         }
         return {
@@ -9722,7 +9742,7 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         expect(
           container.querySelector('.console-error-toast-message'),
         ).not.toBeNull();
-      });
+      }, { timeout: 5000 });
       expect(
         container.querySelector('.console-error-toast-message')?.textContent,
       ).toBe('Operation failed: Failed to create the task. Please try again.');
@@ -9798,17 +9818,26 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         const button = container.querySelector('.console-error-toast-retry');
         expect(button).not.toBeNull();
         return button as HTMLElement;
-      });
-      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+      }, { timeout: 5000 });
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS,
+      );
 
       await act(async () => {
         fireEvent.click(retryButton);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
       const createIssueCalls = createIssueCallsFrom(fetchMock);
-      expect(createIssueCalls.length).toBe(2);
+      expect(createIssueCalls.length).toBe(CREATE_ISSUE_MAX_ATTEMPTS * 2);
       const retriedRequestBody = JSON.parse(
         createIssueCalls[1][1].body as string,
       ) as Record<string, unknown>;
@@ -9862,21 +9891,30 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         const button = container.querySelector('.console-error-toast-retry');
         expect(button).not.toBeNull();
         return button as HTMLElement;
-      });
+      }, { timeout: 5000 });
 
       await act(async () => {
         fireEvent.click(retryButton);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
-      expect(createIssueCallsFrom(fetchMock).length).toBe(2);
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS * 2,
+      );
       expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
       await waitFor(() => {
         expect(
           container.querySelector('.console-error-toast-message'),
         ).not.toBeNull();
-      });
+      }, { timeout: 5000 });
       expect(container.querySelector('.console-error-toast-retry')).not.toBe(
         null,
       );
@@ -9927,7 +9965,7 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         expect(
           container.querySelector('.console-error-toast-message'),
         ).not.toBeNull();
-      });
+      }, { timeout: 5000 });
       expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
 
       const dismissButton = container.querySelector(
@@ -9940,7 +9978,9 @@ describe('ConsolePage task-creation failure toast after navigating away before t
           container.querySelector('.console-error-toast-message'),
         ).toBeNull();
       });
-      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS,
+      );
     } finally {
       jest.useRealTimers();
     }
@@ -9988,7 +10028,7 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         expect(
           container.querySelector('.console-error-toast-message'),
         ).not.toBeNull();
-      });
+      }, { timeout: 5000 });
       expect(
         container.querySelector('.console-error-toast-message')?.textContent,
       ).toBe('Operation failed: Failed to create the task. Please try again.');
@@ -10053,17 +10093,26 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         const button = container.querySelector('.console-error-toast-retry');
         expect(button).not.toBeNull();
         return button as HTMLElement;
-      });
-      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+      }, { timeout: 5000 });
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS,
+      );
 
       await act(async () => {
         fireEvent.click(retryButton);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
       const createIssueCalls = createIssueCallsFrom(fetchMock);
-      expect(createIssueCalls.length).toBe(2);
+      expect(createIssueCalls.length).toBe(CREATE_ISSUE_MAX_ATTEMPTS * 2);
       const retriedRequestBody = JSON.parse(
         createIssueCalls[1][1].body as string,
       ) as Record<string, unknown>;
