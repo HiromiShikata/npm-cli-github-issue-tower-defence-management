@@ -285,43 +285,72 @@ body {
 }
 
 .console-timer-settings-button[data-tone] {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   white-space: nowrap;
+  border-radius: 999px;
+  color: #e6edf3;
+}
+
+.console-timer-settings-button[data-tone]::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  border: 1px solid #30363d;
+  border-radius: 999px;
+  pointer-events: none;
 }
 
 .console-timer-settings-button[data-tone] .console-timer-settings-button-time {
-  color: #e6edf3;
+  font-weight: 700;
 }
 
 .console-timer-settings-button[data-tone] .console-timer-settings-button-arrow {
   color: #6e7681;
 }
 
-.console-timer-settings-button[data-tone='warning']
-  .console-timer-settings-button-time {
+.console-timer-settings-button[data-tone] .console-timer-settings-button-next {
+  color: #c9d1d9;
+}
+
+.console-timer-settings-button[data-tone='warning'] {
   color: #d29922;
 }
 
+.console-timer-settings-button[data-tone='warning']
+  .console-timer-settings-button-next {
+  color: #d29922;
+}
+
+.console-timer-settings-button[data-tone='danger'] {
+  color: #f85149;
+}
+
+.console-timer-settings-button[data-tone='danger']::before {
+  border-color: #f85149;
+}
+
 .console-timer-settings-button[data-tone='danger']
-  .console-timer-settings-button-time,
+  .console-timer-settings-button-arrow,
 .console-timer-settings-button[data-tone='danger']
   .console-timer-settings-button-next {
   color: #f85149;
 }
 
 .console-timer-settings-button[data-tone='muted'] {
-  color: #6e7681;
+  color: #8b949e;
 }
 
-.console-timer-settings-button[data-tone='muted']
-  .console-timer-settings-button-time,
 .console-timer-settings-button[data-tone='muted']
   .console-timer-settings-button-arrow,
 .console-timer-settings-button[data-tone='muted']
   .console-timer-settings-button-next {
-  color: #6e7681;
+  color: #8b949e;
 }
 
 .console-timer-settings-overlay {

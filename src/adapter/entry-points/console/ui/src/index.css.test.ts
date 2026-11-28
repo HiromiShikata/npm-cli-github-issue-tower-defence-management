@@ -150,6 +150,68 @@ describe('console CSS class contract', () => {
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });
 
+  it('draws the timer header pill as a rounded outline whose border is grey in every tone except expired, where it is red, matching the owner-approved header images', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const outlineRule = extractCssRuleBlock(
+      css,
+      '.console-timer-settings-button[data-tone]::before',
+    );
+    expect(outlineRule).toContain('border: 1px solid #30363d');
+    expect(outlineRule).toContain('pointer-events: none');
+    const dangerOutlineRule = extractCssRuleBlock(
+      css,
+      ".console-timer-settings-button[data-tone='danger']::before",
+    );
+    expect(dangerOutlineRule).toContain('border-color: #f85149');
+    const pillRule = extractCssRuleBlock(
+      css,
+      '.console-timer-settings-button[data-tone]',
+    );
+    expect(pillRule).toContain('border-radius: 999px');
+  });
+
+  it('renders the timer header time text in bold weight in every tone', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(
+      css,
+      '.console-timer-settings-button[data-tone] .console-timer-settings-button-time',
+    );
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).toContain('font-weight: 700');
+  });
+
+  it('colors the timer header icon and time by tone (normal light, warning yellow, danger red, muted grey) and keeps the next-project text grey in normal', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const cases: Array<{ selector: string; color: string }> = [
+      {
+        selector: '.console-timer-settings-button[data-tone]',
+        color: '#e6edf3',
+      },
+      {
+        selector: ".console-timer-settings-button[data-tone='warning']",
+        color: '#d29922',
+      },
+      {
+        selector: ".console-timer-settings-button[data-tone='danger']",
+        color: '#f85149',
+      },
+      {
+        selector: ".console-timer-settings-button[data-tone='muted']",
+        color: '#8b949e',
+      },
+      {
+        selector:
+          '.console-timer-settings-button[data-tone] .console-timer-settings-button-next',
+        color: '#c9d1d9',
+      },
+    ];
+    for (const { selector, color } of cases) {
+      const ruleBlock = extractCssRuleBlock(css, selector);
+      expect(ruleBlock).not.toBeNull();
+      expect(ruleBlock).toContain(`color: ${color}`);
+    }
+  });
+
   it('sets minimum 8px vertical padding on console-tab-settings-button to provide an adequate tap target for the settings gear icon button', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-tab-settings-button');
