@@ -218,6 +218,50 @@ test('keeps an upload running after navigating away and writes the link into the
   }
 });
 
+test('keeps the uploaded link when the user types right after the upload completes', async ({
+  page,
+}) => {
+  const harness = await startConsoleE2eHarness({
+    holdUploadAttachment: true,
+  });
+
+  try {
+    await openFixtureItem(page, harness);
+
+    const composerToggle = page.locator('.console-composer-toggle');
+    const composer = page.locator('.console-composer-input');
+    if ((await composer.count()) === 0) {
+      await composerToggle.click();
+    }
+    await expect(composer).toBeVisible();
+    await page.getByLabel('Attach files').setInputFiles({
+      name: NAVIGATION_FILE_NAME,
+      mimeType: 'image/png',
+      buffer: Buffer.from('navigation attachment'),
+    });
+    await expect
+      .poll(() => harness.uploadAttachmentRequestCalls.length)
+      .toBe(1);
+
+    harness.releaseUploadAttachment();
+    await expect(composer).toHaveValue(
+      new RegExp(escapeRegExp(NAVIGATION_MARKDOWN)),
+    );
+    await composer.pressSequentially('typed right after');
+
+    await expect(composer).toHaveValue(
+      new RegExp(escapeRegExp(NAVIGATION_MARKDOWN)),
+    );
+    await expect(composer).toHaveValue(
+      new RegExp(escapeRegExp('typed right after')),
+    );
+    await expect(composer).not.toHaveValue(/!\[uploading/);
+  } finally {
+    harness.releaseUploadAttachment();
+    await harness.stop();
+  }
+});
+
 test('keeps text typed after returning to the task during an upload', async ({
   page,
 }) => {

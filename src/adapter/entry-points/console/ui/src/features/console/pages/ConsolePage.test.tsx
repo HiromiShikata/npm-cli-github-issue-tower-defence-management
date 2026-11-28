@@ -3388,6 +3388,76 @@ describe('ConsolePage draft preservation', () => {
     });
   });
 
+  it('shows a thrown upload error after the user has navigated to another task', async () => {
+    let rejectUpload!: (reason: unknown) => void;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (url === '/api/upload') {
+        return new Promise((_, reject) => {
+          rejectUpload = reject;
+        });
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const {
+      container,
+      getByText,
+      getByLabelText,
+      getByPlaceholderText,
+      findByText,
+    } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    const textarea = await waitFor(() =>
+      getByPlaceholderText('Leave a comment…'),
+    );
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [createUploadTestFile('first.png')] },
+    });
+    await waitFor(() => {
+      expect(rejectUpload).toBeDefined();
+      expect(textarea).toHaveValue('\n\n\n![uploading first.png]()\n');
+    });
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+
+    rejectUpload(new Error('page thrown upload failure'));
+    expect(await findByText(/page thrown upload failure/)).toBeVisible();
+    const persistedDrafts = JSON.parse(
+      localStorage.getItem('console-comment-drafts') ?? '[]',
+    ) as [string, string][];
+    expect(persistedDrafts).not.toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          'https://github.com/o/r/pull/851',
+          expect.stringContaining('uploading'),
+        ]),
+      ]),
+    );
+  });
+
   it('restores the draft present at click time when Undo is clicked after Comment & Awaiting Workspace, once the task is reopened', async () => {
     jest.useFakeTimers();
     try {

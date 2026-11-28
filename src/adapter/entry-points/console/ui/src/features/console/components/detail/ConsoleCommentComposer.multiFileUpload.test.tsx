@@ -229,6 +229,24 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
     expect(onDraftChange).toHaveBeenCalledTimes(draftChangeCallsAtUnmount);
   });
 
+  it('does not post a draft that still holds an upload placeholder after the composer remounts', () => {
+    const onDraftChange = jest.fn();
+    const submitCommentMock = jest.fn(submitComment);
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        initialDraft={'\n\n\n![uploading x.png]()\n'}
+        onSubmit={submitCommentMock}
+        onDraftChange={onDraftChange}
+      />,
+    );
+    const commentButton = getByText('Comment');
+
+    expect(commentButton).toBeDisabled();
+    fireEvent.click(commentButton);
+    expect(submitCommentMock).not.toHaveBeenCalled();
+  });
+
   it('keeps an upload pending at 300000 ms and times out at 360000 ms with a retryable error', async () => {
     jest.useFakeTimers();
     try {
