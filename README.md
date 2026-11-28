@@ -227,6 +227,15 @@ startPreparation:
   maximumPreparingIssuesCount: 80
 ```
 
+Example with the map:
+
+```yaml
+startPreparation:
+  maximumPreparingIssuesCount: 80
+  llmModelNameByAgentName:
+    chore: 'claude-haiku-5-5'
+    developer: 'gpt-5.6-luna'
+```
 
 The `serveWeb` command supports a `workflowIssueReporter` mapping in the fleet-wide config file named by `--fleetConfigFilePath` or the `TDPM_FLEET_CONFIG` environment variable. It determines the fleet task creation link of the console tab bar. Supported keys:
 
