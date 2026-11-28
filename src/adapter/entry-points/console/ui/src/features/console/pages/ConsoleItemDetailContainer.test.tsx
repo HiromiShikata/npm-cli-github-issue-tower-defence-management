@@ -219,6 +219,8 @@ describe('ConsoleItemDetailContainer', () => {
       'approve_and_merge',
       [],
       expect.any(String),
+      expect.any(Number),
+      '「approve_and_merge」を押しました',
     );
   });
 
@@ -434,6 +436,8 @@ describe('ConsoleItemDetailContainer', () => {
       'approve_and_merge',
       [],
       expect.any(String),
+      expect.any(Number),
+      '「approve_and_merge」を押しました',
     );
   });
 
@@ -619,6 +623,9 @@ describe('ConsoleItemDetailContainer', () => {
       issueItem,
       'test comment body',
       { id: 'd1c19cce', name: 'Awaiting Workspace', color: 'BLUE' },
+      undefined,
+      expect.any(Number),
+      'コメントを投稿して「Awaiting Workspace」に変更しました',
     );
     expect(operations.addComment).not.toHaveBeenCalled();
     expect(operations.setStatus).not.toHaveBeenCalled();
@@ -1369,6 +1376,8 @@ describe('ConsoleItemDetailContainer', () => {
         color: 'GRAY',
       },
       expect.any(String),
+      expect.any(Number),
+      '「regular / workflow improvement」を押しました（Story を regular / workflow improvement に変更）',
     );
   });
 
@@ -1510,6 +1519,8 @@ describe('ConsoleItemDetailContainer', () => {
         color: 'GRAY',
       },
       expect.any(String),
+      expect.any(Number),
+      '「developer」を押しました（Agent を developer に変更）',
     );
   });
 
@@ -1612,6 +1623,8 @@ describe('ConsoleItemDetailContainer', () => {
         issueItem,
         'closing comment',
         expect.any(String),
+        expect.any(Number),
+        'コメントを投稿しました',
       );
     });
     expect(onQueueAction).toHaveBeenCalledWith(
@@ -3632,6 +3645,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       issueItem,
       'Reviewed on the train.',
       expect.any(String),
+      expect.any(Number),
+      'コメントを投稿しました',
     );
     expect(onQueueAction).not.toHaveBeenCalled();
   });
@@ -3812,7 +3827,13 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       isAirplaneModeOn: false,
       addCommentResult: 'network failure' as const,
       expectedAddCommentCalls: [
-        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+        [
+          issueItem,
+          commentBodyWrittenOffline,
+          expect.any(String),
+          expect.any(Number),
+          'コメントを投稿しました',
+        ],
       ],
       expectedHeldPayloadsPerCall: [
         [
@@ -3832,7 +3853,13 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       isAirplaneModeOn: false,
       addCommentResult: 'posted' as const,
       expectedAddCommentCalls: [
-        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+        [
+          issueItem,
+          commentBodyWrittenOffline,
+          expect.any(String),
+          expect.any(Number),
+          'コメントを投稿しました',
+        ],
       ],
       expectedHeldPayloadsPerCall: [],
     },

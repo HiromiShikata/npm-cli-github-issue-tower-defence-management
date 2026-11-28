@@ -9951,6 +9951,8 @@ describe('ConsolePage offline action queue', () => {
         url: pullRequestUrl,
         body: 'Looks good from here.',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: 'コメントを投稿しました',
       },
     ]);
     expect(readStoredOfflineQueue()).toEqual([]);
@@ -10535,6 +10537,9 @@ describe('ConsolePage offline action queue', () => {
         commentBody: 'ok',
         setStatusWhenCommentFails: true,
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription:
+          '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
       },
       expectedSecondRequestOfflinePayload: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
@@ -10555,6 +10560,8 @@ describe('ConsolePage offline action queue', () => {
         ...awaitingWorkspaceRequestBodyForPullRequest,
         commentBody: 'Moving after the outage.',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: 'コメントを投稿して「Awaiting Workspace」に変更しました',
       },
       expectedSecondRequestOfflinePayload: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
