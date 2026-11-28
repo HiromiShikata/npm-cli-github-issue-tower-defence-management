@@ -12847,6 +12847,57 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].isConflicted).toBe(true);
     });
 
+    it('omits a closed linked pull request by default and returns it when includeClosedPullRequests is set', async () => {
+      const closedPullRequestUrl =
+        'https://github.com/HiromiShikata/test-repository/pull/11148';
+      const closedTimeline = (): ReturnType<typeof buildTimelineResponse> => {
+        const response = buildTimelineResponse('MERGEABLE');
+        const node = response.data.repository.issue.timelineItems.nodes[0];
+        return {
+          ...response,
+          data: {
+            repository: {
+              issue: {
+                timelineItems: {
+                  pageInfo: { endCursor: null, hasNextPage: false },
+                  nodes: [
+                    {
+                      ...node,
+                      source: { ...node.source, state: 'CLOSED' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        };
+      };
+      const issueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/11194';
+
+      mockFetchRoutes({
+        timeline: closedTimeline,
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: closedPullRequestUrl,
+            state: 'CLOSED',
+          }),
+      });
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const defaultResult = await repository.findRelatedOpenPRs(issueUrl, {
+        bypassCache: true,
+      });
+      const closedIncludedResult = await repository.findRelatedOpenPRs(
+        issueUrl,
+        { bypassCache: true, includeClosedPullRequests: true },
+      );
+
+      expect(defaultResult).toEqual([]);
+      expect(closedIncludedResult.map((pr) => pr.url)).toEqual([
+        closedPullRequestUrl,
+      ]);
+    });
+
     it('keeps isConflicted false when mergeability stays UNKNOWN after the bounded retries', async () => {
       const fetchSpy = mockFetchRoutes({
         timeline: () => buildTimelineResponse('UNKNOWN'),

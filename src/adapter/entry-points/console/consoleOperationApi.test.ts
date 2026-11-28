@@ -2234,6 +2234,25 @@ describe('consoleOperationApi', () => {
       expect(retry.statusCode).toBe(200);
       expect(issueRepository.closePullRequest).toHaveBeenCalledWith(prUrl);
     });
+
+    it('retries a close whose response was lost after GitHub closed the pull request, asking the gate for closed linked pull requests', async () => {
+      issueRepository.closePullRequest.mockRejectedValueOnce(
+        new Error('connection reset after the close was applied'),
+      );
+
+      await expect(
+        handleReview(contextForProject(project), request),
+      ).rejects.toThrow('connection reset after the close was applied');
+
+      const retry = await handleReview(contextForProject(project), request);
+
+      expect(retry.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledTimes(2);
+      expect(issueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        issueUrl,
+        expect.objectContaining({ includeClosedPullRequests: true }),
+      );
+    });
   });
 
   describe('triage close resolves its project before any write', () => {
