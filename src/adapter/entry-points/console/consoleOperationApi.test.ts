@@ -11406,13 +11406,7 @@ describe('consoleOperationApi', () => {
       body: Record<string, unknown>,
       isRepositoryConfigured: ConsoleOperationContext['isRepositoryConfigured'],
     ): Promise<{ statusCode: number; body: unknown }> =>
-      (
-        handleCreateWorkflowIssue as unknown as (
-          issueRepository: IssueRepository,
-          body: Record<string, unknown>,
-          isRepositoryConfigured: ConsoleOperationContext['isRepositoryConfigured'],
-        ) => Promise<{ statusCode: number; body: unknown }>
-      )(issueRepository, body, isRepositoryConfigured);
+      handleCreateWorkflowIssue(issueRepository, body, isRepositoryConfigured);
     const cases = [
       {
         name: 'comment',

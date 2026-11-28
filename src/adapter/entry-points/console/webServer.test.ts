@@ -2222,7 +2222,10 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(403);
-      expect(JSON.parse(response.body)).toEqual({ error: expect.any(String) });
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+      const parsedBody: unknown = JSON.parse(response.body);
+      expect(parsedBody).toEqual({ error: expect.any(String) });
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment */
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     } finally {
       await closeServer(server);
