@@ -333,13 +333,28 @@ describe('consoleOperationApi', () => {
         projectItemFor('PVTI_np', 'https://github.com/o/r/issues/2'),
         projectItemFor('PVTI_prclose', 'https://github.com/o/r/pull/7'),
         projectItemFor('PVTI_prnp', 'https://github.com/o/r/pull/8'),
-        projectItemFor('PVTI_noproj_reviewclose', 'https://github.com/o/r/pull/1'),
+        projectItemFor(
+          'PVTI_noproj_reviewclose',
+          'https://github.com/o/r/pull/1',
+        ),
         projectItemFor('PVTI_noproj_close', 'https://github.com/o/r/issues/1'),
         projectItemFor('PVTI_noproj_np', 'https://github.com/o/r/issues/1'),
-        projectItemFor('PVTI_close_issue_close', 'https://github.com/o/r/issues/1'),
-        projectItemFor('PVTI_close_issue_close_not_planned', 'https://github.com/o/r/issues/2'),
-        projectItemFor('PVTI_close_pull_request_close', 'https://github.com/o/r/pull/7'),
-        projectItemFor('PVTI_close_pull_request_close_not_planned', 'https://github.com/o/r/pull/8'),
+        projectItemFor(
+          'PVTI_close_issue_close',
+          'https://github.com/o/r/issues/1',
+        ),
+        projectItemFor(
+          'PVTI_close_issue_close_not_planned',
+          'https://github.com/o/r/issues/2',
+        ),
+        projectItemFor(
+          'PVTI_close_pull_request_close',
+          'https://github.com/o/r/pull/7',
+        ),
+        projectItemFor(
+          'PVTI_close_pull_request_close_not_planned',
+          'https://github.com/o/r/pull/8',
+        ),
       ],
       project,
       cacheUsed: false,
@@ -1699,7 +1714,9 @@ describe('consoleOperationApi', () => {
             status: 'Preparation',
           });
         issueRepository.getAllIssues.mockResolvedValueOnce({
-          issues: [projectItemFor('PVTI_race', 'https://github.com/o/r/issues/1')],
+          issues: [
+            projectItemFor('PVTI_race', 'https://github.com/o/r/issues/1'),
+          ],
           project,
           cacheUsed: false,
         });
@@ -1828,32 +1845,25 @@ describe('consoleOperationApi', () => {
 
     it.each(bindingFailureCases)(
       'RED $name before any triage write',
-      async ({
-        action,
-        issueUrl,
-        projectItemId,
-        expectedStatusCode,
-        body,
-      }) => {
+      async ({ action, issueUrl, projectItemId, expectedStatusCode, body }) => {
         issueRepository.getAllIssues.mockResolvedValueOnce({
-          issues: expectedStatusCode === 400
-            ? []
-            : [
-                {
-                  ...issue,
-                  itemId: projectItemId,
-                  url: linkedIssueUrl,
-                  isPr: false,
-                },
-              ],
+          issues:
+            expectedStatusCode === 400
+              ? []
+              : [
+                  {
+                    ...issue,
+                    itemId: projectItemId,
+                    url: linkedIssueUrl,
+                    isPr: false,
+                  },
+                ],
           project,
           cacheUsed: false,
         });
         const response = await handleTriage(
           contextForProject(
-            action === 'set_next_action_hour'
-              ? nextActionHourProject
-              : project,
+            action === 'set_next_action_hour' ? nextActionHourProject : project,
           ),
           {
             pjcode: 'acme',
@@ -1899,9 +1909,7 @@ describe('consoleOperationApi', () => {
         });
         const response = await handleTriage(
           contextForProject(
-            action === 'set_next_action_hour'
-              ? nextActionHourProject
-              : project,
+            action === 'set_next_action_hour' ? nextActionHourProject : project,
           ),
           {
             pjcode: 'acme',
@@ -4500,7 +4508,6 @@ describe('consoleOperationApi', () => {
       };
     });
 
-    // binding fix: triage close resolves the project item before any issue write
     it('closes an issue via triage after resolving the project and checking it is the project item', async () => {
       const response = await handleTriage(spiedContext, {
         pjcode: 'acme',
@@ -4539,7 +4546,6 @@ describe('consoleOperationApi', () => {
       expect(resolveProjectSpy).toHaveBeenCalledWith('acme');
     });
 
-    // review-binding fix: every review action resolves the project item before any pull request write
     it('closes a pull request via review after resolving the project and checking it is linked', async () => {
       const response = await handleReview(spiedContext, {
         pjcode: 'acme',
