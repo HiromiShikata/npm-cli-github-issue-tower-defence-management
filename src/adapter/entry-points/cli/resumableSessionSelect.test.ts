@@ -12,6 +12,7 @@ const newestModificationTimeSeconds = 1790001200;
 const sourceAccessTimeSeconds = 1790001800;
 const entryTimestamp = '2026-09-30T10:00:00.000Z';
 const replyTimestamp = '2026-09-30T10:05:00.000Z';
+const nowWithinEntryWindow = new Date('2026-09-30T10:30:00.000Z');
 const linuxPathMaximumLength = 4095;
 
 const firstByNameSessionId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
@@ -230,6 +231,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [],
@@ -316,6 +318,7 @@ describe('resumableSessionSelect', () => {
       const sessionDir = arrange(layout);
 
       const output = resumableSessionSelect({
+        now: nowWithinEntryWindow,
         sessionName,
         sessionDir,
         otherSessionDirs: [],
@@ -413,6 +416,7 @@ describe('resumableSessionSelect', () => {
       arrange(layout.sessionDir);
 
       const output = resumableSessionSelect({
+        now: nowWithinEntryWindow,
         sessionName,
         sessionDir: layout.sessionDir,
         otherSessionDirs: [],
@@ -489,6 +493,7 @@ describe('resumableSessionSelect', () => {
         });
 
         const output = resumableSessionSelect({
+          now: nowWithinEntryWindow,
           sessionName,
           sessionDir: layout.sessionDir,
           otherSessionDirs: [],
@@ -545,6 +550,7 @@ describe('resumableSessionSelect', () => {
       );
 
       const output = resumableSessionSelect({
+        now: nowWithinEntryWindow,
         sessionName,
         sessionDir: layout.sessionDir,
         otherSessionDirs: [],
@@ -666,6 +672,7 @@ describe('resumableSessionSelect', () => {
         });
 
         const output = resumableSessionSelect({
+          now: nowWithinEntryWindow,
           sessionName,
           sessionDir: layout.sessionDir,
           otherSessionDirs: [],
@@ -717,6 +724,7 @@ describe('resumableSessionSelect', () => {
     );
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -779,6 +787,7 @@ describe('resumableSessionSelect', () => {
     );
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -831,6 +840,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: absentSessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -858,6 +868,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -904,6 +915,7 @@ describe('resumableSessionSelect', () => {
     );
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -963,6 +975,7 @@ describe('resumableSessionSelect', () => {
     );
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -1019,6 +1032,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -1053,6 +1067,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -1129,6 +1144,7 @@ describe('resumableSessionSelect', () => {
       arrange(layout);
 
       const output = resumableSessionSelect({
+        now: nowWithinEntryWindow,
         sessionName,
         sessionDir: layout.sessionDir,
         otherSessionDirs: [layout.otherSessionDir],
@@ -1300,6 +1316,7 @@ describe('resumableSessionSelect', () => {
         );
 
         const output = resumableSessionSelect({
+          now: nowWithinEntryWindow,
           sessionName,
           sessionDir: layout.sessionDir,
           otherSessionDirs: [
@@ -1341,6 +1358,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: uncreatableSessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -1381,6 +1399,7 @@ describe('resumableSessionSelect', () => {
 
       try {
         const output = resumableSessionSelect({
+          now: nowWithinEntryWindow,
           sessionName,
           sessionDir: layout.sessionDir,
           otherSessionDirs: [layout.otherSessionDir],
@@ -1475,6 +1494,7 @@ describe('resumableSessionSelect', () => {
     ).toBeGreaterThan(linuxPathMaximumLength);
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: longSessionDir,
       otherSessionDirs: [shortOtherSessionDir],
@@ -1522,6 +1542,7 @@ describe('resumableSessionSelect', () => {
     childProcess.execFileSync('mkfifo', [namedPipePath]);
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -1602,6 +1623,7 @@ describe('resumableSessionSelect', () => {
       });
 
       const output = resumableSessionSelect({
+        now: nowWithinEntryWindow,
         sessionName,
         sessionDir: layout.sessionDir,
         otherSessionDirs: [],
@@ -1632,6 +1654,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -1665,6 +1688,7 @@ describe('resumableSessionSelect', () => {
     );
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.sessionDir],
@@ -1743,6 +1767,7 @@ describe('resumableSessionSelect', () => {
               });
 
         const output = resumableSessionSelect({
+          now: nowWithinEntryWindow,
           sessionName,
           sessionDir: layout.sessionDir,
           otherSessionDirs: [layout.otherSessionDir],
@@ -1794,6 +1819,7 @@ describe('resumableSessionSelect', () => {
     });
 
     const output = resumableSessionSelect({
+      now: nowWithinEntryWindow,
       sessionName,
       sessionDir: layout.sessionDir,
       otherSessionDirs: [layout.otherSessionDir],
@@ -1804,5 +1830,58 @@ describe('resumableSessionSelect', () => {
     expect(output.exitCode).toBe(0);
     expect(fs.statSync(occupyingDirectoryPath).isDirectory()).toBe(true);
     expect(fs.existsSync(sourceTranscriptFilePath)).toBe(true);
+  });
+
+  describe('transcript age window', () => {
+    const cases = [
+      {
+        description: 'resumes at 59 minutes old',
+        now: new Date('2026-09-30T11:04:00.000Z'),
+        expected: {
+          stdout: secondByNameSessionId,
+          stderrLines: [],
+          exitCode: 0,
+        },
+      },
+      {
+        description: 'resumes at exactly 60 minutes old',
+        now: new Date('2026-09-30T11:05:00.000Z'),
+        expected: {
+          stdout: secondByNameSessionId,
+          stderrLines: [],
+          exitCode: 0,
+        },
+      },
+      {
+        description: 'starts a new session at 60 minutes and 1 second old',
+        now: new Date('2026-09-30T11:05:01.000Z'),
+        expected: { stdout: null, stderrLines: [], exitCode: 0 },
+      },
+      {
+        description: 'starts a new session at 61 minutes old',
+        now: new Date('2026-09-30T11:06:00.000Z'),
+        expected: { stdout: null, stderrLines: [], exitCode: 0 },
+      },
+    ];
+
+    it.each(cases)('$description', ({ now, expected }) => {
+      const layout = sessionDirectoryLayoutCreate('transcript-age-window');
+      transcriptFileWrite({
+        directory: layout.sessionDir,
+        sessionId: secondByNameSessionId,
+        lines: resumableTranscriptLines(secondByNameSessionId),
+        modificationTimeSeconds: olderModificationTimeSeconds,
+      });
+
+      expect(
+        resumableSessionSelect({
+          now,
+          sessionName,
+          sessionDir: layout.sessionDir,
+          otherSessionDirs: [],
+          archiveRoot: layout.archiveRoot,
+        }),
+      ).toEqual(expected);
+    });
   });
 });

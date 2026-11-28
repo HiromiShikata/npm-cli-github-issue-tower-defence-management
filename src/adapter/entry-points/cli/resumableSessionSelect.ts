@@ -8,6 +8,7 @@ export type ResumableSessionSelectOutput = {
 };
 
 export const resumableSessionSelect = (input: {
+  now: Date;
   sessionName: string;
   sessionDir: string;
   otherSessionDirs: string[];

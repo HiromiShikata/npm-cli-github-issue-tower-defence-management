@@ -6457,9 +6457,11 @@ describe('select-resumable-session command', () => {
     workingDirectory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'select-resumable-session-command-'),
     );
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-30T10:30:00.000Z'));
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     fs.rmSync(workingDirectory, { force: true, recursive: true });
   });
 
