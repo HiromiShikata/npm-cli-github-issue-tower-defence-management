@@ -115,9 +115,11 @@ describe('consoleOperationApi', () => {
     'PVTI_b',
     'PVTI_c',
     'PVTI_c_totally_wrong',
+    'PVTI_elapsed_totally_wrong',
     'PVTI_row5_review',
     'PVTI_review_already_target',
     'PVTI_unnecessary',
+    'PVTI_elapsed_unnecessary',
     'PVTI_unnecessary_issue_comment',
     'PVTI_unnecessary_dup',
     'PVTI_unnecessary_missing',
@@ -193,6 +195,7 @@ describe('consoleOperationApi', () => {
     'PVTI_1mo',
     'PVTI_1mo_end',
     'PVTI_1mo_dec',
+    'PVTI_elapsed_description_only',
     'PVTI_nah',
     'PVTI_nah3',
     'PVTI_nah6',
@@ -430,9 +433,11 @@ describe('consoleOperationApi', () => {
       'PVTI_b',
       'PVTI_c',
       'PVTI_c_totally_wrong',
+      'PVTI_elapsed_totally_wrong',
       'PVTI_row5_review',
       'PVTI_review_already_target',
       'PVTI_unnecessary',
+      'PVTI_elapsed_unnecessary',
       'PVTI_unnecessary_issue_comment',
       'PVTI_unnecessary_dup',
       'PVTI_unnecessary_missing',
@@ -473,15 +478,24 @@ describe('consoleOperationApi', () => {
           itemId,
           isPr: ![
             'PVTI_c_totally_wrong',
+            'PVTI_elapsed_totally_wrong',
             'PVTI_row5_review',
             'PVTI_review_already_target',
             'PVTI_unnecessary',
+            'PVTI_elapsed_unnecessary',
             'PVTI_unnecessary_issue_comment',
             'PVTI_unnecessary_dup',
           ].includes(itemId),
           url:
-            itemId === 'PVTI_c_totally_wrong' || itemId === 'PVTI_unnecessary'
-              ? 'https://github.com/o/r/issues/7'
+            itemId === 'PVTI_c_totally_wrong' ||
+            itemId === 'PVTI_elapsed_totally_wrong' ||
+            itemId === 'PVTI_unnecessary' ||
+            itemId === 'PVTI_elapsed_unnecessary'
+              ? itemId === 'PVTI_elapsed_totally_wrong'
+                ? 'https://github.com/HiromiShikata/r/issues/1'
+                : itemId === 'PVTI_elapsed_unnecessary'
+                  ? 'https://github.com/HiromiShikata/r/issues/7'
+                  : 'https://github.com/o/r/issues/7'
               : itemId === 'PVTI_row5_review' ||
                   itemId === 'PVTI_review_already_target' ||
                   itemId === 'PVTI_unnecessary_issue_comment'
@@ -498,6 +512,21 @@ describe('consoleOperationApi', () => {
       issueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
           url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+        {
+          url: 'https://github.com/HiromiShikata/r/pull/1',
           branchName: null,
           createdAt: new Date(0),
           isDraft: false,
