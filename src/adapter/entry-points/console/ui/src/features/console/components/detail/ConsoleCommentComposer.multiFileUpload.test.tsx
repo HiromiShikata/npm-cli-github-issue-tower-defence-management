@@ -186,7 +186,9 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
       <ConsoleCommentComposer
         key="task-a"
         initiallyOpen
-        initialDraft="\n\n\n![origin.png](https://github.com/user-attachments/origin)\n"
+        initialDraft={
+          '\n\n\n![origin.png](https://github.com/user-attachments/origin)\n'
+        }
         onSubmit={submitComment}
         onDraftChange={onDraftChange}
         onUploadFile={uploadFile}

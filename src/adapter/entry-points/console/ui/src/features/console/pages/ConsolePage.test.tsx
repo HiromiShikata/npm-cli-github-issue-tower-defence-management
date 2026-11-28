@@ -468,7 +468,7 @@ describe('ConsolePage', () => {
     );
     await waitFor(() => {
       expect(restoredTextarea).toHaveValue(
-        'more\n\n\n![first.png](https://example.test/first)\n',
+        'more\n\n\n\n![first.png](https://example.test/first)\n',
       );
     });
   });

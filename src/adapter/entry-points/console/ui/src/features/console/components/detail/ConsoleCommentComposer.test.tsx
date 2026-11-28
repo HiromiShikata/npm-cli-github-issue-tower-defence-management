@@ -63,7 +63,9 @@ describe('ConsoleCommentComposer', () => {
     rerender(
       <ConsoleCommentComposer
         initiallyOpen
-        initialDraft="draft before upload\n![image.png](https://example.test/image)"
+        initialDraft={
+          'draft before upload\n![image.png](https://example.test/image)'
+        }
         onSubmit={stubSubmit}
       />,
     );
