@@ -6,6 +6,7 @@ import {
   type Project,
 } from '../entities/Project';
 import { isValidModelId, modelRuntimeOf } from '../entities/ModelRuntime';
+import { stripConsoleElapsedTimeLine } from './consoleElapsedTimeComment';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -137,7 +138,7 @@ export class StartPreparationUseCase {
         const existing =
           await this.issueRepository.getIssueOrPullRequestComments(url);
         return existing.map((c) => ({
-          text: c.body,
+          text: stripConsoleElapsedTimeLine(c.body),
           createdAt: c.createdAt,
         }));
       },

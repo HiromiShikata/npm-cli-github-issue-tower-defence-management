@@ -69,7 +69,10 @@ test.describe('console action replay', () => {
       .poll(
         () =>
           harness.commentCalls.filter(
-            (call) => call.url === issueUrl && call.body === 'ok',
+            (call) =>
+              call.url === issueUrl &&
+              call.body.startsWith('ok\n\n') &&
+              call.body.includes('<!-- tdpm-console-elapsed-time -->'),
           ).length,
       )
       .toBe(1);

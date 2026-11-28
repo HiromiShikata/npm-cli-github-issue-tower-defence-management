@@ -18,7 +18,7 @@ import {
 } from '../testing/fixtures';
 import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOperationsApi } from './useConsoleOperations';
-import { useConsoleOperations } from './useConsoleOperations';
+import { reviewRequest, useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
 
 type OperationsWithAtomicAwaitingWorkspace = ConsoleOperationsApi & {
@@ -78,6 +78,103 @@ const setup = () => {
 };
 
 describe('useConsoleOperations', () => {
+  it('sends opened-to-action timing and Japanese action description at press time', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.setNextActionDate(
+        issueItem,
+        'snooze_1day',
+        'action-opened',
+        192_000,
+        '「+1日」を押しました（Next Action Date を 2026-11-29 に設定）',
+      );
+    });
+
+    expect(lastBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        openedToActionMs: 192_000,
+        actionDescription:
+          '「+1日」を押しました（Next Action Date を 2026-11-29 に設定）',
+      }),
+    );
+  });
+
+  it('does not add timing fields when the item was not opened', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.setNextActionDate(
+        issueItem,
+        'snooze_1day',
+        'action-not-opened',
+      );
+    });
+
+    expect(lastBody(fetchMock)).not.toEqual(
+      expect.objectContaining({
+        openedToActionMs: expect.anything(),
+        actionDescription: expect.anything(),
+      }),
+    );
+  });
+
+  it('keeps the OK comment body unmodified in the UI request', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.okAndMoveToAwaitingWorkspace(
+        issueItem,
+        consoleStatusOptionsFixture[0],
+        0,
+        'action-ok',
+        192_000,
+        '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
+      );
+    });
+
+    expect(lastBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        commentBody: 'ok',
+        openedToActionMs: 192_000,
+        actionDescription:
+          '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
+      }),
+    );
+  });
+
+  it.each([
+    ['approve_and_merge', 'Approve & Merge', ''],
+    ['request_changes', 'Request Changes', 'please fix'],
+    ['totally_wrong', 'Totally Wrong', 'totally wrong'],
+    ['unnecessary', 'Unnecessary', 'This pull request is unnecessary.'],
+  ] as const)(
+    'forwards Japanese button text without the raw identifier for %s',
+    (...[action, label]) => {
+      expect(
+        reviewRequest(
+          'acme',
+          prItem,
+          prItem.url,
+          action,
+          [],
+          undefined,
+          192_000,
+          `「${label}」を押しました`,
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          openedToActionMs: 192_000,
+          actionDescription: `「${label}」を押しました`,
+        }),
+      );
+      expect(`「${label}」を押しました`).not.toMatch(/[a-z]+_[a-z]+/);
+    },
+  );
+
   it('sends Comment & Awaiting Workspace as one atomic triage request', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();
@@ -459,6 +556,28 @@ describe('useConsoleOperations', () => {
       projectItemId: issueItem.projectItemId,
       nextActionHour: 10,
     });
+  });
+
+  it('carries opened timing and resulting hour text for a row next-action-hour change', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.setNextActionHourValue(
+        issueItem,
+        9,
+        'action-opened',
+        192_000,
+        '「Next Action Hour を 9時 に設定」',
+      );
+    });
+    expect(lastBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        action: 'set_next_action_hour',
+        nextActionHour: 9,
+        openedToActionMs: 192_000,
+        actionDescription: expect.stringContaining('Next Action Hour'),
+      }),
+    );
   });
 
   it('posts set_next_action_hour with null so the server clears the hour', async () => {

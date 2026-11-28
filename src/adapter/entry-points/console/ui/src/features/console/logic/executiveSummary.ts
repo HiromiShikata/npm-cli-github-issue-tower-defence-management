@@ -1,3 +1,7 @@
+import {
+  isConsoleElapsedTimeCommentBody,
+  stripConsoleElapsedTimeLine,
+} from '../../../../../consoleElapsedTimeComment';
 import type { ConsoleComment } from './types';
 
 const EXECUTIVE_SUMMARY_HEADING =
@@ -29,11 +33,34 @@ export const extractLastCommentDisplayText = (
   if (comments.length === 0) {
     return null;
   }
-  const lastComment = comments[comments.length - 1];
-  const summary = extractExecutiveSummary(lastComment.body);
+  const lastComment = comments[comments.length - 1].body;
+  if (
+    (isConsoleElapsedTimeCommentBody(lastComment) &&
+      stripConsoleElapsedTimeLine(lastComment).trim() === '') ||
+    /^\[Elapsed time\].*$/.test(lastComment.trim())
+  ) {
+    const remaining = comments
+      .slice(0, -1)
+      .filter(
+        (comment) =>
+          !(
+            (isConsoleElapsedTimeCommentBody(comment.body) &&
+              stripConsoleElapsedTimeLine(comment.body).trim() === '') ||
+            /^\[Elapsed time\].*$/.test(comment.body.trim())
+          ),
+      );
+    if (remaining.length === 0) return null;
+    const body = stripConsoleElapsedTimeLine(
+      remaining[remaining.length - 1].body,
+    );
+    const summary = extractExecutiveSummary(body);
+    return summary ?? (body.trim().length > 0 ? body.trim() : null);
+  }
+  const body = stripConsoleElapsedTimeLine(lastComment);
+  const summary = extractExecutiveSummary(body);
   if (summary !== null) {
     return summary;
   }
-  const trimmed = lastComment.body.trim();
+  const trimmed = body.trim();
   return trimmed.length > 0 ? trimmed : null;
 };

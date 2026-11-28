@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { stripConsoleElapsedTimeLine } from '../../../../../../consoleElapsedTimeComment';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type { ConsoleRepoContext } from '../../lib/markdown';
 import {
@@ -26,7 +27,9 @@ const formatAsBlockquote = (body: string): string =>
     .join('\n');
 
 const extractFirstLine = (body: string): string =>
-  body.split('\n').find((line) => line.trim() !== '') ?? '';
+  stripConsoleElapsedTimeLine(body)
+    .split('\n')
+    .find((line) => line.trim() !== '') ?? '';
 
 const buildCommentKey = (comment: ConsoleComment): string =>
   `${comment.author}:${comment.createdAt}:${comment.body}`;
@@ -127,8 +130,13 @@ export const ConsoleCommentList = ({
       : new Set(),
   );
 
+  const latestComment = [...comments]
+    .reverse()
+    .find(
+      (comment) => stripConsoleElapsedTimeLine(comment.body).trim().length > 0,
+    );
   const latestKey =
-    comments.length > 0 ? buildCommentKey(comments[comments.length - 1]) : null;
+    latestComment === undefined ? null : buildCommentKey(latestComment);
 
   useEffect(() => {
     if (latestKey === null) return;

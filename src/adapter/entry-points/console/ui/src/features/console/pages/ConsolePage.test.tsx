@@ -10368,6 +10368,8 @@ describe('ConsolePage offline action queue', () => {
         url: pullRequestUrl,
         body: 'Looks good from here.',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: 'コメントを投稿しました',
       },
     ]);
     expect(readStoredOfflineQueue()).toEqual([]);
@@ -10637,7 +10639,7 @@ describe('ConsolePage offline action queue', () => {
         ? respondWithPostedComment(url, init)
         : respondToOtherRequests(url, init);
 
-  const closeRequestBodyForPullRequest = {
+  const closeRequestBodyBaseForPullRequest = {
     pjcode: 'acme',
     action: 'close',
     issueUrl: pullRequestUrl,
@@ -10645,8 +10647,16 @@ describe('ConsolePage offline action queue', () => {
     actionId: expect.any(String),
   };
 
+  const closeRequestBodyForPullRequest = {
+    ...closeRequestBodyBaseForPullRequest,
+  };
+
+  const commentAndCloseRequestBodyForPullRequest = {
+    ...closeRequestBodyBaseForPullRequest,
+  };
+
   const closeOfflineRequestBodyForPullRequest = {
-    ...closeRequestBodyForPullRequest,
+    ...closeRequestBodyBaseForPullRequest,
     expectedStatusName: 'Awaiting Owner',
   };
 
@@ -10671,6 +10681,8 @@ describe('ConsolePage offline action queue', () => {
         url: pullRequestUrl,
         body: 'ok',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: '「OK & Close」を押しました',
       },
     ]);
     expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
@@ -10703,6 +10715,8 @@ describe('ConsolePage offline action queue', () => {
         url: pullRequestUrl,
         body: 'ok',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: '「OK & Close」を押しました',
       },
     ]);
     expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([
@@ -10792,6 +10806,8 @@ describe('ConsolePage offline action queue', () => {
         url: pullRequestUrl,
         body: 'ok',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: '「OK & Close」を押しました',
       },
     ]);
 
@@ -10846,6 +10862,8 @@ describe('ConsolePage offline action queue', () => {
         url: pullRequestUrl,
         body: 'Posted before the tunnel.',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: 'コメントを投稿して閉じました',
       },
     ]);
   });
@@ -10934,7 +10952,7 @@ describe('ConsolePage offline action queue', () => {
         fireEvent.click(view.getByText('Comment & Close'));
       },
       expectedCommentBody: 'Closing after the outage.',
-      expectedSecondRequestBody: closeRequestBodyForPullRequest,
+      expectedSecondRequestBody: commentAndCloseRequestBodyForPullRequest,
       expectedSecondRequestOfflinePayload:
         closeOfflineRequestBodyForPullRequest,
     },
@@ -10952,6 +10970,9 @@ describe('ConsolePage offline action queue', () => {
         commentBody: 'ok',
         setStatusWhenCommentFails: true,
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription:
+          '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
       },
       expectedSecondRequestOfflinePayload: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
@@ -10972,6 +10993,9 @@ describe('ConsolePage offline action queue', () => {
         ...awaitingWorkspaceRequestBodyForPullRequest,
         commentBody: 'Moving after the outage.',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription:
+          'コメントを投稿して「Awaiting Workspace」に変更しました',
       },
       expectedSecondRequestOfflinePayload: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
@@ -11026,6 +11050,11 @@ describe('ConsolePage offline action queue', () => {
                 url: pullRequestUrl,
                 body: expectedCommentBody,
                 actionId: expect.any(String),
+                openedToActionMs: expect.any(Number),
+                actionDescription:
+                  expectedCommentBody === 'ok'
+                    ? '「OK & Close」を押しました'
+                    : 'コメントを投稿して閉じました',
               },
             ],
       );
@@ -11044,6 +11073,11 @@ describe('ConsolePage offline action queue', () => {
                 url: pullRequestUrl,
                 body: expectedCommentBody,
                 actionId: expect.any(String),
+                openedToActionMs: expect.any(Number),
+                actionDescription:
+                  expectedCommentBody === 'ok'
+                    ? '「OK & Close」を押しました'
+                    : 'コメントを投稿して閉じました',
               },
             ],
       );
@@ -11099,6 +11133,11 @@ describe('ConsolePage offline action queue', () => {
                 url: pullRequestUrl,
                 body: expectedCommentBody,
                 actionId: expect.any(String),
+                openedToActionMs: expect.any(Number),
+                actionDescription:
+                  expectedCommentBody === 'ok'
+                    ? '「OK & Close」を押しました'
+                    : 'コメントを投稿して閉じました',
               },
             ],
       );
@@ -11231,6 +11270,11 @@ describe('ConsolePage offline action queue', () => {
                   url: pullRequestUrl,
                   body: expectedCommentBody,
                   actionId: expect.any(String),
+                  openedToActionMs: expect.any(Number),
+                  actionDescription:
+                    expectedCommentBody === 'ok'
+                      ? '「OK & Close」を押しました'
+                      : 'コメントを投稿して閉じました',
                 },
               ],
         );
@@ -11286,12 +11330,16 @@ describe('ConsolePage offline action queue', () => {
         url: pullRequestUrl,
         body: 'ok',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: '「OK & Close」を押しました',
       },
       {
         pjcode: 'acme',
         url: pullRequestUrl,
         body: 'ok',
         actionId: expect.any(String),
+        openedToActionMs: expect.any(Number),
+        actionDescription: '「OK & Close」を押しました',
       },
     ]);
     expect(postedRequestBodies(fetchMock, '/api/triage')).toEqual([

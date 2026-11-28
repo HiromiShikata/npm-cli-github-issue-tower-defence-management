@@ -48,63 +48,87 @@ export type ConsoleOperationsApi = {
     action: ConsoleReviewAction,
     pendingReviewComments?: ConsolePendingReviewComment[],
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   setNextActionDate: (
     item: ConsoleListItem,
     action: ConsoleNextActionDateAction,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   setStory: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<unknown>;
   setAgent: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   setStatus: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   setNextActionDateValue: (
     item: ConsoleListItem,
     nextActionDate: string,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   setNextActionHourValue: (
     item: ConsoleListItem,
     nextActionHour: number | null,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   setInTmuxByHuman: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   closeIssue: (
     item: ConsoleListItem,
     action: ConsoleCloseAction,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   okAndMoveToAwaitingWorkspace: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
     sentStepCount?: number,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   addComment: (
     item: ConsoleListItem,
     body: string,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<ConsoleComment>;
   addCommentAndMoveToAwaitingWorkspace: (
     item: ConsoleListItem,
     body: string,
     option: ConsoleFieldOption,
     actionId?: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<ConsoleComment>;
   uploadAttachment: (
     item: ConsoleListItem,
@@ -131,10 +155,14 @@ export type ConsoleOperationsApi = {
   setDependedIssueUrl: (
     item: ConsoleListItem,
     dependedIssueUrl: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   replaceDependedIssueUrl: (
     item: ConsoleListItem,
     dependedIssueUrl: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   onAfterMoveToAwaitingWorkspace?: () => Promise<void>;
 };
@@ -146,6 +174,8 @@ export const reviewRequest = (
   action: ConsoleReviewAction,
   pendingReviewComments: ConsolePendingReviewComment[],
   actionId?: string,
+  openedToActionMs?: number,
+  actionDescription?: string,
 ): ConsoleReviewRequest => {
   if (action === 'approve_and_merge') {
     return {
@@ -155,6 +185,8 @@ export const reviewRequest = (
       projectItemId: item.projectItemId,
       expectedStatusName: item.status,
       ...(actionId === undefined ? {} : { actionId }),
+      ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+      ...(actionDescription === undefined ? {} : { actionDescription }),
     };
   }
   if (action === 'request_changes') {
@@ -167,6 +199,8 @@ export const reviewRequest = (
       commentBody: buildRequestChangesBody(pendingReviewComments),
       expectedStatusName: item.status,
       ...(actionId === undefined ? {} : { actionId }),
+      ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+      ...(actionDescription === undefined ? {} : { actionDescription }),
       ...(firstComment === undefined
         ? {}
         : {
@@ -186,6 +220,8 @@ export const reviewRequest = (
       commentBody: TOTALLY_WRONG_COMMENT_BODY,
       expectedStatusName: item.status,
       ...(actionId === undefined ? {} : { actionId }),
+      ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+      ...(actionDescription === undefined ? {} : { actionDescription }),
     };
   }
   return {
@@ -198,6 +234,8 @@ export const reviewRequest = (
     issueCommentBody: buildUnnecessaryIssueCommentBody(prUrl),
     expectedStatusName: item.status,
     ...(actionId === undefined ? {} : { actionId }),
+    ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+    ...(actionDescription === undefined ? {} : { actionDescription }),
   };
 };
 
@@ -221,6 +259,8 @@ export const buildTriageRequest = (
     actionId?: string;
     commentBody?: string;
     setStatusWhenCommentFails?: boolean;
+    openedToActionMs?: number;
+    actionDescription?: string;
   },
 ): ConsoleTriageRequest => {
   const { actionId, ...requestExtra } = extra ?? {};
@@ -239,6 +279,8 @@ export const buildIntmuxRequest = (
   pjcode: string,
   item: ConsoleListItem,
   actionId?: string,
+  openedToActionMs?: number,
+  actionDescription?: string,
 ): ConsoleIntmuxRequest => ({
   pjcode,
   action: 'set_intmux',
@@ -246,6 +288,8 @@ export const buildIntmuxRequest = (
   projectItemId: item.projectItemId,
   expectedStatusName: item.status,
   ...(actionId === undefined ? {} : { actionId }),
+  ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+  ...(actionDescription === undefined ? {} : { actionDescription }),
 });
 
 export const commentRequestBuild = (
@@ -253,11 +297,15 @@ export const commentRequestBuild = (
   item: ConsoleListItem,
   body: string,
   actionId?: string,
+  openedToActionMs?: number,
+  actionDescription?: string,
 ): ConsoleCommentRequest => ({
   pjcode,
   url: item.url,
   body,
   ...(actionId === undefined ? {} : { actionId }),
+  ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+  ...(actionDescription === undefined ? {} : { actionDescription }),
 });
 
 export const deleteAllCommentsRequestBuild = (
@@ -313,6 +361,8 @@ export const useConsoleOperations = (
       action: ConsoleReviewAction,
       pendingReviewComments: ConsolePendingReviewComment[] = [],
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -326,6 +376,8 @@ export const useConsoleOperations = (
           action,
           pendingReviewComments,
           actionId,
+          openedToActionMs,
+          actionDescription,
         ),
       );
       invalidateItemContent(item);
@@ -338,6 +390,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       action: ConsoleNextActionDateAction,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -348,6 +402,8 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
         actionId: actionId ?? generateActionId(),
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -360,6 +416,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       option: ConsoleFieldOption,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -371,6 +429,8 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         agentOptionId: option.id,
         actionId: actionId ?? generateActionId(),
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -383,6 +443,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       option: ConsoleFieldOption,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -394,6 +456,8 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
         actionId: actionId ?? generateActionId(),
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       };
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
@@ -410,6 +474,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       option: ConsoleFieldOption,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -417,6 +483,8 @@ export const useConsoleOperations = (
       const request = buildTriageRequest(pjcode, item, 'set_status', {
         statusName: option.name,
         actionId: actionId ?? generateActionId(),
+        openedToActionMs,
+        actionDescription,
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -429,6 +497,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       nextActionDate: string,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -436,6 +506,8 @@ export const useConsoleOperations = (
       const request = buildTriageRequest(pjcode, item, 'set_next_action_date', {
         nextActionDate,
         actionId: actionId ?? generateActionId(),
+        openedToActionMs,
+        actionDescription,
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -448,6 +520,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       nextActionHour: number | null,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -455,6 +529,8 @@ export const useConsoleOperations = (
       const request = buildTriageRequest(pjcode, item, 'set_next_action_hour', {
         nextActionHour,
         actionId: actionId ?? generateActionId(),
+        openedToActionMs,
+        actionDescription,
       });
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -467,6 +543,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       _option: ConsoleFieldOption,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -475,6 +553,8 @@ export const useConsoleOperations = (
         pjcode,
         item,
         actionId ?? generateActionId(),
+        openedToActionMs,
+        actionDescription,
       );
       await postConsoleOperation(INTMUX_OPERATION_PATH, request);
       invalidateItemContent(item);
@@ -487,6 +567,8 @@ export const useConsoleOperations = (
       item: ConsoleListItem,
       action: ConsoleCloseAction,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
@@ -497,6 +579,8 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
         actionId: actionId ?? generateActionId(),
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       };
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
@@ -526,6 +610,8 @@ export const useConsoleOperations = (
       option: ConsoleFieldOption,
       sentStepCount = 0,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) throw missingPjcodeError();
       const resolvedActionId = actionId ?? generateActionId();
@@ -538,6 +624,8 @@ export const useConsoleOperations = (
         commentBody: AWAITING_WORKSPACE_COMMENT_BODY,
         actionId: resolvedActionId,
         setStatusWhenCommentFails: true,
+        openedToActionMs,
+        actionDescription,
       });
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
@@ -564,12 +652,25 @@ export const useConsoleOperations = (
   );
 
   const addComment = useCallback(
-    async (item: ConsoleListItem, body: string, actionId?: string) => {
+    async (
+      item: ConsoleListItem,
+      body: string,
+      actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
       const result = await postConsoleComment(
-        commentRequestBuild(pjcode, item, body, actionId),
+        commentRequestBuild(
+          pjcode,
+          item,
+          body,
+          actionId,
+          openedToActionMs,
+          actionDescription,
+        ),
       );
       if (!result.posted) {
         const resetInfo =
@@ -590,6 +691,8 @@ export const useConsoleOperations = (
       body: string,
       option: ConsoleFieldOption,
       actionId?: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
     ) => {
       if (pjcode === null) {
         throw new ConsoleOperationRejectedError(
@@ -605,6 +708,8 @@ export const useConsoleOperations = (
         statusName: option.name,
         commentBody: body,
         actionId: resolvedActionId,
+        openedToActionMs,
+        actionDescription,
       });
       const response = await postConsoleOperation(
         TRIAGE_OPERATION_PATH,
@@ -771,7 +876,12 @@ export const useConsoleOperations = (
   );
 
   const setDependedIssueUrl = useCallback(
-    async (item: ConsoleListItem, dependedIssueUrl: string) => {
+    async (
+      item: ConsoleListItem,
+      dependedIssueUrl: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -779,13 +889,20 @@ export const useConsoleOperations = (
         pjcode,
         issueUrl: item.url,
         dependedIssueUrl,
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       });
     },
     [pjcode],
   );
 
   const replaceDependedIssueUrl = useCallback(
-    async (item: ConsoleListItem, dependedIssueUrl: string) => {
+    async (
+      item: ConsoleListItem,
+      dependedIssueUrl: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -795,6 +912,8 @@ export const useConsoleOperations = (
         dependedIssueUrl,
         projectItemId: item.projectItemId,
         replaceExisting: true,
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       });
     },
     [pjcode],

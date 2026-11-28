@@ -125,6 +125,32 @@ describe('extractLastCommentDisplayText', () => {
     expect(result).toBe(followUp);
   });
 
+  it.each([
+    {
+      name: 'agent summary followed by elapsed-only',
+      comments: [
+        AGENT_COMMENT,
+        '[Elapsed time] 3m 12s — 「Close」を押しました',
+      ],
+      expected:
+        'タスクのゴール: Awaiting Owner 一覧にボタンと要約を表示する\n実施内容: ConsoleItemList と ConsoleItemSummary を拡張した\n残りの作業と判断: レビュー待ち',
+    },
+    {
+      name: 'elapsed-only only',
+      comments: ['[Elapsed time] 3m 12s — 「Close」を押しました'],
+      expected: null,
+    },
+    {
+      name: 'whitespace-only last',
+      comments: [AGENT_COMMENT, '   '],
+      expected: null,
+    },
+  ])('handles $name', ({ comments, expected }) => {
+    expect(extractLastCommentDisplayText(comments.map(makeComment))).toBe(
+      expected,
+    );
+  });
+
   it('returns null when the last comment body is empty', () => {
     const comments: ConsoleComment[] = [
       makeComment(AGENT_COMMENT),

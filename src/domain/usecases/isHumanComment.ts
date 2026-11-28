@@ -14,6 +14,10 @@ import {
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
 import { isAgentReportBody } from './isAgentReportBody';
+import {
+  isConsoleElapsedTimeCommentBody,
+  stripConsoleElapsedTimeLine,
+} from './consoleElapsedTimeComment';
 
 const LEGACY_DISPATCH_REPEATED_COMMENT_HEAD =
   'Next step agent dispatch repeated:';
@@ -40,6 +44,12 @@ export const isHumanComment = (
     return true;
   }
   if (isAgentReportBody(comment.content)) {
+    return false;
+  }
+  if (
+    isConsoleElapsedTimeCommentBody(comment.content) &&
+    stripConsoleElapsedTimeLine(comment.content).trim() === ''
+  ) {
     return false;
   }
   if (comment.content.endsWith(ESTIMATION_FIELD_CLEARED_COMMENT_SUFFIX)) {

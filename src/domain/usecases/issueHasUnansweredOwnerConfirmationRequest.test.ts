@@ -420,4 +420,29 @@ describe('issueHasUnansweredOwnerConfirmationRequest', () => {
       ),
     ).toBe(false);
   });
+
+  it('ignores an elapsed-only console comment after an owner-confirmation request', () => {
+    const report = reportWithFlagTrue(at('2026-09-25T08:00:00Z'));
+    const elapsedOnlyComment: Comment = {
+      author: 'test-user',
+      content:
+        'コンソールで開いてから 3分12秒 で「OK」を押しました<!-- tdpm-console-elapsed-time -->',
+      createdAt: at('2026-09-25T09:00:00Z'),
+      updatedAt: at('2026-09-25T09:00:00Z'),
+    };
+
+    const withoutElapsed = issueHasUnansweredOwnerConfirmationRequest(
+      [report],
+      trustTestUser,
+      null,
+    );
+    const withElapsed = issueHasUnansweredOwnerConfirmationRequest(
+      [report, elapsedOnlyComment],
+      trustTestUser,
+      null,
+    );
+
+    expect(withElapsed).toBe(withoutElapsed);
+    expect(withElapsed).toBe(true);
+  });
 });

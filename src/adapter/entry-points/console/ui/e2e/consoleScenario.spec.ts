@@ -751,7 +751,9 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
     .poll(
       () =>
         harness.commentCalls.some(
-          (c) => c.body === 'handing off to awaiting workspace',
+          (c) =>
+            c.body.startsWith('handing off to awaiting workspace\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
         ),
       { timeout: 10000 },
     )
@@ -781,7 +783,12 @@ test('posts a comment and closes the item when the Comment & Close button is use
 
   await expect
     .poll(
-      () => harness.commentCalls.some((c) => c.body === 'closing with comment'),
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.body.startsWith('closing with comment\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
+        ),
       { timeout: 10000 },
     )
     .toBe(true);
@@ -819,7 +826,8 @@ test('posts an ok comment and closes the item when the OK & Close button is used
           (c) =>
             c.url ===
               'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
-            c.body === 'ok',
+            c.body.startsWith('ok\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
         ),
       { timeout: 10000 },
     )
@@ -862,7 +870,8 @@ test('posts an ok comment and moves the item to Awaiting Workspace when the ok &
           (c) =>
             c.url ===
               'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
-            c.body === 'ok',
+            c.body.startsWith('ok\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
         ),
       { timeout: 10000 },
     )

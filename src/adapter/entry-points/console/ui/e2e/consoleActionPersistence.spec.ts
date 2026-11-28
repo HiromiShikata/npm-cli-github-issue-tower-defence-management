@@ -69,8 +69,9 @@ test.describe('console action persistence acceptance scenarios', () => {
     await expect
       .poll(
         () =>
-          harness.commentCalls.filter((c) => c.body === 'persistent handoff')
-            .length,
+          harness.commentCalls.filter((c) =>
+            c.body.startsWith('persistent handoff'),
+          ).length,
       )
       .toBe(1);
   });
@@ -91,8 +92,9 @@ test.describe('console action persistence acceptance scenarios', () => {
     await expect
       .poll(
         () =>
-          harness.commentCalls.filter((c) => c.body === 'persistent handoff')
-            .length,
+          harness.commentCalls.filter((c) =>
+            c.body.startsWith('persistent handoff'),
+          ).length,
       )
       .toBe(1);
   });
@@ -110,8 +112,9 @@ test.describe('console action persistence acceptance scenarios', () => {
     await expect
       .poll(
         () =>
-          harness.commentCalls.filter((c) => c.body === 'persistent handoff')
-            .length,
+          harness.commentCalls.filter((c) =>
+            c.body.startsWith('persistent handoff'),
+          ).length,
       )
       .toBe(1);
   });
@@ -126,8 +129,9 @@ test.describe('console action persistence acceptance scenarios', () => {
     await expect
       .poll(
         () =>
-          harness.commentCalls.filter((c) => c.body === 'persistent handoff')
-            .length,
+          harness.commentCalls.filter((c) =>
+            c.body.startsWith('persistent handoff'),
+          ).length,
       )
       .toBe(0);
     await expect

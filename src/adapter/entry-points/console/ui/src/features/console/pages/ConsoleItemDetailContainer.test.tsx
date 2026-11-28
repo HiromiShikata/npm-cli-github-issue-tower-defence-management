@@ -19,6 +19,10 @@ import {
 } from '../lib/consoleApi';
 import { ResourceCache } from '../lib/resourceCache';
 import { colorFromEnum } from '../logic/colors';
+import {
+  clearConsoleItemOpenTimesForTest,
+  readConsoleItemOpenedAt,
+} from '../logic/consoleItemOpenTimes';
 import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import type {
   ConsoleChangedFile,
@@ -151,6 +155,75 @@ const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {
 };
 
 describe('ConsoleItemDetailContainer', () => {
+  it.each([
+    ['+1h', '+1時間', 'Next Action Hour'],
+    ['+3h', '+3時間', 'Next Action Hour'],
+    ['+6h', '+6時間', 'Next Action Hour'],
+    ['+1d', '+1日', 'Next Action Date'],
+    ['+2d', '+2日', 'Next Action Date'],
+    ['+3d', '+3日', 'Next Action Date'],
+    ['+5d', '+5日', 'Next Action Date'],
+    ['+1w skip', '+1週', 'Next Action Date'],
+    ['+1mo', '+1か月', 'Next Action Date'],
+  ] as const)(
+    'describes the resulting value for snooze %s',
+    async (buttonText, label, fieldName) => {
+      const operations = buildOperations();
+      const onQueueAction = jest.fn();
+      const view = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches()}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
+        />,
+      );
+      fireEvent.click(view.getByRole('button', { name: buttonText }));
+      await onQueueAction.mock.calls[0][0].commit();
+      const description = (operations.setNextActionDate as jest.Mock).mock
+        .calls[0][4] as string;
+      expect(description).toContain(`「${label}」`);
+      expect(description).toContain(fieldName);
+    },
+  );
+
+  it('records the item URL open time when the item detail opens', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(123_456);
+    clearConsoleItemOpenTimesForTest();
+
+    render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+
+    expect(readConsoleItemOpenedAt(prItem.url)).toBe(123_456);
+    jest.restoreAllMocks();
+  });
+
   it('queues the review action and commits it through the operations api for a PR item', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
@@ -188,6 +261,8 @@ describe('ConsoleItemDetailContainer', () => {
       'approve_and_merge',
       [],
       expect.any(String),
+      expect.any(Number),
+      '「Approve & Merge」を押しました',
     );
   });
 
@@ -403,6 +478,8 @@ describe('ConsoleItemDetailContainer', () => {
       'approve_and_merge',
       [],
       expect.any(String),
+      expect.any(Number),
+      '「Approve & Merge」を押しました',
     );
   });
 
@@ -588,6 +665,9 @@ describe('ConsoleItemDetailContainer', () => {
       issueItem,
       'test comment body',
       { id: 'd1c19cce', name: 'Awaiting Workspace', color: 'BLUE' },
+      undefined,
+      expect.any(Number),
+      'コメントを投稿して「Awaiting Workspace」に変更しました',
     );
     expect(operations.addComment).not.toHaveBeenCalled();
     expect(operations.setStatus).not.toHaveBeenCalled();
@@ -1338,6 +1418,8 @@ describe('ConsoleItemDetailContainer', () => {
         color: 'GRAY',
       },
       expect.any(String),
+      expect.any(Number),
+      '「regular / workflow improvement」を押しました（Story を regular / workflow improvement に変更）',
     );
   });
 
@@ -1479,6 +1561,8 @@ describe('ConsoleItemDetailContainer', () => {
         color: 'GRAY',
       },
       expect.any(String),
+      expect.any(Number),
+      '「developer」を押しました（Agent を developer に変更）',
     );
   });
 
@@ -1550,6 +1634,43 @@ describe('ConsoleItemDetailContainer', () => {
     });
   });
 
+  it('forwards elapsed timing to addComment when Comment & Close has no project code', async () => {
+    const operations = buildOperations();
+    const { container, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        pjcode={null}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+    fireEvent.change(
+      container.querySelector('.console-composer-input') as HTMLTextAreaElement,
+      { target: { value: 'closing comment' } },
+    );
+    fireEvent.click(getByText('Comment & Close'));
+    await waitFor(() =>
+      expect(operations.addComment).toHaveBeenCalledWith(
+        issueItem,
+        'closing comment',
+        expect.any(String),
+        expect.any(Number),
+        'コメントを投稿して閉じました',
+      ),
+    );
+  });
+
   it('clicking Comment & Close in the operations bar calls addComment then queues a close action', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
@@ -1569,6 +1690,7 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
       />,
     );
     const textarea = container.querySelector(
@@ -1577,10 +1699,16 @@ describe('ConsoleItemDetailContainer', () => {
     fireEvent.change(textarea, { target: { value: 'closing comment' } });
     fireEvent.click(getByText('Comment & Close'));
     await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    await onQueueAction.mock.calls[0][0].commit();
+    await waitFor(() => {
       expect(operations.addComment).toHaveBeenCalledWith(
         issueItem,
         'closing comment',
         expect.any(String),
+        expect.any(Number),
+        'コメントを投稿して閉じました',
       );
     });
     expect(onQueueAction).toHaveBeenCalledWith(
@@ -1679,6 +1807,8 @@ describe('ConsoleItemDetailContainer', () => {
         issueItem,
         'ok',
         expect.any(String),
+        expect.any(Number),
+        expect.any(String),
       );
     });
     expect(operations.closeIssue).not.toHaveBeenCalledWith(issueItem, 'close');
@@ -1688,6 +1818,8 @@ describe('ConsoleItemDetailContainer', () => {
       issueItem,
       'close',
       expect.any(String),
+      undefined,
+      undefined,
     );
   });
 
@@ -3601,6 +3733,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       issueItem,
       'Reviewed on the train.',
       expect.any(String),
+      expect.any(Number),
+      'コメントを投稿しました',
     );
     expect(onQueueAction).not.toHaveBeenCalled();
   });
@@ -3781,7 +3915,13 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       isAirplaneModeOn: false,
       addCommentResult: 'network failure' as const,
       expectedAddCommentCalls: [
-        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+        [
+          issueItem,
+          commentBodyWrittenOffline,
+          expect.any(String),
+          expect.any(Number),
+          'コメントを投稿しました',
+        ],
       ],
       expectedHeldPayloadsPerCall: [
         [
@@ -3801,7 +3941,13 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       isAirplaneModeOn: false,
       addCommentResult: 'posted' as const,
       expectedAddCommentCalls: [
-        [issueItem, commentBodyWrittenOffline, expect.any(String)],
+        [
+          issueItem,
+          commentBodyWrittenOffline,
+          expect.any(String),
+          expect.any(Number),
+          'コメントを投稿しました',
+        ],
       ],
       expectedHeldPayloadsPerCall: [],
     },
@@ -4005,10 +4151,16 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       await expect(commit()).resolves.toBeUndefined();
 
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody, expect.any(String)],
+        [
+          issueItem,
+          expectedCommentBody,
+          expect.any(String),
+          expect.any(Number),
+          expect.any(String),
+        ],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
     },
   );
@@ -4069,10 +4221,18 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         closeFailure,
       );
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody, expect.any(String)],
+        [
+          issueItem,
+          expectedCommentBody,
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
     },
   );
@@ -4097,10 +4257,18 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       const addCommentMock = operations.addComment as jest.Mock;
       const closeIssueMock = operations.closeIssue as jest.Mock;
       expect(addCommentMock.mock.calls).toEqual([
-        [issueItem, expectedCommentBody, expect.any(String)],
+        [
+          issueItem,
+          expectedCommentBody,
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
       expect(closeIssueMock.mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
       expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
         closeIssueMock.mock.invocationCallOrder[0],
@@ -4121,7 +4289,35 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
 
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
+      ]);
+    },
+  );
+
+  it.each(commentThenCloseActions)(
+    'does not resend elapsed timing when retrying $buttonLabel after the comment was posted',
+    async ({ buttonLabel }) => {
+      const closeFailure = new Error('close failed once');
+      const operations = buildOperations();
+      operations.closeIssue = jest
+        .fn()
+        .mockRejectedValueOnce(closeFailure)
+        .mockResolvedValueOnce(undefined);
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+      await expect(commit(0)).rejects.toBeInstanceOf(
+        ConsoleActionPartiallySentError,
+      );
+      await expect(commit(1)).resolves.toBeUndefined();
+      expect(operations.addComment).toHaveBeenCalledTimes(1);
+      expect((operations.closeIssue as jest.Mock).mock.calls[1]).toEqual([
+        issueItem,
+        'close',
+        expect.any(String),
+        undefined,
+        undefined,
       ]);
     },
   );
@@ -4158,7 +4354,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       );
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
     },
   );
@@ -4599,10 +4795,15 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       operations.replaceDependedIssueUrl as jest.Mock;
     const setStatusMock = operations.setStatus as jest.Mock;
     expect(replaceDependedIssueUrlMock.mock.calls).toEqual([
-      [issueItem, dependedIssueUrlToSubmit],
+      [
+        issueItem,
+        dependedIssueUrlToSubmit,
+        expect.any(Number),
+        expect.any(String),
+      ],
     ]);
     expect(setStatusMock.mock.calls).toEqual([
-      [issueItem, awaitingWorkspaceOption],
+      [issueItem, awaitingWorkspaceOption, undefined, undefined, undefined],
     ]);
     expect(
       replaceDependedIssueUrlMock.mock.invocationCallOrder[0],
@@ -4613,13 +4814,24 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   it.each([
     {
       sentStepCount: 0,
-      expectedSetDependedIssueUrlCalls: [[issueItem, dependedIssueUrlToSubmit]],
-      expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
+      expectedSetDependedIssueUrlCalls: [
+        [
+          issueItem,
+          dependedIssueUrlToSubmit,
+          expect.any(Number),
+          expect.any(String),
+        ],
+      ],
+      expectedSetStatusCalls: [
+        [issueItem, awaitingWorkspaceOption, undefined, undefined, undefined],
+      ],
     },
     {
       sentStepCount: 1,
       expectedSetDependedIssueUrlCalls: [],
-      expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
+      expectedSetStatusCalls: [
+        [issueItem, awaitingWorkspaceOption, undefined, undefined, undefined],
+      ],
     },
   ])(
     'commit told sentStepCount $sentStepCount re-runs only the steps not yet sent',
@@ -4677,6 +4889,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
       issueItem,
       dependedIssueUrlToSubmit,
+      expect.any(Number),
+      '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
     );
   });
 
@@ -4813,6 +5027,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
         issueItem,
         dependedIssueUrlToSubmit,
+        expect.any(Number),
+        '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();
@@ -4870,10 +5086,15 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
       issueItem,
       'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
+      expect.any(Number),
+      '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2 に設定）',
     );
     expect(operations.setStatus).toHaveBeenCalledWith(
       issueItem,
       awaitingWorkspaceOption,
+      undefined,
+      undefined,
+      undefined,
     );
   });
 
@@ -4934,6 +5155,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
         itemWithDependedIssueUrl,
         '',
+        expect.any(Number),
+        '「Set Depended Issue」を押しました（Depended Issue URL を解除）',
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();

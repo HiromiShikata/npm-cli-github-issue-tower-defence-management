@@ -412,6 +412,47 @@ describe('resolveDispatchRepetition', () => {
       expect(result.type).toBe('dispatchAgain');
     });
 
+    it('does not reset the dispatch count after an elapsed-only console comment', () => {
+      const commentsWithoutElapsed = [
+        report('developer'),
+        repetitionComment('developer'),
+        repetitionComment('developer'),
+        repetitionComment('developer'),
+        report('developer'),
+      ];
+      const commentsWithElapsed = [
+        ...commentsWithoutElapsed.slice(0, 4),
+        {
+          author: 'bot',
+          content:
+            'コンソールで開いてから 3分12秒 で「OK」を押しました<!-- tdpm-console-elapsed-time -->',
+          createdAt: TEST_COMMENT_CREATED_AT,
+        },
+        commentsWithoutElapsed[4],
+      ];
+
+      const withoutElapsed = resolveDispatchRepetition({
+        dependedIssueUrls: [],
+        agentFieldValue: 'developer',
+        comments: commentsWithoutElapsed,
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        currentDispatchHasNoReportRejection: true,
+      });
+      const withElapsed = resolveDispatchRepetition({
+        dependedIssueUrls: [],
+        agentFieldValue: 'developer',
+        comments: commentsWithElapsed,
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        currentDispatchHasNoReportRejection: true,
+      });
+
+      expect(withElapsed).toEqual(withoutElapsed);
+    });
+
     it('resets the count after a previous silent-failure escalation so the first re-dispatch is not immediately re-escalated', () => {
       const result = resolveDispatchRepetition({
         dependedIssueUrls: [],

@@ -50,6 +50,12 @@ import {
   loadCommentDrafts,
   mergeRestoredCommentDraft,
 } from '../logic/commentDraftStorage';
+import { consoleActionButtonLabels } from '../logic/consoleActionButtonLabels';
+import {
+  computeOpenedToActionMs,
+  readConsoleItemOpenedAt,
+  recordConsoleItemOpened,
+} from '../logic/consoleItemOpenTimes';
 import { parseDependedIssueUrlsInput } from '../logic/consoleStoryTaskPatch';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import {
@@ -221,6 +227,64 @@ const generateCommentActionId = (): string =>
 
 const OK_AND_CLOSE_COMMENT_BODY = 'ok';
 
+const consoleItemActionTiming = (
+  item: ConsoleListItem,
+  actionDescription: string,
+): { openedToActionMs?: number; actionDescription: string } => {
+  const openedToActionMs = computeOpenedToActionMs(
+    readConsoleItemOpenedAt(item.url),
+    Date.now(),
+  );
+  return {
+    actionDescription,
+    ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+  };
+};
+
+const SNOOZE_DAY_COUNT: Partial<Record<ConsoleNextActionDateAction, number>> = {
+  snooze_1day: 1,
+  snooze_2days: 2,
+  snooze_3days: 3,
+  snooze_5days: 5,
+  snooze_1week: 7,
+};
+
+const SNOOZE_HOUR_COUNT: Partial<Record<ConsoleNextActionDateAction, number>> =
+  {
+    snooze_1hour: 1,
+    snooze_3hours: 3,
+    snooze_6hours: 6,
+  };
+
+const isoDateOf = (date: Date): string => date.toISOString().slice(0, 10);
+
+const nextActionDescription = (
+  action: ConsoleNextActionDateAction,
+  now: number,
+): string => {
+  const label = consoleActionButtonLabels[action];
+  const days = SNOOZE_DAY_COUNT[action];
+  if (days !== undefined) {
+    const target = isoDateOf(new Date(now + days * 24 * 60 * 60 * 1000));
+    return `「${label}」を押しました（Next Action Date を ${target} に設定）`;
+  }
+  if (action === 'snooze_1month') {
+    const current = new Date(now);
+    const year = current.getUTCFullYear();
+    const month = current.getUTCMonth() + 1;
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const day = Math.min(current.getUTCDate(), lastDay);
+    const target = isoDateOf(new Date(Date.UTC(year, month, day)));
+    return `「${label}」を押しました（Next Action Date を ${target} に設定）`;
+  }
+  const hours = SNOOZE_HOUR_COUNT[action];
+  if (hours !== undefined) {
+    const targetHour = (new Date(now).getUTCHours() + hours) % 24;
+    return `「${label}」を押しました（Next Action Hour を ${targetHour} 時 に設定）`;
+  }
+  return `「${label}」を押しました`;
+};
+
 const notifyCommentError = (
   onCommentError: ConsoleCommentErrorHandler | undefined,
   message: string,
@@ -314,6 +378,9 @@ export const ConsoleItemDetailContainer = ({
   storyEntries,
   onCreateIssueFromComment,
 }: ConsoleItemDetailContainerProps) => {
+  useEffect(() => {
+    recordConsoleItemOpened(item.url, Date.now());
+  }, [item.url]);
   const detail = useConsoleItemDetailData(caches, item, tab);
   const resolveImageProxyUrl = useCallback(
     (src: string): string => buildImageProxyUrl(src, item.url),
@@ -387,8 +454,14 @@ export const ConsoleItemDetailContainer = ({
   const bodyCheckboxConfirmedRef = useRef<Record<number, boolean>>({});
   const commentCheckboxConfirmedRef = useRef<Record<string, boolean>>({});
   const addComment = useCallback(
-    async (body: string): Promise<ConsoleCommentSubmitResult> => {
+    async (
+      body: string,
+      timingOverride?: { openedToActionMs?: number; actionDescription: string },
+    ): Promise<ConsoleCommentSubmitResult> => {
       const actionId = generateCommentActionId();
+      const timing =
+        timingOverride ??
+        consoleItemActionTiming(item, 'コメントを投稿しました');
       const commentHoldOffline = (
         projectCode: string,
       ): ConsoleCommentSubmitResult => {
@@ -420,7 +493,13 @@ export const ConsoleItemDetailContainer = ({
         persistConsoleAction(descriptor);
       }
       try {
-        const comment = await operations.addComment(item, body, actionId);
+        const comment = await operations.addComment(
+          item,
+          body,
+          actionId,
+          timing.openedToActionMs,
+          timing.actionDescription,
+        );
         if (pjcode != null) removePersistedConsoleAction(actionId);
         setPostedComments((previous) => [...previous, comment]);
         return comment;
@@ -443,6 +522,10 @@ export const ConsoleItemDetailContainer = ({
           item.url);
       const reviewComments =
         action === 'request_changes' ? pendingReviewComments : [];
+      const timing = consoleItemActionTiming(
+        item,
+        `「${consoleActionButtonLabels[action]}」を押しました`,
+      );
       onQueueAction({
         kind: { type: 'review', action },
         item,
@@ -453,6 +536,8 @@ export const ConsoleItemDetailContainer = ({
             action,
             reviewComments,
             actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
           ),
         offline:
           pjcode != null
@@ -472,10 +557,19 @@ export const ConsoleItemDetailContainer = ({
     },
     onSetNextActionDate: (action) => {
       const actionId = generateCommentActionId();
+      const actionDescription = nextActionDescription(action, Date.now());
+      const timing = consoleItemActionTiming(item, actionDescription);
       onQueueAction({
         kind: { type: 'next_action_date', action },
         item,
-        commit: () => operations.setNextActionDate(item, action, actionId),
+        commit: () =>
+          operations.setNextActionDate(
+            item,
+            action,
+            actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          ),
         offline:
           pjcode != null
             ? [buildTriageOfflinePayload(pjcode, item, action, { actionId })]
@@ -485,11 +579,21 @@ export const ConsoleItemDetailContainer = ({
     },
     onSetStory: (option: ConsoleFieldOption) => {
       const actionId = generateCommentActionId();
+      const timing = consoleItemActionTiming(
+        item,
+        `「${option.name}」を押しました（Story を ${option.name} に変更）`,
+      );
       onQueueAction({
         kind: { type: 'set_story', optionName: option.name },
         item,
         commit: async () => {
-          await operations.setStory(item, option, actionId);
+          await operations.setStory(
+            item,
+            option,
+            actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          );
         },
         offline:
           pjcode != null
@@ -508,10 +612,21 @@ export const ConsoleItemDetailContainer = ({
     },
     onSetAgent: (option: ConsoleFieldOption) => {
       const actionId = generateCommentActionId();
+      const timing = consoleItemActionTiming(
+        item,
+        `「${option.name}」を押しました（Agent を ${option.name} に変更）`,
+      );
       onQueueAction({
         kind: { type: 'set_agent', optionName: option.name },
         item,
-        commit: () => operations.setAgent(item, option, actionId),
+        commit: () =>
+          operations.setAgent(
+            item,
+            option,
+            actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          ),
         offline:
           pjcode != null
             ? [
@@ -525,12 +640,29 @@ export const ConsoleItemDetailContainer = ({
       });
     },
     onSetStatus: (option: ConsoleFieldOption) => {
+      const timing = consoleItemActionTiming(
+        item,
+        `「${option.name}」を押しました（Status を ${option.name} に変更）`,
+      );
       onQueueAction({
         kind: { type: 'set_status', optionName: option.name },
         item,
-        commit: () => operations.setStatus(item, option),
+        commit: () =>
+          operations.setStatus(
+            item,
+            option,
+            undefined,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          ),
         commitWithActionId: (_sentStepCount, actionId) =>
-          operations.setStatus(item, option, actionId),
+          operations.setStatus(
+            item,
+            option,
+            actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          ),
         offline:
           pjcode != null
             ? [
@@ -547,10 +679,21 @@ export const ConsoleItemDetailContainer = ({
     },
     onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
       const actionId = generateCommentActionId();
+      const timing = consoleItemActionTiming(
+        item,
+        `「${option.name}」を押しました（Status を ${option.name} に変更）`,
+      );
       onQueueAction({
         kind: { type: 'set_in_tmux_by_human', optionName: option.name },
         item,
-        commit: () => operations.setInTmuxByHuman(item, option, actionId),
+        commit: () =>
+          operations.setInTmuxByHuman(
+            item,
+            option,
+            actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          ),
         offline:
           pjcode != null
             ? [buildIntmuxOfflinePayload(pjcode, item, actionId)]
@@ -563,10 +706,21 @@ export const ConsoleItemDetailContainer = ({
     },
     onClose: (action) => {
       const actionId = generateCommentActionId();
+      const timing = consoleItemActionTiming(
+        item,
+        `「${consoleActionButtonLabels[action]}」を押しました`,
+      );
       onQueueAction({
         kind: { type: 'close', action },
         item,
-        commit: () => operations.closeIssue(item, action, actionId),
+        commit: () =>
+          operations.closeIssue(
+            item,
+            action,
+            actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          ),
         offline:
           pjcode != null
             ? [buildTriageOfflinePayload(pjcode, item, action, { actionId })]
@@ -575,16 +729,30 @@ export const ConsoleItemDetailContainer = ({
       });
     },
     onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => {
+      const timing = consoleItemActionTiming(
+        item,
+        `「OK & Awaiting Workspace」を押しました（Status を ${option.name} に変更）`,
+      );
       onQueueAction({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
-        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        commit: () =>
+          operations.okAndMoveToAwaitingWorkspace(
+            item,
+            option,
+            0,
+            undefined,
+            timing.openedToActionMs,
+            timing.actionDescription,
+          ),
         commitWithActionId: (sentStepCount, actionId) =>
           operations.okAndMoveToAwaitingWorkspace(
             item,
             option,
             sentStepCount,
             actionId,
+            timing.openedToActionMs,
+            timing.actionDescription,
           ),
         offline:
           pjcode != null
@@ -609,9 +777,20 @@ export const ConsoleItemDetailContainer = ({
     onSetDependedIssueUrl:
       pjcode != null
         ? async (dependedIssueUrl: string) => {
+            const timing = consoleItemActionTiming(
+              item,
+              dependedIssueUrl === ''
+                ? '「Set Depended Issue」を押しました（Depended Issue URL を解除）'
+                : `「Set Depended Issue」を押しました（Depended Issue URL を ${dependedIssueUrl} に設定）`,
+            );
             if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
               const baseUrls = item.dependedIssueUrls;
-              await operations.replaceDependedIssueUrl(item, dependedIssueUrl);
+              await operations.replaceDependedIssueUrl(
+                item,
+                dependedIssueUrl,
+                timing.openedToActionMs,
+                timing.actionDescription,
+              );
               recordSavedDependedIssueUrls(baseUrls, dependedIssueUrl);
               return;
             }
@@ -639,14 +818,26 @@ export const ConsoleItemDetailContainer = ({
                     [
                       () =>
                         operations
-                          .replaceDependedIssueUrl(item, dependedIssueUrl)
+                          .replaceDependedIssueUrl(
+                            item,
+                            dependedIssueUrl,
+                            timing.openedToActionMs,
+                            timing.actionDescription,
+                          )
                           .then(() =>
                             recordSavedDependedIssueUrls(
                               baseUrls,
                               dependedIssueUrl,
                             ),
                           ),
-                      () => operations.setStatus(item, option),
+                      () =>
+                        operations.setStatus(
+                          item,
+                          option,
+                          undefined,
+                          undefined,
+                          undefined,
+                        ),
                     ],
                     sentStepCount,
                   );
@@ -783,6 +974,10 @@ export const ConsoleItemDetailContainer = ({
           return await new Promise<ConsoleCommentSubmitResult>(
             (resolve, reject) => {
               let commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus = false;
+              const timing = consoleItemActionTiming(
+                item,
+                `コメントを投稿して「${awaitingWorkspaceOption.name}」に変更しました`,
+              );
               const rejectWithMessage = (message: string, cause: unknown) => {
                 notifyCommentError(onCommentError, message, cause);
                 reject(cause);
@@ -800,7 +995,11 @@ export const ConsoleItemDetailContainer = ({
                     commentPostAssumedAlreadySucceededSoRetryOnlyUpdatesStatus
                   ) {
                     try {
-                      await operations.setStatus(item, awaitingWorkspaceOption);
+                      await operations.setStatus(
+                        item,
+                        awaitingWorkspaceOption,
+                        undefined,
+                      );
                     } catch (cause) {
                       if (isNetworkError(cause) && pjcode != null) {
                         throw new ConsoleActionPartiallySentError(1, cause);
@@ -824,6 +1023,9 @@ export const ConsoleItemDetailContainer = ({
                         item,
                         body,
                         awaitingWorkspaceOption,
+                        undefined,
+                        timing.openedToActionMs,
+                        timing.actionDescription,
                       );
                     setPostedComments((previous) => [...previous, comment]);
                     resolve(comment);
@@ -865,6 +1067,8 @@ export const ConsoleItemDetailContainer = ({
                     body,
                     awaitingWorkspaceOption,
                     actionId,
+                    timing.openedToActionMs,
+                    timing.actionDescription,
                   );
                 },
                 offline:
@@ -927,9 +1131,13 @@ export const ConsoleItemDetailContainer = ({
   );
 
   const commentAndClose = async (body: string): Promise<void> => {
+    const timing = consoleItemActionTiming(
+      item,
+      'コメントを投稿して閉じました',
+    );
     if (pjcode == null) {
-      await addComment(body);
-      handlers.onClose('close');
+      await addComment(body, timing);
+      await operations.closeIssue(item, 'close', generateCommentActionId());
       return;
     }
     const commentActionId = generateCommentActionId();
@@ -945,10 +1153,19 @@ export const ConsoleItemDetailContainer = ({
                 item,
                 body,
                 commentActionId,
+                timing.openedToActionMs,
+                timing.actionDescription,
               );
               setPostedComments((previous) => [...previous, comment]);
             },
-            () => operations.closeIssue(item, 'close', closeActionId),
+            () =>
+              operations.closeIssue(
+                item,
+                'close',
+                closeActionId,
+                undefined,
+                undefined,
+              ),
           ],
           sentStepCount,
         ),
@@ -973,6 +1190,7 @@ export const ConsoleItemDetailContainer = ({
   };
 
   const okAndClose = async (): Promise<void> => {
+    const timing = consoleItemActionTiming(item, '「OK & Close」を押しました');
     const commentActionId = generateCommentActionId();
     const closeActionId = generateCommentActionId();
     onQueueAction({
@@ -986,9 +1204,18 @@ export const ConsoleItemDetailContainer = ({
                 item,
                 OK_AND_CLOSE_COMMENT_BODY,
                 commentActionId,
+                timing.openedToActionMs,
+                timing.actionDescription,
               );
             },
-            () => operations.closeIssue(item, 'close', closeActionId),
+            () =>
+              operations.closeIssue(
+                item,
+                'close',
+                closeActionId,
+                undefined,
+                undefined,
+              ),
           ],
           sentStepCount,
         ),
