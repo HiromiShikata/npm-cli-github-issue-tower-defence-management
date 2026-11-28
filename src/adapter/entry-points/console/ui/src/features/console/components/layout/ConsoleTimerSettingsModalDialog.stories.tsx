@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ConsoleTimerHeaderView } from '../../logic/consoleTimerHeader';
 import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDialog';
 
 const meta: Meta<typeof ConsoleTimerSettingsModalDialog> = {
@@ -21,6 +22,12 @@ const meta: Meta<typeof ConsoleTimerSettingsModalDialog> = {
 export default meta;
 
 type Story = StoryObj<typeof ConsoleTimerSettingsModalDialog>;
+
+const normalView: ConsoleTimerHeaderView = {
+  tone: 'normal',
+  timeText: '12:34',
+  nextText: 'beta',
+};
 
 export const Closed: Story = {
   args: {
@@ -71,5 +78,49 @@ export const OpenWithNoStoredSettings: Story = {
     timerMode: false,
     pjcodes: ['acme', 'beta', 'gamma'],
     projectMinutes: {},
+  },
+};
+
+export const Off: Story = {
+  args: { isOpen: false, timerMode: false, isTimerActive: false },
+};
+
+export const Counting: Story = {
+  args: {
+    isOpen: false,
+    timerMode: true,
+    isTimerActive: true,
+    timerHeaderView: normalView,
+  },
+};
+
+export const LastMinute: Story = {
+  args: {
+    isOpen: false,
+    timerMode: true,
+    isTimerActive: true,
+    timerHeaderView: { tone: 'warning', timeText: '00:42', nextText: 'beta' },
+  },
+};
+
+export const Expired: Story = {
+  args: {
+    isOpen: false,
+    timerMode: true,
+    isTimerActive: true,
+    timerHeaderView: {
+      tone: 'danger',
+      timeText: 'next submit',
+      nextText: 'beta',
+    },
+  },
+};
+
+export const NoNext: Story = {
+  args: {
+    isOpen: false,
+    timerMode: true,
+    isTimerActive: true,
+    timerHeaderView: { tone: 'muted', timeText: '12:34', nextText: 'none' },
   },
 };

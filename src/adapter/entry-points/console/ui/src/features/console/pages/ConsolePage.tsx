@@ -102,6 +102,7 @@ import {
   parseDependedIssueUrlsInput,
   patchTaskInStories,
 } from '../logic/consoleStoryTaskPatch';
+import { buildConsoleTimerHeaderView } from '../logic/consoleTimerHeader';
 import {
   buildConsoleListRows,
   resolveItemStory,
@@ -370,7 +371,7 @@ export const ConsolePage = () => {
     () => actionableCounts?.awaitingOwnerCounts ?? {},
     [actionableCounts],
   );
-  const { isTimerExpired } = useConsoleProjectTimer(pjcode);
+  const { isTimerExpired, timerStartedAtMs } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
 
   const projectSettings = useConsoleProjectSettings(pjcodes);
@@ -507,6 +508,18 @@ export const ConsolePage = () => {
       clearInterval(id);
     };
   }, []);
+
+  const timerHeaderView = timerMode
+    ? buildConsoleTimerHeaderView({
+        pjcode,
+        pjcodes,
+        projectMinutes,
+        projectTodoByHumanCounts,
+        projectAwaitingOwnerCounts,
+        timerStartedAtMs,
+        nowMs: now,
+      })
+    : null;
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFleetTaskCreateDialogOpen, setIsFleetTaskCreateDialogOpen] =
@@ -1830,6 +1843,7 @@ export const ConsolePage = () => {
               onChangeMinutes={changeDraftMinutes}
               onSave={saveSettings}
               onClose={closeSettings}
+              timerHeaderView={timerHeaderView}
             />
             <button
               type="button"

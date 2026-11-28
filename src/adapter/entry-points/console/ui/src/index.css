@@ -284,6 +284,46 @@ body {
   color: #e67e00;
 }
 
+.console-timer-settings-button[data-tone] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.console-timer-settings-button[data-tone] .console-timer-settings-button-time {
+  color: #e6edf3;
+}
+
+.console-timer-settings-button[data-tone] .console-timer-settings-button-arrow {
+  color: #6e7681;
+}
+
+.console-timer-settings-button[data-tone='warning']
+  .console-timer-settings-button-time {
+  color: #d29922;
+}
+
+.console-timer-settings-button[data-tone='danger']
+  .console-timer-settings-button-time,
+.console-timer-settings-button[data-tone='danger']
+  .console-timer-settings-button-next {
+  color: #f85149;
+}
+
+.console-timer-settings-button[data-tone='muted'] {
+  color: #6e7681;
+}
+
+.console-timer-settings-button[data-tone='muted']
+  .console-timer-settings-button-time,
+.console-timer-settings-button[data-tone='muted']
+  .console-timer-settings-button-arrow,
+.console-timer-settings-button[data-tone='muted']
+  .console-timer-settings-button-next {
+  color: #6e7681;
+}
+
 .console-timer-settings-overlay {
   position: fixed;
   inset: 0;

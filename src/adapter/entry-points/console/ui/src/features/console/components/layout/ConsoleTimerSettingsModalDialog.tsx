@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { ConsoleTimerHeaderView } from '../../logic/consoleTimerHeader';
 import { DEFAULT_TIMER_MINUTES } from '../../logic/timerSettings';
 import { ConsoleToggleSwitch } from '../shared/ConsoleToggleSwitch';
 
@@ -15,6 +16,7 @@ export type ConsoleTimerSettingsModalDialogProps = {
   onChangeMinutes: (pjcode: string, minutes: number) => void;
   onSave: () => void;
   onClose: () => void;
+  timerHeaderView?: ConsoleTimerHeaderView | null;
 };
 
 export const ConsoleTimerSettingsModalDialog = ({
@@ -29,6 +31,7 @@ export const ConsoleTimerSettingsModalDialog = ({
   onChangeMinutes,
   onSave,
   onClose,
+  timerHeaderView,
 }: ConsoleTimerSettingsModalDialogProps) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [dialogPos, setDialogPos] = useState<{
@@ -59,12 +62,28 @@ export const ConsoleTimerSettingsModalDialog = ({
         ref={buttonRef}
         type="button"
         className={`console-timer-settings-button${isTimerActive ? ' console-timer-settings-button--active' : ''}`}
+        {...(timerHeaderView !== null && timerHeaderView !== undefined
+          ? { 'data-tone': timerHeaderView.tone }
+          : {})}
         aria-label="Settings"
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         onClick={onOpen}
       >
-        ⏱
+        {timerHeaderView === null || timerHeaderView === undefined ? (
+          '⏱'
+        ) : (
+          <>
+            <span>⏱</span>
+            <span className="console-timer-settings-button-time">
+              {timerHeaderView.timeText}
+            </span>
+            <span className="console-timer-settings-button-arrow">→</span>
+            <span className="console-timer-settings-button-next">
+              {timerHeaderView.nextText}
+            </span>
+          </>
+        )}
       </button>
       {isOpen &&
         createPortal(

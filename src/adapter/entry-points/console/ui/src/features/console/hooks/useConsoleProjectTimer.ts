@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 
 export type ConsoleProjectTimerState = {
   isTimerExpired: (minutes: number) => boolean;
+  timerStartedAtMs: number;
 };
 
 export const useConsoleProjectTimer = (
@@ -22,5 +23,5 @@ export const useConsoleProjectTimer = (
     return Date.now() - startRef.current >= minutes * 60 * 1000;
   }, []);
 
-  return { isTimerExpired };
+  return { isTimerExpired, timerStartedAtMs: startRef.current };
 };
