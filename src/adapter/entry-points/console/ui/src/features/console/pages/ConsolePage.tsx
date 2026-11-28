@@ -237,6 +237,8 @@ export const createIssueWithAttachments = async (
   nameWithOwner: string,
   { title, storyName, agentOptionId, body, files }: IssueCreateParams,
   progress: AttachmentSubmissionProgress,
+  onIncompleteStep?: (message: string) => void,
+  retryWait?: (milliseconds: number) => Promise<void>,
 ): Promise<void> => {
   const actionId = progress.actionId ?? generateActionId();
   progress.actionId = actionId;
@@ -259,6 +261,7 @@ export const createIssueWithAttachments = async (
         agentOptionId: agentOptionId ?? null,
         body: body ?? null,
       },
+      retryWait === undefined ? {} : { wait: retryWait },
     );
     if (outcome.kind === 'notCreated') {
       console.error(
@@ -276,12 +279,14 @@ export const createIssueWithAttachments = async (
     }
     issueUrl = outcome.issueUrl;
     if (outcome.kind === 'createdWithIncompleteStep') {
-      console.error(
-        buildCreatedWithIncompleteStepMessage(
-          outcome.issueUrl,
-          outcome.failedStep,
-          outcome.reason,
-        ),
+      const message = buildCreatedWithIncompleteStepMessage(
+        outcome.issueUrl,
+        outcome.failedStep,
+        outcome.reason,
+      );
+      console.error(message);
+      onIncompleteStep?.(
+        `${outcome.issueUrl} のタスクを作成しましたが、${outcome.failedStep} が完了しませんでした。`,
       );
     }
     progress.issueUrl = issueUrl;
@@ -652,6 +657,9 @@ export const ConsolePage = () => {
       return rawResult;
     },
     [actionQueue.showError, operations, persistCommentDrafts],
+  );
+  const [createIssueNotice, setCreateIssueNotice] = useState<string | null>(
+    null,
   );
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -1413,26 +1421,14 @@ export const ConsolePage = () => {
       if (defaultNameWithOwner === null) {
         throw new Error('No repository configured for this project.');
       }
-      const response = await postConsoleCreateIssue({
+      await createIssueWithAttachments(
         pjcode,
-        title,
-        storyName,
-        nameWithOwner: defaultNameWithOwner,
-        actionId: generateActionId(),
-      });
-      if (
-        typeof response === 'string' ||
-        (response.httpStatus >= 200 &&
-          response.httpStatus < 300 &&
-          typeof response.body === 'object' &&
-          response.body !== null &&
-          !Array.isArray(response.body) &&
-          typeof (response.body as { issueUrl?: unknown }).issueUrl ===
-            'string')
-      ) {
-        return;
-      }
-      throw new Error('Failed to create the task. Please try again.');
+        defaultNameWithOwner,
+        { title, storyName, agentOptionId: null, body: null, files: [] },
+        createEmptyAttachmentSubmissionProgress(),
+        setCreateIssueNotice,
+        async () => Promise.resolve(),
+      );
     },
     [pjcode, defaultNameWithOwner],
   );
@@ -1468,6 +1464,7 @@ export const ConsolePage = () => {
             capturedNameWithOwner,
             capturedParams,
             progress,
+            setCreateIssueNotice,
           ).catch((cause: unknown) => {
             if (pjcodeRef.current === capturedPjcode) {
               setDialogSubmitFailure({
@@ -1527,6 +1524,7 @@ export const ConsolePage = () => {
             nameWithOwner,
             capturedParams,
             progress,
+            setCreateIssueNotice,
           ).catch((cause: unknown) => {
             if (pjcodeRef.current === capturedPjcode) {
               setFleetDialogSubmitFailure({
@@ -1959,6 +1957,11 @@ export const ConsolePage = () => {
         onDismiss={actionQueue.dismiss}
         onDismissError={actionQueue.dismissError}
       />
+      {createIssueNotice !== null && (
+        <div className="console-create-issue-notice" role="status">
+          {createIssueNotice}
+        </div>
+      )}
       <ConsoleOfflinePendingActionsPanel
         actions={offlinePanelActions}
         isOnline={isOnline}

@@ -78,7 +78,7 @@ export const writeConsoleActionRecord = (
   actionId: string,
   record: ConsoleActionRecord,
   nowMs: number,
-): void => {
+): boolean => {
   const records = readConsoleActionRecords(consoleDataOutputDir, nowMs);
   records[actionId] = record;
   const entries = Object.entries(records)
@@ -94,10 +94,12 @@ export const writeConsoleActionRecord = (
     const temporaryFilePath = `${filePath}.tmp`;
     fs.writeFileSync(temporaryFilePath, JSON.stringify(retained));
     fs.renameSync(temporaryFilePath, filePath);
+    return true;
   } catch (error) {
     console.error(
       '[consoleActionResultStore] failed to write action results',
       error,
     );
+    return false;
   }
 };

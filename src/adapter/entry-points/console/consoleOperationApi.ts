@@ -1815,7 +1815,7 @@ export const runConsoleOperationOnce = async (
   const stored =
     context.consoleDataOutputDir === null
       ? (inMemoryActionRecords.get(actionId) ?? null)
-      : (records?.[actionId] ?? null);
+      : (records?.[actionId] ?? inMemoryActionRecords.get(actionId) ?? null);
   if (
     stored !== null &&
     stored.statusCode >= 200 &&
@@ -1860,13 +1860,15 @@ export const runConsoleOperationOnce = async (
       };
       if (context.consoleDataOutputDir === null) {
         inMemoryActionRecords.set(actionId, record);
-      } else {
-        writeConsoleActionRecord(
+      } else if (
+        !writeConsoleActionRecord(
           context.consoleDataOutputDir,
           actionId,
           record,
           Date.now(),
-        );
+        )
+      ) {
+        inMemoryActionRecords.set(actionId, record);
       }
     }
     return response;
@@ -2132,9 +2134,10 @@ const handleCreateIssueImpl = async (
     priorBody !== undefined && typeof priorBody.issueUrl === 'string'
       ? priorBody.issueUrl
       : null;
-  const issueUrl =
+  const issueUrlResult =
     priorIssueUrl ??
     (await (async () => {
+      const createdFrom = new Date().toISOString();
       try {
         const authenticatedUser =
           await issueRepository.getAuthenticatedUserLogin();
@@ -2151,15 +2154,41 @@ const handleCreateIssueImpl = async (
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         console.error('[handleCreateIssue] issue creation failed:', error);
-        return { error: errorMessage };
+        try {
+          const authenticatedUser =
+            await issueRepository.getAuthenticatedUserLogin();
+          const matches = await issueRepository.searchIssue({
+            owner: org,
+            repositoryName: repo,
+            type: 'issue',
+            title: effectiveTitle,
+            createdFrom,
+            assignee: authenticatedUser,
+          });
+          const recovered = (matches ?? []).find(
+            (match) => match.title === effectiveTitle,
+          );
+          if (recovered !== undefined) return recovered.url;
+          return { error: errorMessage, issueCreated: false };
+        } catch (searchError) {
+          console.error(
+            '[handleCreateIssue] issue recovery search failed:',
+            searchError,
+          );
+          return { error: errorMessage };
+        }
       }
     })());
-  if (typeof issueUrl !== 'string') {
+  if (typeof issueUrlResult !== 'string') {
     return {
       statusCode: 500,
-      body: { ok: false, issueCreated: false, error: issueUrl.error },
+      body:
+        issueUrlResult.issueCreated === false
+          ? { ok: false, issueCreated: false, error: issueUrlResult.error }
+          : { ok: false, error: issueUrlResult.error },
     };
   }
+  let issueUrl = issueUrlResult;
 
   const completedSteps = new Set(
     priorBody !== undefined && Array.isArray(priorBody.completedSteps)
@@ -2183,12 +2212,16 @@ const handleCreateIssueImpl = async (
     if (context.consoleDataOutputDir === null) {
       inMemoryActionRecords.set(actionId, record);
     } else {
-      writeConsoleActionRecord(
-        context.consoleDataOutputDir,
-        actionId,
-        record,
-        Date.now(),
-      );
+      if (
+        !writeConsoleActionRecord(
+          context.consoleDataOutputDir,
+          actionId,
+          record,
+          Date.now(),
+        )
+      ) {
+        inMemoryActionRecords.set(actionId, record);
+      }
     }
   };
   persistProgress();
@@ -2222,30 +2255,46 @@ const handleCreateIssueImpl = async (
     }
   };
 
+  let addedIssue: Issue | null = null;
+  let effectiveProject = project;
+  let effectiveStory = cachedProjectStory;
   const addProjectFailure = await runStep('addIssueToProject', async () => {
     await issueRepository.addIssueToProject(project, issueUrl);
+    try {
+      addedIssue = await issueRepository.get(issueUrl, project);
+    } catch (error) {
+      try {
+        const recoveredIssue = await issueRepository.get(issueUrl, project);
+        if (recoveredIssue !== null) issueUrl = recoveredIssue.url;
+      } catch {
+        throw error;
+      }
+      throw error;
+    }
+    if (addedIssue !== null) {
+      const projectRepository =
+        context.resolveProjectRepository !== null
+          ? context.resolveProjectRepository(project.url)
+          : null;
+      const freshProject =
+        preloadedFreshProject ??
+        (projectRepository !== null
+          ? await projectRepository.getProject(project.id)
+          : null);
+      effectiveProject = freshProject ?? project;
+      effectiveStory = freshProject?.story ?? cachedProjectStory;
+    }
   });
   if (addProjectFailure !== null) return addProjectFailure;
-  const addedIssue = await issueRepository.get(issueUrl, project);
   if (addedIssue !== null) {
-    const projectRepository =
-      context.resolveProjectRepository !== null
-        ? context.resolveProjectRepository(project.url)
-        : null;
-    const freshProject =
-      preloadedFreshProject ??
-      (projectRepository !== null
-        ? await projectRepository.getProject(project.id)
-        : null);
-    const effectiveProject = freshProject ?? project;
-    const effectiveStory = freshProject?.story ?? cachedProjectStory;
+    const issue = addedIssue;
     const storyOption =
       effectiveStory.stories.find((s) => s.name === storyName) ??
       resolvedStoryOption;
     const storyFailure = await runStep('updateStory', () =>
       issueRepository.updateStory(
         { ...effectiveProject, story: effectiveStory },
-        addedIssue,
+        issue,
         storyOption.id,
       ),
     );
