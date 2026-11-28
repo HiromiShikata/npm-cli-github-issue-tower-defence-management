@@ -708,6 +708,10 @@ export const ConsolePage = () => {
     reason: string;
     progress: AttachmentSubmissionProgress;
   } | null>(null);
+  const [storyListSubmitFailure, setStoryListSubmitFailure] = useState<{
+    params: IssueCreateParams;
+    progress: AttachmentSubmissionProgress;
+  } | null>(null);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
@@ -1421,16 +1425,37 @@ export const ConsolePage = () => {
       if (defaultNameWithOwner === null) {
         throw new Error('No repository configured for this project.');
       }
-      await createIssueWithAttachments(
-        pjcode,
-        defaultNameWithOwner,
-        { title, storyName, agentOptionId: null, body: null, files: [] },
-        createEmptyAttachmentSubmissionProgress(),
-        setCreateIssueNotice,
-        async () => Promise.resolve(),
-      );
+      const capturedParams = {
+        title,
+        storyName,
+        agentOptionId: null,
+        body: null,
+        files: [],
+      };
+      const progress =
+        storyListSubmitFailure !== null &&
+        !attachmentSubmissionParamsChanged(
+          storyListSubmitFailure.params,
+          capturedParams,
+        )
+          ? storyListSubmitFailure.progress
+          : createEmptyAttachmentSubmissionProgress();
+      try {
+        await createIssueWithAttachments(
+          pjcode,
+          defaultNameWithOwner,
+          capturedParams,
+          progress,
+          setCreateIssueNotice,
+          async () => Promise.resolve(),
+        );
+        setStoryListSubmitFailure(null);
+      } catch (cause: unknown) {
+        setStoryListSubmitFailure({ params: capturedParams, progress });
+        throw cause;
+      }
     },
-    [pjcode, defaultNameWithOwner],
+    [pjcode, defaultNameWithOwner, storyListSubmitFailure],
   );
 
   const handleCreateIssueFromDialog = useCallback(

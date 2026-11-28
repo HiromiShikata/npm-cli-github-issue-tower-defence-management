@@ -2134,13 +2134,98 @@ const handleCreateIssueImpl = async (
     priorBody !== undefined && typeof priorBody.issueUrl === 'string'
       ? priorBody.issueUrl
       : null;
+  const pendingIntent =
+    priorBody?.issueCreationPending === true &&
+    typeof priorBody.effectiveTitle === 'string' &&
+    typeof priorBody.createdFrom === 'string' &&
+    typeof priorBody.assignee === 'string'
+      ? {
+          effectiveTitle: priorBody.effectiveTitle,
+          createdFrom: priorBody.createdFrom,
+          assignee: priorBody.assignee,
+        }
+      : null;
+  const searchCreatedIssue = async (
+    searchTitle: string,
+    createdFrom: string,
+    assignee: string,
+    errorMessage: string,
+  ): Promise<string | { error: string; issueCreated?: boolean }> => {
+    try {
+      const matches = await issueRepository.searchIssue({
+        owner: org,
+        repositoryName: repo,
+        type: 'issue',
+        title: searchTitle,
+        createdFrom,
+        assignee,
+      });
+      const recovered = (matches ?? []).find(
+        (match) => match.title === searchTitle,
+      );
+      if (recovered !== undefined) return recovered.url;
+      return { error: errorMessage };
+    } catch (searchError) {
+      console.error(
+        '[handleCreateIssue] issue recovery search failed:',
+        searchError,
+      );
+      return { error: errorMessage };
+    }
+  };
   const issueUrlResult =
     priorIssueUrl ??
     (await (async () => {
-      const createdFrom = new Date().toISOString();
+      let authenticatedUser: string;
+      let createdFrom: string;
       try {
-        const authenticatedUser =
-          await issueRepository.getAuthenticatedUserLogin();
+        authenticatedUser =
+          pendingIntent?.assignee ??
+          (await issueRepository.getAuthenticatedUserLogin());
+        createdFrom = pendingIntent?.createdFrom ?? new Date().toISOString();
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error(
+          '[handleCreateIssue] issue creation preparation failed:',
+          error,
+        );
+        return { error: errorMessage, issueCreated: false };
+      }
+      if (pendingIntent !== null) {
+        return searchCreatedIssue(
+          pendingIntent.effectiveTitle,
+          createdFrom,
+          authenticatedUser,
+          'The issue creation state could not be confirmed.',
+        );
+      }
+      if (actionId !== null) {
+        const intentRecord: ConsoleActionRecord = {
+          recordedAtMs: Date.now(),
+          statusCode: 500,
+          body: {
+            ok: false,
+            issueCreationPending: true,
+            effectiveTitle,
+            createdFrom,
+            assignee: authenticatedUser,
+          },
+        };
+        if (context.consoleDataOutputDir === null) {
+          inMemoryActionRecords.set(actionId, intentRecord);
+        } else if (
+          !writeConsoleActionRecord(
+            context.consoleDataOutputDir,
+            actionId,
+            intentRecord,
+            Date.now(),
+          )
+        ) {
+          inMemoryActionRecords.set(actionId, intentRecord);
+        }
+      }
+      try {
         const issueNumber = await issueRepository.createNewIssue(
           org,
           repo,
@@ -2154,38 +2239,24 @@ const handleCreateIssueImpl = async (
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         console.error('[handleCreateIssue] issue creation failed:', error);
-        try {
-          const authenticatedUser =
-            await issueRepository.getAuthenticatedUserLogin();
-          const matches = await issueRepository.searchIssue({
-            owner: org,
-            repositoryName: repo,
-            type: 'issue',
-            title: effectiveTitle,
-            createdFrom,
-            assignee: authenticatedUser,
-          });
-          const recovered = (matches ?? []).find(
-            (match) => match.title === effectiveTitle,
-          );
-          if (recovered !== undefined) return recovered.url;
-          return { error: errorMessage, issueCreated: false };
-        } catch (searchError) {
-          console.error(
-            '[handleCreateIssue] issue recovery search failed:',
-            searchError,
-          );
-          return { error: errorMessage };
-        }
+        return searchCreatedIssue(
+          effectiveTitle,
+          createdFrom,
+          authenticatedUser,
+          errorMessage,
+        );
       }
     })());
   if (typeof issueUrlResult !== 'string') {
     return {
       statusCode: 500,
-      body:
-        issueUrlResult.issueCreated === false
-          ? { ok: false, issueCreated: false, error: issueUrlResult.error }
-          : { ok: false, error: issueUrlResult.error },
+      body: {
+        ok: false,
+        ...(issueUrlResult.issueCreated === false
+          ? { issueCreated: false }
+          : {}),
+        error: issueUrlResult.error,
+      },
     };
   }
   let issueUrl = issueUrlResult;

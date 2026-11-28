@@ -80,6 +80,7 @@ export const createIssueWithRetry = async (
       new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   let latestOutcome: CreateIssueOutcome | null = null;
   let latestTransportError: string | null = null;
+  let transportFailureAfterResponse = false;
   for (let attempt = 0; attempt < CREATE_ISSUE_MAX_ATTEMPTS; attempt += 1) {
     try {
       const response = await send(request);
@@ -94,10 +95,20 @@ export const createIssueWithRetry = async (
     } catch (error) {
       latestTransportError =
         error instanceof Error ? error.message : String(error);
+      if (latestOutcome?.kind === 'notCreated') {
+        transportFailureAfterResponse = true;
+      }
     }
     if (attempt < CREATE_ISSUE_MAX_ATTEMPTS - 1) {
       await wait(CREATE_ISSUE_RETRY_DELAYS_MS[attempt]);
     }
+  }
+  if (latestOutcome?.kind === 'notCreated' && transportFailureAfterResponse) {
+    return {
+      kind: 'unconfirmed',
+      reason:
+        latestTransportError ?? 'The creation state could not be confirmed.',
+    };
   }
   if (latestOutcome !== null) return latestOutcome;
   return {

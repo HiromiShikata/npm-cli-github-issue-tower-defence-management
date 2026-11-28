@@ -26,13 +26,13 @@ export class ApiV3IssueRepository extends BaseGitHubRepository {
       url += `+state:${query.state}`;
     }
     if (query.title) {
-      url += `+in:title+'${query.title}'`;
+      url += `+in:title+'${encodeURIComponent(query.title)}'`;
     }
     if (query.createdFrom) {
       url += `+created:>=${query.createdFrom}`;
     }
     if (query.assignee) {
-      url += `&assignee=${query.assignee}`;
+      url += `&assignee=${encodeURIComponent(query.assignee)}`;
     }
 
     const response = await ky
