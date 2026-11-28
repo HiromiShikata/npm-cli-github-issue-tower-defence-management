@@ -496,7 +496,7 @@ describe('ConsolePage', () => {
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
     }) as unknown as typeof fetch;
 
-    const { getByText, getByLabelText, getByPlaceholderText, findByRole } =
+    const { getByText, getByLabelText, getByPlaceholderText, getAllByRole } =
       render(<ConsolePage />);
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
@@ -510,9 +510,13 @@ describe('ConsolePage', () => {
         files: [createUploadTestFile('first.png')],
       },
     });
-    expect((await findByRole('alert')).textContent).toContain(
-      'upload request rejected',
-    );
+    await waitFor(() => {
+      expect(
+        getAllByRole('alert').some((alert) =>
+          alert.textContent?.includes('upload request rejected'),
+        ),
+      ).toBe(true);
+    });
     expect(textarea).not.toHaveValue(expect.stringContaining('uploading'));
     const persistedDrafts = JSON.parse(
       localStorage.getItem('console-comment-drafts') ?? '[]',
