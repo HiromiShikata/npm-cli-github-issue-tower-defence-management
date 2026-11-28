@@ -1058,6 +1058,7 @@ describe('webServer new routes integration', () => {
       resolveProject: async (pjcode) =>
         pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
       isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      isRepositoryConfigured: () => true,
       port: 0,
     });
     try {
@@ -2182,6 +2183,44 @@ describe('webServer new routes integration', () => {
       expect(JSON.parse(response.body)).toEqual({
         error: `GitHub GraphQL API returned no data for updateStoryList: ${gitHubMessage}`,
       });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('RED rejects a comment when its repository is not configured', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      isRepositoryConfigured: () => false,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/comment?k=${testToken}`,
+        {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/issues/1',
+          body: 'comment',
+        },
+      );
+      expect(response.statusCode).toBe(403);
+      expect(JSON.parse(response.body)).toEqual({ error: expect.any(String) });
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

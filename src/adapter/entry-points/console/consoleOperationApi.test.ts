@@ -364,6 +364,7 @@ describe('consoleOperationApi', () => {
       resolveProject: async (pjcode: string) =>
         pjcode === 'acme' ? { pjcode, project } : null,
       isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+      isRepositoryConfigured: () => true,
       consoleDataOutputDir: baseDir,
       issueAttachmentRepository: null,
       resolveProjectRepository: null,
@@ -382,6 +383,7 @@ describe('consoleOperationApi', () => {
     resolveProject: async (pjcode: string) =>
       pjcode === 'acme' ? { pjcode, project: nextProject } : null,
     isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+    isRepositoryConfigured: () => true,
     consoleDataOutputDir: baseDir,
     issueAttachmentRepository: null,
     resolveProjectRepository: null,
@@ -2177,6 +2179,7 @@ describe('consoleOperationApi', () => {
         issueRepository,
         resolveProject: context.resolveProject,
         isPjcodeConfigured: context.isPjcodeConfigured,
+        isRepositoryConfigured: context.isRepositoryConfigured,
       });
       await new Promise<void>((resolve) =>
         server.listen(0, '127.0.0.1', resolve),
@@ -4654,6 +4657,7 @@ describe('consoleOperationApi', () => {
         resolveIssueRepository: () => issueRepository,
         resolveProject: resolveProjectSpy,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: null,
@@ -4978,6 +4982,7 @@ describe('consoleOperationApi', () => {
         },
         isPjcodeConfigured: (pjcode: string) =>
           pjcode === 'acme' || pjcode === 'globex',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: null,
@@ -7533,6 +7538,7 @@ describe('consoleOperationApi', () => {
         resolveIssueRepository: () => issueRepository,
         resolveProject,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: jest.fn(() => ({
@@ -10790,6 +10796,7 @@ describe('consoleOperationApi', () => {
         resolveProject: async (pjcode: string) =>
           pjcode === 'acme' ? { pjcode, project: exampleOrgProject } : null,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: null,
@@ -11123,5 +11130,495 @@ describe('consoleOperationApi', () => {
         }),
       ).rejects.toThrow('API failure');
     });
+  });
+
+  describe('review binding for approve and merge', () => {
+    it('RED rejects approve_and_merge for a pull request not linked to the project item before approving or merging', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_review_binding',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/99',
+        projectItemId: 'PVTI_review_binding',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('error paths for triage and intmux bindings', () => {
+    it('RED propagates a triage lookup failure without writing', async () => {
+      const error = new Error('github unavailable');
+      issueRepository.getAllIssues.mockRejectedValueOnce(error);
+
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_triage_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('RED propagates an intmux lookup failure without writing', async () => {
+      const error = new Error('github unavailable');
+      issueRepository.getAllIssues.mockRejectedValueOnce(error);
+
+      await expect(
+        handleIntmux(context, {
+          pjcode: 'acme',
+          action: 'set_intmux',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_intmux_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('RED rejects an intmux URL mismatch without writing', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_intmux_mismatch',
+            url: 'https://github.com/o/r/issues/2',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_mismatch',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('PIN keeps intmux success for a matching URL', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_intmux_matching',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_matching',
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+  });
+
+  describe('memoized item lookup refresh', () => {
+    const projectItem = (itemId: string, url: string, isPr = false): Issue => ({
+      ...issue,
+      itemId,
+      url,
+      isPr,
+    });
+
+    it('RED refreshes the project item lookup for intmux and writes after finding the item', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({
+          issues: [
+            projectItem(
+              'PVTI_intmux_refresh',
+              'https://github.com/o/r/issues/1',
+            ),
+          ],
+          project,
+          cacheUsed: false,
+        });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_refresh',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalled();
+      expect(issueRepository.getAllIssues).toHaveBeenNthCalledWith(
+        2,
+        project.id,
+        {
+          refresh: true,
+        },
+      );
+    });
+
+    it('RED refreshes the project item lookup for review and writes after finding a linked item', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({
+          issues: [
+            projectItem(
+              'PVTI_review_refresh',
+              'https://github.com/o/r/issues/1',
+            ),
+          ],
+          project,
+          cacheUsed: false,
+        });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_review_refresh',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.getAllIssues).toHaveBeenNthCalledWith(
+        2,
+        project.id,
+        {
+          refresh: true,
+        },
+      );
+    });
+
+    it('RED rejects intmux when the item is absent after the refresh and does not write', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: false });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_still_missing',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unbound write paths require a configured repository', () => {
+    const projectWithDependedField: Project = {
+      ...project,
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL',
+        fieldId: 'dependedField',
+      },
+    };
+    const projectWithCreateIssueStory: Project = {
+      ...project,
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    };
+    const createIssueBody = {
+      pjcode: 'acme',
+      title: 'Task',
+      storyName: 'workflow',
+      nameWithOwner: 'o/r',
+    };
+    const createWorkflowIssueBody = {
+      nameWithOwner: 'o/r',
+      title: 'Workflow task',
+    };
+    const runWorkflowIssue = (
+      body: Record<string, unknown>,
+      isRepositoryConfigured: ConsoleOperationContext['isRepositoryConfigured'],
+    ): Promise<{ statusCode: number; body: unknown }> =>
+      (
+        handleCreateWorkflowIssue as unknown as (
+          issueRepository: IssueRepository,
+          body: Record<string, unknown>,
+          isRepositoryConfigured: ConsoleOperationContext['isRepositoryConfigured'],
+        ) => Promise<{ statusCode: number; body: unknown }>
+      )(issueRepository, body, isRepositoryConfigured);
+    const cases = [
+      {
+        name: 'comment',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleComment(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/issues/1',
+          body: 'comment',
+        },
+        writeMethod: 'createCommentByUrl',
+        invokeWrite: () => issueRepository.createCommentByUrl,
+      },
+      {
+        name: 'review comment',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleReviewComment(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/pull/1',
+          path: 'src/index.ts',
+          line: 1,
+          side: 'RIGHT',
+          body: 'comment',
+        },
+        writeMethod: 'createPullRequestReviewComment',
+        invokeWrite: () => issueRepository.createPullRequestReviewComment,
+      },
+      {
+        name: 'attachment upload',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleAttachmentUpload(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/issues/1',
+          fileName: 'shot.png',
+          contentBase64: 'AAEC',
+        },
+        writeMethod: 'uploadAttachment',
+        invokeWrite: () => attachmentUpload,
+      },
+      {
+        name: 'delete all comments',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleDeleteAllComments(nextContext, body),
+        body: { issueUrl: 'https://github.com/o/r/issues/1' },
+        writeMethod: 'deleteAllCommentsByUrl',
+        invokeWrite: () => issueRepository.deleteAllCommentsByUrl,
+      },
+      {
+        name: 'issue rename',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleIssueRename(nextContext, body),
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          newTitle: 'New title',
+        },
+        writeMethod: 'updateIssue',
+        invokeWrite: () => issueRepository.updateIssue,
+      },
+      {
+        name: 'issue body update',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleIssueBodyUpdate(nextContext, body),
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          body: 'New body',
+        },
+        writeMethod: 'updateIssueBody',
+        invokeWrite: () => issueRepository.updateIssueBody,
+      },
+      {
+        name: 'issue comment body update',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleIssueCommentBodyUpdate(nextContext, body),
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          commentId: 1,
+          body: 'New comment body',
+        },
+        writeMethod: 'updateIssueCommentBody',
+        invokeWrite: () => issueRepository.updateIssueCommentBody,
+      },
+      {
+        name: 'append depended issue URL',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleSetDependedIssueUrl(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/2',
+        },
+        writeMethod: 'setDependedIssueUrl',
+        invokeWrite: () => issueRepository.setDependedIssueUrl,
+      },
+      {
+        name: 'create issue',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleCreateIssue(nextContext, body),
+        body: createIssueBody,
+        writeMethod: 'createNewIssue',
+        invokeWrite: () => issueRepository.createNewIssue,
+      },
+      {
+        name: 'create workflow issue',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => runWorkflowIssue(body, nextContext.isRepositoryConfigured),
+        body: createWorkflowIssueBody,
+        writeMethod: 'createNewIssue',
+        invokeWrite: () => issueRepository.createNewIssue,
+      },
+    ] as const;
+    const attachmentUpload = jest.fn(
+      async () => '![shot](https://github.com/user-attachments/assets/abc)',
+    );
+
+    const contextForCase = (
+      testCase: (typeof cases)[number],
+      isRepositoryConfigured: ConsoleOperationContext['isRepositoryConfigured'],
+    ): ConsoleOperationContext => ({
+      ...contextForProject(
+        testCase.name === 'append depended issue URL'
+          ? projectWithDependedField
+          : testCase.name === 'create issue'
+            ? projectWithCreateIssueStory
+            : project,
+      ),
+      isRepositoryConfigured,
+      resolveProjectRepository:
+        testCase.name === 'create issue'
+          ? () => ({
+              getProject: jest
+                .fn()
+                .mockResolvedValue(projectWithCreateIssueStory),
+              updateStoryList: jest.fn(),
+            })
+          : context.resolveProjectRepository,
+      issueAttachmentRepository:
+        testCase.name === 'attachment upload'
+          ? { uploadAttachment: attachmentUpload }
+          : context.issueAttachmentRepository,
+    });
+
+    beforeEach(() => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/1',
+        org: 'o',
+        repo: 'r',
+        number: 1,
+      });
+      issueRepository.createNewIssue.mockResolvedValue(42);
+      issueRepository.setDependedIssueUrl.mockResolvedValue(undefined);
+      attachmentUpload.mockClear();
+    });
+
+    it.each(cases)(
+      'RED returns 403 and does not call $writeMethod when the repository is unconfigured',
+      async (testCase) => {
+        const response = await testCase.handler(
+          contextForCase(testCase, () => false),
+          testCase.body,
+        );
+
+        expect(response.statusCode).toBe(403);
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expect(testCase.invokeWrite()).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(cases)(
+      'PIN returns the existing success status for $name when the repository is configured',
+      async (testCase) => {
+        const response = await testCase.handler(
+          contextForCase(testCase, () => true),
+          testCase.body,
+        );
+
+        expect(response.statusCode).toBe(200);
+      },
+    );
+
+    it.each(cases)(
+      'RED returns 403 and does not call $writeMethod when the repository configuration is null',
+      async (testCase) => {
+        const response = await testCase.handler(
+          contextForCase(testCase, null),
+          testCase.body,
+        );
+
+        expect(response.statusCode).toBe(403);
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expect(testCase.invokeWrite()).not.toHaveBeenCalled();
+      },
+    );
   });
 });
