@@ -1183,26 +1183,14 @@ const handleTriageImpl = async (
     return binding;
   }
   const { project, pjcode } = binding;
-  const isSnoozeAction =
-    action === 'snooze_1hour' ||
-    action === 'snooze_3hours' ||
-    action === 'snooze_6hours' ||
-    action === 'snooze_1day' ||
-    action === 'snooze_2days' ||
-    action === 'snooze_3days' ||
-    action === 'snooze_5days' ||
-    action === 'snooze_1week' ||
-    action === 'snooze_1month';
-  if (!isSnoozeAction) {
-    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
-      context.resolveIssueRepository(issueUrl),
-      project,
-      issueUrl,
-      projectItemId,
-    );
-    if (linkFailure !== null) {
-      return linkFailure;
-    }
+  const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+    context.resolveIssueRepository(issueUrl),
+    project,
+    issueUrl,
+    projectItemId,
+  );
+  if (linkFailure !== null) {
+    return linkFailure;
   }
   if (action === 'set_status') {
     const previousResult = context.priorAttempt?.body;
@@ -2544,15 +2532,12 @@ export const handleSetDependedIssueUrl = async (
     if (!isNonEmptyString(projectItemId)) {
       return badRequest('projectItemId is required');
     }
-    const linkFailure =
-      elapsedAction === null
-        ? await rejectWhenUrlIsNotProjectItemUrl(
-            context.resolveIssueRepository(issueUrl),
-            project,
-            issueUrl,
-            projectItemId,
-          )
-        : null;
+    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
     if (linkFailure !== null) {
       return linkFailure;
     }
@@ -2578,6 +2563,17 @@ export const handleSetDependedIssueUrl = async (
   }
   if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
+  }
+  if (isNonEmptyString(projectItemId)) {
+    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
   }
   await context
     .resolveIssueRepository(issueUrl)

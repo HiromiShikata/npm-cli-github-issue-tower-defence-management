@@ -256,6 +256,24 @@ const nextActionDateAfter = (
   return date.toISOString().slice(0, 10);
 };
 
+const nextActionDescription = (
+  action: ConsoleNextActionDateAction,
+  nextActionDate: string | null,
+): string => {
+  const label = consoleActionButtonLabels[action];
+  if (action === 'snooze_1day' && nextActionDate !== null) {
+    return `「${label}」を押しました（Next Action Date を ${nextActionDate} に設定）`;
+  }
+  if (
+    action === 'snooze_1hour' ||
+    action === 'snooze_3hours' ||
+    action === 'snooze_6hours'
+  ) {
+    return `「${label}」を押しました（Next Action Hour を 現在時刻 から ${label} に変更）`;
+  }
+  return `「${label}」を押しました（Next Action Date を 現在の日付 から ${label} に変更）`;
+};
+
 const notifyCommentError = (
   onCommentError: ConsoleCommentErrorHandler | undefined,
   message: string,
@@ -526,10 +544,7 @@ export const ConsoleItemDetailContainer = ({
     onSetNextActionDate: (action) => {
       const actionId = generateCommentActionId();
       const nextActionDate = nextActionDateAfter(item.nextActionDate, action);
-      const actionDescription =
-        nextActionDate === null
-          ? `「${consoleActionButtonLabels[action]}」を押しました`
-          : `「${consoleActionButtonLabels[action]}」を押しました（Next Action Date を ${nextActionDate} に設定）`;
+      const actionDescription = nextActionDescription(action, nextActionDate);
       const timing = consoleItemActionTiming(
         item,
         actionDescription,
@@ -754,7 +769,7 @@ export const ConsoleItemDetailContainer = ({
         ? async (dependedIssueUrl: string) => {
             const timing = consoleItemActionTiming(
               item,
-              '「Set Depended Issue」を押しました',
+              `「Set Depended Issue」を押しました（Depended Issue URL を ${dependedIssueUrl} に設定）`,
             );
             if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
               const baseUrls = item.dependedIssueUrls;
@@ -972,8 +987,6 @@ export const ConsoleItemDetailContainer = ({
                         item,
                         awaitingWorkspaceOption,
                         undefined,
-                        timing.openedToActionMs,
-                        timing.actionDescription,
                       );
                     } catch (cause) {
                       if (isNetworkError(cause) && pjcode != null) {
