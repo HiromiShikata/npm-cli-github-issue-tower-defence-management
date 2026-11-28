@@ -1988,7 +1988,7 @@ describe('consoleOperationApi', () => {
         name: 'close rejects a project item absent from the project',
         action: 'close',
         issueUrl: linkedIssueUrl,
-        projectItemId: 'PVTI_triage_close_missing',
+        projectItemId: 'PVTI_absent_from_project',
         expectedStatusCode: 400,
         body: {},
       },
@@ -1996,7 +1996,7 @@ describe('consoleOperationApi', () => {
         name: 'set_next_action_hour rejects a project item absent from the project',
         action: 'set_next_action_hour',
         issueUrl: linkedIssueUrl,
-        projectItemId: 'PVTI_triage_hour_missing',
+        projectItemId: 'PVTI_absent_from_project',
         expectedStatusCode: 400,
         body: { nextActionHour: 9 },
       },
@@ -2106,7 +2106,7 @@ describe('consoleOperationApi', () => {
       {
         name: 'rejects a project item absent from the project',
         issueUrl: linkedIssueUrl,
-        projectItemId: 'PVTI_intmux_missing',
+        projectItemId: 'PVTI_absent_from_project',
         expectedStatusCode: 400,
         items: [],
       },
@@ -11380,13 +11380,21 @@ describe('consoleOperationApi', () => {
         name: 'Story',
         fieldId: 'storyField',
         databaseId: 1,
-        stories: [],
+        stories: [
+          {
+            id: 'workflow_story',
+            name: 'workflow',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
     };
     const createIssueBody = {
       pjcode: 'acme',
       title: 'Task',
+      body: 'Task body',
       storyName: 'workflow',
       nameWithOwner: 'o/r',
     };

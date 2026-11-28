@@ -1483,6 +1483,7 @@ describe('webServer new routes integration', () => {
       dashboardDataDir: null,
       dashboardProjectNames: [],
       issueRepository,
+      isRepositoryConfigured: () => true,
       consoleErrorReporter,
       port: 0,
     });
@@ -1522,6 +1523,7 @@ describe('webServer new routes integration', () => {
       dashboardDataDir: null,
       dashboardProjectNames: [],
       issueRepository,
+      isRepositoryConfigured: () => true,
       consoleErrorReporter,
       port: 0,
     });
@@ -1563,6 +1565,7 @@ describe('webServer new routes integration', () => {
       dashboardDataDir: null,
       dashboardProjectNames: [],
       issueRepository,
+      isRepositoryConfigured: () => true,
       consoleErrorReporter,
       port: 0,
     });
