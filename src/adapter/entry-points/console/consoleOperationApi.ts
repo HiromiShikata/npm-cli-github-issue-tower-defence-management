@@ -1682,19 +1682,29 @@ export const handleAttachmentUpload = async (
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
   const url = body.url;
-  const fileName = body.fileName;
-  const contentBase64 = body.contentBase64;
+  const files = body.files;
   if (!isNonEmptyString(url)) {
     return badRequest('url is required');
   }
   if (!isValidIssueOrPullRequestUrl(url)) {
     return badRequest('url must be a github issue or pull request url');
   }
-  if (!isNonEmptyString(fileName)) {
-    return badRequest('fileName is required');
+  if (!Array.isArray(files) || files.length === 0) {
+    return badRequest('files is required');
   }
-  if (!isNonEmptyString(contentBase64)) {
-    return badRequest('contentBase64 is required');
+  const decodedFiles: { fileName: string; content: Uint8Array }[] = [];
+  for (const file of files) {
+    if (
+      !isRecord(file) ||
+      !isNonEmptyString(file.fileName) ||
+      !isNonEmptyString(file.contentBase64)
+    ) {
+      return badRequest('files must contain fileName and contentBase64');
+    }
+    decodedFiles.push({
+      fileName: file.fileName,
+      content: Buffer.from(file.contentBase64, 'base64'),
+    });
   }
   const pjcodeResult = resolveConfiguredPjcode(context, body);
   if (typeof pjcodeResult !== 'string') {
@@ -1715,14 +1725,25 @@ export const handleAttachmentUpload = async (
   if (context.issueAttachmentRepository === null) {
     return badGateway('attachment upload is not configured');
   }
-  const markdown = await context.issueAttachmentRepository.uploadAttachment({
-    issueOrPullRequestUrl: url,
-    fileName,
-    content: Buffer.from(contentBase64, 'base64'),
-  });
+  const uploadResult = await context.issueAttachmentRepository.uploadAttachment(
+    {
+      issueOrPullRequestUrl: url,
+      files: decodedFiles,
+    },
+  );
+  const results =
+    typeof uploadResult === 'string'
+      ? [
+          {
+            fileName: decodedFiles[0].fileName,
+            status: 'uploaded' as const,
+            markdown: uploadResult,
+          },
+        ]
+      : uploadResult;
   return {
     statusCode: 200,
-    body: { ok: true, markdown },
+    body: { ok: true, results },
   };
 };
 

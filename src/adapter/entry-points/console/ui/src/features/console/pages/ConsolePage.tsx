@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  insertUploadPlaceholder,
+  removePlaceholder,
+  replacePlaceholderWithMarkdown,
+} from '../components/detail/ConsoleCommentComposer';
 import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
@@ -458,6 +463,12 @@ export const ConsolePage = () => {
     timerMode && airplaneSnapshot === null,
   );
 
+  const caches = useConsoleCaches(airplaneSnapshot);
+  const refreshQueuedTab = useCallback(
+    () => refreshSingleTab('queued'),
+    [refreshSingleTab],
+  );
+  const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const commentDrafts = useRef(loadCommentDrafts());
   const handleCommentDraftChange = useCallback(
     (draft: string) => {
@@ -470,6 +481,69 @@ export const ConsolePage = () => {
       saveCommentDrafts(commentDrafts.current);
     },
     [selectedItemKey],
+  );
+  const handleUploadFile = useCallback(
+    async (item: ConsoleListItem, files: File | File[]): Promise<string> => {
+      const selectedFiles = Array.isArray(files) ? files : [files];
+      let draftWithPlaceholders =
+        commentDrafts.current.get(item.url) ??
+        commentDrafts.current.get(item.projectItemId) ??
+        '';
+      for (const file of selectedFiles) {
+        draftWithPlaceholders = insertUploadPlaceholder(
+          draftWithPlaceholders,
+          file.name,
+        );
+      }
+      commentDrafts.current.set(item.url, draftWithPlaceholders);
+      saveCommentDrafts(commentDrafts.current);
+      const rawResult = await operations.uploadAttachment(item, files);
+      try {
+        const results: unknown = JSON.parse(rawResult);
+        if (Array.isArray(results)) {
+          let draft =
+            commentDrafts.current.get(item.url) ??
+            commentDrafts.current.get(item.projectItemId) ??
+            '';
+          for (const file of selectedFiles) {
+            const result = results.find(
+              (entry: unknown) =>
+                entry !== null &&
+                typeof entry === 'object' &&
+                'fileName' in entry &&
+                entry.fileName === file.name,
+            ) as
+              | { status?: string; markdown?: string; error?: string }
+              | undefined;
+            draft =
+              result?.status === 'uploaded' &&
+              typeof result.markdown === 'string'
+                ? replacePlaceholderWithMarkdown(
+                    draft,
+                    file.name,
+                    result.markdown,
+                  )
+                : removePlaceholder(draft, file.name);
+          }
+          if (draft) commentDrafts.current.set(item.url, draft);
+          else commentDrafts.current.delete(item.url);
+          saveCommentDrafts(commentDrafts.current);
+        }
+      } catch {
+        if (selectedFiles.length === 1) {
+          const draft = replacePlaceholderWithMarkdown(
+            commentDrafts.current.get(item.url) ?? '',
+            selectedFiles[0].name,
+            rawResult,
+          );
+          commentDrafts.current.set(item.url, draft);
+          saveCommentDrafts(commentDrafts.current);
+        }
+        return rawResult;
+      }
+      return rawResult;
+    },
+    [operations],
   );
 
   const [commentDraftRevision, setCommentDraftRevision] = useState(0);
@@ -488,12 +562,6 @@ export const ConsolePage = () => {
     [commentDraftRestored],
   );
 
-  const caches = useConsoleCaches(airplaneSnapshot);
-  const refreshQueuedTab = useCallback(
-    () => refreshSingleTab('queued'),
-    [refreshSingleTab],
-  );
-  const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const actionQueue = useConsoleActionQueue({
     isAirplaneModeOn: airplaneMode.status === 'on',
     projectCode: pjcode,
@@ -2095,11 +2163,14 @@ export const ConsolePage = () => {
             overlayStatus={overlayStatusForSelected}
             now={now}
             initialCommentDraft={
-              commentDrafts.current.get(selectedItem.projectItemId) ?? ''
+              commentDrafts.current.get(selectedItem.url) ??
+              commentDrafts.current.get(selectedItem.projectItemId) ??
+              ''
             }
             commentDraftRevision={commentDraftRevision}
             onCommentDraftRestored={commentDraftRestored}
             onCommentDraftChange={handleCommentDraftChange}
+            onUploadFile={(files) => handleUploadFile(selectedItem, files)}
             onQueueAction={handleQueueAction}
             onCommentError={(message, reason) =>
               actionQueue.showError(message, reason)

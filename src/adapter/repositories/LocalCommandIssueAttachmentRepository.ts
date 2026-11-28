@@ -4,6 +4,7 @@ import { join } from 'path';
 import {
   IssueAttachmentRepository,
   IssueAttachmentUploadRequest,
+  IssueAttachmentUploadResult,
 } from '../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 
@@ -32,6 +33,10 @@ export const ALLOWED_ATTACHMENT_EXTENSIONS = [
 ] as const;
 
 export const UPLOAD_FILE_BASE_NAME = 'attachment';
+export const ATTACHMENT_UPLOAD_TIMEOUT_MS = 300000;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object';
 
 export const sanitizeAttachmentFileName = (fileName: string): string => {
   const base = fileName.split('/').pop() ?? '';
@@ -58,6 +63,18 @@ export const relabelAttachmentMarkdown = (
   return `${match[1]}[${label}](${match[2]})`;
 };
 
+const relabelBatchAttachmentMarkdown = (
+  markdown: string,
+  fileName: string,
+): string => {
+  const sanitizedFileName = sanitizeAttachmentFileName(fileName);
+  const label =
+    markdown.startsWith('![') && !/\.(png|jpe?g|gif|webp|svg)$/i.test(fileName)
+      ? `${sanitizedFileName.replace(/\.[^.]*$/, '')}.png`
+      : sanitizedFileName;
+  return relabelAttachmentMarkdown(markdown, label);
+};
+
 export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRepository {
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
@@ -67,38 +84,121 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
 
   async uploadAttachment(
     request: IssueAttachmentUploadRequest,
-  ): Promise<string> {
+  ): Promise<IssueAttachmentUploadResult[] | string> {
+    const isBatchUpload = 'files' in request;
+    const files = isBatchUpload
+      ? request.files
+      : [{ fileName: request.fileName, content: request.content }];
     const directory = await mkdtemp(
       join(this.temporaryDirectoryRoot, 'console-attachment-'),
     );
-    const filePath = join(
-      directory,
-      `${UPLOAD_FILE_BASE_NAME}${resolveAttachmentExtension(request.fileName)}`,
+    const filePaths = files.map((file, index) =>
+      join(
+        directory,
+        `${UPLOAD_FILE_BASE_NAME}${isBatchUpload ? `-${index}` : ''}${resolveAttachmentExtension(file.fileName)}`,
+      ),
     );
     try {
-      await writeFile(filePath, request.content);
+      await Promise.all(
+        files.map((file, index) => writeFile(filePaths[index], file.content)),
+      );
+      if (!isBatchUpload) {
+        const result = await this.localCommandRunner.runCommand(
+          UPLOAD_COMMAND,
+          [filePaths[0], request.issueOrPullRequestUrl],
+          {
+            env: {
+              GH_TOKEN: this.resolveGithubToken(request.issueOrPullRequestUrl),
+            },
+          },
+        );
+        if (result.exitCode !== 0) {
+          throw new Error(
+            `${UPLOAD_COMMAND} failed with exit code ${result.exitCode}: ${result.stderr.trim()}`,
+          );
+        }
+        const markdown = result.stdout.trim();
+        if (markdown.length === 0)
+          throw new Error(`${UPLOAD_COMMAND} returned no markdown`);
+        return relabelAttachmentMarkdown(
+          markdown,
+          sanitizeAttachmentFileName(files[0].fileName),
+        );
+      }
       const result = await this.localCommandRunner.runCommand(
         UPLOAD_COMMAND,
-        [filePath, request.issueOrPullRequestUrl],
+        ['--output-format=jsonl', ...filePaths, request.issueOrPullRequestUrl],
         {
           env: {
             GH_TOKEN: this.resolveGithubToken(request.issueOrPullRequestUrl),
           },
+          timeout: ATTACHMENT_UPLOAD_TIMEOUT_MS,
+          killSignal: 'SIGTERM',
+          killProcessGroup: true,
         },
       );
-      if (result.exitCode !== 0) {
+      const records = new Map<
+        string,
+        { status: string; markdown?: string; error?: string }
+      >();
+      for (const line of result.stdout
+        .split('\n')
+        .map((value) => value.trim())
+        .filter(Boolean)) {
+        try {
+          const record: unknown = JSON.parse(line);
+          if (isRecord(record) && typeof record.filePath === 'string') {
+            records.set(record.filePath, {
+              status:
+                'status' in record && typeof record.status === 'string'
+                  ? record.status
+                  : '',
+              ...(typeof record.markdown === 'string'
+                ? { markdown: record.markdown }
+                : {}),
+              ...(typeof record.error === 'string'
+                ? { error: record.error }
+                : {}),
+            });
+          }
+        } catch {
+          continue;
+        }
+      }
+      const fallbackError =
+        result.stderr.trim() ||
+        `${UPLOAD_COMMAND} failed with exit code ${result.exitCode}`;
+      const results: IssueAttachmentUploadResult[] = files.map(
+        (file, index) => {
+          const record = records.get(filePaths[index]);
+          if (
+            record?.status === 'uploaded' &&
+            typeof record.markdown === 'string'
+          ) {
+            return {
+              fileName: file.fileName,
+              status: 'uploaded' as const,
+              markdown: relabelBatchAttachmentMarkdown(
+                record.markdown,
+                file.fileName,
+              ),
+            };
+          }
+          return {
+            fileName: file.fileName,
+            status: 'failed' as const,
+            error: record?.error ?? fallbackError,
+          };
+        },
+      );
+      if (!isBatchUpload) {
+        const result = results[0];
+        if (result?.status === 'uploaded') return result.markdown;
         throw new Error(
-          `${UPLOAD_COMMAND} failed with exit code ${result.exitCode}: ${result.stderr.trim()}`,
+          `${UPLOAD_COMMAND} failed with exit code ${result?.error ?? result?.status}`,
         );
       }
-      const markdown = result.stdout.trim();
-      if (markdown.length === 0) {
-        throw new Error(`${UPLOAD_COMMAND} returned no markdown`);
-      }
-      return relabelAttachmentMarkdown(
-        markdown,
-        sanitizeAttachmentFileName(request.fileName),
-      );
+      return results;
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
