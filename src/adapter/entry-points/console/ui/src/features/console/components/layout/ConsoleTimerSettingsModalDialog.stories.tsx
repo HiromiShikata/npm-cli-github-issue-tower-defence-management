@@ -26,7 +26,7 @@ type Story = StoryObj<typeof ConsoleTimerSettingsModalDialog>;
 const normalView: ConsoleTimerHeaderView = {
   tone: 'normal',
   timeText: '12:34',
-  nextText: 'xcare',
+  nextText: 'beta',
 };
 
 export const Closed: Story = {
@@ -99,7 +99,7 @@ export const LastMinute: Story = {
     isOpen: false,
     timerMode: true,
     isTimerActive: true,
-    timerHeaderView: { tone: 'warning', timeText: '00:42', nextText: 'xcare' },
+    timerHeaderView: { tone: 'warning', timeText: '00:42', nextText: 'beta' },
   },
 };
 
@@ -111,7 +111,7 @@ export const Expired: Story = {
     timerHeaderView: {
       tone: 'danger',
       timeText: 'next submit',
-      nextText: 'xcare',
+      nextText: 'beta',
     },
   },
 };
