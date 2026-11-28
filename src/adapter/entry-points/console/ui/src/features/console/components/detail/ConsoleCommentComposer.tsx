@@ -95,7 +95,14 @@ export const ConsoleCommentComposer = ({
   const initialDisplayDraft = initialDraftValue;
   const [draft, setDraft] = useState<string>(initialDisplayDraft);
   const draftRef = useRef<string>(initialDisplayDraft);
+  const isMountedRef = useRef(true);
   draftRef.current = draft;
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (initialDraftValue !== draftRef.current) {
       const nextDraft = initialDraftValue;
@@ -223,14 +230,18 @@ export const ConsoleCommentComposer = ({
           );
           draftRef.current = nextDraft;
           setDraft(nextDraft);
-          onDraftChange?.(nextDraft);
+          if (isMountedRef.current) {
+            onDraftChange?.(nextDraft);
+          }
         } else {
           const error = result?.error ?? 'failed to upload file';
           firstError ??= error;
           const nextDraft = removePlaceholder(draftRef.current, file.name);
           draftRef.current = nextDraft;
           setDraft(nextDraft);
-          onDraftChange?.(nextDraft);
+          if (isMountedRef.current) {
+            onDraftChange?.(nextDraft);
+          }
         }
       });
       setUploadStatus(

@@ -104,10 +104,11 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
         if (child.pid !== undefined) {
           try {
             process.kill(-child.pid, options.killSignal ?? 'SIGTERM');
-          } catch {
-            return;
-          }
+          } catch {}
         }
+        child.stdout.destroy();
+        child.stderr.destroy();
+        resolve({ stdout, stderr: 'upload timed out', exitCode: 1 });
       }, options.timeout ?? 300000);
       child.once('error', (error) => {
         globalThis.clearTimeout(timeout);
