@@ -3,6 +3,10 @@ const mockSpawnSync = jest.fn();
 
 jest.mock('child_process', () => ({
   execFile: jest.fn(),
+  spawn: (...args: Parameters<typeof import('child_process').spawn>) =>
+    jest
+      .requireActual<typeof import('child_process')>('child_process')
+      .spawn(...args),
   spawnSync: jest.fn((...args: unknown[]) => {
     mockSpawnSync(...args);
   }),
@@ -23,6 +27,26 @@ describe('NodeLocalCommandRunner', () => {
   });
 
   describe('runCommand', () => {
+    it('returns at the backstop timeout when a detached child holds stdout open', async () => {
+      const resultPromise = runner.runCommand(
+        'sh',
+        ['-c', 'setsid sleep 20 & sleep 20'],
+        { killProcessGroup: true, timeout: 300 },
+      );
+      const result = await Promise.race([
+        resultPromise,
+        new Promise<never>((_, reject) =>
+          globalThis.setTimeout(
+            () => reject(new Error('command runner did not return')),
+            5000,
+          ),
+        ),
+      ]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toBe('upload timed out');
+    }, 15000);
+
     it('should execute command successfully', async () => {
       mockExecFileAsync.mockResolvedValue({
         stdout: 'command output',

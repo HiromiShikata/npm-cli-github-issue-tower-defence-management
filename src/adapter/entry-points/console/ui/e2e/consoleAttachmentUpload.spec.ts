@@ -217,3 +217,59 @@ test('keeps an upload running after navigating away and writes the link into the
     await harness.stop();
   }
 });
+
+test('keeps text typed after returning to the task during an upload', async ({
+  page,
+}) => {
+  const harness = await startConsoleE2eHarness({
+    holdUploadAttachment: true,
+  });
+
+  try {
+    await openFixtureItem(page, harness);
+
+    const composerToggle = page.locator('.console-composer-toggle');
+    const composer = page.locator('.console-composer-input');
+    if ((await composer.count()) === 0) {
+      await composerToggle.click();
+    }
+    await expect(composer).toBeVisible();
+
+    await page.getByLabel('Attach files').setInputFiles({
+      name: NAVIGATION_FILE_NAME,
+      mimeType: 'image/png',
+      buffer: Buffer.from('navigation attachment'),
+    });
+    await expect
+      .poll(() => harness.uploadAttachmentRequestCalls.length)
+      .toBe(1);
+
+    await tabByLabel(page, 'Awaiting Owner').click();
+    await itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ).click();
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(page, ITEM_TITLE).click();
+    const originalComposer = page.locator('.console-composer-input');
+    if ((await originalComposer.count()) === 0) {
+      await page.locator('.console-composer-toggle').click();
+    }
+    await expect(originalComposer).toBeVisible();
+    await originalComposer.pressSequentially('typed while uploading');
+
+    harness.releaseUploadAttachment();
+
+    await expect(originalComposer).toHaveValue(
+      new RegExp(
+        `${escapeRegExp(NAVIGATION_MARKDOWN)}.*${escapeRegExp('typed while uploading')}`,
+      ),
+    );
+    await expect(originalComposer).not.toHaveValue(
+      new RegExp(escapeRegExp(`![uploading ${NAVIGATION_FILE_NAME}]()`)),
+    );
+  } finally {
+    harness.releaseUploadAttachment();
+    await harness.stop();
+  }
+});

@@ -199,6 +199,36 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
     );
   });
 
+  it('does not write a draft after the composer unmounts during an upload', async () => {
+    let resolveUpload!: (markdown: string) => void;
+    const onDraftChange = jest.fn();
+    const uploadFile = jest.fn(
+      () => new Promise<string>((resolve) => (resolveUpload = resolve)),
+    );
+    const { getByLabelText, unmount } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={submitComment}
+        onDraftChange={onDraftChange}
+        onUploadFile={uploadFile}
+      />,
+    );
+    const file = new File(['binary'], 'unmounted.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(1));
+
+    const draftChangeCallsAtUnmount = onDraftChange.mock.calls.length;
+    unmount();
+    resolveUpload('![unmounted.png](https://example.test/unmounted)');
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onDraftChange).toHaveBeenCalledTimes(draftChangeCallsAtUnmount);
+  });
+
   it('keeps an upload pending at 300000 ms and times out at 360000 ms with a retryable error', async () => {
     jest.useFakeTimers();
     try {
