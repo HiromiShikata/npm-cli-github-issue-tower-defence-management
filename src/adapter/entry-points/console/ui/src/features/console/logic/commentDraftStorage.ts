@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'console-comment-drafts';
 
 const removeUploadPlaceholders = (draft: string): string =>
-  draft.replace(/\n{0,3}!\[uploading [^\]]+\]\(\)\n?/g, '');
+  draft.replace(/\n{0,3}!\[uploading .*?\]\(\)\n?/g, '');
 
 export const loadCommentDrafts = (options?: {
   discardInterruptedUploads?: boolean;
@@ -11,7 +11,7 @@ export const loadCommentDrafts = (options?: {
     if (stored === null) return new Map();
     const parsed: unknown = JSON.parse(stored);
     if (!Array.isArray(parsed)) return new Map();
-    return new Map(
+    const drafts = new Map(
       parsed
         .filter(
           (entry): entry is [string, string] =>
@@ -27,6 +27,8 @@ export const loadCommentDrafts = (options?: {
             : draft,
         ]),
     );
+    if (options?.discardInterruptedUploads) saveCommentDrafts(drafts);
+    return drafts;
   } catch (e) {
     console.error('Failed to load comment drafts from storage:', e);
     return new Map();
