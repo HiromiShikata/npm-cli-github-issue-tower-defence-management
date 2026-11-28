@@ -4143,10 +4143,26 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         closeFailure,
       );
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody, expect.any(String)],
+        [
+          issueItem,
+          expectedCommentBody,
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [
+          issueItem,
+          'close',
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
     },
   );
@@ -4171,10 +4187,26 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       const addCommentMock = operations.addComment as jest.Mock;
       const closeIssueMock = operations.closeIssue as jest.Mock;
       expect(addCommentMock.mock.calls).toEqual([
-        [issueItem, expectedCommentBody, expect.any(String)],
+        [
+          issueItem,
+          expectedCommentBody,
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
       expect(closeIssueMock.mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [
+          issueItem,
+          'close',
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
       expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
         closeIssueMock.mock.invocationCallOrder[0],
@@ -4195,7 +4227,15 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
 
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [
+          issueItem,
+          'close',
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
     },
   );
@@ -4232,7 +4272,15 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       );
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [
+          issueItem,
+          'close',
+          expect.any(String),
+          expect.any(Number),
+          buttonLabel === 'OK & Close'
+            ? '「OK & Close」を押しました'
+            : 'コメントを投稿して閉じました',
+        ],
       ]);
     },
   );
@@ -4681,7 +4729,13 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       ],
     ]);
     expect(setStatusMock.mock.calls).toEqual([
-      [issueItem, awaitingWorkspaceOption],
+      [
+        issueItem,
+        awaitingWorkspaceOption,
+        undefined,
+        expect.any(Number),
+        '「Set Depended Issue」を押しました',
+      ],
     ]);
     expect(
       replaceDependedIssueUrlMock.mock.invocationCallOrder[0],
@@ -4700,12 +4754,28 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
           expect.any(String),
         ],
       ],
-      expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
+      expectedSetStatusCalls: [
+        [
+          issueItem,
+          awaitingWorkspaceOption,
+          undefined,
+          expect.any(Number),
+          '「Set Depended Issue」を押しました',
+        ],
+      ],
     },
     {
       sentStepCount: 1,
       expectedSetDependedIssueUrlCalls: [],
-      expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
+      expectedSetStatusCalls: [
+        [
+          issueItem,
+          awaitingWorkspaceOption,
+          undefined,
+          expect.any(Number),
+          '「Set Depended Issue」を押しました',
+        ],
+      ],
     },
   ])(
     'commit told sentStepCount $sentStepCount re-runs only the steps not yet sent',
@@ -4763,6 +4833,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
       issueItem,
       dependedIssueUrlToSubmit,
+      expect.any(Number),
+      '「Set Depended Issue」を押しました',
     );
   });
 
@@ -4899,6 +4971,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
         issueItem,
         dependedIssueUrlToSubmit,
+        expect.any(Number),
+        '「Set Depended Issue」を押しました',
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();
@@ -4956,10 +5030,15 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
     expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
       issueItem,
       'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
+      expect.any(Number),
+      '「Set Depended Issue」を押しました',
     );
     expect(operations.setStatus).toHaveBeenCalledWith(
       issueItem,
       awaitingWorkspaceOption,
+      undefined,
+      expect.any(Number),
+      '「Set Depended Issue」を押しました',
     );
   });
 
@@ -5020,6 +5099,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       expect(operations.replaceDependedIssueUrl).toHaveBeenCalledWith(
         itemWithDependedIssueUrl,
         '',
+        expect.any(Number),
+        '「Set Depended Issue」を押しました',
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();
