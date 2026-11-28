@@ -1116,9 +1116,27 @@ export const startConsoleE2eHarness = async (options?: {
     uiDistDir,
     consoleDataOutputDir,
     issueAttachmentRepository: {
-      uploadAttachment: async ({ fileName, content }): Promise<string> => {
-        uploadAttachmentCalls.push({ fileName, content: Buffer.from(content) });
-        return `![${fileName}](https://example.com/${fileName})`;
+      uploadAttachment: async (
+        request,
+      ): Promise<
+        string | { fileName: string; status: 'uploaded'; markdown: string }[]
+      > => {
+        const files =
+          'files' in request
+            ? request.files
+            : [{ fileName: request.fileName, content: request.content }];
+        for (const file of files) {
+          uploadAttachmentCalls.push({
+            fileName: file.fileName,
+            content: Buffer.from(file.content),
+          });
+        }
+        const uploaded = files.map((file) => ({
+          fileName: file.fileName,
+          status: 'uploaded' as const,
+          markdown: `![${file.fileName}](https://example.com/${file.fileName})`,
+        }));
+        return 'files' in request ? uploaded : uploaded[0].markdown;
       },
     },
     issueRepository: {
