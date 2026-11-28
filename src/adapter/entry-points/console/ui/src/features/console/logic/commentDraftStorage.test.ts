@@ -40,6 +40,38 @@ describe('loadCommentDrafts', () => {
     localStorage.clear();
   });
 
+  const interruptedUploadDraftCases = [
+    {
+      name: 'a simple file name',
+      storedDraft:
+        'Investigating the failing deploy.\n\n\n![uploading shot.png]()\n',
+      expectedDraft: 'Investigating the failing deploy.',
+    },
+    {
+      name: 'a file name containing dots and dashes',
+      storedDraft:
+        'Investigating the failing deploy.\n\n\n![uploading my-file.v2.png]()\n',
+      expectedDraft: 'Investigating the failing deploy.',
+    },
+  ];
+
+  it.each(interruptedUploadDraftCases)(
+    'removes an upload placeholder left by an interrupted upload when the drafts are loaded for $name',
+    ({ storedDraft, expectedDraft }) => {
+      saveCommentDrafts(
+        new Map([
+          ['PVTI_1', storedDraft],
+          ['PVTI_2', 'no placeholder here'],
+        ]),
+      );
+
+      const loaded = loadCommentDrafts();
+
+      expect(loaded.get('PVTI_1')).toBe(expectedDraft);
+      expect(loaded.get('PVTI_2')).toBe('no placeholder here');
+    },
+  );
+
   it('returns an empty map when nothing was ever saved', () => {
     const loaded = loadCommentDrafts();
     expect(loaded).toEqual(new Map());
