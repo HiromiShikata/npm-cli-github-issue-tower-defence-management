@@ -93,7 +93,9 @@ export class ConsoleNetworkError extends Error {
   }
 }
 
-const fetchResponseOrNetworkError = async (url: string): Promise<Response> => {
+export const fetchResponseOrNetworkError = async (
+  url: string,
+): Promise<Response> => {
   try {
     return await fetch(url);
   } catch (cause: unknown) {

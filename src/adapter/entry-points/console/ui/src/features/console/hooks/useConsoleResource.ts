@@ -45,7 +45,7 @@ export const useConsoleResource = <T>(
         setError(cause instanceof Error ? cause.message : String(cause));
         setIsLoading(false);
       },
-    });
+    }).stop;
   }, [cache, key, url]);
 
   return { data, isLoading, error };

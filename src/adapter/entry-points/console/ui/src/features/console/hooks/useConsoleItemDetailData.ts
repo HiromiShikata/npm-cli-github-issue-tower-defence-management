@@ -159,7 +159,7 @@ export const useConsoleItemDetailData = (
               filesError:
                 cause instanceof Error ? cause.message : String(cause),
             }),
-        }),
+        }).stop,
       );
       stopLoads.push(
         startLoadWithNetworkRetry<ConsoleCommit[]>({
@@ -176,7 +176,7 @@ export const useConsoleItemDetailData = (
               commitsError:
                 cause instanceof Error ? cause.message : String(cause),
             }),
-        }),
+        }).stop,
       );
     }
 
