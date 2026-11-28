@@ -184,8 +184,6 @@ export const reviewRequest = (
       ...(actionId === undefined ? {} : { actionId }),
       ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
       ...(actionDescription === undefined ? {} : { actionDescription }),
-      ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
-      ...(actionDescription === undefined ? {} : { actionDescription }),
     };
   }
   if (action === 'request_changes') {
@@ -219,6 +217,8 @@ export const reviewRequest = (
       commentBody: TOTALLY_WRONG_COMMENT_BODY,
       expectedStatusName: item.status,
       ...(actionId === undefined ? {} : { actionId }),
+      ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+      ...(actionDescription === undefined ? {} : { actionDescription }),
     };
   }
   return {
