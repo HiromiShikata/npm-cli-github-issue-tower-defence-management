@@ -1,3 +1,10 @@
+## [2.219.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.3...v2.219.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* **remote-machine-status:** count remote subagents with one perl process ([#3804](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3804)) ([94999b1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/94999b148531d59fe43d7c081d934d5d6adeb398))
+
 ## [2.219.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.2...v2.219.3) (2026-11-28)
 
 
