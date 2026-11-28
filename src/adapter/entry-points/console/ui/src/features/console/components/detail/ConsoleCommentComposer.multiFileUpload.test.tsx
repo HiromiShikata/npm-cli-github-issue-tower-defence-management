@@ -210,26 +210,25 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
           onUploadFile={uploadFile}
         />,
       );
+      const textarea = getByPlaceholderText(
+        'Leave a comment…',
+      ) as HTMLTextAreaElement;
       const file = new File(['binary'], 'slow.png', { type: 'image/png' });
       fireEvent.change(getByLabelText('Attach files'), {
         target: { files: [file] },
       });
-      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+      expect(textarea).toHaveValue(
         '\n\n\n![uploading slow.png]()\n',
       );
       await act(async () => {
         await jest.advanceTimersByTimeAsync(300000);
       });
-      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
-        expect.stringContaining('uploading'),
-      );
+      expect(textarea.value).toContain('uploading');
       expect(queryByText(/Upload failed/)).toBeNull();
       await act(async () => {
         await jest.advanceTimersByTimeAsync(60000);
       });
-      expect(getByPlaceholderText('Leave a comment…')).not.toHaveValue(
-        expect.stringContaining('uploading'),
-      );
+      expect(textarea.value).not.toContain('uploading');
       expect(queryByText(/Upload failed/)).toBeTruthy();
     } finally {
       jest.useRealTimers();
