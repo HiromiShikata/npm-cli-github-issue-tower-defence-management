@@ -12898,6 +12898,49 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       ]);
     });
 
+    it('does not return a merged linked pull request even when includeClosedPullRequests is set', async () => {
+      const mergedPullRequestUrl =
+        'https://github.com/HiromiShikata/test-repository/pull/11148';
+      const mergedTimeline = (): ReturnType<typeof buildTimelineResponse> => {
+        const response = buildTimelineResponse('MERGEABLE');
+        const node = response.data.repository.issue.timelineItems.nodes[0];
+        return {
+          ...response,
+          data: {
+            repository: {
+              issue: {
+                timelineItems: {
+                  pageInfo: { endCursor: null, hasNextPage: false },
+                  nodes: [
+                    {
+                      ...node,
+                      source: { ...node.source, state: 'MERGED' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        };
+      };
+
+      mockFetchRoutes({
+        timeline: mergedTimeline,
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: mergedPullRequestUrl,
+            state: 'MERGED',
+          }),
+      });
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+        { bypassCache: true, includeClosedPullRequests: true },
+      );
+
+      expect(result).toEqual([]);
+    });
+
     it('keeps isConflicted false when mergeability stays UNKNOWN after the bounded retries', async () => {
       const fetchSpy = mockFetchRoutes({
         timeline: () => buildTimelineResponse('UNKNOWN'),

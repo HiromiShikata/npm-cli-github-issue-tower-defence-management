@@ -423,6 +423,12 @@ type SlimPullRequestResponse = {
   errors?: Array<{ message: string }>;
 };
 
+const isAcceptedRelatedPullRequestState = (
+  state: string,
+  includeClosedPullRequests: boolean,
+): boolean =>
+  state === 'OPEN' || (includeClosedPullRequests && state === 'CLOSED');
+
 type SlimPullRequest = {
   url: string;
   state: string;
@@ -3691,7 +3697,10 @@ export class ApiV3CheerioRestIssueRepository
         : await this.fetchSlimPullRequest(prOwner, prRepo, pr.number);
       if (
         !fetchedSlimPullRequest ||
-        (!includeClosedPullRequests && fetchedSlimPullRequest.state !== 'OPEN')
+        !isAcceptedRelatedPullRequestState(
+          fetchedSlimPullRequest.state,
+          includeClosedPullRequests,
+        )
       ) {
         console.info(
           `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
@@ -3751,7 +3760,13 @@ export class ApiV3CheerioRestIssueRepository
     if (!item) return false;
     if (item.__typename !== 'CrossReferencedEvent') return false;
     if (!item.source || item.source.__typename !== 'PullRequest') return false;
-    if (!includeClosedPullRequests && item.source.state !== 'OPEN') {
+    if (
+      item.source.state === undefined ||
+      !isAcceptedRelatedPullRequestState(
+        item.source.state,
+        includeClosedPullRequests,
+      )
+    ) {
       return false;
     }
     return isPullRequestRelatedToIssue({
