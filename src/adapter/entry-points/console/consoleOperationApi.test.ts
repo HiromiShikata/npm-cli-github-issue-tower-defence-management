@@ -7107,6 +7107,161 @@ describe('consoleOperationApi', () => {
         );
       });
     });
+    it('recovers a lost create response by searching for the requested issue and completes setup', async () => {
+      const issueUrl = 'https://github.com/acme-labs/portal/issues/77';
+      const createdIssue: Issue = { ...mock<Issue>(), url: issueUrl, itemId: 'PVTI_recovered' };
+      issueRepository.createNewIssue.mockRejectedValue(new Error('response lost'));
+      issueRepository.searchIssue.mockResolvedValue([
+        { url: issueUrl, title: 'Recovered task', number: '77' },
+      ]);
+      issueRepository.get.mockResolvedValue(createdIssue);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'Recovered task',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          actionId: 'lost-response-recovery',
+        },
+      );
+
+      expect(response).toEqual({ statusCode: 200, body: { ok: true, issueUrl } });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(issueRepository.searchIssue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Recovered task',
+          type: 'issue',
+          assignee: 'authenticated-user',
+        }),
+      );
+      expect(issueRepository.addIssueToProject).toHaveBeenCalledWith(
+        expect.anything(),
+        issueUrl,
+      );
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.anything(),
+        createdIssue,
+        'opt_blue',
+      );
+    });
+
+    it('allows the same action to retry when create failed and the search found nothing', async () => {
+      issueRepository.createNewIssue.mockRejectedValue(new Error('create failed'));
+      issueRepository.searchIssue.mockResolvedValue([]);
+      const operationContext = contextWithCreateIssueProjectRepository(() => ({
+        getProject: jest.fn().mockResolvedValue(projectWithStory()),
+        updateStoryList: jest.fn(),
+      }));
+      const body = {
+        pjcode: 'acme',
+        title: 'Retry after no match',
+        storyName: 'Portal redesign',
+        nameWithOwner: 'acme-labs/portal',
+        actionId: 'retry-after-no-match',
+      };
+
+      const first = await handleCreateIssue(operationContext, body);
+      const second = await handleCreateIssue(operationContext, body);
+
+      expect(first).toEqual({
+        statusCode: 500,
+        body: { ok: false, issueCreated: false, error: 'create failed' },
+      });
+      expect(second.statusCode).toBe(500);
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports an unknown creation state when both create and recovery search fail', async () => {
+      issueRepository.createNewIssue.mockRejectedValue(new Error('response lost'));
+      issueRepository.searchIssue.mockRejectedValue(new Error('search failed'));
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'Unknown creation state',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toEqual(
+        expect.not.objectContaining({ issueCreated: expect.anything() }),
+      );
+    });
+
+    it('resumes after the post-add read-back fails without creating a duplicate', async () => {
+      const issueUrl = 'https://github.com/acme-labs/portal/issues/78';
+      const createdIssue: Issue = { ...mock<Issue>(), url: issueUrl, itemId: 'PVTI_readback' };
+      issueRepository.get.mockRejectedValueOnce(new Error('read-back failed')).mockResolvedValue(createdIssue);
+      const operationContext = contextWithCreateIssueProjectRepository(() => ({
+        getProject: jest.fn().mockResolvedValue(projectWithStory()),
+        updateStoryList: jest.fn(),
+      }));
+      const body = {
+        pjcode: 'acme',
+        title: 'Read-back retry',
+        storyName: 'Portal redesign',
+        nameWithOwner: 'acme-labs/portal',
+        actionId: 'read-back-retry',
+      };
+
+      const first = await handleCreateIssue(operationContext, body);
+      const second = await handleCreateIssue(operationContext, body);
+
+      expect(first.statusCode).toBe(500);
+      expect(first.body).toEqual(
+        expect.objectContaining({
+          ok: false,
+          issueCreated: true,
+          issueUrl,
+          failedStep: 'addIssueToProject',
+        }),
+      );
+      expect(second).toEqual({ statusCode: 200, body: { ok: true, issueUrl } });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the created issue recoverable when the action record directory is a regular file', async () => {
+      const issueUrl = 'https://github.com/acme-labs/portal/issues/79';
+      const createdIssue: Issue = { ...mock<Issue>(), url: issueUrl, itemId: 'PVTI_file_store' };
+      const regularFile = path.join(baseDir, 'not-a-directory');
+      fs.writeFileSync(regularFile, 'not a directory');
+      const operationContext = contextWithCreateIssueProjectRepository(
+        () => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        }),
+      );
+      const fileContext = { ...operationContext, consoleDataOutputDir: regularFile };
+      issueRepository.createNewIssue.mockResolvedValue(79);
+      issueRepository.get.mockResolvedValue(createdIssue);
+      const body = {
+        pjcode: 'acme',
+        title: 'Regular file action store',
+        storyName: 'Portal redesign',
+        nameWithOwner: 'acme-labs/portal',
+        actionId: 'regular-file-action-store',
+      };
+
+      const first = await handleCreateIssue(fileContext, body);
+      const second = await handleCreateIssue(fileContext, body);
+
+      expect(first.statusCode === 200 || first.statusCode === 500).toBe(true);
+      expect(first.body).toEqual(
+        expect.objectContaining({ issueUrl }),
+      );
+      expect(second.body).toEqual(expect.objectContaining({ issueUrl }));
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('handleReorderStory', () => {
