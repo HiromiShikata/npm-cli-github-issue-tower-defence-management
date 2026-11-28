@@ -1,3 +1,10 @@
+## [2.218.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.218.0...v2.218.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **console:** bind review and triage writes to the selected project item ([#3796](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3796)) ([9f8c8e7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9f8c8e7bffe939019b4acc87cfe9b4358fad1fa7))
+
 # [2.218.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.4...v2.218.0) (2026-11-28)
 
 
