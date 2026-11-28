@@ -152,10 +152,14 @@ export type ConsoleOperationsApi = {
   setDependedIssueUrl: (
     item: ConsoleListItem,
     dependedIssueUrl: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   replaceDependedIssueUrl: (
     item: ConsoleListItem,
     dependedIssueUrl: string,
+    openedToActionMs?: number,
+    actionDescription?: string,
   ) => Promise<void>;
   onAfterMoveToAwaitingWorkspace?: () => Promise<void>;
 };
