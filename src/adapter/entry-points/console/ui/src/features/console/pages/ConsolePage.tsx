@@ -555,7 +555,6 @@ export const ConsolePage = () => {
                   )
                 : removePlaceholder(draft, file.name);
           });
-          draft = draft.replace(/\n{4}(?=!\[)/g, '\n\n\n');
           if (draft) commentDrafts.current.set(item.projectItemId, draft);
           else commentDrafts.current.delete(item.projectItemId);
           persistCommentDrafts();

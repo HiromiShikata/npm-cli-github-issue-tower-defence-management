@@ -91,17 +91,13 @@ export const ConsoleCommentComposer = ({
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
   const initialDraftValue = initialDraft ?? '';
-  const initialDisplayDraft = initialDraftValue.includes('![')
-    ? initialDraftValue.replace(/\\n/g, '\n')
-    : initialDraftValue;
+  const initialDisplayDraft = initialDraftValue;
   const [draft, setDraft] = useState<string>(initialDisplayDraft);
   const draftRef = useRef<string>(initialDisplayDraft);
   draftRef.current = draft;
   useEffect(() => {
     if (initialDraftValue !== draftRef.current) {
-      const nextDraft = initialDraftValue.includes('![')
-        ? initialDraftValue.replace(/\\n/g, '\n')
-        : initialDraftValue;
+      const nextDraft = initialDraftValue;
       draftRef.current = nextDraft;
       setDraft(nextDraft);
     }
