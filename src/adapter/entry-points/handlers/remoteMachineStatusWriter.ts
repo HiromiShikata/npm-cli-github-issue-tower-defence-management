@@ -52,41 +52,134 @@ export const parseWorkerHostsYaml = (text: string): WorkerHost[] => {
 };
 
 export const REMOTE_METRICS_SEPARATOR = '#TDPM-SEP';
-export const REMOTE_SUBAGENT_FACTS_COMMAND = `for directory in "\${TDPM_PROC_DIR:-/proc}"/[0-9]*; do
-  [ -d "$directory" ] || continue
-  pid=\${directory##*/}
-  stat=$(cat "$directory/stat" 2>/dev/null) || continue
-  ppid=$(printf '%s\\n' "$stat" | sed 's/.*) //; s/^[^ ]* //; s/ .*//')
-  argv=$(cat "$directory/cmdline" 2>/dev/null) || continue
-  environment=$(cat "$directory/environ" 2>/dev/null || true)
-  first=$(cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '1p')
-  if [ "\${first##*/}" = claude ] && tr '\\0' '\\n' < "$directory/cmdline" | awk 'prev == "-p" && /^Take ownership of / { found = 1 } { prev = $0 } END { exit found ? 0 : 1 }'; then
-    issueUrl=$(tr '\\0' '\\n' < "$directory/cmdline" | awk 'prev == "-p" && /^Take ownership of / { sub(/^Take ownership of /, ""); print; exit } { prev = $0 }')
-    config=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CONFIG_DIR=//p')
-    home=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^HOME=//p')
-    [ -n "$config" ] || config="$home/.claude"
-    session=$(cat "$directory/environ" | tr '\\0' '\\n' | sed -n 's/^CLAUDE_CODE_SESSION_ID=//p')
-    printf '%s\\t%s\\tclaude-worker\\t%s\\t-\\n' "$pid" "$ppid" "$issueUrl"
-    if ! cat "$directory/environ" >/dev/null 2>&1; then
-      printf '%s\\tmeta\\t!\\n' "$pid"
-      continue
-    fi
-    for project in "$config"/projects/*; do
-      [ -d "$project" ] || continue
-      if [ -n "$session" ]; then sessions="$project/$session"; else sessions="$project"/*; fi
-      for sessionDirectory in $sessions; do
-        [ -d "$sessionDirectory/subagents" ] || continue
-        for meta in "$sessionDirectory/subagents"/*.meta.json; do
-          [ -f "$meta" ] || continue
-          encoded=$(base64 < "$meta" 2>/dev/null | tr -d '\\n') && [ -n "$encoded" ] || encoded='!'
-          printf '%s\\tmeta\\t%s\\n' "$pid" "$encoded"
-        done
-      done
-    done
-    continue
-  fi
-  
-if [ "\${first##*/}" = node ] && cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '2p' | grep -q '/codex$' && [ "$(cat "$directory/cmdline" | tr '\\0' '\\n' | sed -n '3p')" = exec ]; then printf '%s\\t%s\\tcodex-launcher\\t-\\t-\\n' "$pid" "$ppid"; else printf '%s\\t%s\\tother\\t-\\t-\\n' "$pid" "$ppid"; fi; done`;
+export const REMOTE_SUBAGENT_FACTS_PERL_MISSING_MARKER = 'TDPM-PERL-MISSING';
+const REMOTE_SUBAGENT_FACTS_PERL_PROGRAM = String.raw`use strict;
+sub slurp {
+  my ($path) = @_;
+  open my $fh, q{<}, $path or return;
+  binmode $fh;
+  local $/;
+  my $data = <$fh>;
+  close $fh;
+  return defined $data ? $data : q{};
+}
+sub visible_names {
+  my ($dir) = @_;
+  opendir my $dh, $dir or return;
+  my @names = grep { $_ !~ /\A\./ } readdir $dh;
+  closedir $dh;
+  return sort @names;
+}
+sub meta_files {
+  my ($dir) = @_;
+  my @files;
+  for my $name (visible_names($dir)) {
+    next unless $name =~ /\.meta\.json\z/;
+    push @files, "$dir/$name" if -f "$dir/$name";
+  }
+  return @files;
+}
+sub word_paths {
+  my ($value) = @_;
+  my @paths;
+  for my $piece (grep { length } split /[ \t\n]+/, $value) {
+    if ($piece =~ /[*?\[]/) {
+      push @paths, glob($piece);
+    } else {
+      push @paths, $piece;
+    }
+  }
+  return @paths;
+}
+sub env_values {
+  my ($environ, $name) = @_;
+  (my $text = $environ) =~ tr/\0/\n/;
+  my @values;
+  for my $line (split /\n/, $text, -1) {
+    push @values, substr($line, length($name) + 1) if index($line, "$name=") == 0;
+  }
+  my $value = join "\n", @values;
+  $value =~ s/\n+\z//;
+  return $value;
+}
+sub ppid_of {
+  my ($stat) = @_;
+  $stat =~ s/\n+\z//;
+  $stat =~ s/.*\) //;
+  $stat =~ s/^[^ ]* //;
+  $stat =~ s/ .*//;
+  return $stat;
+}
+sub cmdline_lines {
+  my ($cmdline) = @_;
+  (my $text = $cmdline) =~ tr/\0/\n/;
+  return split /\n/, $text, -1;
+}
+sub base64 {
+  my ($data) = @_;
+  my $alphabet = join q{}, (q{A}..q{Z}), (q{a}..q{z}), (0..9), q{+}, q{/};
+  my $bits = unpack q{B*}, $data;
+  my $encoded = q{};
+  for (my $offset = 0; $offset < length $bits; $offset += 6) {
+    my $chunk = substr($bits, $offset, 6);
+    $chunk .= q{0} x (6 - length $chunk);
+    $encoded .= substr($alphabet, oct(qq{0b$chunk}), 1);
+  }
+  $encoded .= q{=} x ((4 - length($encoded) % 4) % 4);
+  return $encoded;
+}
+my $proc = $ENV{TDPM_PROC_DIR} || q{/proc};
+for my $name (grep { /\A[0-9]/ } visible_names($proc)) {
+  my $dir = "$proc/$name";
+  next unless -d $dir;
+  my $stat = slurp("$dir/stat");
+  next unless defined $stat;
+  my $ppid = ppid_of($stat);
+  my $cmdline = slurp("$dir/cmdline");
+  next unless defined $cmdline;
+  my @lines = cmdline_lines($cmdline);
+  my $first = @lines ? $lines[0] : q{};
+  my ($base) = $first =~ m{([^/]*)\z};
+  my $issue;
+  for my $i (1 .. $#lines) {
+    if ($lines[$i - 1] eq q{-p} && index($lines[$i], q{Take ownership of }) == 0) {
+      $issue = substr($lines[$i], length(q{Take ownership of }));
+      last;
+    }
+  }
+  if ($base eq q{claude} && defined $issue) {
+    print "$name\t$ppid\tclaude-worker\t$issue\t-\n";
+    my $environ = slurp("$dir/environ");
+    if (!defined $environ) {
+      print "$name\tmeta\t!\n";
+      next;
+    }
+    my $config = env_values($environ, q{CLAUDE_CONFIG_DIR});
+    $config = env_values($environ, q{HOME}) . q{/.claude} if $config eq q{};
+    my $session = env_values($environ, q{CLAUDE_CODE_SESSION_ID});
+    for my $project (map { "$config/projects/$_" } visible_names("$config/projects")) {
+      next unless -d $project;
+      my @sessions = $session ne q{} ? word_paths("$project/$session") : word_paths("$project/*");
+      for my $session_directory (@sessions) {
+        next unless -d "$session_directory/subagents";
+        for my $meta (meta_files("$session_directory/subagents")) {
+          my $data = slurp($meta);
+          my $encoded = defined $data ? base64($data) : q{};
+          $encoded = q{!} if $encoded eq q{};
+          print "$name\tmeta\t$encoded\n";
+        }
+      }
+    }
+    next;
+  }
+  if ($base eq q{node} && defined $lines[1] && $lines[1] =~ m{/codex\z} && defined $lines[2] && $lines[2] eq q{exec}) {
+    print "$name\t$ppid\tcodex-launcher\t-\t-\n";
+  } else {
+    print "$name\t$ppid\tother\t-\t-\n";
+  }
+}
+`;
+export const REMOTE_SUBAGENT_FACTS_COMMAND = `if command -v perl >/dev/null 2>&1; then exec perl -e '${REMOTE_SUBAGENT_FACTS_PERL_PROGRAM}'; else echo ${REMOTE_SUBAGENT_FACTS_PERL_MISSING_MARKER}; fi`;
 export const REMOTE_METRICS_COMMAND = `cat /proc/meminfo; echo '${REMOTE_METRICS_SEPARATOR}'; grep '^cpu ' /proc/stat; sleep 0.4; grep '^cpu ' /proc/stat; echo '${REMOTE_METRICS_SEPARATOR}'; cat /proc/loadavg; echo '${REMOTE_METRICS_SEPARATOR}'; stat -f -c '%b %f %a' /`;
 
 export type RemoteMachineMetrics = {
@@ -160,6 +253,8 @@ export const parseRemoteSubagentFactsOutput = (
   unreadableWorkerPids: number[];
   unmeasuredIssueUrls: string[];
 } => {
+  if (stdout.trim() === REMOTE_SUBAGENT_FACTS_PERL_MISSING_MARKER)
+    throw new Error('perl not found on the worker');
   const processRows: ProcessFact[] = [];
   const encodedMetadataByPid = new Map<number, string[]>();
   for (const line of stdout.trim().split('\n').filter(Boolean)) {
@@ -253,7 +348,30 @@ export type RemoteCommandRunner = (
   timeoutMs: number,
 ) => Promise<string>;
 
-const defaultRemoteCommandRunner: RemoteCommandRunner = (
+export const REMOTE_COMMAND_MAX_OUTPUT_BYTES = 1024 * 1024;
+
+export const describeRemoteCommandFailure = (
+  failure: { code?: unknown; killed?: boolean; signal?: unknown },
+  stderr: string,
+  timeoutMs: number,
+): string => {
+  let reason: string;
+  if (failure.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+    reason = 'output over 1 MB';
+  } else if (failure.killed === true) {
+    reason = `exceeded the ${timeoutMs / 1000} s timeout`;
+  } else if (typeof failure.code === 'number') {
+    reason = `non-zero exit code ${failure.code}`;
+  } else if (typeof failure.signal === 'string') {
+    reason = `terminated by signal ${failure.signal}`;
+  } else {
+    reason = `could not run the command: ${String(failure.code)}`;
+  }
+  const detail = stderr.trim();
+  return detail === '' ? reason : `${reason}; stderr: ${detail}`;
+};
+
+export const defaultRemoteCommandRunner: RemoteCommandRunner = (
   invocation,
   timeoutMs,
 ) =>
@@ -261,10 +379,12 @@ const defaultRemoteCommandRunner: RemoteCommandRunner = (
     execFile(
       invocation.file,
       invocation.args,
-      { timeout: timeoutMs },
+      { timeout: timeoutMs, maxBuffer: REMOTE_COMMAND_MAX_OUTPUT_BYTES },
       (error, stdout, stderr) => {
         if (error) {
-          reject(new Error(stderr.trim() || error.message));
+          reject(
+            new Error(describeRemoteCommandFailure(error, stderr, timeoutMs)),
+          );
           return;
         }
         resolve(stdout);
