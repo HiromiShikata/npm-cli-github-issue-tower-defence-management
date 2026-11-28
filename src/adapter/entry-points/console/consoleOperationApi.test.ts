@@ -470,15 +470,26 @@ describe('consoleOperationApi', () => {
         issues: reviewProjectItemIds.map((itemId) => ({
           ...issue,
           itemId,
-          isPr: true,
+          isPr: ![
+            'PVTI_c_totally_wrong',
+            'PVTI_row5_review',
+            'PVTI_review_already_target',
+            'PVTI_unnecessary',
+            'PVTI_unnecessary_issue_comment',
+            'PVTI_unnecessary_dup',
+          ].includes(itemId),
           url:
-            itemId === 'PVTI_unnecessary_issue_comment'
-              ? 'https://github.com/o/r/pull/3'
-              : itemId === 'PVTI_unnecessary_dup'
-                ? 'https://github.com/o/r/pull/2'
-                : itemId === 'PVTI_resolver'
-                  ? 'https://github.com/acme-labs/acme-portal-mock/pull/178'
-                  : 'https://github.com/o/r/pull/1',
+            itemId === 'PVTI_c_totally_wrong' || itemId === 'PVTI_unnecessary'
+              ? 'https://github.com/o/r/issues/7'
+              : itemId === 'PVTI_row5_review' ||
+                  itemId === 'PVTI_review_already_target' ||
+                  itemId === 'PVTI_unnecessary_issue_comment'
+                ? 'https://github.com/o/r/issues/9'
+                : itemId === 'PVTI_unnecessary_dup'
+                  ? 'https://github.com/o/r/issues/8'
+                  : itemId === 'PVTI_resolver'
+                    ? 'https://github.com/acme-labs/acme-portal-mock/pull/178'
+                    : 'https://github.com/o/r/pull/1',
         })),
         project,
         cacheUsed: false,
@@ -555,7 +566,7 @@ describe('consoleOperationApi', () => {
         itemUrl: 'https://github.com/o/r/pull/1',
         isPr: true,
         body: {
-          issueUrl: 'https://github.com/o/r/issues/1',
+          issueUrl: 'https://github.com/o/r/pull/1',
           commentBody: 'unnecessary',
         },
       },
@@ -596,7 +607,7 @@ describe('consoleOperationApi', () => {
     it.each(legitimateReviewCases)(
       'PIN $name succeeds for a pull request linked to the project item',
       async ({ action, projectItemId, itemUrl, isPr, body }) => {
-        issueRepository.getAllIssues.mockResolvedValueOnce({
+        issueRepository.getAllIssues.mockResolvedValue({
           issues: [
             {
               ...issue,
@@ -1315,6 +1326,23 @@ describe('consoleOperationApi', () => {
         number: 9,
         labels: ['bug'],
       });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/3',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
       const issueCommentBody =
         'The pull request for this issue was unnecessary and has been closed: https://github.com/o/r/pull/3\n\nDo not create it again.';
       const response = await handleReview(context, {
@@ -1342,6 +1370,23 @@ describe('consoleOperationApi', () => {
         number: 8,
         labels: ['chore'],
       });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/2',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
       const response = await handleReview(context, {
         pjcode: 'acme',
         action: 'unnecessary',
@@ -11703,7 +11748,7 @@ describe('consoleOperationApi', () => {
 
   describe('review issue URL binding', () => {
     it('PIN closes a pull request for review when issueUrl is the project item url', async () => {
-      issueRepository.getAllIssues.mockResolvedValueOnce({
+      issueRepository.getAllIssues.mockResolvedValue({
         issues: [
           projectItemFor(
             'PVTI_review_close_issue_url',
@@ -11747,7 +11792,7 @@ describe('consoleOperationApi', () => {
     });
 
     it('RED rejects a review close whose issueUrl is not the project item url before closing', async () => {
-      issueRepository.getAllIssues.mockResolvedValueOnce({
+      issueRepository.getAllIssues.mockResolvedValue({
         issues: [
           projectItemFor(
             'PVTI_review_close_issue_url_mismatch',
@@ -11791,7 +11836,7 @@ describe('consoleOperationApi', () => {
     });
 
     it('RED rejects a review unnecessary whose issueUrl is not the project item url before closing', async () => {
-      issueRepository.getAllIssues.mockResolvedValueOnce({
+      issueRepository.getAllIssues.mockResolvedValue({
         issues: [
           projectItemFor(
             'PVTI_review_unnecessary_issue_url_mismatch',
@@ -11837,7 +11882,7 @@ describe('consoleOperationApi', () => {
     });
 
     it('PIN marks a pull request unnecessary when issueUrl is the project item url', async () => {
-      issueRepository.getAllIssues.mockResolvedValueOnce({
+      issueRepository.getAllIssues.mockResolvedValue({
         issues: [
           projectItemFor(
             'PVTI_review_unnecessary_issue_url',
