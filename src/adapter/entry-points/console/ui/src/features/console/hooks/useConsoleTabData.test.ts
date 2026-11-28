@@ -1451,42 +1451,48 @@ describe('useConsoleTabData network retry', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('still surfaces an HTTP error when a network-failed tab keeps its previous rows', async () => {
-    removeMockCaches();
-    let refreshStarted = false;
-    const oldItem = {
-      number: 1,
-      itemId: 'OLD_ITEM',
-      projectItemId: 'OLD_ITEM',
-    };
-    const fetchMock = jest.fn(async (url: string) => {
-      if (refreshStarted && url.includes('/prs/')) {
-        throw new TypeError('Failed to fetch');
-      }
-      if (refreshStarted) {
-        return { ok: false, status: 500, json: async () => ({}) };
-      }
-      return {
-        ok: true,
-        status: 200,
-        json: async () =>
-          makeTabPayload({
-            items: url.includes('/prs/') ? [oldItem] : [],
-          }),
+  it.each([{ networkTab: 'prs' }, { networkTab: 'todo-by-human' }] as const)(
+    'shows the HTTP error and keeps the rows when $networkTab fails at the network level and every other tab returns HTTP 500',
+    async ({ networkTab }) => {
+      removeMockCaches();
+      let refreshStarted = false;
+      const oldItem = {
+        number: 1,
+        itemId: 'OLD_ITEM',
+        projectItemId: 'OLD_ITEM',
       };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
+      const fetchMock = jest.fn(async (url: string) => {
+        if (refreshStarted && url.includes(`/${networkTab}/`)) {
+          throw new TypeError('Failed to fetch');
+        }
+        if (refreshStarted) {
+          return { ok: false, status: 500, json: async () => ({}) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            makeTabPayload({
+              items: url.includes(`/${networkTab}/`) ? [oldItem] : [],
+            }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { result } = renderHook(() => useConsoleTabData('acme'));
-    await waitFor(() =>
-      expect(result.current.snapshots.prs?.items).toHaveLength(1),
-    );
+      const { result } = renderHook(() => useConsoleTabData('acme'));
+      await waitFor(() =>
+        expect(result.current.snapshots[networkTab]?.items).toHaveLength(1),
+      );
 
-    refreshStarted = true;
-    await flushTabDataTimers(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      refreshStarted = true;
+      await flushTabDataTimers(CONSOLE_TAB_REFRESH_INTERVAL_MS);
 
-    expect(result.current.error).toMatch(/^(HTTP 500|Failed to fetch)$/);
-  });
+      expect(result.current.error).toBe('HTTP 500');
+      expect(result.current.snapshots[networkTab]?.items[0].itemId).toBe(
+        'OLD_ITEM',
+      );
+    },
+  );
 
   it('retries a network failure while the list is served from cache and keeps the cached list without an error', async () => {
     const cachedPayload = makeTabPayload({
