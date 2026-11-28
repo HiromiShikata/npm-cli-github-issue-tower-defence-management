@@ -1718,12 +1718,14 @@ export const handleAttachmentUpload = async (
     if (context.issueAttachmentRepository === null) {
       return badGateway('attachment upload is not configured');
     }
-    const uploadResult = await context.issueAttachmentRepository.uploadAttachment({
-      issueOrPullRequestUrl: url,
-      fileName,
-      content: Buffer.from(contentBase64, 'base64'),
-    });
-    const firstResult = typeof uploadResult === 'string' ? null : uploadResult[0];
+    const uploadResult =
+      await context.issueAttachmentRepository.uploadAttachment({
+        issueOrPullRequestUrl: url,
+        fileName,
+        content: Buffer.from(contentBase64, 'base64'),
+      });
+    const firstResult =
+      typeof uploadResult === 'string' ? null : uploadResult[0];
     const markdown =
       typeof uploadResult === 'string'
         ? uploadResult
