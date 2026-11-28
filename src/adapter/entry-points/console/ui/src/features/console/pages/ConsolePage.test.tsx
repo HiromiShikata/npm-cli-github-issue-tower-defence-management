@@ -10561,7 +10561,8 @@ describe('ConsolePage offline action queue', () => {
         commentBody: 'Moving after the outage.',
         actionId: expect.any(String),
         openedToActionMs: expect.any(Number),
-        actionDescription: 'コメントを投稿して「Awaiting Workspace」に変更しました',
+        actionDescription:
+          'コメントを投稿して「Awaiting Workspace」に変更しました',
       },
       expectedSecondRequestOfflinePayload: {
         ...awaitingWorkspaceRequestBodyForPullRequest,

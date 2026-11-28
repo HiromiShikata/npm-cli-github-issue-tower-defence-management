@@ -21,7 +21,11 @@ describe('elapsed-only owner comments do not become owner replies', () => {
     },
   ])('$name', ({ body, ownerCommentCount }) => {
     const result = issueCommentsSplitByAuthorKind([
-      { url: 'https://github.com/HiromiShikata/repo/issues/1#comment-1', createdAt: '2026-11-28T00:00:00Z', body },
+      {
+        url: 'https://github.com/HiromiShikata/repo/issues/1#comment-1',
+        createdAt: '2026-11-28T00:00:00Z',
+        body,
+      },
     ]);
 
     expect(result.ownerCommentCount).toBe(ownerCommentCount);
