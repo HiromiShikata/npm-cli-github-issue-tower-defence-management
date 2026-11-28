@@ -334,6 +334,8 @@ describe('consoleOperationApi', () => {
         projectItemFor('PVTI_prclose', 'https://github.com/o/r/pull/7'),
         projectItemFor('PVTI_prnp', 'https://github.com/o/r/pull/8'),
         projectItemFor('PVTI_noproj_reviewclose', 'https://github.com/o/r/pull/1'),
+        projectItemFor('PVTI_noproj_close', 'https://github.com/o/r/issues/1'),
+        projectItemFor('PVTI_noproj_np', 'https://github.com/o/r/issues/1'),
         projectItemFor('PVTI_close_issue_close', 'https://github.com/o/r/issues/1'),
         projectItemFor('PVTI_close_issue_close_not_planned', 'https://github.com/o/r/issues/2'),
         projectItemFor('PVTI_close_pull_request_close', 'https://github.com/o/r/pull/7'),
@@ -4498,7 +4500,8 @@ describe('consoleOperationApi', () => {
       };
     });
 
-    it('closes an issue via triage without resolving the project', async () => {
+    // binding fix: triage close resolves the project item before any issue write
+    it('closes an issue via triage after resolving the project and checking it is the project item', async () => {
       const response = await handleTriage(spiedContext, {
         pjcode: 'acme',
         action: 'close',
@@ -4515,11 +4518,12 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/1',
         'duplicate',
       );
-      expect(resolveProjectSpy).not.toHaveBeenCalled();
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(resolveProjectSpy).toHaveBeenCalledWith('acme');
       expect(issueRepository.get).not.toHaveBeenCalled();
     });
 
-    it('closes not planned via triage without resolving the project', async () => {
+    it('closes not planned via triage after resolving the project and checking it is the project item', async () => {
       const response = await handleTriage(spiedContext, {
         pjcode: 'acme',
         action: 'close_not_planned',
@@ -4531,7 +4535,8 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/1',
         'not_planned',
       );
-      expect(resolveProjectSpy).not.toHaveBeenCalled();
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(resolveProjectSpy).toHaveBeenCalledWith('acme');
     });
 
     // review-binding fix: every review action resolves the project item before any pull request write

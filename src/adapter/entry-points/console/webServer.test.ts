@@ -1102,6 +1102,18 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
+    });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
       branchName: null,
@@ -1182,6 +1194,18 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
+    });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
       branchName: null,
@@ -1248,6 +1272,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
@@ -1325,6 +1361,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
@@ -1543,6 +1591,18 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
+    });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
       branchName: null,
@@ -1625,6 +1685,18 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
+    });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
       branchName: null,
@@ -1706,6 +1778,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
