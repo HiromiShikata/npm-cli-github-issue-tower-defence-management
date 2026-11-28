@@ -68,24 +68,6 @@ describe('relabelAttachmentMarkdown', () => {
 describe('LocalCommandIssueAttachmentRepository', () => {
   const resolveGithubToken = (): string => 'default-token';
 
-  type BatchUploadRequest = {
-    issueOrPullRequestUrl: string;
-    files: { fileName: string; content: Uint8Array }[];
-  };
-  type BatchUploadResult =
-    | { fileName: string; status: 'uploaded'; markdown: string }
-    | { fileName: string; status: 'failed'; error: string };
-  type BatchAttachmentRepository = {
-    uploadAttachment: (
-      request: BatchUploadRequest,
-    ) => Promise<BatchUploadResult[]>;
-  };
-
-  const asBatchRepository = (
-    repository: LocalCommandIssueAttachmentRepository,
-  ): BatchAttachmentRepository =>
-    repository as unknown as BatchAttachmentRepository;
-
   it('should run the upload command with the github token resolved for the item url', async () => {
     const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
     const received: {
@@ -317,12 +299,10 @@ describe('LocalCommandIssueAttachmentRepository', () => {
       },
       spawnInteractive: jest.fn(),
     };
-    const repository = asBatchRepository(
-      new LocalCommandIssueAttachmentRepository(
-        runner,
-        resolveGithubToken,
-        root,
-      ),
+    const repository = new LocalCommandIssueAttachmentRepository(
+      runner,
+      resolveGithubToken,
+      root,
     );
 
     const actual = await repository.uploadAttachment({

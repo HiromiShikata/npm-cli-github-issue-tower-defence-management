@@ -23,8 +23,13 @@ const uploadContext = (
   isRepositoryConfigured: () => true,
   consoleDataOutputDir: null,
   issueAttachmentRepository: {
-    uploadAttachment,
-  } as unknown as ConsoleOperationContext['issueAttachmentRepository'],
+    uploadAttachment: async (request) => {
+      if (!('files' in request)) {
+        throw new Error('single-file upload is not used by this test');
+      }
+      return uploadAttachment(request);
+    },
+  },
   resolveProjectRepository: null,
   invalidateProject: null,
   updateProjectCacheEntry: null,
