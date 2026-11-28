@@ -87,6 +87,16 @@ describe('loadCommentDrafts', () => {
     expect(loaded.get('PVTI_1')).toBe(storedDraft);
   });
 
+  it('removes an interrupted upload placeholder whose file name contains a closing bracket', () => {
+    saveCommentDrafts(
+      new Map([['PVTI_1', 'Note.\n\n\n![uploading a]b.png]()\n']]),
+    );
+
+    const loaded = loadCommentDrafts({ discardInterruptedUploads: true });
+
+    expect(loaded.get('PVTI_1')).toBe('Note.');
+  });
+
   it('returns an empty map when nothing was ever saved', () => {
     const loaded = loadCommentDrafts();
     expect(loaded).toEqual(new Map());

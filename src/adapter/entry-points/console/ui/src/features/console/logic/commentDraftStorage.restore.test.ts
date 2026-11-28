@@ -79,4 +79,21 @@ describe('restoreCommentDraftInStorage', () => {
       'Checked during the flight.\n\nFollow up later',
     );
   });
+
+  it('does not bring an interrupted upload placeholder back when a draft is restored after a reload', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        ['PVTI_2', 'Investigating.\n\n\n![uploading shot.png]()\n'],
+      ]),
+    );
+
+    loadCommentDrafts({ discardInterruptedUploads: true });
+    restoreCommentDraftInStorage('PVTI_2', 'queued body');
+
+    const restored = loadCommentDrafts();
+
+    expect(restored.get('PVTI_2')).toContain('queued body');
+    expect(restored.get('PVTI_2')).not.toContain('![uploading');
+  });
 });
