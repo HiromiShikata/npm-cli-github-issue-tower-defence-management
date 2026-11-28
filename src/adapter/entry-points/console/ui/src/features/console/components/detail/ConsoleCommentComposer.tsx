@@ -44,7 +44,7 @@ export const insertUploadPlaceholder = (
 ): string => {
   const placeholder = `![uploading ${fileName}]()`;
   const prefix = draft.length === 0 ? '' : draft.replace(/\n*$/, '\n');
-  return `${prefix}\n\n\n${placeholder}\n`;
+  return `${prefix}${draft.includes(placeholder) ? '' : '\n\n\n'}${placeholder}\n`;
 };
 
 export const replacePlaceholderWithMarkdown = (
@@ -90,10 +90,22 @@ export const ConsoleCommentComposer = ({
   onOpenChange,
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
-  const normalizedInitialDraft = (initialDraft ?? '').replace(/\\n/g, '\n');
-  const [draft, setDraft] = useState<string>(normalizedInitialDraft);
-  const draftRef = useRef<string>(normalizedInitialDraft);
+  const initialDraftValue = initialDraft ?? '';
+  const initialDisplayDraft = initialDraftValue.includes('![')
+    ? initialDraftValue.replace(/\\n/g, '\n')
+    : initialDraftValue;
+  const [draft, setDraft] = useState<string>(initialDisplayDraft);
+  const draftRef = useRef<string>(initialDisplayDraft);
   draftRef.current = draft;
+  useEffect(() => {
+    if (initialDraftValue !== draftRef.current) {
+      const nextDraft = initialDraftValue.includes('![')
+        ? initialDraftValue.replace(/\\n/g, '\n')
+        : initialDraftValue;
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
+    }
+  }, [initialDraftValue]);
   useEffect(() => {
     onDraftChange?.(draft);
   }, [draft, onDraftChange]);
@@ -200,8 +212,8 @@ export const ConsoleCommentComposer = ({
         }));
       }
       let firstError: string | null = null;
-      for (const file of files) {
-        const result = results.find((entry) => entry.fileName === file.name);
+      files.forEach((file, index) => {
+        const result = results[index];
         saveCursorPosition();
         if (
           result?.status === 'uploaded' &&
@@ -223,7 +235,7 @@ export const ConsoleCommentComposer = ({
           setDraft(nextDraft);
           onDraftChange?.(nextDraft);
         }
-      }
+      });
       setUploadStatus(
         firstError === null
           ? { kind: 'idle' }

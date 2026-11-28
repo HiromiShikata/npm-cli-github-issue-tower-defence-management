@@ -470,6 +470,27 @@ export const ConsolePage = () => {
   );
   const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const commentDrafts = useRef(loadCommentDrafts());
+  const [commentDraftRevision, setCommentDraftRevision] = useState(0);
+  const persistCommentDrafts = useCallback(() => {
+    saveCommentDrafts(commentDrafts.current);
+    window.dispatchEvent(new Event('console-comment-drafts-updated'));
+  }, []);
+  useEffect(() => {
+    const handleCommentDraftsUpdated = (): void => {
+      commentDrafts.current = loadCommentDrafts();
+      setCommentDraftRevision((previous) => previous + 1);
+    };
+    window.addEventListener(
+      'console-comment-drafts-updated',
+      handleCommentDraftsUpdated,
+    );
+    return () => {
+      window.removeEventListener(
+        'console-comment-drafts-updated',
+        handleCommentDraftsUpdated,
+      );
+    };
+  }, []);
   const handleCommentDraftChange = useCallback(
     (draft: string) => {
       if (selectedItemKey === null) return;
@@ -486,33 +507,45 @@ export const ConsolePage = () => {
     async (item: ConsoleListItem, files: File | File[]): Promise<string> => {
       const selectedFiles = Array.isArray(files) ? files : [files];
       let draftWithPlaceholders =
-        commentDrafts.current.get(item.url) ??
         commentDrafts.current.get(item.projectItemId) ??
         '';
       for (const file of selectedFiles) {
+        const hadDraft = draftWithPlaceholders.length > 0;
+        const hadTrailingNewline = draftWithPlaceholders.endsWith('\n');
         draftWithPlaceholders = insertUploadPlaceholder(
           draftWithPlaceholders,
           file.name,
         );
+        if (hadDraft && !hadTrailingNewline) {
+          draftWithPlaceholders = draftWithPlaceholders.replace(
+            `\n\n\n\n![uploading ${file.name}]()`,
+            `\n\n\n![uploading ${file.name}]()`,
+          );
+        }
       }
-      commentDrafts.current.set(item.url, draftWithPlaceholders);
+      commentDrafts.current.set(item.projectItemId, draftWithPlaceholders);
       saveCommentDrafts(commentDrafts.current);
-      const rawResult = await operations.uploadAttachment(item, files);
+      let rawResult: string;
+      try {
+        rawResult = await operations.uploadAttachment(item, files);
+      } catch (error) {
+        let draft = commentDrafts.current.get(item.projectItemId) ?? '';
+        for (const file of selectedFiles) {
+          draft = removePlaceholder(draft, file.name);
+        }
+        if (draft) commentDrafts.current.set(item.projectItemId, draft);
+        else commentDrafts.current.delete(item.projectItemId);
+        saveCommentDrafts(commentDrafts.current);
+        throw error;
+      }
       try {
         const results: unknown = JSON.parse(rawResult);
         if (Array.isArray(results)) {
           let draft =
-            commentDrafts.current.get(item.url) ??
             commentDrafts.current.get(item.projectItemId) ??
             '';
-          for (const file of selectedFiles) {
-            const result = results.find(
-              (entry: unknown) =>
-                entry !== null &&
-                typeof entry === 'object' &&
-                'fileName' in entry &&
-                entry.fileName === file.name,
-            ) as
+          selectedFiles.forEach((file, index) => {
+            const result = results[index] as
               | { status?: string; markdown?: string; error?: string }
               | undefined;
             draft =
@@ -524,29 +557,29 @@ export const ConsolePage = () => {
                     result.markdown,
                   )
                 : removePlaceholder(draft, file.name);
-          }
-          if (draft) commentDrafts.current.set(item.url, draft);
-          else commentDrafts.current.delete(item.url);
-          saveCommentDrafts(commentDrafts.current);
+          });
+          draft = draft.replace(/\n{4}(?=!\[)/g, '\n\n\n');
+          if (draft) commentDrafts.current.set(item.projectItemId, draft);
+          else commentDrafts.current.delete(item.projectItemId);
+          persistCommentDrafts();
         }
       } catch {
         if (selectedFiles.length === 1) {
           const draft = replacePlaceholderWithMarkdown(
-            commentDrafts.current.get(item.url) ?? '',
+            commentDrafts.current.get(item.projectItemId) ?? '',
             selectedFiles[0].name,
             rawResult,
           );
-          commentDrafts.current.set(item.url, draft);
-          saveCommentDrafts(commentDrafts.current);
+          commentDrafts.current.set(item.projectItemId, draft);
+          persistCommentDrafts();
         }
         return rawResult;
       }
       return rawResult;
     },
-    [operations],
+    [operations, persistCommentDrafts],
   );
 
-  const [commentDraftRevision, setCommentDraftRevision] = useState(0);
   const selectedItemKeyRef = useRef<string | null>(selectedItemKey);
   selectedItemKeyRef.current = selectedItemKey;
   const commentDraftRestored = useCallback((itemKey: string) => {
@@ -2163,7 +2196,6 @@ export const ConsolePage = () => {
             overlayStatus={overlayStatusForSelected}
             now={now}
             initialCommentDraft={
-              commentDrafts.current.get(selectedItem.url) ??
               commentDrafts.current.get(selectedItem.projectItemId) ??
               ''
             }
