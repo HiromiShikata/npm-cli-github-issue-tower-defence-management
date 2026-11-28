@@ -934,6 +934,163 @@ describe('consoleOperationApi', () => {
       expectRecordedOnlyIn('PVTI_a', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
     });
 
+    it('RED approves a pull request whose CI status is unavailable when the item links it', async () => {
+      const linkedPullRequestWithUnavailableCi = {
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE' as const,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        reviewDecision: null,
+        ciStatusAvailability: 'UNAVAILABLE' as const,
+      };
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_a',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockImplementation((_url, options) =>
+        Promise.resolve(
+          options?.includeCiStatusUnavailable === true
+            ? [linkedPullRequestWithUnavailableCi]
+            : [],
+        ),
+      );
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      issueRepository.getPullRequestDetail.mockResolvedValue({
+        title: 'Test PR',
+        state: 'open',
+        merged: false,
+        isDraft: false,
+        additions: 0,
+        deletions: 0,
+        changedFiles: 0,
+        headRefName: 'feature',
+        baseRefName: 'main',
+        author: 'other-user',
+        files: [],
+      });
+      issueRepository.mergePullRequest.mockResolvedValue(undefined);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_a',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+    });
+
+    it('RED looks up linked pull requests with the console detail option', async () => {
+      const linkedPullRequestWithUnavailableCi = {
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE' as const,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        reviewDecision: null,
+        ciStatusAvailability: 'UNAVAILABLE' as const,
+      };
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_a',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockImplementation((_url, options) =>
+        Promise.resolve(
+          options?.includeCiStatusUnavailable === true
+            ? [linkedPullRequestWithUnavailableCi]
+            : [],
+        ),
+      );
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      issueRepository.getPullRequestDetail.mockResolvedValue({
+        title: 'Test PR',
+        state: 'open',
+        merged: false,
+        isDraft: false,
+        additions: 0,
+        deletions: 0,
+        changedFiles: 0,
+        headRefName: 'feature',
+        baseRefName: 'main',
+        author: 'other-user',
+        files: [],
+      });
+      issueRepository.mergePullRequest.mockResolvedValue(undefined);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_a',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        { includeCiStatusUnavailable: true },
+      );
+    });
+
     it('resolves the issue repository from the url of the operated pull request', async () => {
       const resolvedUrls: string[] = [];
       const contextRecordingResolvedUrls: ConsoleOperationContext = {
@@ -8165,6 +8322,110 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/3',
       );
       expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('PIN replaces the depended issue URL when the issue URL matches the project item', async () => {
+      const itemUrl = 'https://github.com/o/r/issues/1';
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [{ ...issue, itemId: 'PVTI_dep', url: itemUrl, isPr: false }],
+        project: projectWithDependedField(),
+        cacheUsed: false,
+      });
+      issueRepository.replaceDependedIssueUrlField.mockResolvedValue(undefined);
+
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: itemUrl,
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it('RED rejects replace mode when the issue URL does not match the project item', async () => {
+      const itemUrl = 'https://github.com/o/r/issues/1';
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [{ ...issue, itemId: 'PVTI_dep', url: itemUrl, isPr: false }],
+        project: projectWithDependedField(),
+        cacheUsed: false,
+      });
+
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/99',
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+
+      expect(response.statusCode).toBe(403);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('RED returns 400 in replace mode when the project item is absent', async () => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_other',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project: projectWithDependedField(),
+        cacheUsed: false,
+      });
+
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('RED rethrows getAllIssues errors in replace mode before writing', async () => {
+      issueRepository.getAllIssues.mockRejectedValue(
+        new Error('github unavailable'),
+      );
+
+      await expect(
+        handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl: 'https://github.com/o/r/issues/3',
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        ),
+      ).rejects.toThrow('github unavailable');
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
     });
 
     it('clears the depended issue URL in replace mode when the value is empty', async () => {
