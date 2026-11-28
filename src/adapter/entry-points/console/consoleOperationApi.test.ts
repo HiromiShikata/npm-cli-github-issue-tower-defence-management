@@ -12,6 +12,7 @@ import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/aut
 import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import * as projectConfig from '../cli/projectConfig';
+import { formatConsoleElapsedTimeLine } from './consoleElapsedTimeComment';
 import { countCloseEvents } from './consoleCloseEventStore';
 import {
   CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
@@ -1205,6 +1206,26 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_c');
     });
 
+    it('appends elapsed time to the totally wrong review comment', async () => {
+      const actionDescription = '「Totally Wrong」を押しました';
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/HiromiShikata/r/pull/1',
+        issueUrl: 'https://github.com/HiromiShikata/r/issues/1',
+        projectItemId: 'PVTI_elapsed_totally_wrong',
+        commentBody: 'totally wrong',
+        openedToActionMs: 192_000,
+        actionDescription,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/r/pull/1',
+        `totally wrong\n\n${formatConsoleElapsedTimeLine(192_000, actionDescription)}`,
+      );
+    });
+
     it('closes a pull request and moves linked issue to Awaiting workspace when issueUrl is provided', async () => {
       const response = await handleReview(context, {
         pjcode: 'acme',
@@ -1315,6 +1336,34 @@ describe('consoleOperationApi', () => {
         'status_aw',
       );
       expectRecordedAcrossTabs('PVTI_unnecessary');
+    });
+
+    it('appends elapsed time to the unnecessary review comment', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/HiromiShikata/r/issues/7',
+        org: 'HiromiShikata',
+        repo: 'r',
+        number: 7,
+        labels: [],
+      });
+      const actionDescription = '「Unnecessary」を押しました';
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/HiromiShikata/r/pull/1',
+        issueUrl: 'https://github.com/HiromiShikata/r/issues/7',
+        projectItemId: 'PVTI_elapsed_unnecessary',
+        commentBody: 'This pull request is unnecessary.',
+        openedToActionMs: 192_000,
+        actionDescription,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/r/pull/1',
+        `This pull request is unnecessary.\n\n${formatConsoleElapsedTimeLine(192_000, actionDescription)}`,
+      );
     });
 
     it('tells the linked issue that the unnecessary pull request must not be created again', async () => {
@@ -3620,6 +3669,35 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_f');
     });
 
+    it.each([
+      ['snooze_1day', 'PVTI_elapsed_1day'],
+      ['snooze_2days', 'PVTI_elapsed_2days'],
+      ['snooze_3days', 'PVTI_elapsed_3days'],
+      ['snooze_5days', 'PVTI_elapsed_5days'],
+      ['snooze_1week', 'PVTI_elapsed_1week'],
+      ['snooze_1month', 'PVTI_elapsed_1month'],
+    ] as const)(
+      '%s posts one elapsed-time comment',
+      async (action, projectItemId) => {
+        const actionDescription = `「${action}」を押しました`;
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action,
+          issueUrl: 'https://github.com/HiromiShikata/r/issues/1',
+          projectItemId,
+          openedToActionMs: 192_000,
+          actionDescription,
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+        expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+          'https://github.com/HiromiShikata/r/issues/1',
+          formatConsoleElapsedTimeLine(192_000, actionDescription),
+        );
+      },
+    );
+
     it('snoozes for one week via updateNextActionDate', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
@@ -3630,6 +3708,20 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
       expectRecordedAcrossTabs('PVTI_g');
+    });
+
+    it('accepts actionDescription without openedToActionMs and skips elapsed text', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'snooze_1day',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_elapsed_description_only',
+        actionDescription: '「+1日」を押しました',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     });
 
     it('snoozes for one hour via updateNextActionHour', async () => {
@@ -8489,14 +8581,23 @@ describe('consoleOperationApi', () => {
         contextForProject(projectWithDependedField()),
         {
           pjcode: 'acme',
-          issueUrl: 'https://github.com/o/r/issues/1',
+          issueUrl: 'https://github.com/HiromiShikata/r/issues/1',
           dependedIssueUrl: 'https://github.com/o/r/issues/2',
+          openedToActionMs: 192_000,
+          actionDescription: '「Set Depended Issue」を押しました',
         },
       );
       expect(issueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
-        'https://github.com/o/r/issues/1',
+        'https://github.com/HiromiShikata/r/issues/1',
         projectWithDependedField(),
         'https://github.com/o/r/issues/2',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/r/issues/1',
+        formatConsoleElapsedTimeLine(
+          192_000,
+          '「Set Depended Issue」を押しました',
+        ),
       );
       expect(response.statusCode).toBe(200);
     });
@@ -8582,20 +8683,29 @@ describe('consoleOperationApi', () => {
         contextForProject(projectWithDependedField()),
         {
           pjcode: 'acme',
-          issueUrl: 'https://github.com/o/r/issues/1',
+          issueUrl: 'https://github.com/HiromiShikata/r/issues/1',
           dependedIssueUrl: 'https://github.com/o/r/issues/3',
           projectItemId: 'PVTI_dep',
           replaceExisting: true,
+          openedToActionMs: 192_000,
+          actionDescription: '「Replace Depended Issue」を押しました',
         },
       );
       expect(response.statusCode).toBe(200);
       expect(issueRepository.replaceDependedIssueUrlField).toHaveBeenCalledWith(
         projectWithDependedField(),
         expect.objectContaining({
-          url: 'https://github.com/o/r/issues/1',
+          url: 'https://github.com/HiromiShikata/r/issues/1',
           itemId: 'PVTI_dep',
         }),
         'https://github.com/o/r/issues/3',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/r/issues/1',
+        formatConsoleElapsedTimeLine(
+          192_000,
+          '「Replace Depended Issue」を押しました',
+        ),
       );
       expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
     });

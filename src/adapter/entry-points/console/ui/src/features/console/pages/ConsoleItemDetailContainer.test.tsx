@@ -1723,6 +1723,8 @@ describe('ConsoleItemDetailContainer', () => {
         issueItem,
         'ok',
         expect.any(String),
+        expect.any(Number),
+        expect.any(String),
       );
     });
     expect(operations.closeIssue).not.toHaveBeenCalledWith(issueItem, 'close');
@@ -1731,6 +1733,8 @@ describe('ConsoleItemDetailContainer', () => {
     expect(operations.closeIssue).toHaveBeenCalledWith(
       issueItem,
       'close',
+      expect.any(String),
+      expect.any(Number),
       expect.any(String),
     );
   });
@@ -4063,10 +4067,22 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       await expect(commit()).resolves.toBeUndefined();
 
       expect((operations.addComment as jest.Mock).mock.calls).toEqual([
-        [issueItem, expectedCommentBody, expect.any(String)],
+        [
+          issueItem,
+          expectedCommentBody,
+          expect.any(String),
+          expect.any(Number),
+          expect.any(String),
+        ],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [issueItem, 'close', expect.any(String)],
+        [
+          issueItem,
+          'close',
+          expect.any(String),
+          expect.any(Number),
+          expect.any(String),
+        ],
       ]);
     },
   );
@@ -4657,7 +4673,12 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       operations.replaceDependedIssueUrl as jest.Mock;
     const setStatusMock = operations.setStatus as jest.Mock;
     expect(replaceDependedIssueUrlMock.mock.calls).toEqual([
-      [issueItem, dependedIssueUrlToSubmit],
+      [
+        issueItem,
+        dependedIssueUrlToSubmit,
+        expect.any(Number),
+        expect.any(String),
+      ],
     ]);
     expect(setStatusMock.mock.calls).toEqual([
       [issueItem, awaitingWorkspaceOption],
@@ -4671,7 +4692,14 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   it.each([
     {
       sentStepCount: 0,
-      expectedSetDependedIssueUrlCalls: [[issueItem, dependedIssueUrlToSubmit]],
+      expectedSetDependedIssueUrlCalls: [
+        [
+          issueItem,
+          dependedIssueUrlToSubmit,
+          expect.any(Number),
+          expect.any(String),
+        ],
+      ],
       expectedSetStatusCalls: [[issueItem, awaitingWorkspaceOption]],
     },
     {

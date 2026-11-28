@@ -190,6 +190,31 @@ describe('OwnerRepliedIssueRevertUseCase', () => {
     );
   });
 
+  it('does not revert for an elapsed-only console comment after an agent report', async () => {
+    const issue = createMockIssue();
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createComment({
+        content: AGENT_REPORT_BODY,
+        createdAt: new Date('2026-10-02T08:40:52Z'),
+      }),
+      createComment({
+        content:
+          'コンソールで開いてから 3分12秒 で「OK」を押しました<!-- tdpm-console-elapsed-time -->',
+        createdAt: new Date('2026-10-03T01:15:07Z'),
+      }),
+    ]);
+
+    await expect(
+      useCase.run({
+        project,
+        issues: [issue],
+        allowedIssueAuthors: ALLOWED_ISSUE_AUTHORS,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
   describe('decides from the comment timeline whether the owner replied after the newest agent comment', () => {
     const commentTimelineCases: {
       name: string;

@@ -18,7 +18,7 @@ import {
 } from '../testing/fixtures';
 import type { ConsoleCaches } from './useConsoleCaches';
 import type { ConsoleOperationsApi } from './useConsoleOperations';
-import { useConsoleOperations } from './useConsoleOperations';
+import { reviewRequest, useConsoleOperations } from './useConsoleOperations';
 import { useConsoleOverlay } from './useConsoleOverlay';
 
 type OperationsWithAtomicAwaitingWorkspace = ConsoleOperationsApi & {
@@ -145,6 +145,33 @@ describe('useConsoleOperations', () => {
       }),
     );
   });
+
+  it.each([
+    ['totally_wrong', 'totally wrong'],
+    ['unnecessary', 'This pull request is unnecessary.'],
+  ] as const)(
+    'forwards elapsed timing for the %s review comment',
+    (action, commentBody) => {
+      expect(
+        reviewRequest(
+          'acme',
+          prItem,
+          prItem.url,
+          action,
+          [],
+          undefined,
+          192_000,
+          `「${action}」を押しました`,
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          commentBody,
+          openedToActionMs: 192_000,
+          actionDescription: `「${action}」を押しました`,
+        }),
+      );
+    },
+  );
 
   it('sends Comment & Awaiting Workspace as one atomic triage request', async () => {
     const fetchMock = captureFetch();

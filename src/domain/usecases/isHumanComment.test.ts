@@ -18,6 +18,32 @@ import { isHumanComment } from './isHumanComment';
 const trustAll = (): boolean => true;
 
 describe('isHumanComment', () => {
+  it('does not treat an elapsed-only console comment as a human reply', () => {
+    expect(
+      isHumanComment(
+        {
+          author: 'bot',
+          content:
+            'コンソールで開いてから 3分12秒 で「OK」を押しました<!-- tdpm-console-elapsed-time -->',
+        },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
+  it('treats real text plus an appended elapsed line as human input', () => {
+    expect(
+      isHumanComment(
+        {
+          author: 'bot',
+          content:
+            'Owner reply\n\nコンソールで開いてから 3分12秒 で「OK」を押しました<!-- tdpm-console-elapsed-time -->',
+        },
+        trustAll,
+      ),
+    ).toBe(true);
+  });
+
   it('treats a plain comment from a trusted author as human input', () => {
     expect(
       isHumanComment(
