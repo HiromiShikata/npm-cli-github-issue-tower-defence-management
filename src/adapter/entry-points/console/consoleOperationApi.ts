@@ -687,17 +687,18 @@ export const handleReview = async (
   }
 
   if (action === 'close') {
-    const pjcodeResult = resolveConfiguredPjcode(context, body);
-    if (typeof pjcodeResult !== 'string') {
-      return pjcodeResult;
+    const configuredPjcode = resolveConfiguredPjcode(context, body);
+    if (typeof configuredPjcode !== 'string') {
+      return configuredPjcode;
     }
-    const binding = await context.resolveProject(pjcodeResult);
-    if (binding === null) {
-      return badRequest(`no project configured for pjcode "${pjcodeResult}"`);
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+      return binding;
     }
+    const { project, pjcode } = binding;
     const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
       context.resolveIssueRepository(prUrl),
-      binding.project,
+      project,
       prUrl,
       projectItemId,
     );
@@ -708,7 +709,7 @@ export const handleReview = async (
     if (isNonEmptyString(issueUrl)) {
       const issueUrlFailure = await rejectWhenUrlIsNotProjectItemUrl(
         context.resolveIssueRepository(issueUrl),
-        binding.project,
+        project,
         issueUrl,
         projectItemId,
       );
@@ -725,7 +726,7 @@ export const handleReview = async (
     if (isNonEmptyString(issueUrl)) {
       const statusFailure = await updateStatusByName(
         context.resolveIssueRepository(issueUrl),
-        binding.project,
+        project,
         issueUrl,
         projectItemId,
         AWAITING_WORKSPACE_STATUS_NAME,
@@ -738,7 +739,7 @@ export const handleReview = async (
         return skippedStatusWriteResponse();
       }
     }
-    recordDone(context, pjcodeResult, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -983,17 +984,18 @@ const handleTriageImpl = async (
   }
 
   if (action === 'close' || action === 'close_not_planned') {
-    const pjcodeResult = resolveConfiguredPjcode(context, body);
-    if (typeof pjcodeResult !== 'string') {
-      return pjcodeResult;
+    const configuredPjcode = resolveConfiguredPjcode(context, body);
+    if (typeof configuredPjcode !== 'string') {
+      return configuredPjcode;
     }
-    const binding = await context.resolveProject(pjcodeResult);
-    if (binding === null) {
-      return badRequest(`no project configured for pjcode "${pjcodeResult}"`);
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+      return binding;
     }
+    const { project, pjcode } = binding;
     const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
       context.resolveIssueRepository(issueUrl),
-      binding.project,
+      project,
       issueUrl,
       projectItemId,
     );
@@ -1016,8 +1018,8 @@ const handleTriageImpl = async (
       );
     }
     const closedAtMs = Date.now();
-    recordDone(context, pjcodeResult, projectItemId);
-    recordTaskClose(context, pjcodeResult);
+    recordDone(context, pjcode, projectItemId);
+    recordTaskClose(context, pjcode);
     return { statusCode: 200, body: { ok: true, closedAtMs } };
   }
 

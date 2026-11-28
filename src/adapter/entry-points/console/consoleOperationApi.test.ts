@@ -2132,11 +2132,14 @@ describe('consoleOperationApi', () => {
     const workflowRepositoryNameWithOwner = 'fleet-org/fleet-repo';
     const workflowPrUrl = 'https://github.com/fleet-org/fleet-repo/pull/9';
     const workflowItemId = 'PVTI_workflow_review_close';
-    const workflowOwningProject: Project = {
-      ...project,
-      id: 'PVT_workflow_owner_review_close',
-      url: 'https://github.com/orgs/fleet-org/projects/7',
-    };
+    let workflowOwningProject: Project;
+    beforeEach(() => {
+      workflowOwningProject = {
+        ...project,
+        id: 'PVT_workflow_owner_review_close',
+        url: 'https://github.com/orgs/fleet-org/projects/7',
+      };
+    });
     const workflowContext = (): ConsoleOperationContext => ({
       ...contextForProject(project),
       workflowRepositoryNameWithOwner,
@@ -2175,6 +2178,63 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
         workflowPrUrl,
+      );
+    });
+  });
+
+  describe('workflow-repository request binds intmux writes to the workflow-owning project', () => {
+    const workflowRepositoryNameWithOwner = 'fleet-org/fleet-repo';
+    const workflowIssueUrl =
+      'https://github.com/fleet-org/fleet-repo/issues/42';
+    const workflowItemId = 'PVTI_workflow_intmux';
+    let workflowOwningProject: Project;
+    beforeEach(() => {
+      workflowOwningProject = {
+        ...project,
+        id: 'PVT_workflow_owner_intmux',
+        url: 'https://github.com/orgs/fleet-org/projects/8',
+      };
+    });
+
+    it('checks the item and writes the In Tmux status in the workflow-owning project', async () => {
+      issueRepository.getAllIssues.mockImplementation(async (projectId) =>
+        projectId === workflowOwningProject.id
+          ? {
+              issues: [
+                {
+                  ...issue,
+                  itemId: workflowItemId,
+                  url: workflowIssueUrl,
+                  isPr: false,
+                },
+              ],
+              project: workflowOwningProject,
+              cacheUsed: false,
+            }
+          : { issues: [], project, cacheUsed: false },
+      );
+      const context: ConsoleOperationContext = {
+        ...contextForProject(project),
+        workflowRepositoryNameWithOwner,
+        resolveWorkflowProjectBinding: async () => ({
+          pjcode: 'fleet-pjcode',
+          project: workflowOwningProject,
+        }),
+      };
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        nameWithOwner: workflowRepositoryNameWithOwner,
+        action: 'set_intmux',
+        issueUrl: workflowIssueUrl,
+        projectItemId: workflowItemId,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        workflowOwningProject,
+        expect.objectContaining({ itemId: workflowItemId }),
+        expect.anything(),
       );
     });
   });
