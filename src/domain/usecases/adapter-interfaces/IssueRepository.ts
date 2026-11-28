@@ -200,6 +200,7 @@ export interface IssueRepository {
     options?: {
       bypassCache?: boolean;
       includeCiStatusUnavailable?: boolean;
+      includeClosedPullRequests?: boolean;
     },
   ) => Promise<RelatedPullRequest[]>;
   findRelatedOpenPrUrls: (

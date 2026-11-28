@@ -3404,7 +3404,11 @@ export class ApiV3CheerioRestIssueRepository
 
   findRelatedOpenPRs = async (
     issueUrl: string,
-    options?: { bypassCache?: boolean; includeCiStatusUnavailable?: boolean },
+    options?: {
+      bypassCache?: boolean;
+      includeCiStatusUnavailable?: boolean;
+      includeClosedPullRequests?: boolean;
+    },
   ): Promise<RelatedPullRequest[]> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(issueUrl);
     if (isPr) {
@@ -3414,6 +3418,8 @@ export class ApiV3CheerioRestIssueRepository
     }
     const includeCiStatusUnavailable =
       options?.includeCiStatusUnavailable === true;
+    const includeClosedPullRequests =
+      options?.includeClosedPullRequests === true;
 
     const nowMs = (await this.dateRepository.now()).getTime();
     const cacheKey = `related-open-prs/${owner}/${repo}/${issueNumber}`;
@@ -3421,6 +3427,7 @@ export class ApiV3CheerioRestIssueRepository
       await this.localStorageCacheRepository.getSingle(cacheKey);
     if (
       !options?.bypassCache &&
+      !includeClosedPullRequests &&
       isCachedRelatedOpenPrs(cachedRaw) &&
       nowMs - cachedRaw.fetchedAtMs < RELATED_OPEN_PRS_CACHE_TTL_MS
     ) {
@@ -3540,7 +3547,13 @@ export class ApiV3CheerioRestIssueRepository
           );
           continue;
         }
-        if (!this.isRelatedOpenPullRequestTimelineItem(item, issueUrl))
+        if (
+          !this.isRelatedOpenPullRequestTimelineItem(
+            item,
+            issueUrl,
+            includeClosedPullRequests,
+          )
+        )
           continue;
 
         timelinePullRequests.push(item.source);
@@ -3561,7 +3574,12 @@ export class ApiV3CheerioRestIssueRepository
     ]);
 
     for (const pr of timelinePullRequests) {
-      await this.relatedOpenPullRequestRecord(pr, relatedPRsMap, statesByUrl);
+      await this.relatedOpenPullRequestRecord(
+        pr,
+        relatedPRsMap,
+        statesByUrl,
+        includeClosedPullRequests,
+      );
     }
 
     for (const recordedUrl of recordedPrUrls) {
@@ -3576,14 +3594,20 @@ export class ApiV3CheerioRestIssueRepository
         },
         relatedPRsMap,
         statesByUrl,
+        includeClosedPullRequests,
       );
     }
 
     const prs = Array.from(relatedPRsMap.values());
-    await this.localStorageCacheRepository.setSingle(cacheKey, {
-      fetchedAtMs: nowMs,
-      prs: prs.map((pr) => ({ ...pr, createdAt: pr.createdAt.toISOString() })),
-    });
+    if (!includeClosedPullRequests) {
+      await this.localStorageCacheRepository.setSingle(cacheKey, {
+        fetchedAtMs: nowMs,
+        prs: prs.map((pr) => ({
+          ...pr,
+          createdAt: pr.createdAt.toISOString(),
+        })),
+      });
+    }
     return filterRelatedOpenPrsByCiStatusAvailability(
       prs,
       includeCiStatusUnavailable,
@@ -3594,6 +3618,7 @@ export class ApiV3CheerioRestIssueRepository
     pr: NonNullable<TimelineItem['source']>,
     relatedPRsMap: Map<string, RelatedPullRequest>,
     prefetchedSlimPullRequests: Map<string, SlimPullRequest | null> = new Map(),
+    includeClosedPullRequests = false,
   ): Promise<void> => {
     const prUrl = pr.url || '';
 
@@ -3664,7 +3689,10 @@ export class ApiV3CheerioRestIssueRepository
       const fetchedSlimPullRequest = prefetchedSlimPullRequests.has(prUrl)
         ? (prefetchedSlimPullRequests.get(prUrl) ?? null)
         : await this.fetchSlimPullRequest(prOwner, prRepo, pr.number);
-      if (!fetchedSlimPullRequest || fetchedSlimPullRequest.state !== 'OPEN') {
+      if (
+        !fetchedSlimPullRequest ||
+        (!includeClosedPullRequests && fetchedSlimPullRequest.state !== 'OPEN')
+      ) {
         console.info(
           `ApiV3CheerioRestIssueRepository: pull request is no longer open, excluding it from related open PRs. prUrl: ${prUrl}`,
         );
@@ -3716,13 +3744,16 @@ export class ApiV3CheerioRestIssueRepository
   private isRelatedOpenPullRequestTimelineItem = (
     item: TimelineItem | null,
     issueUrl: string,
+    includeClosedPullRequests = false,
   ): item is TimelineItem & {
     source: NonNullable<TimelineItem['source']>;
   } => {
     if (!item) return false;
     if (item.__typename !== 'CrossReferencedEvent') return false;
     if (!item.source || item.source.__typename !== 'PullRequest') return false;
-    if (item.source.state !== 'OPEN') return false;
+    if (!includeClosedPullRequests && item.source.state !== 'OPEN') {
+      return false;
+    }
     return isPullRequestRelatedToIssue({
       willCloseTarget: item.willCloseTarget === true,
       prBody: item.source.body ?? null,
