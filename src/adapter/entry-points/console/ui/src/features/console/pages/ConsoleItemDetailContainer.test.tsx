@@ -4026,15 +4026,20 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     action: 'close' | 'set_status',
     extra?: { statusName: string; commentBody?: string },
     includeActionId = false,
+    timing?: { openedToActionMs: number; actionDescription: string },
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: TRIAGE_OPERATION_PATH,
     requestBody: includeActionId
       ? expect.objectContaining({
           ...buildTriageRequest('acme', item, action, extra),
+          ...timing,
           actionId: expect.any(String),
         })
-      : buildTriageRequest('acme', item, action, extra),
+      : {
+          ...buildTriageRequest('acme', item, action, extra),
+          ...timing,
+        },
   });
 
   const commentBodyWrittenOffline = 'Checked during the flight.';
@@ -4190,10 +4195,20 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'ok & Awaiting Workspace',
       expectedOffline: [
-        triageOfflinePayloadFor(issueItem, 'set_status', {
-          statusName: AWAITING_WORKSPACE_NAME,
-          commentBody: 'ok',
-        }),
+        triageOfflinePayloadFor(
+          issueItem,
+          'set_status',
+          {
+            statusName: AWAITING_WORKSPACE_NAME,
+            commentBody: 'ok',
+          },
+          false,
+          {
+            openedToActionMs: 2500,
+            actionDescription:
+              '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
+          },
+        ),
       ],
     },
     {
@@ -4214,10 +4229,20 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       buttonLabel: 'Comment & Awaiting Workspace',
       expectedOffline: [
         {
-          ...triageOfflinePayloadFor(issueItem, 'set_status', {
-            statusName: AWAITING_WORKSPACE_NAME,
-            commentBody: draftWrittenBeforeClosing,
-          }),
+          ...triageOfflinePayloadFor(
+            issueItem,
+            'set_status',
+            {
+              statusName: AWAITING_WORKSPACE_NAME,
+              commentBody: draftWrittenBeforeClosing,
+            },
+            false,
+            {
+              openedToActionMs: 2500,
+              actionDescription:
+                'コメントを投稿して「Awaiting Workspace」に変更しました',
+            },
+          ),
           composerDraftBody: draftWrittenBeforeClosing,
         },
       ],
@@ -4225,6 +4250,10 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
   ])(
     'queues $buttonLabel with an offline payload holding the comment before the status change',
     async ({ buttonLabel, expectedOffline }) => {
+      const now = jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(1000)
+        .mockReturnValueOnce(3500);
       const onQueueAction = jest.fn();
       const { getByPlaceholderText, getByText } =
         renderIssueDetailForCommentDelivery({ onQueueAction });
@@ -4239,6 +4268,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
           expect.objectContaining({ offline: expectedOffline }),
         );
       });
+      now.mockRestore();
     },
   );
 
@@ -4872,6 +4902,11 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   });
 
   it('bundles the same Awaiting Workspace transition again on a second submission after the panel reopens with an empty field', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3500)
+      .mockReturnValueOnce(5000);
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const {
@@ -4919,7 +4954,11 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       dependedIssueUrl: 'https://github.com/owner/repo/issues/100',
       projectItemId: issueItem.projectItemId,
       replaceExisting: true,
+      openedToActionMs: 4000,
+      actionDescription:
+        '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/100 に設定）',
     });
+    now.mockRestore();
   });
 
   it('runs the bundled commit by writing the depended issue URL and then the Awaiting Workspace status, in that order, without ever calling operations.addComment', async () => {
@@ -5090,6 +5129,10 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   });
 
   it('builds a two-entry offline payload array for the depended issue URL write and then the Awaiting Workspace status write', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3500);
     const onQueueAction = jest.fn();
     const { getByTitle, getByPlaceholderText, getByText } =
       renderIssueDetailForDependedIssueUrl({ onQueueAction });
@@ -5119,16 +5162,25 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
           dependedIssueUrl: dependedIssueUrlToSubmit,
           projectItemId: issueItem.projectItemId,
           replaceExisting: true,
+          openedToActionMs: 2500,
+          actionDescription:
+            '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
         },
       },
       {
         ...expectedBase,
         apiPath: TRIAGE_OPERATION_PATH,
-        requestBody: buildTriageRequest('acme', issueItem, 'set_status', {
-          statusName: AWAITING_WORKSPACE_NAME,
-        }),
+        requestBody: {
+          ...buildTriageRequest('acme', issueItem, 'set_status', {
+            statusName: AWAITING_WORKSPACE_NAME,
+          }),
+          openedToActionMs: 2500,
+          actionDescription:
+            '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
+        },
       },
     ]);
+    now.mockRestore();
   });
 
   it('never produces a comment offline payload or calls operations.addComment for the bundled Set Depended Issue action', async () => {
@@ -5204,6 +5256,10 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   });
 
   it('saves several URLs as one comma-joined replace payload and queues the Awaiting Workspace move', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3500);
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const { getByTitle, getByPlaceholderText, getByText } =
@@ -5227,6 +5283,9 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
         'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
       projectItemId: issueItem.projectItemId,
       replaceExisting: true,
+      openedToActionMs: 2500,
+      actionDescription:
+        '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2 に設定）',
     });
 
     await input.commit(0);
@@ -5244,6 +5303,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       undefined,
       undefined,
     );
+    now.mockRestore();
   });
 
   it('saves a line deletion as a replace of the remaining URL only, and still queues the Awaiting Workspace move', async () => {

@@ -39,7 +39,7 @@ describe('withConsoleActionTiming', () => {
   ];
 
   test.each(cases)('%s', (_name, timing, payload, expected) => {
-    const original = structuredClone(payload);
+    const original = JSON.parse(JSON.stringify(payload));
     const result = withConsoleActionTiming(payload, timing);
 
     expect(result).toEqual(expected);
