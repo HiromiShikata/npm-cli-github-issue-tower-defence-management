@@ -1,3 +1,10 @@
+# [2.220.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.5...v2.220.0) (2026-11-28)
+
+
+### Features
+
+* **console:** record elapsed time from opening to action on item comments ([#3803](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3803)) ([77e11cc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/77e11cc58aa10598d40435b4686c5f5feded3248))
+
 ## [2.219.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.4...v2.219.5) (2026-11-28)
 
 
