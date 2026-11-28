@@ -1,3 +1,4 @@
+import { stripConsoleElapsedTimeLine } from '../../../../../consoleElapsedTimeComment';
 import type { ConsoleComment } from './types';
 
 const EXECUTIVE_SUMMARY_HEADING =
@@ -29,11 +30,11 @@ export const extractLastCommentDisplayText = (
   if (comments.length === 0) {
     return null;
   }
-  const lastComment = comments[comments.length - 1];
-  const summary = extractExecutiveSummary(lastComment.body);
+  const body = stripConsoleElapsedTimeLine(comments[comments.length - 1].body);
+  const summary = extractExecutiveSummary(body);
   if (summary !== null) {
     return summary;
   }
-  const trimmed = lastComment.body.trim();
+  const trimmed = body.trim();
   return trimmed.length > 0 ? trimmed : null;
 };

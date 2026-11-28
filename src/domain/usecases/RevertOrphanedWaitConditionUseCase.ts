@@ -10,6 +10,7 @@ import {
 } from '../services/commentCreateWithDedupRetry';
 import { isOrphanedWorkerProcess } from './isOrphanedWorkerProcess';
 import { isAgentReportBody } from './isAgentReportBody';
+import { stripConsoleElapsedTimeLine } from './consoleElapsedTimeComment';
 
 export const ORPHANED_WAIT_CONDITION_REJECTION_DETAIL =
   'ORPHANED_WAIT_CONDITION';
@@ -70,7 +71,12 @@ export class RevertOrphanedWaitConditionUseCase {
 
       const comments =
         await this.issueCommentRepository.getCommentsFromIssue(issue);
-      const lastComment = comments[comments.length - 1];
+      const lastComment = [...comments]
+        .reverse()
+        .find(
+          (comment) =>
+            stripConsoleElapsedTimeLine(comment.content).trim().length > 0,
+        );
       if (lastComment && isAgentReportBody(lastComment.content)) {
         continue;
       }

@@ -43,6 +43,11 @@ import {
   readConsoleActionRecords,
   writeConsoleActionRecord,
 } from './consoleActionResultStore';
+import {
+  appendConsoleElapsedTimeLine,
+  formatConsoleElapsedTimeLine,
+  shouldRecordConsoleElapsedTime,
+} from './consoleElapsedTimeComment';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -141,6 +146,93 @@ const rejectWhenRepositoryIsNotConfigured = (
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
+
+type ConsoleElapsedTimeAction = {
+  openedToActionMs: number;
+  actionDescription: string;
+};
+
+const readConsoleElapsedTimeAction = (
+  body: Record<string, unknown>,
+): ConsoleElapsedTimeAction | ConsoleOperationResponse | null => {
+  const hasElapsed = Object.hasOwn(body, 'openedToActionMs');
+  const hasDescription = Object.hasOwn(body, 'actionDescription');
+  if (!hasElapsed && !hasDescription) return null;
+  if (
+    typeof body.openedToActionMs !== 'number' ||
+    !Number.isFinite(body.openedToActionMs) ||
+    !Number.isInteger(body.openedToActionMs) ||
+    body.openedToActionMs < 0
+  ) {
+    return badRequest('openedToActionMs must be a finite non-negative integer');
+  }
+  if (!isNonEmptyString(body.actionDescription)) {
+    return badRequest('actionDescription must be a non-empty string');
+  }
+  return {
+    openedToActionMs: body.openedToActionMs,
+    actionDescription: body.actionDescription,
+  };
+};
+
+const appendElapsedTimeIfRecordable = (
+  itemUrl: string,
+  commentBody: string,
+  elapsedAction: ConsoleElapsedTimeAction | null,
+): string =>
+  elapsedAction !== null && shouldRecordConsoleElapsedTime(itemUrl)
+    ? appendConsoleElapsedTimeLine(
+        commentBody,
+        formatConsoleElapsedTimeLine(
+          elapsedAction.openedToActionMs,
+          elapsedAction.actionDescription,
+        ),
+      )
+    : commentBody;
+
+const postElapsedTimeCommentAfterAction = async (
+  issueRepository: IssueRepository,
+  itemUrl: string,
+  elapsedAction: ConsoleElapsedTimeAction | null,
+): Promise<boolean> => {
+  if (elapsedAction === null || !shouldRecordConsoleElapsedTime(itemUrl)) {
+    return false;
+  }
+  const body = formatConsoleElapsedTimeLine(
+    elapsedAction.openedToActionMs,
+    elapsedAction.actionDescription,
+  );
+  try {
+    await issueRepository.createCommentByUrl(itemUrl, body);
+    return true;
+  } catch (error) {
+    console.error(
+      '[console-operation] elapsed time comment post failed:',
+      { url: itemUrl },
+      error,
+    );
+    return false;
+  }
+};
+
+const successAfterElapsedTimeComment = async (
+  issueRepository: IssueRepository,
+  itemUrl: string,
+  elapsedAction: ConsoleElapsedTimeAction | null,
+): Promise<ConsoleOperationResponse> => {
+  const elapsedCommentPosted = await postElapsedTimeCommentAfterAction(
+    issueRepository,
+    itemUrl,
+    elapsedAction,
+  );
+  return {
+    statusCode: 200,
+    body: {
+      ok: true,
+      ...(elapsedCommentPosted ? { elapsedCommentPosted: true } : {}),
+    },
+  };
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -687,6 +779,10 @@ export const handleReview = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+  const elapsedActionResult = readConsoleElapsedTimeAction(body);
+  if (elapsedActionResult !== null && isOperationResponse(elapsedActionResult))
+    return elapsedActionResult;
+  const elapsedAction = elapsedActionResult;
 
   if (action === 'close') {
     const configuredPjcode = resolveConfiguredPjcode(context, body);
@@ -736,14 +832,21 @@ export const handleReview = async (
     if (isNonEmptyString(body.commentBody)) {
       await context
         .resolveIssueRepository(prUrl)
-        .createCommentByUrl(prUrl, body.commentBody);
+        .createCommentByUrl(
+          prUrl,
+          appendElapsedTimeIfRecordable(prUrl, body.commentBody, elapsedAction),
+        );
     }
     await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (statusFailure?.kind === 'skipped') {
       return skippedStatusWriteResponse();
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    return successAfterElapsedTimeComment(
+      context.resolveIssueRepository(prUrl),
+      prUrl,
+      isNonEmptyString(body.commentBody) ? null : elapsedAction,
+    );
   }
 
   const binding = await resolveBinding(context, body);
@@ -797,12 +900,22 @@ export const handleReview = async (
     if (isNonEmptyString(body.commentBody)) {
       await context
         .resolveIssueRepository(prUrl)
-        .createCommentByUrl(prUrl, body.commentBody);
+        .createCommentByUrl(
+          prUrl,
+          appendElapsedTimeIfRecordable(prUrl, body.commentBody, elapsedAction),
+        );
     }
     if (isNonEmptyString(body.issueCommentBody)) {
       await context
         .resolveIssueRepository(issueUrl)
-        .createCommentByUrl(issueUrl, body.issueCommentBody);
+        .createCommentByUrl(
+          issueUrl,
+          appendElapsedTimeIfRecordable(
+            issueUrl,
+            body.issueCommentBody,
+            elapsedAction,
+          ),
+        );
     }
     await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (failure.kind === 'skipped') {
@@ -916,7 +1029,11 @@ export const handleReview = async (
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
     recordTaskClose(context, pjcode);
-    return ok();
+    return successAfterElapsedTimeComment(
+      issueRepository,
+      prUrl,
+      elapsedAction,
+    );
   }
 
   if (action === 'request_changes') {
@@ -948,7 +1065,7 @@ export const handleReview = async (
       .requestChangesWithInlineComment(
         prUrl,
         changedFilePath,
-        commentBody,
+        appendElapsedTimeIfRecordable(prUrl, commentBody, elapsedAction),
         inlineCommentLocation,
       );
     const failure = await updateStatusByName(
@@ -988,6 +1105,10 @@ const handleTriageImpl = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+  const elapsedActionResult = readConsoleElapsedTimeAction(body);
+  if (elapsedActionResult !== null && isOperationResponse(elapsedActionResult))
+    return elapsedActionResult;
+  const elapsedAction = elapsedActionResult;
 
   if (action === 'close' || action === 'close_not_planned') {
     const configuredPjcode = resolveConfiguredPjcode(context, body);
@@ -1011,7 +1132,14 @@ const handleTriageImpl = async (
     if (isNonEmptyString(body.commentBody)) {
       await context
         .resolveIssueRepository(issueUrl)
-        .createCommentByUrl(issueUrl, body.commentBody);
+        .createCommentByUrl(
+          issueUrl,
+          appendElapsedTimeIfRecordable(
+            issueUrl,
+            body.commentBody,
+            elapsedAction,
+          ),
+        );
     }
     if (isPullRequestUrl(issueUrl)) {
       await context.resolveIssueRepository(issueUrl).closePullRequest(issueUrl);
@@ -1026,7 +1154,19 @@ const handleTriageImpl = async (
     const closedAtMs = Date.now();
     recordDone(context, pjcode, projectItemId);
     recordTaskClose(context, pjcode);
-    return { statusCode: 200, body: { ok: true, closedAtMs } };
+    const elapsedCommentPosted = await postElapsedTimeCommentAfterAction(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      isNonEmptyString(body.commentBody) ? null : elapsedAction,
+    );
+    return {
+      statusCode: 200,
+      body: {
+        ok: true,
+        closedAtMs,
+        ...(elapsedCommentPosted ? { elapsedCommentPosted: true } : {}),
+      },
+    };
   }
 
   const binding = await resolveBinding(context, body);
@@ -1079,7 +1219,10 @@ const handleTriageImpl = async (
       try {
         await context
           .resolveIssueRepository(issueUrl)
-          .createCommentByUrl(issueUrl, commentBody);
+          .createCommentByUrl(
+            issueUrl,
+            appendElapsedTimeIfRecordable(issueUrl, commentBody, elapsedAction),
+          );
         commentPosted = true;
       } catch (error) {
         console.error(
@@ -1196,11 +1339,19 @@ const handleTriageImpl = async (
         },
       };
     }
+    const elapsedCommentPosted = await postElapsedTimeCommentAfterAction(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      isNonEmptyString(commentBody) ? null : elapsedAction,
+    );
     const resultBody =
       commentFailure === null
         ? commentPosted
           ? { ok: true, commentPosted: true, statusSet: true }
-          : { ok: true }
+          : {
+              ok: true,
+              ...(elapsedCommentPosted ? { elapsedCommentPosted: true } : {}),
+            }
         : {
             ok: false,
             commentPosted: false,
@@ -1260,7 +1411,19 @@ const handleTriageImpl = async (
     }
     const storySetAtMs = Date.now();
     recordDoneForStoryChange(context, pjcode, projectItemId);
-    return { statusCode: 200, body: { ok: true, storySetAtMs } };
+    const elapsedCommentPosted = await postElapsedTimeCommentAfterAction(
+      issueRepo,
+      issueUrl,
+      elapsedAction,
+    );
+    return {
+      statusCode: 200,
+      body: {
+        ok: true,
+        storySetAtMs,
+        ...(elapsedCommentPosted ? { elapsedCommentPosted: true } : {}),
+      },
+    };
   }
 
   if (action === 'set_agent') {
@@ -1282,7 +1445,18 @@ const handleTriageImpl = async (
       );
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    const elapsedCommentPosted = await postElapsedTimeCommentAfterAction(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      elapsedAction,
+    );
+    return {
+      statusCode: 200,
+      body: {
+        ok: true,
+        ...(elapsedCommentPosted ? { elapsedCommentPosted: true } : {}),
+      },
+    };
   }
 
   if (
@@ -1324,7 +1498,18 @@ const handleTriageImpl = async (
       );
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    const elapsedCommentPosted = await postElapsedTimeCommentAfterAction(
+      issueRepo,
+      issueUrl,
+      elapsedAction,
+    );
+    return {
+      statusCode: 200,
+      body: {
+        ok: true,
+        ...(elapsedCommentPosted ? { elapsedCommentPosted: true } : {}),
+      },
+    };
   }
 
   if (
@@ -1404,7 +1589,11 @@ const handleTriageImpl = async (
         );
       }
       recordDone(context, pjcode, projectItemId);
-      return ok();
+      return successAfterElapsedTimeComment(
+        context.resolveIssueRepository(issueUrl),
+        issueUrl,
+        elapsedAction,
+      );
     }
     const target =
       isNonEmptyString(nextActionDate) &&
@@ -1431,7 +1620,11 @@ const handleTriageImpl = async (
       );
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    return successAfterElapsedTimeComment(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      elapsedAction,
+    );
   }
 
   if (action === 'set_next_action_hour') {
@@ -1455,7 +1648,11 @@ const handleTriageImpl = async (
         );
       }
       recordDone(context, pjcode, projectItemId);
-      return ok();
+      return successAfterElapsedTimeComment(
+        context.resolveIssueRepository(issueUrl),
+        issueUrl,
+        elapsedAction,
+      );
     }
     if (
       typeof nextActionHour !== 'number' ||
@@ -1482,7 +1679,11 @@ const handleTriageImpl = async (
       );
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    return successAfterElapsedTimeComment(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      elapsedAction,
+    );
   }
 
   return badRequest(`unknown triage action "${action}"`);
@@ -1500,6 +1701,10 @@ const handleCommentImpl = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
+  const elapsedActionResult = readConsoleElapsedTimeAction(body);
+  if (elapsedActionResult !== null && isOperationResponse(elapsedActionResult))
+    return elapsedActionResult;
+  const elapsedAction = elapsedActionResult;
   const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : null;
   if (pjcode === null) {
     console.warn('[handleComment] pjcode absent in request body', { url });
@@ -1519,7 +1724,10 @@ const handleCommentImpl = async (
   try {
     const posted = await context
       .resolveIssueRepository(url)
-      .createCommentByUrl(url, commentBody);
+      .createCommentByUrl(
+        url,
+        appendElapsedTimeIfRecordable(url, commentBody, elapsedAction),
+      );
     const resultBody = {
       ok: true,
       comment: {
@@ -2079,6 +2287,10 @@ export const handleIntmux = async (
   if (!isNonEmptyString(projectItemId)) {
     return badRequest('projectItemId is required');
   }
+  const elapsedActionResult = readConsoleElapsedTimeAction(body);
+  if (elapsedActionResult !== null && isOperationResponse(elapsedActionResult))
+    return elapsedActionResult;
+  const elapsedAction = elapsedActionResult;
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {
     return binding;
@@ -2108,7 +2320,11 @@ export const handleIntmux = async (
     return skippedStatusWriteResponse();
   }
   recordDoneForStatusChange(context, pjcode, projectItemId);
-  return ok();
+  return successAfterElapsedTimeComment(
+    context.resolveIssueRepository(issueUrl),
+    issueUrl,
+    elapsedAction,
+  );
 };
 
 export const handleReorderStory = async (

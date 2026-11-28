@@ -35,6 +35,7 @@ import {
 } from '../services/commentCreateWithDedupRetry';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
 import { isOrphanedWorkerProcess } from './isOrphanedWorkerProcess';
+import { stripConsoleElapsedTimeLine } from './consoleElapsedTimeComment';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -336,7 +337,9 @@ export class RevertOrphanedPreparationUseCase {
           -params.thresholdForAutoReject * 2,
         );
         const rejectionCommentCount = lastTargetComments.filter((comment) =>
-          comment.content.startsWith('Auto Status Check: REJECTED'),
+          stripConsoleElapsedTimeLine(comment.content).startsWith(
+            'Auto Status Check: REJECTED',
+          ),
         ).length;
         const alreadyEscalated = lastTargetComments.some((comment) =>
           comment.content
@@ -483,7 +486,12 @@ export class RevertOrphanedPreparationUseCase {
     }
     const latestReopenedAt =
       await this.issueRepository.getLatestReopenedEventAt(issue);
-    const lastComment = comments[comments.length - 1];
+    const lastComment = [...comments]
+      .reverse()
+      .find(
+        (comment) =>
+          stripConsoleElapsedTimeLine(comment.content).trim().length > 0,
+      );
     if (!lastComment || !isAgentReportBody(lastComment.content)) {
       return { outcome: 'reject', comments, latestReopenedAt };
     }

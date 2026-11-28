@@ -20,6 +20,7 @@ import {
 } from '../services/commentCreateWithDedupRetry';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { StaleProjectItemError } from './SetupTowerDefenceProjectUseCase';
+import { stripConsoleElapsedTimeLine } from './consoleElapsedTimeComment';
 
 type ClearCause = 'icebox' | 'closed' | 'circular' | 'restored';
 
@@ -233,7 +234,8 @@ export class DependedIssueURLRestoreUseCase {
       ) {
         continue;
       }
-      const cause = this.resolveClearCause(comment.body);
+      const normalizedCommentBody = stripConsoleElapsedTimeLine(comment.body);
+      const cause = this.resolveClearCause(normalizedCommentBody);
       if (!cause) {
         continue;
       }
@@ -241,7 +243,7 @@ export class DependedIssueURLRestoreUseCase {
         id: comment.id,
         createdAt: comment.createdAt,
         cause,
-        dependedIssueUrls: this.extractBulletUrls(comment.body),
+        dependedIssueUrls: this.extractBulletUrls(normalizedCommentBody),
       });
     }
     return relevantComments.sort(

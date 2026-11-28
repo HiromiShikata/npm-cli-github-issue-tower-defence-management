@@ -1,4 +1,5 @@
 import { Comment } from '../entities/Comment';
+import { stripConsoleElapsedTimeLine } from './consoleElapsedTimeComment';
 
 export const AUTO_STATUS_CHECK_MESSAGE_HEAD = 'Auto Status Check:';
 export const AUTO_STATUS_CHECK_CONFLICT_MESSAGE =
@@ -12,7 +13,9 @@ export const SESSION_INTERRUPTED_BEFORE_COMPLETION_MESSAGE =
   "The prior dispatch's worker session ended before completing its turn, so this report is excluded from the consecutive-dispatch loop count.";
 
 export const isAutoStatusCheckComment = (content: string): boolean =>
-  content.startsWith(AUTO_STATUS_CHECK_MESSAGE_HEAD);
+  stripConsoleElapsedTimeLine(content).startsWith(
+    AUTO_STATUS_CHECK_MESSAGE_HEAD,
+  );
 
 export const findEffectiveLastComment = (
   comments: Comment[],

@@ -1,4 +1,5 @@
 import { StoryGateIssueComment } from '../adapter-interfaces/StoryGateIssueRepository';
+import { stripConsoleElapsedTimeLine } from '../consoleElapsedTimeComment';
 
 export const AGENT_REPORT_PREFIX = 'From: :robot:';
 export const FOLD_MARKER_LINE = '## Fold';
@@ -33,11 +34,17 @@ export const issueCommentsSplitByAuthorKind = (
   comments: StoryGateIssueComment[],
 ): IssueCommentSplit => {
   const ownerComments = comments.filter(
-    (comment) => !isAgentReportBody(comment.body),
+    (comment) =>
+      stripConsoleElapsedTimeLine(comment.body).trim().length > 0 &&
+      !isAgentReportBody(stripConsoleElapsedTimeLine(comment.body)),
   );
-  const agentCommentCountTotal = comments.length - ownerComments.length;
+  const agentCommentCountTotal = comments.filter((comment) =>
+    isAgentReportBody(stripConsoleElapsedTimeLine(comment.body)),
+  ).length;
   const agentCommentsNewestFirst = issueCommentsAfterLatestFold(comments)
-    .filter((comment) => isAgentReportBody(comment.body))
+    .filter((comment) =>
+      isAgentReportBody(stripConsoleElapsedTimeLine(comment.body)),
+    )
     .reverse()
     .slice(0, AGENT_COMMENT_READ_LIMIT);
   return {
@@ -55,6 +62,6 @@ export const issueCommentsFormatAsText = (
   comments
     .map(
       (comment, index) =>
-        `===== comment ${index + 1} of ${comments.length} created ${comment.createdAt} ${comment.url} =====\n${comment.body}\n`,
+        `===== comment ${index + 1} of ${comments.length} created ${comment.createdAt} ${comment.url} =====\n${stripConsoleElapsedTimeLine(comment.body)}\n`,
     )
     .join('\n');

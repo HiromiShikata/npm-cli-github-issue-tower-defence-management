@@ -44,6 +44,7 @@ import { RATE_LIMIT_SESSION_END_MESSAGE } from './autoStatusCheckComments';
 import { isAgentReportBodyFromAgent } from './isAgentReportBody';
 import { REACTIVATION_TRIGGER_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 import { isHumanComment } from './isHumanComment';
+import { stripConsoleElapsedTimeLine } from './consoleElapsedTimeComment';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
@@ -328,8 +329,12 @@ export class NotifyFinishedIssuePreparationUseCase {
           author,
           params.allowedIssueAuthors,
         );
-      const lastOwnerCheckComment =
-        ownerCheckComments[ownerCheckComments.length - 1];
+      const lastOwnerCheckComment = [...ownerCheckComments]
+        .reverse()
+        .find(
+          (comment) =>
+            stripConsoleElapsedTimeLine(comment.content).trim().length > 0,
+        );
       if (
         lastOwnerCheckComment &&
         isTrustedAuthorForOwnerCheck(lastOwnerCheckComment.author) &&
@@ -596,8 +601,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       rejections.length > 0 &&
       lastTargetComments.filter(
         (comment) =>
-          comment.content.startsWith('Auto Status Check: REJECTED') &&
-          isTrustedAuthor(comment.author),
+          stripConsoleElapsedTimeLine(comment.content).startsWith(
+            'Auto Status Check: REJECTED',
+          ) && isTrustedAuthor(comment.author),
       ).length >= params.thresholdForAutoReject &&
       !lastTargetComments.some(
         (comment) =>

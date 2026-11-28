@@ -34,6 +34,8 @@ export type ConsoleReviewRequest = {
   side?: ConsoleReviewCommentSide;
   expectedStatusName?: string | null;
   actionId?: string;
+  openedToActionMs?: number;
+  actionDescription?: string;
 };
 
 export type ConsoleTriageRequest = {
@@ -50,6 +52,8 @@ export type ConsoleTriageRequest = {
   setStatusWhenCommentFails?: boolean;
   expectedStatusName?: string | null;
   actionId?: string;
+  openedToActionMs?: number;
+  actionDescription?: string;
 };
 
 export type ConsoleIntmuxRequest = {
@@ -59,6 +63,8 @@ export type ConsoleIntmuxRequest = {
   projectItemId: string;
   expectedStatusName?: string | null;
   actionId?: string;
+  openedToActionMs?: number;
+  actionDescription?: string;
 };
 
 export type ConsoleReviewCommentSide = 'LEFT' | 'RIGHT';
@@ -396,6 +402,8 @@ export type ConsoleCommentRequest = {
   url: string;
   body: string;
   actionId?: string;
+  openedToActionMs?: number;
+  actionDescription?: string;
 };
 
 export type ConsoleCommentResult =
