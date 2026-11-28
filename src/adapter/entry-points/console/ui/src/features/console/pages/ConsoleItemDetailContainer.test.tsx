@@ -4803,13 +4803,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       ],
     ]);
     expect(setStatusMock.mock.calls).toEqual([
-      [
-        issueItem,
-        awaitingWorkspaceOption,
-        undefined,
-        expect.any(Number),
-        expect.stringContaining(dependedIssueUrlToSubmit),
-      ],
+      [issueItem, awaitingWorkspaceOption, undefined, undefined, undefined],
     ]);
     expect(
       replaceDependedIssueUrlMock.mock.invocationCallOrder[0],
@@ -4829,26 +4823,14 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
         ],
       ],
       expectedSetStatusCalls: [
-        [
-          issueItem,
-          awaitingWorkspaceOption,
-          undefined,
-          expect.any(Number),
-          expect.stringContaining(dependedIssueUrlToSubmit),
-        ],
+        [issueItem, awaitingWorkspaceOption, undefined, undefined, undefined],
       ],
     },
     {
       sentStepCount: 1,
       expectedSetDependedIssueUrlCalls: [],
       expectedSetStatusCalls: [
-        [
-          issueItem,
-          awaitingWorkspaceOption,
-          undefined,
-          expect.any(Number),
-          expect.stringContaining(dependedIssueUrlToSubmit),
-        ],
+        [issueItem, awaitingWorkspaceOption, undefined, undefined, undefined],
       ],
     },
   ])(
@@ -5111,8 +5093,8 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       issueItem,
       awaitingWorkspaceOption,
       undefined,
-      expect.any(Number),
-      '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2 に設定）',
+      undefined,
+      undefined,
     );
   });
 

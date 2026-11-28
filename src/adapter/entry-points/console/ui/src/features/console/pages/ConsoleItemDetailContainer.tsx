@@ -241,37 +241,48 @@ const consoleItemActionTiming = (
   };
 };
 
-const nextActionDateAfter = (
-  nextActionDate: string | null,
-  action: ConsoleNextActionDateAction,
-): string | null => {
-  if (action !== 'snooze_1day' || nextActionDate === null) {
-    return nextActionDate;
-  }
-  const date = new Date(`${nextActionDate}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
+const SNOOZE_DAY_COUNT: Partial<Record<ConsoleNextActionDateAction, number>> = {
+  snooze_1day: 1,
+  snooze_2days: 2,
+  snooze_3days: 3,
+  snooze_5days: 5,
+  snooze_1week: 7,
 };
+
+const SNOOZE_HOUR_COUNT: Partial<Record<ConsoleNextActionDateAction, number>> =
+  {
+    snooze_1hour: 1,
+    snooze_3hours: 3,
+    snooze_6hours: 6,
+  };
+
+const isoDateOf = (date: Date): string => date.toISOString().slice(0, 10);
 
 const nextActionDescription = (
   action: ConsoleNextActionDateAction,
-  nextActionDate: string | null,
+  now: number,
 ): string => {
   const label = consoleActionButtonLabels[action];
-  if (action === 'snooze_1day' && nextActionDate !== null) {
-    return `「${label}」を押しました（Next Action Date を ${nextActionDate} に設定）`;
+  const days = SNOOZE_DAY_COUNT[action];
+  if (days !== undefined) {
+    const target = isoDateOf(new Date(now + days * 24 * 60 * 60 * 1000));
+    return `「${label}」を押しました（Next Action Date を ${target} に設定）`;
   }
-  if (
-    action === 'snooze_1hour' ||
-    action === 'snooze_3hours' ||
-    action === 'snooze_6hours'
-  ) {
-    return `「${label}」を押しました（Next Action Hour を 現在時刻 から ${label} に変更）`;
+  if (action === 'snooze_1month') {
+    const current = new Date(now);
+    const year = current.getUTCFullYear();
+    const month = current.getUTCMonth() + 1;
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const day = Math.min(current.getUTCDate(), lastDay);
+    const target = isoDateOf(new Date(Date.UTC(year, month, day)));
+    return `「${label}」を押しました（Next Action Date を ${target} に設定）`;
   }
-  return `「${label}」を押しました（Next Action Date を 現在の日付 から ${label} に変更）`;
+  const hours = SNOOZE_HOUR_COUNT[action];
+  if (hours !== undefined) {
+    const targetHour = (new Date(now).getUTCHours() + hours) % 24;
+    return `「${label}」を押しました（Next Action Hour を ${targetHour} 時 に設定）`;
+  }
+  return `「${label}」を押しました`;
 };
 
 const notifyCommentError = (
@@ -544,8 +555,7 @@ export const ConsoleItemDetailContainer = ({
     },
     onSetNextActionDate: (action) => {
       const actionId = generateCommentActionId();
-      const nextActionDate = nextActionDateAfter(item.nextActionDate, action);
-      const actionDescription = nextActionDescription(action, nextActionDate);
+      const actionDescription = nextActionDescription(action, Date.now());
       const timing = consoleItemActionTiming(item, actionDescription);
       onQueueAction({
         kind: { type: 'next_action_date', action },
@@ -823,8 +833,8 @@ export const ConsoleItemDetailContainer = ({
                           item,
                           option,
                           undefined,
-                          timing.openedToActionMs,
-                          timing.actionDescription,
+                          undefined,
+                          undefined,
                         ),
                     ],
                     sentStepCount,
