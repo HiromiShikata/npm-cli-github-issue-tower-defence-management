@@ -303,19 +303,31 @@ const fetchSnapshots = async (
   }
 
   const networkFailed = results.some((result) => result.networkFailed);
+  const allNullBeforeRestore = Object.values(snapshots).every(
+    (s) => s === null,
+  );
+  let restoredFromPrevious = false;
   for (const {
     tabName,
     snapshot,
     networkFailed: tabNetworkFailed,
   } of results) {
     if (snapshot === null && tabNetworkFailed) {
-      snapshots[tabName] = previous?.[tabName] ?? null;
+      const restored = previous?.[tabName] ?? null;
+      snapshots[tabName] = restored;
+      if (restored !== null) {
+        restoredFromPrevious = true;
+      }
     }
   }
-  const allNull = Object.values(snapshots).every((s) => s === null);
+  const httpErrorOccurred = results.some(
+    (result) => result.error !== null && !result.networkFailed,
+  );
+  const surfaceError =
+    allNullBeforeRestore && (!restoredFromPrevious || httpErrorOccurred);
   return {
     snapshots,
-    firstError: allNull ? firstError : null,
+    firstError: surfaceError ? firstError : null,
     networkFailed,
   };
 };
