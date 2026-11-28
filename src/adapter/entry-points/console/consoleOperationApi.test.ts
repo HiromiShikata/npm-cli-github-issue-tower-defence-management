@@ -12825,7 +12825,9 @@ describe('consoleOperationApi', () => {
     });
 
     it('creates independently for requests without an actionId', async () => {
-      const { actionId: _actionId, ...bodyWithoutActionId } = body;
+      const bodyWithoutActionId = Object.fromEntries(
+        Object.entries(body).filter(([key]) => key !== 'actionId'),
+      );
 
       await handleCreateIssue(createContext(), bodyWithoutActionId);
       await handleCreateIssue(createContext(), bodyWithoutActionId);

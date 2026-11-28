@@ -8098,11 +8098,14 @@ describe('ConsolePage task creation action queue', () => {
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(
+            getByRole('dialog', { name: 'Create new task' }),
+          ).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
       const reopenedDialog = getByRole('dialog', { name: 'Create new task' });
       expect(within(reopenedDialog).getByLabelText('Title')).toHaveValue(
         'Failing project task',
@@ -8165,11 +8168,14 @@ describe('ConsolePage task creation action queue', () => {
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       const toastTitle = container.querySelector('.console-error-toast-title');
       const toastMessage = container.querySelector(
         '.console-error-toast-message',
@@ -8924,13 +8930,16 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
         await Promise.resolve();
       });
-      await waitFor(() => {
-        expect(
-          getByText(
-            'Operation failed: Failed to create the task. Please try again.',
-          ),
-        ).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(
+            getByText(
+              'Operation failed: Failed to create the task. Please try again.',
+            ),
+          ).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
       const reopenedDialog = getByRole('dialog');
       expect(reopenedDialog).toBeInTheDocument();
       expect(getByLabelText('Title')).toHaveValue('Failing task');
@@ -9738,11 +9747,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(
         container.querySelector('.console-error-toast-message')?.textContent,
       ).toBe('Operation failed: Failed to create the task. Please try again.');
@@ -9814,11 +9826,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      const retryButton = await waitFor(() => {
-        const button = container.querySelector('.console-error-toast-retry');
-        expect(button).not.toBeNull();
-        return button as HTMLElement;
-      }, { timeout: 5000 });
+      const retryButton = await waitFor(
+        () => {
+          const button = container.querySelector('.console-error-toast-retry');
+          expect(button).not.toBeNull();
+          return button as HTMLElement;
+        },
+        { timeout: 5000 },
+      );
       expect(createIssueCallsFrom(fetchMock).length).toBe(
         CREATE_ISSUE_MAX_ATTEMPTS,
       );
@@ -9887,11 +9902,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      const retryButton = await waitFor(() => {
-        const button = container.querySelector('.console-error-toast-retry');
-        expect(button).not.toBeNull();
-        return button as HTMLElement;
-      }, { timeout: 5000 });
+      const retryButton = await waitFor(
+        () => {
+          const button = container.querySelector('.console-error-toast-retry');
+          expect(button).not.toBeNull();
+          return button as HTMLElement;
+        },
+        { timeout: 5000 },
+      );
 
       await act(async () => {
         fireEvent.click(retryButton);
@@ -9910,11 +9928,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         CREATE_ISSUE_MAX_ATTEMPTS * 2,
       );
       expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(container.querySelector('.console-error-toast-retry')).not.toBe(
         null,
       );
@@ -9961,11 +9982,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
 
       const dismissButton = container.querySelector(
@@ -10024,11 +10048,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(
         container.querySelector('.console-error-toast-message')?.textContent,
       ).toBe('Operation failed: Failed to create the task. Please try again.');
@@ -10089,11 +10116,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      const retryButton = await waitFor(() => {
-        const button = container.querySelector('.console-error-toast-retry');
-        expect(button).not.toBeNull();
-        return button as HTMLElement;
-      }, { timeout: 5000 });
+      const retryButton = await waitFor(
+        () => {
+          const button = container.querySelector('.console-error-toast-retry');
+          expect(button).not.toBeNull();
+          return button as HTMLElement;
+        },
+        { timeout: 5000 },
+      );
       expect(createIssueCallsFrom(fetchMock).length).toBe(
         CREATE_ISSUE_MAX_ATTEMPTS,
       );

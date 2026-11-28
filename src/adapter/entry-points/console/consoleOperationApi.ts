@@ -2132,24 +2132,28 @@ const handleCreateIssueImpl = async (
     priorBody !== undefined && typeof priorBody.issueUrl === 'string'
       ? priorBody.issueUrl
       : null;
-  const issueUrl = priorIssueUrl ?? (await (async () => {
-    try {
-      const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
-      const issueNumber = await issueRepository.createNewIssue(
-        org,
-        repo,
-        effectiveTitle,
-        effectiveBody,
-        [authenticatedUser],
-        [],
-      );
-      return `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[handleCreateIssue] issue creation failed:', error);
-      return { error: errorMessage };
-    }
-  })());
+  const issueUrl =
+    priorIssueUrl ??
+    (await (async () => {
+      try {
+        const authenticatedUser =
+          await issueRepository.getAuthenticatedUserLogin();
+        const issueNumber = await issueRepository.createNewIssue(
+          org,
+          repo,
+          effectiveTitle,
+          effectiveBody,
+          [authenticatedUser],
+          [],
+        );
+        return `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error('[handleCreateIssue] issue creation failed:', error);
+        return { error: errorMessage };
+      }
+    })());
   if (typeof issueUrl !== 'string') {
     return {
       statusCode: 500,
@@ -2200,7 +2204,8 @@ const handleCreateIssueImpl = async (
       persistProgress();
       return null;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(`[handleCreateIssue] ${step} failed:`, error);
       if (actionId === null) throw error;
       persistProgress();

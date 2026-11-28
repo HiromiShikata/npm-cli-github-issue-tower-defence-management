@@ -1427,7 +1427,8 @@ export const ConsolePage = () => {
           typeof response.body === 'object' &&
           response.body !== null &&
           !Array.isArray(response.body) &&
-          typeof (response.body as { issueUrl?: unknown }).issueUrl === 'string')
+          typeof (response.body as { issueUrl?: unknown }).issueUrl ===
+            'string')
       ) {
         return;
       }

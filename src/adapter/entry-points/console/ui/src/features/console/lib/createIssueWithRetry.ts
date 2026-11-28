@@ -36,7 +36,10 @@ const outcomeFromResponse = (
       return { kind: 'notCreated', reason: `HTTP ${httpStatus}` };
     }
     return httpStatus >= 500
-      ? { kind: 'unconfirmed', reason: 'The creation state could not be confirmed.' }
+      ? {
+          kind: 'unconfirmed',
+          reason: 'The creation state could not be confirmed.',
+        }
       : null;
   }
   const issueUrl = bodyString(body, 'issueUrl');
@@ -71,7 +74,10 @@ export const createIssueWithRetry = async (
   request: ConsoleCreateIssueRequest,
   options: { wait?: (milliseconds: number) => Promise<void> } = {},
 ): Promise<CreateIssueOutcome> => {
-  const wait = options.wait ?? ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+  const wait =
+    options.wait ??
+    ((milliseconds: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   let latestOutcome: CreateIssueOutcome | null = null;
   let latestTransportError: string | null = null;
   for (let attempt = 0; attempt < CREATE_ISSUE_MAX_ATTEMPTS; attempt += 1) {
@@ -80,11 +86,14 @@ export const createIssueWithRetry = async (
       const outcome = outcomeFromResponse(response.httpStatus, response.body);
       if (outcome !== null) {
         latestOutcome = outcome;
-        if (response.httpStatus >= 200 && response.httpStatus < 300) return outcome;
-        if (response.httpStatus >= 400 && response.httpStatus < 500) return outcome;
+        if (response.httpStatus >= 200 && response.httpStatus < 300)
+          return outcome;
+        if (response.httpStatus >= 400 && response.httpStatus < 500)
+          return outcome;
       }
     } catch (error) {
-      latestTransportError = error instanceof Error ? error.message : String(error);
+      latestTransportError =
+        error instanceof Error ? error.message : String(error);
     }
     if (attempt < CREATE_ISSUE_MAX_ATTEMPTS - 1) {
       await wait(CREATE_ISSUE_RETRY_DELAYS_MS[attempt]);
@@ -93,6 +102,7 @@ export const createIssueWithRetry = async (
   if (latestOutcome !== null) return latestOutcome;
   return {
     kind: 'unconfirmed',
-    reason: latestTransportError ?? 'The creation state could not be confirmed.',
+    reason:
+      latestTransportError ?? 'The creation state could not be confirmed.',
   };
 };

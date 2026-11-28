@@ -2,8 +2,8 @@ import type { ConsoleCreateIssueRequest } from './consoleApi';
 import {
   CREATE_ISSUE_MAX_ATTEMPTS,
   CREATE_ISSUE_RETRY_DELAYS_MS,
-  createIssueWithRetry,
   type CreateIssueOutcome,
+  createIssueWithRetry,
 } from './createIssueWithRetry';
 
 const request: ConsoleCreateIssueRequest & { actionId: string } = {
@@ -118,15 +118,13 @@ describe('createIssueWithRetry', () => {
   });
 
   it('returns notCreated after exhausting issue-not-created responses', async () => {
-    const send = jest
-      .fn()
-      .mockResolvedValue(
-        response(500, {
-          ok: false,
-          issueCreated: false,
-          error: 'still failed',
-        }),
-      );
+    const send = jest.fn().mockResolvedValue(
+      response(500, {
+        ok: false,
+        issueCreated: false,
+        error: 'still failed',
+      }),
+    );
     const wait = jest.fn().mockResolvedValue(undefined);
 
     const outcome = await createIssueWithRetry(send, request, { wait });
