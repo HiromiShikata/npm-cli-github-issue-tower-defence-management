@@ -447,7 +447,8 @@ export const ConsoleItemDetailContainer = ({
     ): Promise<ConsoleCommentSubmitResult> => {
       const actionId = generateCommentActionId();
       const timing =
-        timingOverride ?? consoleItemActionTiming(item, 'コメントを投稿しました');
+        timingOverride ??
+        consoleItemActionTiming(item, 'コメントを投稿しました');
       const commentHoldOffline = (
         projectCode: string,
       ): ConsoleCommentSubmitResult => {
@@ -545,10 +546,7 @@ export const ConsoleItemDetailContainer = ({
       const actionId = generateCommentActionId();
       const nextActionDate = nextActionDateAfter(item.nextActionDate, action);
       const actionDescription = nextActionDescription(action, nextActionDate);
-      const timing = consoleItemActionTiming(
-        item,
-        actionDescription,
-      );
+      const timing = consoleItemActionTiming(item, actionDescription);
       onQueueAction({
         kind: { type: 'next_action_date', action },
         item,

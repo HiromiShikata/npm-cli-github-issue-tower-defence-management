@@ -570,12 +570,14 @@ describe('useConsoleOperations', () => {
         '「Next Action Hour を 9時 に設定」',
       );
     });
-    expect(lastBody(fetchMock)).toEqual(expect.objectContaining({
-      action: 'set_next_action_hour',
-      nextActionHour: 9,
-      openedToActionMs: 192_000,
-      actionDescription: expect.stringContaining('Next Action Hour'),
-    }));
+    expect(lastBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        action: 'set_next_action_hour',
+        nextActionHour: 9,
+        openedToActionMs: 192_000,
+        actionDescription: expect.stringContaining('Next Action Hour'),
+      }),
+    );
   });
 
   it('posts set_next_action_hour with null so the server clears the hour', async () => {

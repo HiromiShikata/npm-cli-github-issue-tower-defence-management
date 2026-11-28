@@ -165,33 +165,37 @@ describe('ConsoleItemDetailContainer', () => {
     ['+5d', '+5日', 'Next Action Date'],
     ['+1w skip', '+1週', 'Next Action Date'],
     ['+1mo', '+1か月', 'Next Action Date'],
-  ] as const)('describes the resulting value for snooze %s', async (buttonText, label, fieldName) => {
-    const operations = buildOperations();
-    const onQueueAction = jest.fn();
-    const view = render(
-      <ConsoleItemDetailContainer
-        tab="todo-by-human"
-        item={issueItem}
-        caches={buildCaches()}
-        operations={operations}
-        statusOptions={consoleStatusOptionsFixture}
-        storyOptions={[]}
-        agentOptions={[]}
-        storyColors={consoleStoryColorsFixture}
-        storyName="TDPM Console port"
-        overlayStatus={null}
-        now={Date.parse('2026-06-19T12:00:00.000Z')}
-        onQueueAction={onQueueAction}
-        isAirplaneModeOn={false}
-        onOfflineActionsCreate={jest.fn()}
-      />,
-    );
-    fireEvent.click(view.getByRole('button', { name: buttonText }));
-    await onQueueAction.mock.calls[0][0].commit();
-    const description = (operations.setNextActionDate as jest.Mock).mock.calls[0][5] as string;
-    expect(description).toContain(`「${label}」`);
-    expect(description).toContain(fieldName);
-  });
+  ] as const)(
+    'describes the resulting value for snooze %s',
+    async (buttonText, label, fieldName) => {
+      const operations = buildOperations();
+      const onQueueAction = jest.fn();
+      const view = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches()}
+          operations={operations}
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
+        />,
+      );
+      fireEvent.click(view.getByRole('button', { name: buttonText }));
+      await onQueueAction.mock.calls[0][0].commit();
+      const description = (operations.setNextActionDate as jest.Mock).mock
+        .calls[0][5] as string;
+      expect(description).toContain(`「${label}」`);
+      expect(description).toContain(fieldName);
+    },
+  );
 
   it('records the item URL open time when the item detail opens', () => {
     jest.spyOn(Date, 'now').mockReturnValue(123_456);
@@ -4290,24 +4294,33 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     },
   );
 
-  it.each(commentThenCloseActions)('does not resend elapsed timing when retrying $buttonLabel after the comment was posted', async ({ buttonLabel }) => {
-    const closeFailure = new Error('close failed once');
-    const operations = buildOperations();
-    operations.closeIssue = jest.fn()
-      .mockRejectedValueOnce(closeFailure)
-      .mockResolvedValueOnce(undefined);
-    const commit = await queuedCommitResumingFromSentStepCountFor(buttonLabel, operations);
-    await expect(commit(0)).rejects.toBeInstanceOf(ConsoleActionPartiallySentError);
-    await expect(commit(1)).resolves.toBeUndefined();
-    expect(operations.addComment).toHaveBeenCalledTimes(1);
-    expect((operations.closeIssue as jest.Mock).mock.calls[1]).toEqual([
-      issueItem,
-      'close',
-      expect.any(String),
-      undefined,
-      undefined,
-    ]);
-  });
+  it.each(commentThenCloseActions)(
+    'does not resend elapsed timing when retrying $buttonLabel after the comment was posted',
+    async ({ buttonLabel }) => {
+      const closeFailure = new Error('close failed once');
+      const operations = buildOperations();
+      operations.closeIssue = jest
+        .fn()
+        .mockRejectedValueOnce(closeFailure)
+        .mockResolvedValueOnce(undefined);
+      const commit = await queuedCommitResumingFromSentStepCountFor(
+        buttonLabel,
+        operations,
+      );
+      await expect(commit(0)).rejects.toBeInstanceOf(
+        ConsoleActionPartiallySentError,
+      );
+      await expect(commit(1)).resolves.toBeUndefined();
+      expect(operations.addComment).toHaveBeenCalledTimes(1);
+      expect((operations.closeIssue as jest.Mock).mock.calls[1]).toEqual([
+        issueItem,
+        'close',
+        expect.any(String),
+        undefined,
+        undefined,
+      ]);
+    },
+  );
 
   it.each(
     commentThenCloseActions.flatMap((commentThenCloseAction) =>
