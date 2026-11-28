@@ -20,7 +20,10 @@ import {
 } from './consoleDoneStore';
 import { appendCloseEvent } from './consoleCloseEventStore';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
-import { extractProjectOwner } from './consoleGithubTokenResolver';
+import {
+  extractProjectOwner,
+  extractRepositoryReference,
+} from './consoleGithubTokenResolver';
 import {
   deleteProjectTimer,
   writeProjectTimer,
@@ -70,6 +73,8 @@ export type ConsoleOperationContext = {
   resolveIssueRepository: ConsoleIssueRepositoryResolver;
   resolveProject: ConsoleProjectResolver;
   isPjcodeConfigured: ConsolePjcodeValidator;
+  isRepositoryConfigured:
+    ((owner: string, repository: string) => boolean) | null;
   consoleDataOutputDir: string | null;
   issueAttachmentRepository: IssueAttachmentRepository | null;
   resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
@@ -116,6 +121,23 @@ const badGateway = (message: string): ConsoleOperationResponse => ({
   statusCode: 502,
   body: { error: message },
 });
+
+const forbidden = (message: string): ConsoleOperationResponse => ({
+  statusCode: 403,
+  body: { error: message },
+});
+
+const rejectWhenRepositoryIsNotConfigured = (
+  context: ConsoleOperationContext,
+  owner: string,
+  repository: string,
+): ConsoleOperationResponse | null =>
+  context.isRepositoryConfigured === null ||
+  !context.isRepositoryConfigured(owner, repository)
+    ? forbidden(
+        `repository "${owner}/${repository}" is not configured for a console project`,
+      )
+    : null;
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
@@ -270,6 +292,75 @@ const resolveBinding = async (
     return badRequest(`no project configured for pjcode "${pjcode}"`);
   }
   return binding;
+};
+
+const rejectWhenPullRequestIsNotLinkedToProjectItem = async (
+  issueRepository: IssueRepository,
+  project: Project,
+  prUrl: string,
+  projectItemId: string,
+  includeClosedPullRequests: boolean,
+): Promise<ConsoleOperationResponse | null> => {
+  const item = await findProjectItemWithRefresh(
+    issueRepository,
+    project,
+    (issue) => issue.itemId === projectItemId,
+  );
+  if (item === undefined) {
+    return badRequest(`project item "${projectItemId}" not found in project`);
+  }
+  const associatedPullRequestUrls = item.isPr
+    ? [item.url]
+    : (
+        await issueRepository.findRelatedOpenPRs(item.url, {
+          includeCiStatusUnavailable: true,
+          ...(includeClosedPullRequests ? { includeClosedPullRequests } : {}),
+        })
+      ).map((pullRequest) => pullRequest.url);
+  if (!associatedPullRequestUrls.includes(prUrl)) {
+    return forbidden(
+      `pull request "${prUrl}" is not linked to project item "${projectItemId}"`,
+    );
+  }
+  return null;
+};
+
+const rejectWhenUrlIsNotProjectItemUrl = async (
+  issueRepository: IssueRepository,
+  project: Project,
+  url: string,
+  projectItemId: string,
+): Promise<ConsoleOperationResponse | null> => {
+  const item = await findProjectItemWithRefresh(
+    issueRepository,
+    project,
+    (issue) => issue.itemId === projectItemId,
+  );
+  if (item === undefined) {
+    return badRequest(`project item "${projectItemId}" not found in project`);
+  }
+  if (item.url !== url) {
+    return forbidden(
+      `url "${url}" is not the url of project item "${projectItemId}"`,
+    );
+  }
+  return null;
+};
+
+const findProjectItemWithRefresh = async (
+  issueRepository: IssueRepository,
+  project: Project,
+  isMatch: (issue: Issue) => boolean,
+): Promise<Issue | undefined> => {
+  const firstResult = await issueRepository.getAllIssues(project.id);
+  const firstMatch = firstResult.issues.find(isMatch);
+  if (firstMatch !== undefined) {
+    return firstMatch;
+  }
+  const refreshedResult = await issueRepository.getAllIssues(project.id, {
+    refresh: true,
+  });
+  return refreshedResult.issues.find(isMatch);
 };
 
 const isOperationResponse = <T extends object>(
@@ -598,38 +689,60 @@ export const handleReview = async (
   }
 
   if (action === 'close') {
-    const pjcodeResult = resolveConfiguredPjcode(context, body);
-    if (typeof pjcodeResult !== 'string') {
-      return pjcodeResult;
+    const configuredPjcode = resolveConfiguredPjcode(context, body);
+    if (typeof configuredPjcode !== 'string') {
+      return configuredPjcode;
     }
-    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+      return binding;
+    }
+    const { project, pjcode } = binding;
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      context.resolveIssueRepository(prUrl),
+      project,
+      prUrl,
+      projectItemId,
+      true,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
+    const issueUrl = body.issueUrl;
+    if (isNonEmptyString(issueUrl)) {
+      const issueUrlFailure = await rejectWhenUrlIsNotProjectItemUrl(
+        context.resolveIssueRepository(issueUrl),
+        project,
+        issueUrl,
+        projectItemId,
+      );
+      if (issueUrlFailure !== null) {
+        return issueUrlFailure;
+      }
+    }
+    const statusFailure = isNonEmptyString(issueUrl)
+      ? await updateStatusByName(
+          context.resolveIssueRepository(issueUrl),
+          project,
+          issueUrl,
+          projectItemId,
+          AWAITING_WORKSPACE_STATUS_NAME,
+          expectedStatusAtActionTime,
+        )
+      : null;
+    if (statusFailure?.kind === 'failed') {
+      return statusFailure.response;
+    }
     if (isNonEmptyString(body.commentBody)) {
       await context
         .resolveIssueRepository(prUrl)
         .createCommentByUrl(prUrl, body.commentBody);
     }
-    const issueUrl = body.issueUrl;
-    if (isNonEmptyString(issueUrl)) {
-      const binding = await context.resolveProject(pjcodeResult);
-      if (binding === null) {
-        return badRequest(`no project configured for pjcode "${pjcodeResult}"`);
-      }
-      const statusFailure = await updateStatusByName(
-        context.resolveIssueRepository(issueUrl),
-        binding.project,
-        issueUrl,
-        projectItemId,
-        AWAITING_WORKSPACE_STATUS_NAME,
-        expectedStatusAtActionTime,
-      );
-      if (statusFailure.kind === 'failed') {
-        return statusFailure.response;
-      }
-      if (statusFailure.kind === 'skipped') {
-        return skippedStatusWriteResponse();
-      }
+    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
+    if (statusFailure?.kind === 'skipped') {
+      return skippedStatusWriteResponse();
     }
-    recordDone(context, pjcodeResult, projectItemId);
+    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
@@ -644,16 +757,24 @@ export const handleReview = async (
     if (!isNonEmptyString(issueUrl)) {
       return badRequest('issueUrl is required for unnecessary');
     }
-    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
-    if (isNonEmptyString(body.commentBody)) {
-      await context
-        .resolveIssueRepository(prUrl)
-        .createCommentByUrl(prUrl, body.commentBody);
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      context.resolveIssueRepository(prUrl),
+      project,
+      prUrl,
+      projectItemId,
+      true,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
     }
-    if (isNonEmptyString(body.issueCommentBody)) {
-      await context
-        .resolveIssueRepository(issueUrl)
-        .createCommentByUrl(issueUrl, body.issueCommentBody);
+    const issueUrlFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
+    if (issueUrlFailure !== null) {
+      return issueUrlFailure;
     }
     const labelFailure = await addChoreLabel(
       context.resolveIssueRepository(issueUrl),
@@ -673,6 +794,17 @@ export const handleReview = async (
     if (failure.kind === 'failed') {
       return failure.response;
     }
+    if (isNonEmptyString(body.commentBody)) {
+      await context
+        .resolveIssueRepository(prUrl)
+        .createCommentByUrl(prUrl, body.commentBody);
+    }
+    if (isNonEmptyString(body.issueCommentBody)) {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .createCommentByUrl(issueUrl, body.issueCommentBody);
+    }
+    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (failure.kind === 'skipped') {
       return skippedStatusWriteResponse();
     }
@@ -682,6 +814,16 @@ export const handleReview = async (
 
   if (action === 'approve_and_merge') {
     const issueRepository = context.resolveIssueRepository(prUrl);
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      issueRepository,
+      project,
+      prUrl,
+      projectItemId,
+      false,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
     const prStatus = await issueRepository.getOpenPullRequest(prUrl);
     if (prStatus === null) {
       return badRequest(
@@ -782,6 +924,16 @@ export const handleReview = async (
     if (!isNonEmptyString(commentBody)) {
       return badRequest('commentBody is required for request_changes');
     }
+    const linkFailure = await rejectWhenPullRequestIsNotLinkedToProjectItem(
+      context.resolveIssueRepository(prUrl),
+      project,
+      prUrl,
+      projectItemId,
+      false,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
     const changedFilePath = isNonEmptyString(body.changedFilePath)
       ? body.changedFilePath
       : null;
@@ -838,9 +990,23 @@ const handleTriageImpl = async (
   }
 
   if (action === 'close' || action === 'close_not_planned') {
-    const pjcodeResult = resolveConfiguredPjcode(context, body);
-    if (typeof pjcodeResult !== 'string') {
-      return pjcodeResult;
+    const configuredPjcode = resolveConfiguredPjcode(context, body);
+    if (typeof configuredPjcode !== 'string') {
+      return configuredPjcode;
+    }
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+      return binding;
+    }
+    const { project, pjcode } = binding;
+    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
     }
     if (isNonEmptyString(body.commentBody)) {
       await context
@@ -858,8 +1024,8 @@ const handleTriageImpl = async (
       );
     }
     const closedAtMs = Date.now();
-    recordDone(context, pjcodeResult, projectItemId);
-    recordTaskClose(context, pjcodeResult);
+    recordDone(context, pjcode, projectItemId);
+    recordTaskClose(context, pjcode);
     return { statusCode: 200, body: { ok: true, closedAtMs } };
   }
 
@@ -868,6 +1034,15 @@ const handleTriageImpl = async (
     return binding;
   }
   const { project, pjcode } = binding;
+  const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+    context.resolveIssueRepository(issueUrl),
+    project,
+    issueUrl,
+    projectItemId,
+  );
+  if (linkFailure !== null) {
+    return linkFailure;
+  }
 
   if (action === 'set_status') {
     const previousResult = context.priorAttempt?.body;
@@ -1329,6 +1504,18 @@ const handleCommentImpl = async (
   if (pjcode === null) {
     console.warn('[handleComment] pjcode absent in request body', { url });
   }
+  const repositoryReference = extractRepositoryReference(url);
+  if (repositoryReference === null) {
+    return badRequest('url must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
+  }
   try {
     const posted = await context
       .resolveIssueRepository(url)
@@ -1513,6 +1700,18 @@ export const handleAttachmentUpload = async (
   if (typeof pjcodeResult !== 'string') {
     return pjcodeResult;
   }
+  const repositoryReference = extractRepositoryReference(url);
+  if (repositoryReference === null) {
+    return badRequest('url must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
+  }
   if (context.issueAttachmentRepository === null) {
     return badGateway('attachment upload is not configured');
   }
@@ -1562,6 +1761,14 @@ const handleCreateIssueImpl = async (
   }
   const org = nameWithOwner.slice(0, slashIndex);
   const repo = nameWithOwner.slice(slashIndex + 1);
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    org,
+    repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
+  }
 
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {
@@ -1681,6 +1888,8 @@ const handleCreateIssueImpl = async (
 export const handleCreateWorkflowIssue = async (
   issueRepository: IssueRepository,
   body: Record<string, unknown>,
+  isRepositoryConfigured:
+    ((owner: string, repository: string) => boolean) | null,
 ): Promise<ConsoleOperationResponse> => {
   const nameWithOwner = body.nameWithOwner;
   const title = body.title;
@@ -1696,6 +1905,11 @@ export const handleCreateWorkflowIssue = async (
   }
   const org = nameWithOwner.slice(0, slashIndex);
   const repo = nameWithOwner.slice(slashIndex + 1);
+  if (isRepositoryConfigured === null || !isRepositoryConfigured(org, repo)) {
+    return forbidden(
+      `repository "${org}/${repo}" is not configured for a console project`,
+    );
+  }
   const issueBodyValue = body.body;
   const issueBody = isNonEmptyString(issueBodyValue) ? issueBodyValue : '';
   const issueNumber = await issueRepository.createNewIssue(
@@ -1733,6 +1947,18 @@ export const handleReviewComment = async (
   }
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
+  }
+  const repositoryReference = extractRepositoryReference(url);
+  if (repositoryReference === null) {
+    return badRequest('url must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
   }
   try {
     await context
@@ -1858,6 +2084,15 @@ export const handleIntmux = async (
     return binding;
   }
   const { project, pjcode } = binding;
+  const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+    context.resolveIssueRepository(issueUrl),
+    project,
+    issueUrl,
+    projectItemId,
+  );
+  if (linkFailure !== null) {
+    return linkFailure;
+  }
   const failure = await updateStatusByName(
     context.resolveIssueRepository(issueUrl),
     project,
@@ -2020,6 +2255,20 @@ export const handleSetDependedIssueUrl = async (
   } else if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
   }
+  if (!replaceExisting) {
+    const repositoryReference = extractRepositoryReference(issueUrl);
+    if (repositoryReference === null) {
+      return badRequest('issueUrl must be a github issue or pull request url');
+    }
+    const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+      context,
+      repositoryReference.owner,
+      repositoryReference.repo,
+    );
+    if (repositoryFailure !== null) {
+      return repositoryFailure;
+    }
+  }
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {
     return binding;
@@ -2046,6 +2295,15 @@ export const handleSetDependedIssueUrl = async (
     }
     if (!isNonEmptyString(projectItemId)) {
       return badRequest('projectItemId is required');
+    }
+    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
     }
     try {
       await context
@@ -2079,6 +2337,18 @@ export const handleDeleteAllComments = async (
   const issueUrl = body.issueUrl;
   if (!isNonEmptyString(issueUrl)) {
     return badRequest('issueUrl is required');
+  }
+  const repositoryReference = extractRepositoryReference(issueUrl);
+  if (repositoryReference === null) {
+    return badRequest('issueUrl must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
   }
   await context
     .resolveIssueRepository(issueUrl)
@@ -2226,6 +2496,18 @@ export const handleIssueRename = async (
   if (!isNonEmptyString(newTitle)) {
     return badRequest('newTitle is required');
   }
+  const repositoryReference = extractRepositoryReference(issueUrl);
+  if (repositoryReference === null) {
+    return badRequest('issueUrl must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
+  }
   const issueRepository = context.resolveIssueRepository(issueUrl);
   const issue = await issueRepository.getIssueByUrl(issueUrl);
   if (issue === null) {
@@ -2246,6 +2528,18 @@ export const handleIssueBodyUpdate = async (
   }
   if (typeof newBody !== 'string') {
     return badRequest('body is required');
+  }
+  const repositoryReference = extractRepositoryReference(issueUrl);
+  if (repositoryReference === null) {
+    return badRequest('issueUrl must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
   }
   const issueRepository = context.resolveIssueRepository(issueUrl);
   const issue = await issueRepository.getIssueByUrl(issueUrl);
@@ -2271,6 +2565,18 @@ export const handleIssueCommentBodyUpdate = async (
   }
   if (typeof newBody !== 'string') {
     return badRequest('body is required');
+  }
+  const repositoryReference = extractRepositoryReference(issueUrl);
+  if (repositoryReference === null) {
+    return badRequest('issueUrl must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
   }
   const issueRepository = context.resolveIssueRepository(issueUrl);
   const issue = await issueRepository.getIssueByUrl(issueUrl);

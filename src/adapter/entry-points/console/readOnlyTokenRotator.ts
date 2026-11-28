@@ -174,8 +174,8 @@ export const createReadOnlyTokenRotatingIssueRepository = (
         );
 
   return {
-    getAllIssues: (projectId: Project['id']) =>
-      writeRepository.getAllIssues(projectId),
+    getAllIssues: (projectId: Project['id'], options?: { refresh: boolean }) =>
+      writeRepository.getAllIssues(projectId, options),
     appendIssueToProjectCache: (projectId: Project['id'], issue: Issue) =>
       writeRepository.appendIssueToProjectCache(projectId, issue),
     removeIssueFromProjectCache: (projectId: Project['id'], issue: Issue) =>

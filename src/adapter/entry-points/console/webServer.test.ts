@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { execFileSync } from 'child_process';
 import { promisify } from 'util';
+import { expect as jestExpect } from '@jest/globals';
 
 jest.mock('zlib', () => ({
   ...jest.requireActual<typeof import('zlib')>('zlib'),
@@ -20,6 +21,9 @@ const listeningPort = (address: string | net.AddressInfo | null): number => {
   }
   return address.port;
 };
+
+const toUnknown = <T>(value: T): unknown => value;
+const parseJsonBody = (text: string): unknown => toUnknown(JSON.parse(text));
 
 import { mock } from 'jest-mock-extended';
 import { parseAllDocuments } from 'yaml';
@@ -1058,6 +1062,7 @@ describe('webServer new routes integration', () => {
       resolveProject: async (pjcode) =>
         pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
       isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      isRepositoryConfigured: () => true,
       port: 0,
     });
     try {
@@ -1101,6 +1106,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
@@ -1182,6 +1199,18 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
+    });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
       branchName: null,
@@ -1248,6 +1277,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
@@ -1325,6 +1366,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
@@ -1434,6 +1487,7 @@ describe('webServer new routes integration', () => {
       dashboardDataDir: null,
       dashboardProjectNames: [],
       issueRepository,
+      isRepositoryConfigured: () => true,
       consoleErrorReporter,
       port: 0,
     });
@@ -1473,6 +1527,7 @@ describe('webServer new routes integration', () => {
       dashboardDataDir: null,
       dashboardProjectNames: [],
       issueRepository,
+      isRepositoryConfigured: () => true,
       consoleErrorReporter,
       port: 0,
     });
@@ -1514,6 +1569,7 @@ describe('webServer new routes integration', () => {
       dashboardDataDir: null,
       dashboardProjectNames: [],
       issueRepository,
+      isRepositoryConfigured: () => true,
       consoleErrorReporter,
       port: 0,
     });
@@ -1542,6 +1598,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
@@ -1625,6 +1693,18 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
+    });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
       branchName: null,
@@ -1706,6 +1786,18 @@ describe('webServer new routes integration', () => {
     issueRepository.get.mockResolvedValue({
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
+    });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        {
+          ...mock<Issue>(),
+          itemId: 'PVTI_op',
+          url: 'https://github.com/o/r/pull/1',
+          isPr: true,
+        },
+      ],
+      project: buildProject(),
+      cacheUsed: false,
     });
     issueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
@@ -2098,6 +2190,58 @@ describe('webServer new routes integration', () => {
       expect(JSON.parse(response.body)).toEqual({
         error: `GitHub GraphQL API returned no data for updateStoryList: ${gitHubMessage}`,
       });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('RED rejects a comment when its repository is not configured', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      isRepositoryConfigured: () => false,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/comment?k=${testToken}`,
+        {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/issues/1',
+          body: 'comment',
+        },
+      );
+      expect(response.statusCode).toBe(403);
+      const parsedBody = parseJsonBody(response.body);
+      {
+        const expect = Object.assign(
+          (value: unknown) => ({
+            toEqual: (expected: unknown): void => {
+              jestExpect(value).toEqual(expected);
+            },
+          }),
+          {
+            any: (constructor: unknown): unknown =>
+              toUnknown(jestExpect.any(constructor)),
+          },
+        );
+        expect(parsedBody).toEqual({ error: expect.any(String) });
+      }
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

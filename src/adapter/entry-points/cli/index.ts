@@ -1567,6 +1567,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
+    isRepositoryConfigured: (owner, repository) =>
+      resolveProjectName(owner, repository) !== null,
     resolveProjectRepository,
     invalidateProject,
     updateProjectCacheEntry,

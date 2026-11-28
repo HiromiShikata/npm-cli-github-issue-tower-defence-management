@@ -330,6 +330,8 @@ export type WebServerOptions = {
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
+  isRepositoryConfigured?:
+    ((owner: string, repository: string) => boolean) | null;
   resolveProjectRepository?: ConsoleProjectRepositoryResolver | null;
   invalidateProject?: ((pjcode: string) => void) | null;
   issueAttachmentRepository?: IssueAttachmentRepository | null;
@@ -906,7 +908,11 @@ const handleOperationApi = async (
       return null;
     }
     try {
-      return await handleCreateWorkflowIssue(issueRepository, body);
+      return await handleCreateWorkflowIssue(
+        issueRepository,
+        body,
+        options.isRepositoryConfigured ?? null,
+      );
     } catch (error) {
       console.error('console operation failed', error);
       if (error instanceof GraphqlRateLimitError) {
@@ -956,6 +962,7 @@ const handleOperationApi = async (
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
+    isRepositoryConfigured: options.isRepositoryConfigured ?? null,
     consoleDataOutputDir,
     issueAttachmentRepository: options.issueAttachmentRepository ?? null,
     resolveProjectRepository: options.resolveProjectRepository ?? null,

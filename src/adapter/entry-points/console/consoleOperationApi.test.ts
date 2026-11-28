@@ -85,6 +85,163 @@ describe('consoleOperationApi', () => {
     itemId: 'PVTI_loaded',
   };
 
+  const projectItemFor = (
+    itemId: string,
+    url: string,
+    isPr = url.includes('/pull/'),
+  ): Issue => ({ ...issue, itemId, url, isPr });
+
+  const defaultProjectItemIds = [
+    'PVTI_pin_close_issue',
+    'PVTI_pin_close_pr',
+    'PVTI_pin_unnecessary_issue',
+    'PVTI_pin_unnecessary_pr',
+    'PVTI_pin_approve_issue',
+    'PVTI_pin_approve_pr',
+    'PVTI_pin_request_issue',
+    'PVTI_pin_request_pr',
+    'PVTI_red_same_repo',
+    'PVTI_red_other_repo',
+    'PVTI_not_in_project',
+    'PVTI_red_request_changes',
+    'PVTI_red_absent',
+    'PVTI_red_get_all_error',
+    'PVTI_red_related_error',
+    'PVTI_red_null_project',
+    'PVTI_red_empty_related',
+    'PVTI_a',
+    'PVTI_resolver',
+    'PVTI_b',
+    'PVTI_c',
+    'PVTI_c_totally_wrong',
+    'PVTI_row5_review',
+    'PVTI_review_already_target',
+    'PVTI_unnecessary',
+    'PVTI_unnecessary_issue_comment',
+    'PVTI_unnecessary_dup',
+    'PVTI_unnecessary_missing',
+    'PVTI_plain_close',
+    'PVTI_self',
+    'PVTI_422',
+    'PVTI_500',
+    'PVTI_403wf',
+    'PVTI_merge500',
+    'PVTI_conflict',
+    'PVTI_merge405',
+    'PVTI_merge405other',
+    'PVTI_ci',
+    'PVTI_gone',
+    'PVTI_close',
+    'PVTI_stale_merge',
+    'PVTI_stale_ci',
+    'PVTI_stale_conflict',
+    'PVTI_conflict_preparation_skipped',
+    'PVTI_race',
+    'PVTI_match_merge',
+    'PVTI_unloadable_merge',
+    'PVTI_triage_close_unlinked',
+    'PVTI_triage_hour_unlinked',
+    'PVTI_triage_close_missing',
+    'PVTI_triage_hour_missing',
+    'PVTI_intmux_unlinked',
+    'PVTI_intmux_missing',
+    'PVTI_stale_overwrite',
+    'PVTI_already_target',
+    'PVTI_awaiting_stale',
+    'PVTI_bookkeeping_fails',
+    'PVTI_status_fails',
+    'PVTI_atomic',
+    'PVTI_atomic_comment_failure_status_change',
+    'PVTI_atomic_comment_failure',
+    'PVTI_status_failure_after_comment',
+    'PVTI_overlap',
+    'PVTI_comment_error_log',
+    'PVTI_d',
+    'PVTI_status_only',
+    'PVTI_story_only',
+    'PVTI_story_set_at',
+    'PVTI_story_set_fail',
+    'PVTI_stale',
+    'PVTI_case1_changed_to_preparation_skipped',
+    'PVTI_case2_changed_to_other_overwritten',
+    'PVTI_case2_changed_to_unset_overwritten',
+    'PVTI_case2_changed_to_target_preparation',
+    'PVTI_case3_unchanged_written',
+    'PVTI_case4_already_target_no_write',
+    'PVTI_no_expected_status_written',
+    'PVTI_comment_skipped',
+    'PVTI_comment_overwritten',
+    'PVTI_already_target_moved_by_worker',
+    'PVTI_already_target_all_equal',
+    'PVTI_already_target_expected_unset',
+    'PVTI_differs_from_expected_and_target',
+    'PVTI_live_issue_missing',
+    'PVTI_bypass_cache_check',
+    'PVTI_e',
+    'PVTI_f',
+    'PVTI_g',
+    'PVTI_1h',
+    'PVTI_3h',
+    'PVTI_6h',
+    'PVTI_3h_wrap',
+    'PVTI_1h_wrap',
+    'PVTI_6h_wrap',
+    'PVTI_2d',
+    'PVTI_3d',
+    'PVTI_5d',
+    'PVTI_1mo',
+    'PVTI_1mo_end',
+    'PVTI_1mo_dec',
+    'PVTI_nah',
+    'PVTI_nah3',
+    'PVTI_nah6',
+    'PVTI_h',
+    'PVTI_np',
+    'PVTI_prclose',
+    'PVTI_prnp',
+    'PVTI_nad',
+    'PVTI_nad_bad',
+    'PVTI_nah_bad',
+    'PVTI_nah_none',
+    'PVTI_nad_clear',
+    'PVTI_nad_none',
+    'PVTI_nah_clear',
+    'PVTI_aw',
+    'PVTI_prep',
+    'PVTI_todo',
+    'PVTI_hour_stale',
+    'PVTI_hour_other',
+    'PVTI_day_stale',
+    'PVTI_day_other',
+    'PVTI_month_stale',
+    'PVTI_month_other',
+    'PVTI_agent_stale',
+    'PVTI_agent_other',
+    'PVTI_noproj_close',
+    'PVTI_noproj_np',
+    'PVTI_noproj_reviewclose',
+    'PVTI_noproj_badpj',
+    'PVTI_needproj_intmux',
+    'PVTI_needproj_status',
+    'PVTI_needproj_story',
+    'PVTI_needproj_snooze',
+    'PVTI_i',
+    'PVTI_row9_mismatch_preparation_skipped',
+    'PVTI_row9b_mismatch_overwritten',
+    'PVTI_row10_match',
+    'PVTI_intmux_already_target',
+    'PVTI_k',
+    'PVTI_x',
+    'PVTI_j',
+    'PVTI_dep',
+    'PVTI_dep_stale',
+    'PVTI_close_contract',
+    'PVTI_close_issue_close',
+    'PVTI_close_issue_close_not_planned',
+    'PVTI_close_pull_request_close',
+    'PVTI_close_pull_request_close_not_planned',
+  ];
+
   beforeEach(() => {
     baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-op-'));
     issueRepository = mock<IssueRepository>();
@@ -156,11 +313,58 @@ describe('consoleOperationApi', () => {
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
     };
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        ...defaultProjectItemIds
+          .filter(
+            (itemId) =>
+              ![
+                'PVTI_np',
+                'PVTI_prclose',
+                'PVTI_prnp',
+                'PVTI_noproj_reviewclose',
+                'PVTI_close_issue_close',
+                'PVTI_close_issue_close_not_planned',
+                'PVTI_close_pull_request_close',
+                'PVTI_close_pull_request_close_not_planned',
+              ].includes(itemId),
+          )
+          .map((itemId) => projectItemFor(itemId, issue.url)),
+        projectItemFor('PVTI_np', 'https://github.com/o/r/issues/2'),
+        projectItemFor('PVTI_prclose', 'https://github.com/o/r/pull/7'),
+        projectItemFor('PVTI_prnp', 'https://github.com/o/r/pull/8'),
+        projectItemFor(
+          'PVTI_noproj_reviewclose',
+          'https://github.com/o/r/pull/1',
+        ),
+        projectItemFor('PVTI_noproj_close', 'https://github.com/o/r/issues/1'),
+        projectItemFor('PVTI_noproj_np', 'https://github.com/o/r/issues/1'),
+        projectItemFor(
+          'PVTI_close_issue_close',
+          'https://github.com/o/r/issues/1',
+        ),
+        projectItemFor(
+          'PVTI_close_issue_close_not_planned',
+          'https://github.com/o/r/issues/2',
+        ),
+        projectItemFor(
+          'PVTI_close_pull_request_close',
+          'https://github.com/o/r/pull/7',
+        ),
+        projectItemFor(
+          'PVTI_close_pull_request_close_not_planned',
+          'https://github.com/o/r/pull/8',
+        ),
+      ],
+      project,
+      cacheUsed: false,
+    });
     context = {
       resolveIssueRepository: () => issueRepository,
       resolveProject: async (pjcode: string) =>
         pjcode === 'acme' ? { pjcode, project } : null,
       isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+      isRepositoryConfigured: () => true,
       consoleDataOutputDir: baseDir,
       issueAttachmentRepository: null,
       resolveProjectRepository: null,
@@ -179,6 +383,7 @@ describe('consoleOperationApi', () => {
     resolveProject: async (pjcode: string) =>
       pjcode === 'acme' ? { pjcode, project: nextProject } : null,
     isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+    isRepositoryConfigured: () => true,
     consoleDataOutputDir: baseDir,
     issueAttachmentRepository: null,
     resolveProjectRepository: null,
@@ -219,6 +424,503 @@ describe('consoleOperationApi', () => {
   };
 
   describe('handleReview', () => {
+    const reviewProjectItemIds = [
+      'PVTI_a',
+      'PVTI_b',
+      'PVTI_c',
+      'PVTI_c_totally_wrong',
+      'PVTI_row5_review',
+      'PVTI_review_already_target',
+      'PVTI_unnecessary',
+      'PVTI_unnecessary_issue_comment',
+      'PVTI_unnecessary_dup',
+      'PVTI_unnecessary_missing',
+      'PVTI_resolver',
+      'PVTI_plain_close',
+      'PVTI_self',
+      'PVTI_422',
+      'PVTI_500',
+      'PVTI_403wf',
+      'PVTI_merge500',
+      'PVTI_conflict',
+      'PVTI_merge405',
+      'PVTI_merge405other',
+      'PVTI_ci',
+      'PVTI_gone',
+      'PVTI_close',
+      'PVTI_stale_merge',
+      'PVTI_stale_ci',
+      'PVTI_stale_conflict',
+      'PVTI_conflict_preparation_skipped',
+      'PVTI_match_merge',
+      'PVTI_unloadable_merge',
+      'PVTI_noproj_reviewclose',
+      'PVTI_pin_close_issue',
+      'PVTI_pin_close_pr',
+      'PVTI_pin_unnecessary_issue',
+      'PVTI_pin_unnecessary_pr',
+      'PVTI_pin_approve_issue',
+      'PVTI_pin_approve_pr',
+      'PVTI_pin_request_issue',
+      'PVTI_pin_request_pr',
+    ];
+
+    beforeEach(() => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: reviewProjectItemIds.map((itemId) => ({
+          ...issue,
+          itemId,
+          isPr: ![
+            'PVTI_c_totally_wrong',
+            'PVTI_row5_review',
+            'PVTI_review_already_target',
+            'PVTI_unnecessary',
+            'PVTI_unnecessary_issue_comment',
+            'PVTI_unnecessary_dup',
+          ].includes(itemId),
+          url:
+            itemId === 'PVTI_c_totally_wrong' || itemId === 'PVTI_unnecessary'
+              ? 'https://github.com/o/r/issues/7'
+              : itemId === 'PVTI_row5_review' ||
+                  itemId === 'PVTI_review_already_target' ||
+                  itemId === 'PVTI_unnecessary_issue_comment'
+                ? 'https://github.com/o/r/issues/9'
+                : itemId === 'PVTI_unnecessary_dup'
+                  ? 'https://github.com/o/r/issues/8'
+                  : itemId === 'PVTI_resolver'
+                    ? 'https://github.com/acme-labs/acme-portal-mock/pull/178'
+                    : 'https://github.com/o/r/pull/1',
+        })),
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+    });
+
+    const expectNoReviewWrites = (): void => {
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expect(
+        issueRepository.requestChangesWithInlineComment,
+      ).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    };
+
+    const legitimateReviewCases: Array<{
+      name: string;
+      action: string;
+      projectItemId: string;
+      itemUrl: string;
+      isPr: boolean;
+      body: Record<string, unknown>;
+    }> = [
+      {
+        name: 'close linked issue',
+        action: 'close',
+        projectItemId: 'PVTI_pin_close_issue',
+        itemUrl: 'https://github.com/o/r/issues/1',
+        isPr: false,
+        body: { commentBody: 'closing' },
+      },
+      {
+        name: 'close linked pull request',
+        action: 'close',
+        projectItemId: 'PVTI_pin_close_pr',
+        itemUrl: 'https://github.com/o/r/pull/1',
+        isPr: true,
+        body: { commentBody: 'closing' },
+      },
+      {
+        name: 'unnecessary linked issue',
+        action: 'unnecessary',
+        projectItemId: 'PVTI_pin_unnecessary_issue',
+        itemUrl: 'https://github.com/o/r/issues/1',
+        isPr: false,
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          commentBody: 'unnecessary',
+        },
+      },
+      {
+        name: 'unnecessary linked pull request',
+        action: 'unnecessary',
+        projectItemId: 'PVTI_pin_unnecessary_pr',
+        itemUrl: 'https://github.com/o/r/pull/1',
+        isPr: true,
+        body: {
+          issueUrl: 'https://github.com/o/r/pull/1',
+          commentBody: 'unnecessary',
+        },
+      },
+      {
+        name: 'approve and merge linked issue',
+        action: 'approve_and_merge',
+        projectItemId: 'PVTI_pin_approve_issue',
+        itemUrl: 'https://github.com/o/r/issues/1',
+        isPr: false,
+        body: {},
+      },
+      {
+        name: 'approve and merge linked pull request',
+        action: 'approve_and_merge',
+        projectItemId: 'PVTI_pin_approve_pr',
+        itemUrl: 'https://github.com/o/r/pull/1',
+        isPr: true,
+        body: {},
+      },
+      {
+        name: 'request changes on linked issue',
+        action: 'request_changes',
+        projectItemId: 'PVTI_pin_request_issue',
+        itemUrl: 'https://github.com/o/r/issues/1',
+        isPr: false,
+        body: { commentBody: 'please fix', changedFilePath: 'src/a.ts' },
+      },
+      {
+        name: 'request changes on linked pull request',
+        action: 'request_changes',
+        projectItemId: 'PVTI_pin_request_pr',
+        itemUrl: 'https://github.com/o/r/pull/1',
+        isPr: true,
+        body: { commentBody: 'please fix', changedFilePath: 'src/a.ts' },
+      },
+    ];
+
+    it.each(legitimateReviewCases)(
+      'PIN $name succeeds for a pull request linked to the project item',
+      async ({ action, projectItemId, itemUrl, isPr, body }) => {
+        issueRepository.getAllIssues.mockResolvedValue({
+          issues: [
+            {
+              ...issue,
+              itemId: projectItemId,
+              url: itemUrl,
+              isPr,
+            },
+          ],
+          project,
+          cacheUsed: false,
+        });
+        if (!isPr || action === 'unnecessary') {
+          issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+            {
+              url: 'https://github.com/o/r/pull/1',
+              branchName: null,
+              createdAt: new Date(0),
+              isDraft: false,
+              isConflicted: false,
+              mergeable: 'MERGEABLE',
+              isPassedAllCiJob: true,
+              isCiStateSuccess: true,
+              isResolvedAllReviewComments: true,
+              isBranchOutOfDate: false,
+              missingRequiredCheckNames: [],
+              reviewDecision: null,
+              ciStatusAvailability: 'AVAILABLE',
+            },
+          ]);
+        }
+        if (action === 'unnecessary') {
+          issueRepository.getIssueByUrl.mockResolvedValue({
+            ...issue,
+            url: 'https://github.com/o/r/issues/1',
+            labels: [],
+          });
+        }
+        const response = await handleReview(context, {
+          pjcode: 'acme',
+          action,
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId,
+          ...body,
+        });
+        expect(response.statusCode).toBe(200);
+        if (action === 'close' || action === 'unnecessary') {
+          expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+            'https://github.com/o/r/pull/1',
+          );
+        }
+        if (action === 'close' || action === 'unnecessary') {
+          expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+            'https://github.com/o/r/pull/1',
+            action === 'close' ? 'closing' : 'unnecessary',
+          );
+        }
+        if (action === 'unnecessary') {
+          expect(issueRepository.updateStatus).toHaveBeenCalled();
+        }
+        if (action === 'approve_and_merge') {
+          expect(issueRepository.approvePullRequest).toHaveBeenCalledWith(
+            'https://github.com/o/r/pull/1',
+          );
+          expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
+            'https://github.com/o/r/pull/1',
+          );
+          expect(issueRepository.updateStatus).toHaveBeenCalled();
+        }
+        if (action === 'request_changes') {
+          expect(
+            issueRepository.requestChangesWithInlineComment,
+          ).toHaveBeenCalledWith(
+            'https://github.com/o/r/pull/1',
+            'src/a.ts',
+            'please fix',
+            null,
+          );
+          expect(issueRepository.updateStatus).toHaveBeenCalled();
+        }
+      },
+    );
+
+    const reviewBindingFailureCases: Array<{
+      name: string;
+      action: string;
+      projectItemId: string;
+      prUrl: string;
+      relatedPrUrl: string;
+      body: Record<string, unknown>;
+    }> = [
+      {
+        name: 'unlinked pull request in the same repository',
+        action: 'close',
+        projectItemId: 'PVTI_red_same_repo',
+        prUrl: 'https://github.com/o/r/pull/1',
+        relatedPrUrl: 'https://github.com/o/r/pull/99',
+        body: { commentBody: 'closing' },
+      },
+      {
+        name: 'pull request in another repository',
+        action: 'unnecessary',
+        projectItemId: 'PVTI_red_other_repo',
+        prUrl: 'https://github.com/other-org/other-repo/pull/9',
+        relatedPrUrl: 'https://github.com/o/r/pull/99',
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          commentBody: 'unnecessary',
+        },
+      },
+      {
+        name: 'project item absent from the project',
+        action: 'approve_and_merge',
+        projectItemId: 'PVTI_not_in_project',
+        prUrl: 'https://github.com/o/r/pull/1',
+        relatedPrUrl: 'https://github.com/o/r/pull/99',
+        body: {},
+      },
+      {
+        name: 'unlinked pull request for request changes',
+        action: 'request_changes',
+        projectItemId: 'PVTI_red_request_changes',
+        prUrl: 'https://github.com/o/r/pull/1',
+        relatedPrUrl: 'https://github.com/o/r/pull/99',
+        body: { commentBody: 'please fix', changedFilePath: 'src/a.ts' },
+      },
+    ];
+
+    it.each(reviewBindingFailureCases)(
+      'RED rejects $name before any review write',
+      async ({ name, action, projectItemId, prUrl, relatedPrUrl, body }) => {
+        issueRepository.getAllIssues.mockResolvedValueOnce({
+          issues:
+            name === 'project item absent from the project'
+              ? []
+              : [
+                  {
+                    ...issue,
+                    itemId: projectItemId,
+                    url: 'https://github.com/o/r/issues/1',
+                    isPr: false,
+                  },
+                ],
+          project,
+          cacheUsed: false,
+        });
+        issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+          {
+            url: relatedPrUrl,
+            branchName: null,
+            createdAt: new Date(0),
+            isDraft: false,
+            isConflicted: false,
+            mergeable: 'MERGEABLE',
+            isPassedAllCiJob: true,
+            isCiStateSuccess: true,
+            isResolvedAllReviewComments: true,
+            isBranchOutOfDate: false,
+            missingRequiredCheckNames: [],
+            reviewDecision: null,
+            ciStatusAvailability: 'AVAILABLE',
+          },
+        ]);
+        if (action === 'unnecessary') {
+          issueRepository.getIssueByUrl.mockResolvedValue({
+            ...issue,
+            url: 'https://github.com/o/r/issues/1',
+            labels: [],
+          });
+        }
+        const response = await handleReview(context, {
+          pjcode: 'acme',
+          action,
+          prUrl,
+          projectItemId,
+          ...body,
+        });
+        expect(response.statusCode).toBe(
+          name === 'project item absent from the project' ? 400 : 403,
+        );
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expectNoReviewWrites();
+      },
+    );
+
+    it('RED rejects a project item absent from the project for every review action', async () => {
+      const cases = [
+        {
+          action: 'close',
+          body: { commentBody: 'closing' },
+        },
+        {
+          action: 'unnecessary',
+          body: {
+            issueUrl: 'https://github.com/o/r/issues/1',
+            commentBody: 'unnecessary',
+          },
+        },
+        { action: 'approve_and_merge', body: {} },
+        {
+          action: 'request_changes',
+          body: { commentBody: 'please fix', changedFilePath: 'src/a.ts' },
+        },
+      ];
+      for (const { action, body } of cases) {
+        issueRepository.getAllIssues.mockResolvedValueOnce({
+          issues: [],
+          project,
+          cacheUsed: false,
+        });
+        if (action === 'unnecessary') {
+          issueRepository.getIssueByUrl.mockResolvedValue({
+            ...issue,
+            url: 'https://github.com/o/r/issues/1',
+            labels: [],
+          });
+        }
+        const response = await handleReview(context, {
+          pjcode: 'acme',
+          action,
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_red_absent',
+          ...body,
+        });
+        expect(response.statusCode).toBe(400);
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expectNoReviewWrites();
+      }
+    });
+
+    it('RED rethrows getAllIssues failures before any review write', async () => {
+      issueRepository.getAllIssues.mockRejectedValueOnce(
+        new Error('github unavailable'),
+      );
+      await expect(
+        handleReview(context, {
+          pjcode: 'acme',
+          action: 'close',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_red_get_all_error',
+          commentBody: 'closing',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expectNoReviewWrites();
+    });
+
+    it('RED rethrows findRelatedOpenPRs failures before any review write', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_red_related_error',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockRejectedValueOnce(
+        new Error('github unavailable'),
+      );
+      await expect(
+        handleReview(context, {
+          pjcode: 'acme',
+          action: 'close',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_red_related_error',
+          commentBody: 'closing',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expectNoReviewWrites();
+    });
+
+    it('RED rejects close when project resolution returns null before writing', async () => {
+      const contextWithoutProject: ConsoleOperationContext = {
+        ...context,
+        resolveProject: async () => null,
+      };
+      const response = await handleReview(contextWithoutProject, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_red_null_project',
+        commentBody: 'closing',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('RED rejects an item with no related open pull requests before writing', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_red_empty_related',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([]);
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_red_empty_related',
+        commentBody: 'closing',
+      });
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+    });
     it('approves and merges, sets Awaiting workspace then records done', async () => {
       const response = await handleReview(context, {
         pjcode: 'acme',
@@ -243,6 +945,163 @@ describe('consoleOperationApi', () => {
       );
       expect(issueRepository.get).not.toHaveBeenCalled();
       expectRecordedOnlyIn('PVTI_a', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
+    });
+
+    it('RED approves a pull request whose CI status is unavailable when the item links it', async () => {
+      const linkedPullRequestWithUnavailableCi = {
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE' as const,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        reviewDecision: null,
+        ciStatusAvailability: 'UNAVAILABLE' as const,
+      };
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_a',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockImplementation((_url, options) =>
+        Promise.resolve(
+          options?.includeCiStatusUnavailable === true
+            ? [linkedPullRequestWithUnavailableCi]
+            : [],
+        ),
+      );
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      issueRepository.getPullRequestDetail.mockResolvedValue({
+        title: 'Test PR',
+        state: 'open',
+        merged: false,
+        isDraft: false,
+        additions: 0,
+        deletions: 0,
+        changedFiles: 0,
+        headRefName: 'feature',
+        baseRefName: 'main',
+        author: 'other-user',
+        files: [],
+      });
+      issueRepository.mergePullRequest.mockResolvedValue(undefined);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_a',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+    });
+
+    it('RED looks up linked pull requests with the console detail option', async () => {
+      const linkedPullRequestWithUnavailableCi = {
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE' as const,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        reviewDecision: null,
+        ciStatusAvailability: 'UNAVAILABLE' as const,
+      };
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_a',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockImplementation((_url, options) =>
+        Promise.resolve(
+          options?.includeCiStatusUnavailable === true
+            ? [linkedPullRequestWithUnavailableCi]
+            : [],
+        ),
+      );
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+        ciStatusAvailability: 'AVAILABLE',
+        reviewDecision: null,
+      });
+      issueRepository.getPullRequestDetail.mockResolvedValue({
+        title: 'Test PR',
+        state: 'open',
+        merged: false,
+        isDraft: false,
+        additions: 0,
+        deletions: 0,
+        changedFiles: 0,
+        headRefName: 'feature',
+        baseRefName: 'main',
+        author: 'other-user',
+        files: [],
+      });
+      issueRepository.mergePullRequest.mockResolvedValue(undefined);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_a',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        { includeCiStatusUnavailable: true },
+      );
     });
 
     it('resolves the issue repository from the url of the operated pull request', async () => {
@@ -467,6 +1326,23 @@ describe('consoleOperationApi', () => {
         number: 9,
         labels: ['bug'],
       });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/3',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
       const issueCommentBody =
         'The pull request for this issue was unnecessary and has been closed: https://github.com/o/r/pull/3\n\nDo not create it again.';
       const response = await handleReview(context, {
@@ -494,6 +1370,23 @@ describe('consoleOperationApi', () => {
         number: 8,
         labels: ['chore'],
       });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/2',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
       const response = await handleReview(context, {
         pjcode: 'acme',
         action: 'unnecessary',
@@ -1024,6 +1917,13 @@ describe('consoleOperationApi', () => {
             itemId: 'PVTI_race',
             status: 'Preparation',
           });
+        issueRepository.getAllIssues.mockResolvedValueOnce({
+          issues: [
+            projectItemFor('PVTI_race', 'https://github.com/o/r/issues/1'),
+          ],
+          project,
+          cacheUsed: false,
+        });
         const response = await handleTriage(context, {
           pjcode: 'acme',
           action: 'set_status',
@@ -1099,6 +1999,432 @@ describe('consoleOperationApi', () => {
     });
   });
 
+  describe('handleTriage binding', () => {
+    const linkedIssueUrl = 'https://github.com/o/r/issues/1';
+    const unlinkedIssueUrl = 'https://github.com/o/r/issues/99';
+    const linkedProjectItemId = 'PVTI_triage_binding_linked';
+    const nextActionHourProject = {
+      ...project,
+      nextActionHour: {
+        name: 'Next action hour',
+        fieldId: 'nextActionHour',
+        options: [],
+      },
+    };
+
+    const bindingFailureCases = [
+      {
+        name: 'close rejects an issue URL that is not the project item URL',
+        action: 'close',
+        issueUrl: unlinkedIssueUrl,
+        projectItemId: 'PVTI_triage_close_unlinked',
+        expectedStatusCode: 403,
+        body: {},
+      },
+      {
+        name: 'set_next_action_hour rejects an issue URL that is not the project item URL',
+        action: 'set_next_action_hour',
+        issueUrl: unlinkedIssueUrl,
+        projectItemId: 'PVTI_triage_hour_unlinked',
+        expectedStatusCode: 403,
+        body: { nextActionHour: 9 },
+      },
+      {
+        name: 'close rejects a project item absent from the project',
+        action: 'close',
+        issueUrl: linkedIssueUrl,
+        projectItemId: 'PVTI_absent_from_project',
+        expectedStatusCode: 400,
+        body: {},
+      },
+      {
+        name: 'set_next_action_hour rejects a project item absent from the project',
+        action: 'set_next_action_hour',
+        issueUrl: linkedIssueUrl,
+        projectItemId: 'PVTI_absent_from_project',
+        expectedStatusCode: 400,
+        body: { nextActionHour: 9 },
+      },
+    ];
+
+    it.each(bindingFailureCases)(
+      'RED $name before any triage write',
+      async ({ action, issueUrl, projectItemId, expectedStatusCode, body }) => {
+        issueRepository.getAllIssues.mockResolvedValueOnce({
+          issues:
+            expectedStatusCode === 400
+              ? []
+              : [
+                  {
+                    ...issue,
+                    itemId: projectItemId,
+                    url: linkedIssueUrl,
+                    isPr: false,
+                  },
+                ],
+          project,
+          cacheUsed: false,
+        });
+        const response = await handleTriage(
+          contextForProject(
+            action === 'set_next_action_hour' ? nextActionHourProject : project,
+          ),
+          {
+            pjcode: 'acme',
+            action,
+            issueUrl,
+            projectItemId,
+            ...body,
+          },
+        );
+        expect(response.statusCode).toBe(expectedStatusCode);
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      {
+        name: 'close',
+        action: 'close',
+        body: {},
+      },
+      {
+        name: 'set_next_action_hour',
+        action: 'set_next_action_hour',
+        body: { nextActionHour: 9 },
+      },
+    ])(
+      'PIN $name succeeds when the issue URL matches the linked project item',
+      async ({ action, body }) => {
+        issueRepository.getAllIssues.mockResolvedValueOnce({
+          issues: [
+            {
+              ...issue,
+              itemId: linkedProjectItemId,
+              url: linkedIssueUrl,
+              isPr: false,
+            },
+          ],
+          project: nextActionHourProject,
+          cacheUsed: false,
+        });
+        const response = await handleTriage(
+          contextForProject(
+            action === 'set_next_action_hour' ? nextActionHourProject : project,
+          ),
+          {
+            pjcode: 'acme',
+            action,
+            issueUrl: linkedIssueUrl,
+            projectItemId: linkedProjectItemId,
+            ...body,
+          },
+        );
+        expect(response.statusCode).toBe(200);
+      },
+    );
+  });
+
+  describe('workflow-repository request binds the close gate to the workflow-owning project', () => {
+    const workflowRepositoryNameWithOwner = 'fleet-org/fleet-repo';
+    const workflowPrUrl = 'https://github.com/fleet-org/fleet-repo/pull/9';
+    const workflowItemId = 'PVTI_workflow_review_close';
+    let workflowOwningProject: Project;
+    beforeEach(() => {
+      workflowOwningProject = {
+        ...project,
+        id: 'PVT_workflow_owner_review_close',
+        url: 'https://github.com/orgs/fleet-org/projects/7',
+      };
+    });
+    const workflowContext = (): ConsoleOperationContext => ({
+      ...contextForProject(project),
+      workflowRepositoryNameWithOwner,
+      resolveWorkflowProjectBinding: async () => ({
+        pjcode: 'fleet-pjcode',
+        project: workflowOwningProject,
+      }),
+    });
+
+    it('checks the item in the workflow-owning project and closes the pull request', async () => {
+      issueRepository.getAllIssues.mockImplementation(async (projectId) =>
+        projectId === workflowOwningProject.id
+          ? {
+              issues: [
+                {
+                  ...issue,
+                  itemId: workflowItemId,
+                  url: workflowPrUrl,
+                  isPr: true,
+                },
+              ],
+              project: workflowOwningProject,
+              cacheUsed: false,
+            }
+          : { issues: [], project, cacheUsed: false },
+      );
+
+      const response = await handleReview(workflowContext(), {
+        pjcode: 'acme',
+        nameWithOwner: workflowRepositoryNameWithOwner,
+        action: 'close',
+        prUrl: workflowPrUrl,
+        projectItemId: workflowItemId,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        workflowPrUrl,
+      );
+    });
+  });
+
+  describe('review close retry after a failed status write', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+    const prUrl = 'https://github.com/o/r/pull/1';
+    const itemId = 'PVTI_review_close_retry';
+    const request = {
+      pjcode: 'acme',
+      action: 'close',
+      prUrl,
+      projectItemId: itemId,
+      issueUrl,
+    };
+
+    beforeEach(() => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [{ ...issue, itemId, url: issueUrl, isPr: false }],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: prUrl,
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+    });
+
+    it('keeps the pull request open when the status write fails, so the retry still finds it linked and closes it', async () => {
+      issueRepository.updateStatus.mockRejectedValueOnce(
+        new Error('transient status write failure'),
+      );
+
+      await expect(
+        handleReview(contextForProject(project), request),
+      ).rejects.toThrow('transient status write failure');
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+
+      const retry = await handleReview(contextForProject(project), request);
+
+      expect(retry.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(prUrl);
+    });
+
+    it('retries a close whose response was lost after GitHub closed the pull request, asking the gate for closed linked pull requests', async () => {
+      issueRepository.closePullRequest.mockRejectedValueOnce(
+        new Error('connection reset after the close was applied'),
+      );
+
+      await expect(
+        handleReview(contextForProject(project), request),
+      ).rejects.toThrow('connection reset after the close was applied');
+
+      const retry = await handleReview(contextForProject(project), request);
+
+      expect(retry.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledTimes(2);
+      expect(issueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        issueUrl,
+        expect.objectContaining({ includeClosedPullRequests: true }),
+      );
+    });
+  });
+
+  describe('triage close resolves its project before any write', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+
+    it.each(['close', 'close_not_planned'])(
+      '%s rejects an unconfigured pjcode before any write',
+      async (action) => {
+        const response = await handleTriage(contextForProject(project), {
+          pjcode: 'unconfigured',
+          action,
+          issueUrl,
+          projectItemId: 'PVTI_triage_close_unconfigured',
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['close', 'close_not_planned'])(
+      '%s rejects a configured pjcode whose project resolves to null before any write',
+      async (action) => {
+        const context: ConsoleOperationContext = {
+          ...contextForProject(project),
+          resolveProject: async () => null,
+        };
+
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action,
+          issueUrl,
+          projectItemId: 'PVTI_triage_close_null_project',
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('workflow-repository request binds intmux writes to the workflow-owning project', () => {
+    const workflowRepositoryNameWithOwner = 'fleet-org/fleet-repo';
+    const workflowIssueUrl =
+      'https://github.com/fleet-org/fleet-repo/issues/42';
+    const workflowItemId = 'PVTI_workflow_intmux';
+    let workflowOwningProject: Project;
+    beforeEach(() => {
+      workflowOwningProject = {
+        ...project,
+        id: 'PVT_workflow_owner_intmux',
+        url: 'https://github.com/orgs/fleet-org/projects/8',
+      };
+    });
+
+    it('checks the item and writes the In Tmux status in the workflow-owning project', async () => {
+      issueRepository.getAllIssues.mockImplementation(async (projectId) =>
+        projectId === workflowOwningProject.id
+          ? {
+              issues: [
+                {
+                  ...issue,
+                  itemId: workflowItemId,
+                  url: workflowIssueUrl,
+                  isPr: false,
+                },
+              ],
+              project: workflowOwningProject,
+              cacheUsed: false,
+            }
+          : { issues: [], project, cacheUsed: false },
+      );
+      const context: ConsoleOperationContext = {
+        ...contextForProject(project),
+        workflowRepositoryNameWithOwner,
+        resolveWorkflowProjectBinding: async () => ({
+          pjcode: 'fleet-pjcode',
+          project: workflowOwningProject,
+        }),
+      };
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        nameWithOwner: workflowRepositoryNameWithOwner,
+        action: 'set_intmux',
+        issueUrl: workflowIssueUrl,
+        projectItemId: workflowItemId,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        workflowOwningProject,
+        expect.objectContaining({ itemId: workflowItemId }),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe('handleIntmux binding', () => {
+    const linkedIssueUrl = 'https://github.com/o/r/issues/1';
+    const unlinkedIssueUrl = 'https://github.com/o/r/issues/99';
+    const linkedProjectItemId = 'PVTI_intmux_binding_linked';
+
+    const bindingCases = [
+      {
+        name: 'rejects an issue URL that is not the project item URL',
+        issueUrl: unlinkedIssueUrl,
+        projectItemId: 'PVTI_intmux_unlinked',
+        expectedStatusCode: 403,
+        items: [
+          {
+            ...issue,
+            itemId: 'PVTI_intmux_unlinked',
+            url: linkedIssueUrl,
+            isPr: false,
+          },
+        ],
+      },
+      {
+        name: 'rejects a project item absent from the project',
+        issueUrl: linkedIssueUrl,
+        projectItemId: 'PVTI_absent_from_project',
+        expectedStatusCode: 400,
+        items: [],
+      },
+    ];
+
+    it.each(bindingCases)(
+      'RED $name before updating the status',
+      async ({ issueUrl, projectItemId, expectedStatusCode, items }) => {
+        issueRepository.getAllIssues.mockResolvedValueOnce({
+          issues: items,
+          project,
+          cacheUsed: false,
+        });
+        const response = await handleIntmux(context, {
+          pjcode: 'acme',
+          action: 'set_intmux',
+          issueUrl,
+          projectItemId,
+        });
+        expect(response.statusCode).toBe(expectedStatusCode);
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      },
+    );
+
+    it('PIN sets intmux when the issue URL matches the linked project item', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: linkedProjectItemId,
+            url: linkedIssueUrl,
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: linkedIssueUrl,
+        projectItemId: linkedProjectItemId,
+      });
+      expect(response.statusCode).toBe(200);
+    });
+  });
+
   describe('handleTriage close contract', () => {
     const issueUrl = 'https://github.com/o/r/issues/1';
     const projectItemId = 'PVTI_close_contract';
@@ -1107,6 +2433,11 @@ describe('consoleOperationApi', () => {
       action: string,
       targetUrl = issueUrl,
     ): Promise<{ statusCode: number; body: unknown }> => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [projectItemFor(projectItemId, targetUrl)],
+        project,
+        cacheUsed: false,
+      });
       const server = createWebServer({
         accessToken: 'close-contract-test-token',
         uiDistDir: path.join(baseDir, 'ui-dist'),
@@ -1118,6 +2449,7 @@ describe('consoleOperationApi', () => {
         issueRepository,
         resolveProject: context.resolveProject,
         isPjcodeConfigured: context.isPjcodeConfigured,
+        isRepositoryConfigured: context.isRepositoryConfigured,
       });
       await new Promise<void>((resolve) =>
         server.listen(0, '127.0.0.1', resolve),
@@ -3595,6 +4927,7 @@ describe('consoleOperationApi', () => {
         resolveIssueRepository: () => issueRepository,
         resolveProject: resolveProjectSpy,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: null,
@@ -3606,7 +4939,7 @@ describe('consoleOperationApi', () => {
       };
     });
 
-    it('closes an issue via triage without resolving the project', async () => {
+    it('closes an issue via triage after resolving the project and checking it is the project item', async () => {
       const response = await handleTriage(spiedContext, {
         pjcode: 'acme',
         action: 'close',
@@ -3623,11 +4956,12 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/1',
         'duplicate',
       );
-      expect(resolveProjectSpy).not.toHaveBeenCalled();
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(resolveProjectSpy).toHaveBeenCalledWith('acme');
       expect(issueRepository.get).not.toHaveBeenCalled();
     });
 
-    it('closes not planned via triage without resolving the project', async () => {
+    it('closes not planned via triage after resolving the project and checking it is the project item', async () => {
       const response = await handleTriage(spiedContext, {
         pjcode: 'acme',
         action: 'close_not_planned',
@@ -3639,10 +4973,11 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/1',
         'not_planned',
       );
-      expect(resolveProjectSpy).not.toHaveBeenCalled();
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(resolveProjectSpy).toHaveBeenCalledWith('acme');
     });
 
-    it('closes a pull request via review without resolving the project', async () => {
+    it('closes a pull request via review after resolving the project and checking it is linked', async () => {
       const response = await handleReview(spiedContext, {
         pjcode: 'acme',
         action: 'close',
@@ -3653,7 +4988,8 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
         'https://github.com/o/r/pull/1',
       );
-      expect(resolveProjectSpy).not.toHaveBeenCalled();
+      expect(resolveProjectSpy).toHaveBeenCalledTimes(1);
+      expect(resolveProjectSpy).toHaveBeenCalledWith('acme');
     });
 
     it('rejects a close whose pjcode is not configured without resolving the project', async () => {
@@ -3916,6 +5252,7 @@ describe('consoleOperationApi', () => {
         },
         isPjcodeConfigured: (pjcode: string) =>
           pjcode === 'acme' || pjcode === 'globex',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: null,
@@ -6471,6 +7808,7 @@ describe('consoleOperationApi', () => {
         resolveIssueRepository: () => issueRepository,
         resolveProject,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: jest.fn(() => ({
@@ -7260,6 +8598,110 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/3',
       );
       expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('PIN replaces the depended issue URL when the issue URL matches the project item', async () => {
+      const itemUrl = 'https://github.com/o/r/issues/1';
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [{ ...issue, itemId: 'PVTI_dep', url: itemUrl, isPr: false }],
+        project: projectWithDependedField(),
+        cacheUsed: false,
+      });
+      issueRepository.replaceDependedIssueUrlField.mockResolvedValue(undefined);
+
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: itemUrl,
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it('RED rejects replace mode when the issue URL does not match the project item', async () => {
+      const itemUrl = 'https://github.com/o/r/issues/1';
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [{ ...issue, itemId: 'PVTI_dep', url: itemUrl, isPr: false }],
+        project: projectWithDependedField(),
+        cacheUsed: false,
+      });
+
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/99',
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+
+      expect(response.statusCode).toBe(403);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('RED returns 400 in replace mode when the project item is absent', async () => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_other',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project: projectWithDependedField(),
+        cacheUsed: false,
+      });
+
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/3',
+          projectItemId: 'PVTI_dep',
+          replaceExisting: true,
+        },
+      );
+
+      expect(response.statusCode).toBe(400);
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('RED rethrows getAllIssues errors in replace mode before writing', async () => {
+      issueRepository.getAllIssues.mockRejectedValue(
+        new Error('github unavailable'),
+      );
+
+      await expect(
+        handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl: 'https://github.com/o/r/issues/3',
+            projectItemId: 'PVTI_dep',
+            replaceExisting: true,
+          },
+        ),
+      ).rejects.toThrow('github unavailable');
+      expect(
+        issueRepository.replaceDependedIssueUrlField,
+      ).not.toHaveBeenCalled();
     });
 
     it('clears the depended issue URL in replace mode when the value is empty', async () => {
@@ -9624,6 +11066,7 @@ describe('consoleOperationApi', () => {
         resolveProject: async (pjcode: string) =>
           pjcode === 'acme' ? { pjcode, project: exampleOrgProject } : null,
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        isRepositoryConfigured: () => true,
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         resolveProjectRepository: null,
@@ -9661,10 +11104,14 @@ describe('consoleOperationApi', () => {
     });
 
     it('creates an issue in the specified repository and returns its URL', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: 'Fix the workflow pipeline',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(200);
       expect(response.body).toMatchObject({
         ok: true,
@@ -9681,10 +11128,14 @@ describe('consoleOperationApi', () => {
     });
 
     it('trims the title before creating the issue', async () => {
-      await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: '  Trimmed title  ',
-      });
+      await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: '  Trimmed title  ',
+        },
+        () => true,
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'HiromiShikata',
         'secretary',
@@ -9696,32 +11147,48 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when nameWithOwner is missing', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        title: 'Some title',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          title: 'Some title',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 400 when title is missing', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 400 when nameWithOwner has no slash', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'invalid',
-        title: 'Some title',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'invalid',
+          title: 'Some title',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('uses empty body when body field is absent', async () => {
-      await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-      });
+      await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: 'Fix the workflow pipeline',
+        },
+        () => true,
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'HiromiShikata',
         'secretary',
@@ -9735,11 +11202,15 @@ describe('consoleOperationApi', () => {
     it('creates issue with the body field directly when body is provided, without double-quoting', async () => {
       const preFormattedBody =
         'https://github.com/owner/repo/issues/1\n\nSource issue title\n\n\n\n\n\n> Line one of the comment.\n> Line two of the comment.';
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-        body: preFormattedBody,
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: 'Fix the workflow pipeline',
+          body: preFormattedBody,
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(200);
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'HiromiShikata',
@@ -9956,6 +11427,810 @@ describe('consoleOperationApi', () => {
           body: '- [x] New comment body',
         }),
       ).rejects.toThrow('API failure');
+    });
+  });
+
+  describe('review binding for approve and merge', () => {
+    it('RED rejects approve_and_merge for a pull request not linked to the project item before approving or merging', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_review_binding',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/99',
+        projectItemId: 'PVTI_review_binding',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('error paths for triage and intmux bindings', () => {
+    it('RED propagates a triage lookup failure without writing', async () => {
+      const error = new Error('github unavailable');
+      issueRepository.getAllIssues.mockRejectedValueOnce(error);
+
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_triage_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('RED propagates an intmux lookup failure without writing', async () => {
+      const error = new Error('github unavailable');
+      issueRepository.getAllIssues.mockRejectedValueOnce(error);
+
+      await expect(
+        handleIntmux(context, {
+          pjcode: 'acme',
+          action: 'set_intmux',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_intmux_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('RED rejects an intmux URL mismatch without writing', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_intmux_mismatch',
+            url: 'https://github.com/o/r/issues/2',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_mismatch',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('PIN keeps intmux success for a matching URL', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_intmux_matching',
+            url: 'https://github.com/o/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project,
+        cacheUsed: false,
+      });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_matching',
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+  });
+
+  describe('memoized item lookup refresh', () => {
+    const projectItem = (itemId: string, url: string, isPr = false): Issue => ({
+      ...issue,
+      itemId,
+      url,
+      isPr,
+    });
+
+    it('RED refreshes the project item lookup for intmux and writes after finding the item', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({
+          issues: [
+            projectItem(
+              'PVTI_intmux_refresh',
+              'https://github.com/o/r/issues/1',
+            ),
+          ],
+          project,
+          cacheUsed: false,
+        });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_refresh',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalled();
+      expect(issueRepository.getAllIssues).toHaveBeenNthCalledWith(
+        2,
+        project.id,
+        {
+          refresh: true,
+        },
+      );
+    });
+
+    it('RED refreshes the project item lookup for review and writes after finding a linked item', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({
+          issues: [
+            projectItem(
+              'PVTI_review_refresh',
+              'https://github.com/o/r/issues/1',
+            ),
+          ],
+          project,
+          cacheUsed: false,
+        });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_review_refresh',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.getAllIssues).toHaveBeenNthCalledWith(
+        2,
+        project.id,
+        {
+          refresh: true,
+        },
+      );
+    });
+
+    it('RED rejects intmux when the item is absent after the refresh and does not write', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: false });
+
+      const response = await handleIntmux(context, {
+        pjcode: 'acme',
+        action: 'set_intmux',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_intmux_still_missing',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unbound write paths require a configured repository', () => {
+    const projectWithDependedField: Project = {
+      ...project,
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL',
+        fieldId: 'dependedField',
+      },
+    };
+    const projectWithCreateIssueStory: Project = {
+      ...project,
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'workflow_story',
+            name: 'workflow',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    };
+    const createIssueBody = {
+      pjcode: 'acme',
+      title: 'Task',
+      body: 'Task body',
+      storyName: 'workflow',
+      nameWithOwner: 'o/r',
+    };
+    const createWorkflowIssueBody = {
+      nameWithOwner: 'o/r',
+      title: 'Workflow task',
+    };
+    const runWorkflowIssue = (
+      body: Record<string, unknown>,
+      isRepositoryConfigured: ConsoleOperationContext['isRepositoryConfigured'],
+    ): Promise<{ statusCode: number; body: unknown }> =>
+      handleCreateWorkflowIssue(issueRepository, body, isRepositoryConfigured);
+    const cases = [
+      {
+        name: 'comment',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleComment(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/issues/1',
+          body: 'comment',
+        },
+        writeMethod: 'createCommentByUrl',
+        invokeWrite: () => issueRepository.createCommentByUrl,
+      },
+      {
+        name: 'review comment',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleReviewComment(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/pull/1',
+          path: 'src/index.ts',
+          line: 1,
+          side: 'RIGHT',
+          body: 'comment',
+        },
+        writeMethod: 'createPullRequestReviewComment',
+        invokeWrite: () => issueRepository.createPullRequestReviewComment,
+      },
+      {
+        name: 'attachment upload',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleAttachmentUpload(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/issues/1',
+          fileName: 'shot.png',
+          contentBase64: 'AAEC',
+        },
+        writeMethod: 'uploadAttachment',
+        invokeWrite: () => attachmentUpload,
+      },
+      {
+        name: 'delete all comments',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleDeleteAllComments(nextContext, body),
+        body: { issueUrl: 'https://github.com/o/r/issues/1' },
+        writeMethod: 'deleteAllCommentsByUrl',
+        invokeWrite: () => issueRepository.deleteAllCommentsByUrl,
+      },
+      {
+        name: 'issue rename',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleIssueRename(nextContext, body),
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          newTitle: 'New title',
+        },
+        writeMethod: 'updateIssue',
+        invokeWrite: () => issueRepository.updateIssue,
+      },
+      {
+        name: 'issue body update',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleIssueBodyUpdate(nextContext, body),
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          body: 'New body',
+        },
+        writeMethod: 'updateIssueBody',
+        invokeWrite: () => issueRepository.updateIssueBody,
+      },
+      {
+        name: 'issue comment body update',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleIssueCommentBodyUpdate(nextContext, body),
+        body: {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          commentId: 1,
+          body: 'New comment body',
+        },
+        writeMethod: 'updateIssueCommentBody',
+        invokeWrite: () => issueRepository.updateIssueCommentBody,
+      },
+      {
+        name: 'append depended issue URL',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleSetDependedIssueUrl(nextContext, body),
+        body: {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/2',
+        },
+        writeMethod: 'setDependedIssueUrl',
+        invokeWrite: () => issueRepository.setDependedIssueUrl,
+      },
+      {
+        name: 'create issue',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => handleCreateIssue(nextContext, body),
+        body: createIssueBody,
+        writeMethod: 'createNewIssue',
+        invokeWrite: () => issueRepository.createNewIssue,
+      },
+      {
+        name: 'create workflow issue',
+        handler: (
+          nextContext: ConsoleOperationContext,
+          body: Record<string, unknown>,
+        ) => runWorkflowIssue(body, nextContext.isRepositoryConfigured),
+        body: createWorkflowIssueBody,
+        writeMethod: 'createNewIssue',
+        invokeWrite: () => issueRepository.createNewIssue,
+      },
+    ] as const;
+    const attachmentUpload = jest.fn(
+      async () => '![shot](https://github.com/user-attachments/assets/abc)',
+    );
+
+    const contextForCase = (
+      testCase: (typeof cases)[number],
+      isRepositoryConfigured: ConsoleOperationContext['isRepositoryConfigured'],
+    ): ConsoleOperationContext => ({
+      ...contextForProject(
+        testCase.name === 'append depended issue URL'
+          ? projectWithDependedField
+          : testCase.name === 'create issue'
+            ? projectWithCreateIssueStory
+            : project,
+      ),
+      isRepositoryConfigured,
+      resolveProjectRepository:
+        testCase.name === 'create issue'
+          ? () => ({
+              getProject: jest
+                .fn()
+                .mockResolvedValue(projectWithCreateIssueStory),
+              updateStoryList: jest.fn(),
+            })
+          : context.resolveProjectRepository,
+      issueAttachmentRepository:
+        testCase.name === 'attachment upload'
+          ? { uploadAttachment: attachmentUpload }
+          : context.issueAttachmentRepository,
+    });
+
+    beforeEach(() => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/1',
+        org: 'o',
+        repo: 'r',
+        number: 1,
+      });
+      issueRepository.createNewIssue.mockResolvedValue(42);
+      issueRepository.setDependedIssueUrl.mockResolvedValue(undefined);
+      attachmentUpload.mockClear();
+    });
+
+    it.each(cases)(
+      'RED returns 403 and does not call $writeMethod when the repository is unconfigured',
+      async (testCase) => {
+        const response = await testCase.handler(
+          contextForCase(testCase, () => false),
+          testCase.body,
+        );
+
+        expect(response.statusCode).toBe(403);
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expect(testCase.invokeWrite()).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(cases)(
+      'PIN returns the existing success status for $name when the repository is configured',
+      async (testCase) => {
+        const response = await testCase.handler(
+          contextForCase(testCase, () => true),
+          testCase.body,
+        );
+
+        expect(response.statusCode).toBe(200);
+      },
+    );
+
+    it.each(cases)(
+      'RED returns 403 and does not call $writeMethod when the repository configuration is null',
+      async (testCase) => {
+        const response = await testCase.handler(
+          contextForCase(testCase, null),
+          testCase.body,
+        );
+
+        expect(response.statusCode).toBe(403);
+        expect(hasErrorMessage(response.body)).toBe(true);
+        expect(testCase.invokeWrite()).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('depended issue append repository gate ordering', () => {
+    const dependedIssueProject: Project = {
+      ...project,
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL',
+        fieldId: 'dependedField',
+      },
+    };
+    const dependedIssueBody = {
+      pjcode: 'acme',
+      issueUrl: 'https://github.com/o/r/issues/1',
+      dependedIssueUrl: 'https://github.com/o/r/issues/2',
+    };
+
+    it('rejects the depended issue append for an unconfigured repository before resolving the project', async () => {
+      const resolveProject = jest.fn(context.resolveProject);
+      issueRepository.setDependedIssueUrl.mockClear();
+
+      const response = await handleSetDependedIssueUrl(
+        {
+          ...contextForProject(dependedIssueProject),
+          isRepositoryConfigured: () => false,
+          resolveProject,
+        },
+        dependedIssueBody,
+      );
+
+      expect(response.statusCode).toBe(403);
+      expect(resolveProject).not.toHaveBeenCalled();
+      expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('accepts the depended issue append for a configured repository', async () => {
+      issueRepository.setDependedIssueUrl.mockClear();
+      issueRepository.setDependedIssueUrl.mockResolvedValue(undefined);
+
+      const response = await handleSetDependedIssueUrl(
+        {
+          ...contextForProject(dependedIssueProject),
+          isRepositoryConfigured: () => true,
+        },
+        dependedIssueBody,
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('review issue URL binding', () => {
+    it('PIN closes a pull request for review when issueUrl is the project item url', async () => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [
+          projectItemFor(
+            'PVTI_review_close_issue_url',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_review_close_issue_url',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+    });
+
+    it('RED rejects a review close whose issueUrl is not the project item url before closing', async () => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [
+          projectItemFor(
+            'PVTI_review_close_issue_url_mismatch',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/99',
+        projectItemId: 'PVTI_review_close_issue_url_mismatch',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('RED rejects a review unnecessary whose issueUrl is not the project item url before closing', async () => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [
+          projectItemFor(
+            'PVTI_review_unnecessary_issue_url_mismatch',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/99',
+        projectItemId: 'PVTI_review_unnecessary_issue_url_mismatch',
+        commentBody: 'unnecessary',
+        issueCommentBody: 'do not recreate',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.updateLabels).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('PIN marks a pull request unnecessary when issueUrl is the project item url', async () => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [
+          projectItemFor(
+            'PVTI_review_unnecessary_issue_url',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/1',
+        labels: [],
+      });
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_review_unnecessary_issue_url',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+    });
+  });
+
+  describe('triage gate and lookup errors', () => {
+    it('RED rejects a triage set_status whose project item is absent after refresh before any write', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: false });
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_triage_set_status_absent',
+        statusName: 'Todo',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('RED rethrows a getAllIssues failure from the triage close binding before writing', async () => {
+      issueRepository.getAllIssues.mockRejectedValueOnce(
+        new Error('github unavailable'),
+      );
+
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_triage_close_lookup_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('RED rethrows a getAllIssues failure from the review close binding before writing', async () => {
+      issueRepository.getAllIssues.mockRejectedValueOnce(
+        new Error('github unavailable'),
+      );
+
+      await expect(
+        handleReview(context, {
+          pjcode: 'acme',
+          action: 'close',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_review_close_lookup_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('PIN accepts a triage set_status when issueUrl is the project item url', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          projectItemFor(
+            'PVTI_triage_set_status_matching',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_triage_set_status_matching',
+        statusName: 'Todo',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalled();
     });
   });
 });

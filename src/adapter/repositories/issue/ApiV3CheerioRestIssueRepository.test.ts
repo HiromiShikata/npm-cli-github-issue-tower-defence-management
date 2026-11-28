@@ -12847,6 +12847,100 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].isConflicted).toBe(true);
     });
 
+    it('omits a closed linked pull request by default and returns it when includeClosedPullRequests is set', async () => {
+      const closedPullRequestUrl =
+        'https://github.com/HiromiShikata/test-repository/pull/11148';
+      const closedTimeline = (): ReturnType<typeof buildTimelineResponse> => {
+        const response = buildTimelineResponse('MERGEABLE');
+        const node = response.data.repository.issue.timelineItems.nodes[0];
+        return {
+          ...response,
+          data: {
+            repository: {
+              issue: {
+                timelineItems: {
+                  pageInfo: { endCursor: null, hasNextPage: false },
+                  nodes: [
+                    {
+                      ...node,
+                      source: { ...node.source, state: 'CLOSED' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        };
+      };
+      const issueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/11194';
+
+      mockFetchRoutes({
+        timeline: closedTimeline,
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: closedPullRequestUrl,
+            state: 'CLOSED',
+          }),
+      });
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const defaultResult = await repository.findRelatedOpenPRs(issueUrl, {
+        bypassCache: true,
+      });
+      const closedIncludedResult = await repository.findRelatedOpenPRs(
+        issueUrl,
+        { bypassCache: true, includeClosedPullRequests: true },
+      );
+
+      expect(defaultResult).toEqual([]);
+      expect(closedIncludedResult.map((pr) => pr.url)).toEqual([
+        closedPullRequestUrl,
+      ]);
+    });
+
+    it('does not return a merged linked pull request even when includeClosedPullRequests is set', async () => {
+      const mergedPullRequestUrl =
+        'https://github.com/HiromiShikata/test-repository/pull/11148';
+      const mergedTimeline = (): ReturnType<typeof buildTimelineResponse> => {
+        const response = buildTimelineResponse('MERGEABLE');
+        const node = response.data.repository.issue.timelineItems.nodes[0];
+        return {
+          ...response,
+          data: {
+            repository: {
+              issue: {
+                timelineItems: {
+                  pageInfo: { endCursor: null, hasNextPage: false },
+                  nodes: [
+                    {
+                      ...node,
+                      source: { ...node.source, state: 'MERGED' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        };
+      };
+
+      mockFetchRoutes({
+        timeline: mergedTimeline,
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: mergedPullRequestUrl,
+            state: 'MERGED',
+          }),
+      });
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+        { bypassCache: true, includeClosedPullRequests: true },
+      );
+
+      expect(result).toEqual([]);
+    });
+
     it('keeps isConflicted false when mergeability stays UNKNOWN after the bounded retries', async () => {
       const fetchSpy = mockFetchRoutes({
         timeline: () => buildTimelineResponse('UNKNOWN'),
@@ -20213,6 +20307,49 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     );
     return created;
   };
+
+  it('getAllIssues refreshes the project item list when refresh is requested', async () => {
+    const {
+      repository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      projectRepository,
+      dateRepository,
+    } = createApiV3CheerioRestIssueRepository();
+    const project = buildTestProject('refresh-project');
+    const itemA = buildProjectItem('https://github.com/o/r/issues/1', 'List A');
+    const itemB = buildProjectItem('https://github.com/o/r/issues/2', 'List B');
+    dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+    localStorageCacheRepository.getSingle.mockResolvedValue(null);
+    localStorageCacheRepository.setSingle.mockResolvedValue();
+    projectRepository.getProject.mockResolvedValue(project);
+    graphqlProjectItemRepository.fetchProjectItems
+      .mockResolvedValueOnce({
+        issues: [itemA],
+        inconsistencyMessage: null,
+      })
+      .mockResolvedValueOnce({
+        issues: [itemB],
+        inconsistencyMessage: null,
+      });
+
+    const firstResult = await repository.getAllIssues('refresh-project');
+    const refreshedResult = await repository.getAllIssues('refresh-project', {
+      refresh: true,
+    });
+    const memoizedResult = await repository.getAllIssues('refresh-project');
+
+    expect(firstResult.issues.map((issue) => issue.url)).toEqual([itemA.url]);
+    expect(refreshedResult.issues.map((issue) => issue.url)).toEqual([
+      itemB.url,
+    ]);
+    expect(memoizedResult.issues.map((issue) => issue.url)).toEqual([
+      itemB.url,
+    ]);
+    expect(
+      graphqlProjectItemRepository.fetchProjectItems,
+    ).toHaveBeenCalledTimes(2);
+  });
 });
 
 describeWhenCredentials(

@@ -705,7 +705,29 @@ const createStubIssueRepository = (
   updateIssueBodyCalls: ConsoleE2eUpdateIssueBodyCall[],
   updateIssueCommentBodyCalls: ConsoleE2eUpdateIssueCommentBodyCall[],
 ): IssueRepository => ({
-  getAllIssues: () => notImplemented('getAllIssues'),
+  getAllIssues: async (
+    _projectId: Project['id'],
+    _options?: { refresh: boolean },
+  ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => ({
+    issues: [
+      ...Object.values(CONSOLE_E2E_TAB_ITEMS)
+        .flat()
+        .map((item) => ({
+          ...buildIssueForUrl(item.url),
+          itemId: item.projectItemId,
+        })),
+      ...Object.keys(CONSOLE_E2E_STORY_MOVE_TASK_TITLES)
+        .map(Number)
+        .map((issueNumber) => ({
+          ...buildIssueForUrl(
+            `https://github.com/${REPO_NAME_WITH_OWNER}/issues/${issueNumber}`,
+          ),
+          itemId: `PVTI_lADOABCD1234zgMOVE${issueNumber}`,
+        })),
+    ],
+    project: buildE2eProject(),
+    cacheUsed: false,
+  }),
   appendIssueToProjectCache: async (): Promise<void> => undefined,
   removeIssueFromProjectCache: async (): Promise<void> => undefined,
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -1090,6 +1112,7 @@ export const startConsoleE2eHarness = async (options?: {
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
+    isRepositoryConfigured: () => true,
     uiDistDir,
     consoleDataOutputDir,
     issueAttachmentRepository: {
