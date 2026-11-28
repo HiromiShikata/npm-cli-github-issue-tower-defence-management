@@ -41,6 +41,21 @@ export type ConsoleTabDataVisibleState = {
   snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
 };
 
+type FetchSnapshotsResult = {
+  snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
+  firstError: Error | null;
+  networkFailed: boolean;
+};
+
+class ListNetworkFailure extends ConsoleNetworkError {
+  readonly result: FetchSnapshotsResult;
+
+  constructor(result: FetchSnapshotsResult) {
+    super(result.firstError?.message ?? 'Failed to load list');
+    this.result = result;
+  }
+}
+
 export const applyTabSnapshotToVisibleState = (
   state: ConsoleTabDataVisibleState,
   pjcode: string,
@@ -213,7 +228,11 @@ const loadAllSnapshotsFromCache = async (
 const fetchSingleSnapshot = async (
   pjcode: string,
   tabName: ConsoleTabName,
-): Promise<{ snapshot: ConsoleTabSnapshot | null; error: Error | null }> => {
+): Promise<{
+  snapshot: ConsoleTabSnapshot | null;
+  error: Error | null;
+  networkFailed: boolean;
+}> => {
   const url = buildListUrl(pjcode, tabName);
   try {
     const response = await fetchResponseOrNetworkError(url);
@@ -225,15 +244,18 @@ const fetchSingleSnapshot = async (
     return {
       snapshot: { ...parseSnapshotData(payload), fromCache: false },
       error: null,
+      networkFailed: false,
     };
   } catch (e: unknown) {
+    const networkFailed = e instanceof ConsoleNetworkError;
     const cached = await loadListSnapshotFromCache(url);
     if (cached !== null) {
-      return { snapshot: cached, error: null };
+      return { snapshot: cached, error: null, networkFailed };
     }
     return {
       snapshot: null,
       error: e instanceof Error ? e : new Error(String(e)),
+      networkFailed,
     };
   }
 };
@@ -258,14 +280,15 @@ export const refreshProjectTabsToCache = async (
 
 const fetchSnapshots = async (
   pjcode: string,
-): Promise<{
-  snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
-  firstError: Error | null;
-}> => {
+  previous: Record<ConsoleTabName, ConsoleTabSnapshot | null> | undefined,
+): Promise<FetchSnapshotsResult> => {
   const results = await Promise.all(
     CONSOLE_TABS.map(async (tab) => {
-      const { snapshot, error } = await fetchSingleSnapshot(pjcode, tab.name);
-      return { tabName: tab.name, snapshot, error };
+      const { snapshot, error, networkFailed } = await fetchSingleSnapshot(
+        pjcode,
+        tab.name,
+      );
+      return { tabName: tab.name, snapshot, error, networkFailed };
     }),
   );
 
@@ -280,15 +303,16 @@ const fetchSnapshots = async (
   }
 
   const allNull = Object.values(snapshots).every((s) => s === null);
-  const allNetworkErrors = results.every(
-    ({ error }) => error instanceof ConsoleNetworkError,
-  );
-  if (allNull && allNetworkErrors) {
-    throw firstError;
+  const networkFailed = results.some((result) => result.networkFailed);
+  for (const { tabName, snapshot, networkFailed: tabNetworkFailed } of results) {
+    if (snapshot === null && tabNetworkFailed) {
+      snapshots[tabName] = previous?.[tabName] ?? null;
+    }
   }
   return {
     snapshots,
     firstError: allNull ? firstError : null,
+    networkFailed,
   };
 };
 
@@ -364,10 +388,16 @@ export const useConsoleTabData = (
       }
     });
 
-    const load = (): Promise<{
-      snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
-      firstError: Error | null;
-    }> => fetchSnapshots(pjcode);
+    const load = async (): Promise<FetchSnapshotsResult> => {
+      const result = await fetchSnapshots(
+        pjcode,
+        snapshotRegistry.current.get(pjcode),
+      );
+      if (result.networkFailed) {
+        throw new ListNetworkFailure(result);
+      }
+      return result;
+    };
 
     const retrying = startLoadWithNetworkRetry({
       load,
@@ -386,7 +416,19 @@ export const useConsoleTabData = (
           return;
         }
         freshDataReceived = true;
-        setError(cause instanceof Error ? cause.message : String(cause));
+        if (cause instanceof ListNetworkFailure) {
+          const { result } = cause;
+          const hasSnapshot = Object.values(result.snapshots).some(
+            (snapshot) => snapshot !== null,
+          );
+          if (hasSnapshot) {
+            snapshotRegistry.current.set(pjcode, result.snapshots);
+            setVisible({ pjcode, snapshots: result.snapshots });
+          }
+          setError(result.firstError?.message ?? null);
+        } else {
+          setError(cause instanceof Error ? cause.message : String(cause));
+        }
         setIsLoading(false);
       },
     });
