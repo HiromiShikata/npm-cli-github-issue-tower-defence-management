@@ -2065,6 +2065,7 @@ program
   )
   .action((options: SelectResumableSessionOptions) => {
     const output = resumableSessionSelect({
+      now: new Date(),
       sessionName: options.sessionName,
       sessionDir: options.sessionDir,
       otherSessionDirs: options.otherSessionDir,

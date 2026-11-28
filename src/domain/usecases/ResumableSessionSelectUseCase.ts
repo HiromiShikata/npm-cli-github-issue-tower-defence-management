@@ -5,11 +5,14 @@ import {
 } from './adapter-interfaces/ResumableSessionTranscriptRepository';
 
 export type ResumableSessionSelectInput = {
+  now: Date;
   sessionName: string;
   sessionDir: string;
   otherSessionDirs: string[];
   archiveRoot: string;
 };
+
+export const RESUMABLE_SESSION_MAX_IDLE_MINUTES = 60;
 
 export type SessionIdDirectoryCopyOutcome =
   'copied' | 'copyFailed' | 'sourceAbsent' | 'destinationPresent';
@@ -105,6 +108,23 @@ const hasParseableEntryTime = (lines: string[]): boolean => {
   return false;
 };
 
+const lastEntryTimeMilliseconds = (lines: string[]): number | null => {
+  for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex -= 1) {
+    const entry = transcriptEntryParse(lines[lineIndex]);
+    if (
+      entry !== null &&
+      'timestamp' in entry &&
+      typeof entry.timestamp === 'string'
+    ) {
+      const entryTimeMilliseconds = Date.parse(entry.timestamp);
+      if (!Number.isNaN(entryTimeMilliseconds)) {
+        return entryTimeMilliseconds;
+      }
+    }
+  }
+  return null;
+};
+
 const newestThenFirstGivenDirectoryThenAscendingFileNameOrder =
   (givenSessionDirectoryPaths: string[]) =>
   (left: SessionTranscriptFile, right: SessionTranscriptFile): number => {
@@ -143,9 +163,20 @@ export class ResumableSessionSelectUseCase {
     );
     if (sessionDirTranscript !== null) {
       const sessionId = sessionDirTranscript.sessionTranscriptFile.sessionId;
-      return hasParseableEntryTime(sessionDirTranscript.lines)
-        ? { type: 'resumedInSessionDir', sessionId }
-        : { type: 'entryTimeMissing', sessionId };
+      if (!hasParseableEntryTime(sessionDirTranscript.lines)) {
+        return { type: 'entryTimeMissing', sessionId };
+      }
+      const lastEntryTime = lastEntryTimeMilliseconds(
+        sessionDirTranscript.lines,
+      );
+      if (
+        lastEntryTime !== null &&
+        input.now.getTime() - lastEntryTime >
+          RESUMABLE_SESSION_MAX_IDLE_MINUTES * 60 * 1000
+      ) {
+        return { type: 'noResumableSessionTranscriptFile' };
+      }
+      return { type: 'resumedInSessionDir', sessionId };
     }
     const otherSessionDirs = input.otherSessionDirs.filter(
       (otherSessionDir) => otherSessionDir !== input.sessionDir,
@@ -166,6 +197,16 @@ export class ResumableSessionSelectUseCase {
         type: 'entryTimeMissing',
         sessionId: otherSessionDirTranscript.sessionTranscriptFile.sessionId,
       };
+    }
+    const lastEntryTime = lastEntryTimeMilliseconds(
+      otherSessionDirTranscript.lines,
+    );
+    if (
+      lastEntryTime !== null &&
+      input.now.getTime() - lastEntryTime >
+        RESUMABLE_SESSION_MAX_IDLE_MINUTES * 60 * 1000
+    ) {
+      return { type: 'noResumableSessionTranscriptFile' };
     }
     return this.copyIntoSessionDir(
       otherSessionDirTranscript.sessionTranscriptFile,
