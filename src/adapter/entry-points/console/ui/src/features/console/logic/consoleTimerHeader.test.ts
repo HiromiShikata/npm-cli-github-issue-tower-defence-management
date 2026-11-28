@@ -126,7 +126,7 @@ describe('buildConsoleTimerHeaderView', () => {
         projectTodoByHumanCounts: { alpha: 1 },
         projectAwaitingOwnerCounts: { alpha: 1 },
       },
-      expected: null,
+      expected: 'none',
     },
   ])('selects the next project when it $name', ({ input, expected }) => {
     expect(
@@ -134,7 +134,7 @@ describe('buildConsoleTimerHeaderView', () => {
         ...baseInput,
         ...input,
         nowMs: 1_000_000,
-      })?.nextText ?? null,
+      })?.nextText,
     ).toBe(expected);
   });
 
