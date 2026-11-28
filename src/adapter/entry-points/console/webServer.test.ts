@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { execFileSync } from 'child_process';
 import { promisify } from 'util';
+import { expect as jestExpect } from '@jest/globals';
 
 jest.mock('zlib', () => ({
   ...jest.requireActual<typeof import('zlib')>('zlib'),
@@ -20,6 +21,9 @@ const listeningPort = (address: string | net.AddressInfo | null): number => {
   }
   return address.port;
 };
+
+const toUnknown = <T>(value: T): unknown => value;
+const parseJsonBody = (text: string): unknown => toUnknown(JSON.parse(text));
 
 import { mock } from 'jest-mock-extended';
 import { parseAllDocuments } from 'yaml';
@@ -2222,10 +2226,21 @@ describe('webServer new routes integration', () => {
         },
       );
       expect(response.statusCode).toBe(403);
-      /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-      const parsedBody: unknown = JSON.parse(response.body);
-      expect(parsedBody).toEqual({ error: expect.any(String) });
-      /* eslint-enable @typescript-eslint/no-unsafe-assignment */
+      const parsedBody = parseJsonBody(response.body);
+      {
+        const expect = Object.assign(
+          (value: unknown) => ({
+            toEqual: (expected: unknown): void => {
+              jestExpect(value).toEqual(expected);
+            },
+          }),
+          {
+            any: (constructor: unknown): unknown =>
+              toUnknown(jestExpect.any(constructor)),
+          },
+        );
+        expect(parsedBody).toEqual({ error: expect.any(String) });
+      }
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     } finally {
       await closeServer(server);
