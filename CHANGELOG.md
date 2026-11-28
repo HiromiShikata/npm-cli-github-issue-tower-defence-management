@@ -1,3 +1,10 @@
+## [2.219.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.0...v2.219.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **console:** retry list load after network failure ([#3799](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3799)) ([9452005](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9452005f055ca9dfefa6d7b6b95c2eebb0f609e0))
+
 # [2.219.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.218.1...v2.219.0) (2026-11-28)
 
 
