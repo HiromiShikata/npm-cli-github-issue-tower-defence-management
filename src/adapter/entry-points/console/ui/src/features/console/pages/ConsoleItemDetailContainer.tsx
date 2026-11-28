@@ -52,9 +52,11 @@ import {
 } from '../logic/commentDraftStorage';
 import { consoleActionButtonLabels } from '../logic/consoleActionButtonLabels';
 import {
+  type ConsoleActionTiming,
   computeOpenedToActionMs,
   readConsoleItemOpenedAt,
   recordConsoleItemOpened,
+  withConsoleActionTiming,
 } from '../logic/consoleItemOpenTimes';
 import { parseDependedIssueUrlsInput } from '../logic/consoleStoryTaskPatch';
 import { resolveStoryColorEnum } from '../logic/grouping';
@@ -230,7 +232,7 @@ const OK_AND_CLOSE_COMMENT_BODY = 'ok';
 const consoleItemActionTiming = (
   item: ConsoleListItem,
   actionDescription: string,
-): { openedToActionMs?: number; actionDescription: string } => {
+): ConsoleActionTiming => {
   const openedToActionMs = computeOpenedToActionMs(
     readConsoleItemOpenedAt(item.url),
     Date.now(),
@@ -467,10 +469,18 @@ export const ConsoleItemDetailContainer = ({
       ): ConsoleCommentSubmitResult => {
         onOfflineActionsCreate({
           payloads: [
-            {
-              ...commentOfflinePayloadBuild(projectCode, item, body, actionId),
-              composerDraftBody: body,
-            },
+            withConsoleActionTiming(
+              {
+                ...commentOfflinePayloadBuild(
+                  projectCode,
+                  item,
+                  body,
+                  actionId,
+                ),
+                composerDraftBody: body,
+              },
+              timing,
+            ),
           ],
           message: commentHeldOfflineToastMessage(item),
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
@@ -487,7 +497,10 @@ export const ConsoleItemDetailContainer = ({
           message: commentHeldOfflineToastMessage(item),
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
           enqueuedAt: Date.now(),
-          ...commentOfflinePayloadBuild(pjcode, item, body, actionId),
+          ...withConsoleActionTiming(
+            commentOfflinePayloadBuild(pjcode, item, body, actionId),
+            timing,
+          ),
           composerDraftBody: body,
         };
         persistConsoleAction(descriptor);
@@ -542,13 +555,16 @@ export const ConsoleItemDetailContainer = ({
         offline:
           pjcode != null
             ? [
-                buildReviewOfflinePayload(
-                  pjcode,
-                  item,
-                  prUrl,
-                  action,
-                  reviewComments,
-                  actionId,
+                withConsoleActionTiming(
+                  buildReviewOfflinePayload(
+                    pjcode,
+                    item,
+                    prUrl,
+                    action,
+                    reviewComments,
+                    actionId,
+                  ),
+                  timing,
                 ),
               ]
             : undefined,
@@ -572,7 +588,12 @@ export const ConsoleItemDetailContainer = ({
           ),
         offline:
           pjcode != null
-            ? [buildTriageOfflinePayload(pjcode, item, action, { actionId })]
+            ? [
+                withConsoleActionTiming(
+                  buildTriageOfflinePayload(pjcode, item, action, { actionId }),
+                  timing,
+                ),
+              ]
             : undefined,
         overlayPatch: { done: true },
       });
@@ -598,10 +619,13 @@ export const ConsoleItemDetailContainer = ({
         offline:
           pjcode != null
             ? [
-                buildTriageOfflinePayload(pjcode, item, 'set_story', {
-                  storyOptionId: option.id,
-                  actionId,
-                }),
+                withConsoleActionTiming(
+                  buildTriageOfflinePayload(pjcode, item, 'set_story', {
+                    storyOptionId: option.id,
+                    actionId,
+                  }),
+                  timing,
+                ),
               ]
             : undefined,
         overlayPatch: {
@@ -630,10 +654,13 @@ export const ConsoleItemDetailContainer = ({
         offline:
           pjcode != null
             ? [
-                buildTriageOfflinePayload(pjcode, item, 'set_agent', {
-                  agentOptionId: option.id,
-                  actionId,
-                }),
+                withConsoleActionTiming(
+                  buildTriageOfflinePayload(pjcode, item, 'set_agent', {
+                    agentOptionId: option.id,
+                    actionId,
+                  }),
+                  timing,
+                ),
               ]
             : undefined,
         overlayPatch: { done: true },
@@ -666,9 +693,12 @@ export const ConsoleItemDetailContainer = ({
         offline:
           pjcode != null
             ? [
-                buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                  statusName: option.name,
-                }),
+                withConsoleActionTiming(
+                  buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                    statusName: option.name,
+                  }),
+                  timing,
+                ),
               ]
             : undefined,
         overlayPatch: {
@@ -696,7 +726,12 @@ export const ConsoleItemDetailContainer = ({
           ),
         offline:
           pjcode != null
-            ? [buildIntmuxOfflinePayload(pjcode, item, actionId)]
+            ? [
+                withConsoleActionTiming(
+                  buildIntmuxOfflinePayload(pjcode, item, actionId),
+                  timing,
+                ),
+              ]
             : undefined,
         overlayPatch: {
           done: true,
@@ -723,7 +758,12 @@ export const ConsoleItemDetailContainer = ({
           ),
         offline:
           pjcode != null
-            ? [buildTriageOfflinePayload(pjcode, item, action, { actionId })]
+            ? [
+                withConsoleActionTiming(
+                  buildTriageOfflinePayload(pjcode, item, action, { actionId }),
+                  timing,
+                ),
+              ]
             : undefined,
         overlayPatch: { done: true, closed: true },
       });
@@ -756,7 +796,11 @@ export const ConsoleItemDetailContainer = ({
           ),
         offline:
           pjcode != null
-            ? okAndAwaitingWorkspaceOfflinePayloadsBuild(pjcode, item, option)
+            ? okAndAwaitingWorkspaceOfflinePayloadsBuild(
+                pjcode,
+                item,
+                option,
+              ).map((payload) => withConsoleActionTiming(payload, timing))
             : undefined,
         overlayPatch: {
           done: true,
@@ -797,10 +841,13 @@ export const ConsoleItemDetailContainer = ({
             const baseUrls = item.dependedIssueUrls;
             const option = awaitingWorkspaceOption;
             const offline = [
-              dependedIssueUrlOfflinePayloadBuild(
-                pjcode,
-                item,
-                dependedIssueUrl,
+              withConsoleActionTiming(
+                dependedIssueUrlOfflinePayloadBuild(
+                  pjcode,
+                  item,
+                  dependedIssueUrl,
+                ),
+                timing,
               ),
               buildTriageOfflinePayload(pjcode, item, 'set_status', {
                 statusName: option.name,
@@ -1074,18 +1121,21 @@ export const ConsoleItemDetailContainer = ({
                 offline:
                   pjcode != null
                     ? [
-                        {
-                          ...buildTriageOfflinePayload(
-                            pjcode,
-                            item,
-                            'set_status',
-                            {
-                              statusName: awaitingWorkspaceOption.name,
-                              commentBody: body,
-                            },
-                          ),
-                          composerDraftBody: body,
-                        },
+                        withConsoleActionTiming(
+                          {
+                            ...buildTriageOfflinePayload(
+                              pjcode,
+                              item,
+                              'set_status',
+                              {
+                                statusName: awaitingWorkspaceOption.name,
+                                commentBody: body,
+                              },
+                            ),
+                            composerDraftBody: body,
+                          },
+                          timing,
+                        ),
                       ]
                     : undefined,
                 revertAdvance: () => {
@@ -1170,10 +1220,13 @@ export const ConsoleItemDetailContainer = ({
           sentStepCount,
         ),
       offline: [
-        {
-          ...commentOfflinePayloadBuild(pjcode, item, body, commentActionId),
-          composerDraftBody: body,
-        },
+        withConsoleActionTiming(
+          {
+            ...commentOfflinePayloadBuild(pjcode, item, body, commentActionId),
+            composerDraftBody: body,
+          },
+          timing,
+        ),
         buildTriageOfflinePayload(pjcode, item, 'close', {
           actionId: closeActionId,
         }),
@@ -1222,11 +1275,14 @@ export const ConsoleItemDetailContainer = ({
       offline:
         pjcode != null
           ? [
-              commentOfflinePayloadBuild(
-                pjcode,
-                item,
-                OK_AND_CLOSE_COMMENT_BODY,
-                commentActionId,
+              withConsoleActionTiming(
+                commentOfflinePayloadBuild(
+                  pjcode,
+                  item,
+                  OK_AND_CLOSE_COMMENT_BODY,
+                  commentActionId,
+                ),
+                timing,
               ),
               buildTriageOfflinePayload(pjcode, item, 'close', {
                 actionId: closeActionId,

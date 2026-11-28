@@ -156,6 +156,154 @@ const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {
 
 describe('ConsoleItemDetailContainer', () => {
   it.each([
+    [
+      'Comment & Close',
+      (view: ReturnType<typeof render>) => {
+        fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+          target: { value: 'offline close note' },
+        });
+        fireEvent.click(view.getByText('Comment & Close'));
+      },
+      0,
+      2500,
+      2,
+    ],
+    [
+      'OK & Close',
+      (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('OK & Close'));
+      },
+      0,
+      2500,
+      2,
+    ],
+  ] as const)(
+    'captures press-time timing only on the comment payload for %s',
+    (_name, press, openedAtMs, pressedAtMs, expectedPayloadCount) => {
+      const now = jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(openedAtMs)
+        .mockReturnValueOnce(pressedAtMs);
+      const onQueueAction = jest.fn();
+      const view = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches()}
+          operations={buildOperations()}
+          pjcode="acme"
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
+        />,
+      );
+      press(view);
+
+      const payloads = onQueueAction.mock.calls[0]?.[0].offline;
+      expect(payloads).toHaveLength(expectedPayloadCount);
+      expect(payloads?.[0]?.requestBody).toEqual(
+        expect.objectContaining({
+          openedToActionMs: pressedAtMs - openedAtMs,
+          actionDescription:
+            _name === 'OK & Close'
+              ? '「OK & Close」を押しました'
+              : 'コメントを投稿して閉じました',
+        }),
+      );
+      expect(payloads?.[1]?.requestBody).not.toEqual(
+        expect.objectContaining({
+          openedToActionMs: expect.anything(),
+          actionDescription: expect.anything(),
+        }),
+      );
+      now.mockRestore();
+    },
+  );
+
+  it('holds an offline comment with press-time timing and preserves it after the clock advances', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3501);
+    const onOfflineActionsCreate = jest.fn();
+    const view = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        pjcode="acme"
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn
+        onOfflineActionsCreate={onOfflineActionsCreate}
+      />,
+    );
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'held while offline' },
+    });
+    fireEvent.click(view.getByText('Comment'));
+    now.mockReturnValue(99_999);
+
+    await waitFor(() => expect(onOfflineActionsCreate).toHaveBeenCalled());
+    expect(
+      onOfflineActionsCreate.mock.calls[0][0].payloads[0].requestBody,
+    ).toEqual(
+      expect.objectContaining({
+        openedToActionMs: 2501,
+        actionDescription: 'コメントを投稿しました',
+      }),
+    );
+    now.mockRestore();
+  });
+
+  it('does not add timing keys when the item has no recorded open time', () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(5000);
+    const onQueueAction = jest.fn();
+    const view = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        pjcode="acme"
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+    clearConsoleItemOpenTimesForTest();
+    fireEvent.click(view.getByText('+1h'));
+    expect(onQueueAction.mock.calls[0]?.[0].offline[0].requestBody).not.toEqual(
+      expect.objectContaining({
+        openedToActionMs: expect.anything(),
+        actionDescription: expect.anything(),
+      }),
+    );
+    now.mockRestore();
+  });
+
+  it.each([
     ['+1h', '+1時間', 'Next Action Hour'],
     ['+3h', '+3時間', 'Next Action Hour'],
     ['+6h', '+6時間', 'Next Action Hour'],
@@ -3878,15 +4026,20 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     action: 'close' | 'set_status',
     extra?: { statusName: string; commentBody?: string },
     includeActionId = false,
+    timing?: { openedToActionMs: number; actionDescription: string },
   ): ConsoleOfflinePayload => ({
     ...offlinePayloadBaseFor(item),
     apiPath: TRIAGE_OPERATION_PATH,
     requestBody: includeActionId
       ? expect.objectContaining({
           ...buildTriageRequest('acme', item, action, extra),
+          ...timing,
           actionId: expect.any(String),
         })
-      : buildTriageRequest('acme', item, action, extra),
+      : {
+          ...buildTriageRequest('acme', item, action, extra),
+          ...timing,
+        },
   });
 
   const commentBodyWrittenOffline = 'Checked during the flight.';
@@ -4042,10 +4195,20 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
     {
       buttonLabel: 'ok & Awaiting Workspace',
       expectedOffline: [
-        triageOfflinePayloadFor(issueItem, 'set_status', {
-          statusName: AWAITING_WORKSPACE_NAME,
-          commentBody: 'ok',
-        }),
+        triageOfflinePayloadFor(
+          issueItem,
+          'set_status',
+          {
+            statusName: AWAITING_WORKSPACE_NAME,
+            commentBody: 'ok',
+          },
+          false,
+          {
+            openedToActionMs: 2500,
+            actionDescription:
+              '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
+          },
+        ),
       ],
     },
     {
@@ -4066,10 +4229,20 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       buttonLabel: 'Comment & Awaiting Workspace',
       expectedOffline: [
         {
-          ...triageOfflinePayloadFor(issueItem, 'set_status', {
-            statusName: AWAITING_WORKSPACE_NAME,
-            commentBody: draftWrittenBeforeClosing,
-          }),
+          ...triageOfflinePayloadFor(
+            issueItem,
+            'set_status',
+            {
+              statusName: AWAITING_WORKSPACE_NAME,
+              commentBody: draftWrittenBeforeClosing,
+            },
+            false,
+            {
+              openedToActionMs: 2500,
+              actionDescription:
+                'コメントを投稿して「Awaiting Workspace」に変更しました',
+            },
+          ),
           composerDraftBody: draftWrittenBeforeClosing,
         },
       ],
@@ -4077,6 +4250,10 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
   ])(
     'queues $buttonLabel with an offline payload holding the comment before the status change',
     async ({ buttonLabel, expectedOffline }) => {
+      const now = jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(1000)
+        .mockReturnValueOnce(3500);
       const onQueueAction = jest.fn();
       const { getByPlaceholderText, getByText } =
         renderIssueDetailForCommentDelivery({ onQueueAction });
@@ -4091,6 +4268,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
           expect.objectContaining({ offline: expectedOffline }),
         );
       });
+      now.mockRestore();
     },
   );
 
@@ -4724,6 +4902,11 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   });
 
   it('bundles the same Awaiting Workspace transition again on a second submission after the panel reopens with an empty field', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3500)
+      .mockReturnValueOnce(5000);
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const {
@@ -4771,7 +4954,16 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       dependedIssueUrl: 'https://github.com/owner/repo/issues/100',
       projectItemId: issueItem.projectItemId,
       replaceExisting: true,
+      openedToActionMs: 4000,
+      actionDescription:
+        '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/100 に設定）',
     });
+    expect(onQueueAction.mock.calls[1][0].offline[1].requestBody).toEqual(
+      buildTriageRequest('acme', issueItem, 'set_status', {
+        statusName: AWAITING_WORKSPACE_NAME,
+      }),
+    );
+    now.mockRestore();
   });
 
   it('runs the bundled commit by writing the depended issue URL and then the Awaiting Workspace status, in that order, without ever calling operations.addComment', async () => {
@@ -4942,6 +5134,10 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   });
 
   it('builds a two-entry offline payload array for the depended issue URL write and then the Awaiting Workspace status write', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3500);
     const onQueueAction = jest.fn();
     const { getByTitle, getByPlaceholderText, getByText } =
       renderIssueDetailForDependedIssueUrl({ onQueueAction });
@@ -4971,16 +5167,22 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
           dependedIssueUrl: dependedIssueUrlToSubmit,
           projectItemId: issueItem.projectItemId,
           replaceExisting: true,
+          openedToActionMs: 2500,
+          actionDescription:
+            '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
         },
       },
       {
         ...expectedBase,
         apiPath: TRIAGE_OPERATION_PATH,
-        requestBody: buildTriageRequest('acme', issueItem, 'set_status', {
-          statusName: AWAITING_WORKSPACE_NAME,
-        }),
+        requestBody: {
+          ...buildTriageRequest('acme', issueItem, 'set_status', {
+            statusName: AWAITING_WORKSPACE_NAME,
+          }),
+        },
       },
     ]);
+    now.mockRestore();
   });
 
   it('never produces a comment offline payload or calls operations.addComment for the bundled Set Depended Issue action', async () => {
@@ -5056,6 +5258,10 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
   });
 
   it('saves several URLs as one comma-joined replace payload and queues the Awaiting Workspace move', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3500);
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const { getByTitle, getByPlaceholderText, getByText } =
@@ -5079,7 +5285,15 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
         'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
       projectItemId: issueItem.projectItemId,
       replaceExisting: true,
+      openedToActionMs: 2500,
+      actionDescription:
+        '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2 に設定）',
     });
+    expect(input.offline[1].requestBody).toEqual(
+      buildTriageRequest('acme', issueItem, 'set_status', {
+        statusName: AWAITING_WORKSPACE_NAME,
+      }),
+    );
 
     await input.commit(0);
 
@@ -5096,6 +5310,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       undefined,
       undefined,
     );
+    now.mockRestore();
   });
 
   it('saves a line deletion as a replace of the remaining URL only, and still queues the Awaiting Workspace move', async () => {

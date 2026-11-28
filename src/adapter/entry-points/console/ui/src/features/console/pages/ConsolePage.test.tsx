@@ -6,6 +6,8 @@ import {
   within,
 } from '@testing-library/react';
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
+import { deliverPersistedConsoleAction } from '../hooks/consoleActionDelivery';
+import type { ConsoleOfflineQueuedAction } from '../hooks/useConsoleActionQueue';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
 import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
@@ -7012,7 +7014,14 @@ describe('ConsolePage airplane mode write guard', () => {
       configurable: true,
       value: undefined,
     });
+    jest.restoreAllMocks();
   });
+
+  let consoleActionNowSpy: jest.SpyInstance | undefined;
+
+  const pinConsoleActionTiming = (): void => {
+    consoleActionNowSpy = jest.spyOn(Date, 'now').mockReturnValue(1000);
+  };
 
   const readStoredOfflineQueue = (): Record<string, unknown>[] =>
     JSON.parse(localStorage.getItem('console-offline-action-queue') ?? '[]');
@@ -7033,6 +7042,7 @@ describe('ConsolePage airplane mode write guard', () => {
     });
     fireEvent.click(view.getByText('Add serveConsole subcommand'));
     expect(await view.findByText('Approve & Merge')).toBeInTheDocument();
+    consoleActionNowSpy?.mockReturnValue(3501);
   };
 
   const dismissUndoToast = async (container: HTMLElement): Promise<void> => {
@@ -7071,6 +7081,7 @@ describe('ConsolePage airplane mode write guard', () => {
   });
 
   it('holds a composer comment with the item URL and body across a reload and sends no /api/comment request when airplane mode is on', async () => {
+    pinConsoleActionTiming();
     const view = render(<ConsolePage />);
     await openPullRequestDetailInAirplaneMode(view);
 
@@ -7089,6 +7100,8 @@ describe('ConsolePage airplane mode write guard', () => {
             url: prItem.url,
             body: 'Written above the clouds.',
             actionId: expect.any(String),
+            openedToActionMs: 2501,
+            actionDescription: 'コメントを投稿しました',
           },
         }),
       ]);
@@ -7111,6 +7124,8 @@ describe('ConsolePage airplane mode write guard', () => {
           url: prItem.url,
           body: 'Written above the clouds.',
           actionId: expect.any(String),
+          openedToActionMs: 2501,
+          actionDescription: 'コメントを投稿しました',
         },
       }),
     ]);
@@ -7118,6 +7133,7 @@ describe('ConsolePage airplane mode write guard', () => {
   });
 
   it('holds both the ok comment and the close of OK & Close in order and sends nothing when airplane mode is on', async () => {
+    pinConsoleActionTiming();
     const view = render(<ConsolePage />);
     await openPullRequestDetailInAirplaneMode(view);
 
@@ -7136,6 +7152,8 @@ describe('ConsolePage airplane mode write guard', () => {
           url: prItem.url,
           body: 'ok',
           actionId: expect.any(String),
+          openedToActionMs: 2501,
+          actionDescription: '「OK & Close」を押しました',
         },
       }),
       expect.objectContaining({
@@ -7156,6 +7174,7 @@ describe('ConsolePage airplane mode write guard', () => {
   });
 
   it('holds both the comment and the close of Comment & Close in order and sends nothing when airplane mode is on', async () => {
+    pinConsoleActionTiming();
     const view = render(<ConsolePage />);
     await openPullRequestDetailInAirplaneMode(view);
 
@@ -7177,6 +7196,8 @@ describe('ConsolePage airplane mode write guard', () => {
           url: prItem.url,
           body: 'Closing above the clouds.',
           actionId: expect.any(String),
+          openedToActionMs: 2501,
+          actionDescription: 'コメントを投稿して閉じました',
         },
       }),
       expect.objectContaining({
@@ -10236,6 +10257,7 @@ describe('ConsolePage selected item story color threading', () => {
 
 describe('ConsolePage offline action queue', () => {
   const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
+  const DELIVERY_QUEUE_STORAGE_KEY = 'console-action-delivery-queue';
   const pullRequestUrl = 'https://github.com/o/r/pull/851';
   const issueUrl = 'https://github.com/o/r/issues/866';
 
@@ -10243,6 +10265,9 @@ describe('ConsolePage offline action queue', () => {
 
   const readStoredOfflineQueue = (): Record<string, unknown>[] =>
     JSON.parse(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]');
+
+  const readStoredDeliveryQueue = (): Record<string, unknown>[] =>
+    JSON.parse(localStorage.getItem(DELIVERY_QUEUE_STORAGE_KEY) ?? '[]');
 
   const respondWithPostedComment: PostResponder = async (_url, init) => ({
     ok: true,
@@ -10333,6 +10358,7 @@ describe('ConsolePage offline action queue', () => {
     });
     fireEvent.click(view.getByText('Add serveConsole subcommand'));
     expect(await view.findByText('Approve & Merge')).toBeInTheDocument();
+    consoleActionNowSpy?.mockReturnValue(3501);
   };
 
   const dismissUndoToast = async (container: HTMLElement): Promise<void> => {
@@ -10348,6 +10374,15 @@ describe('ConsolePage offline action queue', () => {
     localStorage.clear();
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
   });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  let consoleActionNowSpy: jest.SpyInstance | undefined;
+
+  const pinConsoleActionTiming = (): void => {
+    consoleActionNowSpy = jest.spyOn(Date, 'now').mockReturnValue(1000);
+  };
 
   it('sends exactly one /api/comment request carrying the project, the item URL and the body when a comment is posted online', async () => {
     const fetchMock = installOfflineQueueFetch(respondWithPostedComment);
@@ -10526,6 +10561,7 @@ describe('ConsolePage offline action queue', () => {
   });
 
   it('holds a composer comment with the item URL and body when its request fails because the network is unavailable', async () => {
+    pinConsoleActionTiming();
     const fetchMock = installOfflineQueueFetch(respondWithNetworkFailure);
     const view = render(<ConsolePage />);
     await openPullRequestDetail(view);
@@ -10545,6 +10581,8 @@ describe('ConsolePage offline action queue', () => {
             url: pullRequestUrl,
             body: 'Written in a tunnel.',
             actionId: expect.any(String),
+            openedToActionMs: 2501,
+            actionDescription: 'コメントを投稿しました',
           },
         }),
       ]);
@@ -10552,7 +10590,57 @@ describe('ConsolePage offline action queue', () => {
     expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
   });
 
+  it('persists and replays the press-time timing for a composer comment whose online request fails because the network is unavailable', async () => {
+    pinConsoleActionTiming();
+    const fetchMock = installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Written in a tunnel.' },
+    });
+    fireEvent.click(view.getByText('Comment'));
+
+    let persistedActions: Record<string, unknown>[] = [];
+    await waitFor(() => {
+      persistedActions = readStoredDeliveryQueue().filter(
+        (entry) => entry.apiPath === '/api/comment',
+      );
+      expect(persistedActions.length).toBeGreaterThan(0);
+    });
+
+    const actionId = persistedActions[0].actionId;
+    const entriesForAction = persistedActions.filter(
+      (entry) => entry.actionId === actionId,
+    );
+    expect(entriesForAction.length).toBeGreaterThan(0);
+    for (const entry of entriesForAction) {
+      const requestBody = entry.requestBody as Record<string, unknown>;
+      expect(requestBody.openedToActionMs).toBe(2501);
+      expect(requestBody.actionDescription).toBe('コメントを投稿しました');
+    }
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? respondWithPostedComment(url, init)
+        : { ok: true, status: 200, json: async () => ({}) },
+    );
+    await act(async () => {
+      await deliverPersistedConsoleAction(
+        entriesForAction[0] as unknown as ConsoleOfflineQueuedAction,
+      );
+    });
+
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toContainEqual(
+      expect.objectContaining({
+        openedToActionMs: 2501,
+        actionDescription: 'コメントを投稿しました',
+      }),
+    );
+  });
+
   it('holds both the ok comment and the close of OK & Close in order when its request fails because the network is unavailable', async () => {
+    pinConsoleActionTiming();
     installOfflineQueueFetch(respondWithNetworkFailure);
     const view = render(<ConsolePage />);
     await openPullRequestDetail(view);
@@ -10572,6 +10660,8 @@ describe('ConsolePage offline action queue', () => {
           url: pullRequestUrl,
           body: 'ok',
           actionId: expect.any(String),
+          openedToActionMs: 2501,
+          actionDescription: '「OK & Close」を押しました',
         },
       }),
       expect.objectContaining({
@@ -10725,6 +10815,7 @@ describe('ConsolePage offline action queue', () => {
   });
 
   it('holds both the comment and the close of Comment & Close in order without an error toast when its request fails because the network is unavailable', async () => {
+    pinConsoleActionTiming();
     installOfflineQueueFetch(respondWithNetworkFailure);
     const view = render(<ConsolePage />);
     await openPullRequestDetail(view);
@@ -10747,6 +10838,8 @@ describe('ConsolePage offline action queue', () => {
           url: pullRequestUrl,
           body: 'Closing in a tunnel.',
           actionId: expect.any(String),
+          openedToActionMs: 2501,
+          actionDescription: 'コメントを投稿して閉じました',
         },
       }),
       expect.objectContaining({
@@ -10927,7 +11020,7 @@ describe('ConsolePage offline action queue', () => {
     startAction: (view: ReturnType<typeof render>) => Promise<void>;
     expectedCommentBody: string;
     expectedSecondRequestBody: Record<string, unknown>;
-    expectedSecondRequestOfflinePayload: Record<string, string>;
+    expectedSecondRequestOfflinePayload: Record<string, unknown>;
   };
 
   const commentThenSecondRequestActions: CommentThenSecondRequestAction[] = [
@@ -10977,6 +11070,9 @@ describe('ConsolePage offline action queue', () => {
       expectedSecondRequestOfflinePayload: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
         commentBody: 'ok',
+        openedToActionMs: 2501,
+        actionDescription:
+          '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
       },
     },
     {
@@ -11000,6 +11096,9 @@ describe('ConsolePage offline action queue', () => {
       expectedSecondRequestOfflinePayload: {
         ...awaitingWorkspaceRequestBodyForPullRequest,
         commentBody: 'Moving after the outage.',
+        openedToActionMs: 2501,
+        actionDescription:
+          'コメントを投稿して「Awaiting Workspace」に変更しました',
       },
     },
     {
@@ -11028,6 +11127,7 @@ describe('ConsolePage offline action queue', () => {
   it.each(commentThenSecondRequestActions)(
     'retries $actionName without duplicating its comment when its request answered HTTP 500 online',
     async ({ startAction, expectedCommentBody, expectedSecondRequestBody }) => {
+      pinConsoleActionTiming();
       const isCombined = 'commentBody' in expectedSecondRequestBody;
       const fetchMock = installOfflineQueueFetch(
         respondWithPostedCommentsAndTriageRequestsInTurn(
@@ -11050,7 +11150,7 @@ describe('ConsolePage offline action queue', () => {
                 url: pullRequestUrl,
                 body: expectedCommentBody,
                 actionId: expect.any(String),
-                openedToActionMs: expect.any(Number),
+                openedToActionMs: 2501,
                 actionDescription:
                   expectedCommentBody === 'ok'
                     ? '「OK & Close」を押しました'
@@ -11073,7 +11173,7 @@ describe('ConsolePage offline action queue', () => {
                 url: pullRequestUrl,
                 body: expectedCommentBody,
                 actionId: expect.any(String),
-                openedToActionMs: expect.any(Number),
+                openedToActionMs: 2501,
                 actionDescription:
                   expectedCommentBody === 'ok'
                     ? '「OK & Close」を押しました'
@@ -11099,6 +11199,7 @@ describe('ConsolePage offline action queue', () => {
       expectedSecondRequestBody,
       expectedSecondRequestOfflinePayload,
     }) => {
+      pinConsoleActionTiming();
       const fetchMock = installOfflineQueueFetch(
         respondWithPostedCommentsAndTriageRequestsInTurn(
           respondWithHostRejection,
@@ -11133,7 +11234,7 @@ describe('ConsolePage offline action queue', () => {
                 url: pullRequestUrl,
                 body: expectedCommentBody,
                 actionId: expect.any(String),
-                openedToActionMs: expect.any(Number),
+                openedToActionMs: 2501,
                 actionDescription:
                   expectedCommentBody === 'ok'
                     ? '「OK & Close」を押しました'
@@ -11228,6 +11329,7 @@ describe('ConsolePage offline action queue', () => {
       expectedSecondRequestBody,
       expectedSecondRequestOfflinePayload,
     }) => {
+      pinConsoleActionTiming();
       const fetchMock = installOfflineQueueFetchWithAirplaneModeSync(
         respondWithPostedCommentsAndTriageRequestsInTurn(
           respondWithHostRejection,
@@ -11270,7 +11372,7 @@ describe('ConsolePage offline action queue', () => {
                   url: pullRequestUrl,
                   body: expectedCommentBody,
                   actionId: expect.any(String),
-                  openedToActionMs: expect.any(Number),
+                  openedToActionMs: 2501,
                   actionDescription:
                     expectedCommentBody === 'ok'
                       ? '「OK & Close」を押しました'
@@ -11350,6 +11452,7 @@ describe('ConsolePage offline action queue', () => {
   });
 
   it('holds both the ok comment and the close of OK & Close in order without an error toast when the ok comment answered HTTP 500 online and its retry fails because the network is unavailable', async () => {
+    pinConsoleActionTiming();
     const fetchMock = installOfflineQueueFetch(
       respondWithCommentsInTurnAndOtherRequestsSucceeded(
         respondWithHostRejection,
@@ -11376,6 +11479,8 @@ describe('ConsolePage offline action queue', () => {
           url: pullRequestUrl,
           body: 'ok',
           actionId: expect.any(String),
+          openedToActionMs: 2501,
+          actionDescription: '「OK & Close」を押しました',
         },
       }),
       expect.objectContaining({
