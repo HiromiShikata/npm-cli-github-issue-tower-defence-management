@@ -709,12 +709,22 @@ const createStubIssueRepository = (
     _projectId: Project['id'],
     _options?: { refresh: boolean },
   ): Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }> => ({
-    issues: Object.values(CONSOLE_E2E_TAB_ITEMS)
-      .flat()
-      .map((item) => ({
-        ...buildIssueForUrl(item.url),
-        itemId: item.projectItemId,
-      })),
+    issues: [
+      ...Object.values(CONSOLE_E2E_TAB_ITEMS)
+        .flat()
+        .map((item) => ({
+          ...buildIssueForUrl(item.url),
+          itemId: item.projectItemId,
+        })),
+      ...Object.keys(CONSOLE_E2E_STORY_MOVE_TASK_TITLES)
+        .map(Number)
+        .map((issueNumber) => ({
+          ...buildIssueForUrl(
+            `https://github.com/${REPO_NAME_WITH_OWNER}/issues/${issueNumber}`,
+          ),
+          itemId: `PVTI_lADOABCD1234zgMOVE${issueNumber}`,
+        })),
+    ],
     project: buildE2eProject(),
     cacheUsed: false,
   }),

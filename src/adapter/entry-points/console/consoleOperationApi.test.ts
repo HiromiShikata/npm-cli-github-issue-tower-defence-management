@@ -2128,6 +2128,57 @@ describe('consoleOperationApi', () => {
     );
   });
 
+  describe('workflow-repository request binds the close gate to the workflow-owning project', () => {
+    const workflowRepositoryNameWithOwner = 'fleet-org/fleet-repo';
+    const workflowPrUrl = 'https://github.com/fleet-org/fleet-repo/pull/9';
+    const workflowItemId = 'PVTI_workflow_review_close';
+    const workflowOwningProject: Project = {
+      ...project,
+      id: 'PVT_workflow_owner_review_close',
+      url: 'https://github.com/orgs/fleet-org/projects/7',
+    };
+    const workflowContext = (): ConsoleOperationContext => ({
+      ...contextForProject(project),
+      workflowRepositoryNameWithOwner,
+      resolveWorkflowProjectBinding: async () => ({
+        pjcode: 'fleet-pjcode',
+        project: workflowOwningProject,
+      }),
+    });
+
+    it('checks the item in the workflow-owning project and closes the pull request', async () => {
+      issueRepository.getAllIssues.mockImplementation(async (projectId) =>
+        projectId === workflowOwningProject.id
+          ? {
+              issues: [
+                {
+                  ...issue,
+                  itemId: workflowItemId,
+                  url: workflowPrUrl,
+                  isPr: true,
+                },
+              ],
+              project: workflowOwningProject,
+              cacheUsed: false,
+            }
+          : { issues: [], project, cacheUsed: false },
+      );
+
+      const response = await handleReview(workflowContext(), {
+        pjcode: 'acme',
+        nameWithOwner: workflowRepositoryNameWithOwner,
+        action: 'close',
+        prUrl: workflowPrUrl,
+        projectItemId: workflowItemId,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        workflowPrUrl,
+      );
+    });
+  });
+
   describe('handleIntmux binding', () => {
     const linkedIssueUrl = 'https://github.com/o/r/issues/1';
     const unlinkedIssueUrl = 'https://github.com/o/r/issues/99';

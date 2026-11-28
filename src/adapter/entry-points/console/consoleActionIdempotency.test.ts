@@ -163,6 +163,20 @@ describe('console operation actionId delivery', () => {
       url: closeBody.issueUrl,
       itemId: 'PVTI_close_once',
     });
+    issueRepository.getAllIssues.mockResolvedValue({
+      issues: [
+        'PVTI_close_once',
+        'PVTI_story_once',
+        'PVTI_failed_comment',
+        'PVTI_restart',
+      ].map((itemId) => ({
+        ...mock<Issue>(),
+        url: closeBody.issueUrl,
+        itemId,
+      })),
+      project: project(),
+      cacheUsed: false,
+    });
   });
 
   afterEach(() => {
