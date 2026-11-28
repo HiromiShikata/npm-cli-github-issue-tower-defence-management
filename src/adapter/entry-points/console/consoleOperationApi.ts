@@ -2126,49 +2126,136 @@ const handleCreateIssueImpl = async (
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
-  const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
-  const issueNumber = await issueRepository.createNewIssue(
-    org,
-    repo,
-    effectiveTitle,
-    effectiveBody,
-    [authenticatedUser],
-    [],
-  );
-  const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+  const actionId = isNonEmptyString(body.actionId) ? body.actionId : null;
+  const priorBody = context.priorAttempt?.body;
+  const priorIssueUrl =
+    priorBody !== undefined && typeof priorBody.issueUrl === 'string'
+      ? priorBody.issueUrl
+      : null;
+  const issueUrl = priorIssueUrl ?? (await (async () => {
+    try {
+      const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
+      const issueNumber = await issueRepository.createNewIssue(
+        org,
+        repo,
+        effectiveTitle,
+        effectiveBody,
+        [authenticatedUser],
+        [],
+      );
+      return `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[handleCreateIssue] issue creation failed:', error);
+      return { error: errorMessage };
+    }
+  })());
+  if (typeof issueUrl !== 'string') {
+    return {
+      statusCode: 500,
+      body: { ok: false, issueCreated: false, error: issueUrl.error },
+    };
+  }
 
-  await (async () => {
+  const completedSteps = new Set(
+    priorBody !== undefined && Array.isArray(priorBody.completedSteps)
+      ? priorBody.completedSteps.filter(
+          (step): step is string => typeof step === 'string',
+        )
+      : [],
+  );
+  const persistProgress = (): void => {
+    if (actionId === null) return;
+    const record: ConsoleActionRecord = {
+      recordedAtMs: Date.now(),
+      statusCode: 500,
+      body: {
+        ok: false,
+        issueCreated: true,
+        issueUrl,
+        completedSteps: [...completedSteps],
+      },
+    };
+    if (context.consoleDataOutputDir === null) {
+      inMemoryActionRecords.set(actionId, record);
+    } else {
+      writeConsoleActionRecord(
+        context.consoleDataOutputDir,
+        actionId,
+        record,
+        Date.now(),
+      );
+    }
+  };
+  persistProgress();
+
+  const runStep = async (
+    step: string,
+    operation: () => Promise<void>,
+  ): Promise<ConsoleOperationResponse | null> => {
+    if (completedSteps.has(step)) return null;
+    try {
+      await operation();
+      completedSteps.add(step);
+      persistProgress();
+      return null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[handleCreateIssue] ${step} failed:`, error);
+      if (actionId === null) throw error;
+      persistProgress();
+      return {
+        statusCode: 500,
+        body: {
+          ok: false,
+          issueCreated: true,
+          issueUrl,
+          failedStep: step,
+          error: errorMessage,
+        },
+      };
+    }
+  };
+
+  const addProjectFailure = await runStep('addIssueToProject', async () => {
     await issueRepository.addIssueToProject(project, issueUrl);
-    const addedIssue = await issueRepository.get(issueUrl, project);
-    if (addedIssue !== null) {
-      const projectRepository =
-        context.resolveProjectRepository !== null
-          ? context.resolveProjectRepository(project.url)
-          : null;
-      const freshProject =
-        preloadedFreshProject ??
-        (projectRepository !== null
-          ? await projectRepository.getProject(project.id)
-          : null);
-      const effectiveProject = freshProject ?? project;
-      const effectiveStory = freshProject?.story ?? cachedProjectStory;
-      const storyOption =
-        effectiveStory.stories.find((s) => s.name === storyName) ??
-        resolvedStoryOption;
-      await issueRepository.updateStory(
+  });
+  if (addProjectFailure !== null) return addProjectFailure;
+  const addedIssue = await issueRepository.get(issueUrl, project);
+  if (addedIssue !== null) {
+    const projectRepository =
+      context.resolveProjectRepository !== null
+        ? context.resolveProjectRepository(project.url)
+        : null;
+    const freshProject =
+      preloadedFreshProject ??
+      (projectRepository !== null
+        ? await projectRepository.getProject(project.id)
+        : null);
+    const effectiveProject = freshProject ?? project;
+    const effectiveStory = freshProject?.story ?? cachedProjectStory;
+    const storyOption =
+      effectiveStory.stories.find((s) => s.name === storyName) ??
+      resolvedStoryOption;
+    const storyFailure = await runStep('updateStory', () =>
+      issueRepository.updateStory(
         { ...effectiveProject, story: effectiveStory },
         addedIssue,
         storyOption.id,
-      );
-      if (agentOptionId !== null && effectiveProject.agent !== null) {
+      ),
+    );
+    if (storyFailure !== null) return storyFailure;
+    if (agentOptionId !== null && effectiveProject.agent !== null) {
+      const agentFailure = await runStep('setIssueAgentField', async () => {
         await issueRepository.setIssueAgentField(
           issueUrl,
           effectiveProject,
           agentOptionId,
         );
-      }
+      });
+      if (agentFailure !== null) return agentFailure;
     }
-  })();
+  }
 
   return { statusCode: 200, body: { ok: true, issueUrl } };
 };

@@ -65,6 +65,7 @@ import {
   postConsoleUpdateStoryDescription,
   SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
 } from '../lib/consoleApi';
+import { createIssueWithRetry } from '../lib/createIssueWithRetry';
 import { navigatePush, navigateReplaceState } from '../lib/navigation';
 import {
   actionAdvances,
@@ -184,6 +185,7 @@ const isDependedIssueSubmission = (input: ConsoleQueueActionInput): boolean =>
   input.offline?.[0]?.apiPath === SET_DEPENDED_ISSUE_URL_OPERATION_PATH;
 
 export type AttachmentSubmissionProgress = {
+  actionId?: string;
   issueUrl: string | null;
   uploadedMarkdownByFileName: Map<string, string>;
   commentedFileNames: Set<string>;
@@ -191,6 +193,7 @@ export type AttachmentSubmissionProgress = {
 
 export const createEmptyAttachmentSubmissionProgress =
   (): AttachmentSubmissionProgress => ({
+    actionId: generateActionId(),
     issueUrl: null,
     uploadedMarkdownByFileName: new Map(),
     commentedFileNames: new Set(),
@@ -213,6 +216,13 @@ export const buildAttachmentSubmissionFailureMessage = (
   return `Task ${issueUrl} was created, but ${parts.join('; and ')}.`;
 };
 
+export const buildCreatedWithIncompleteStepMessage = (
+  issueUrl: string,
+  failedStep: string,
+  reason: string,
+): string =>
+  `Task ${issueUrl} was created, but ${failedStep} did not complete: ${reason}`;
+
 export const attachmentSubmissionParamsChanged = (
   previous: IssueCreateParams,
   current: IssueCreateParams,
@@ -228,23 +238,55 @@ export const createIssueWithAttachments = async (
   { title, storyName, agentOptionId, body, files }: IssueCreateParams,
   progress: AttachmentSubmissionProgress,
 ): Promise<void> => {
+  const actionId = progress.actionId ?? generateActionId();
+  progress.actionId = actionId;
   let issueUrl = progress.issueUrl;
   if (issueUrl === null) {
-    try {
-      issueUrl = await postConsoleCreateIssue({
+    const outcome = await createIssueWithRetry(
+      async (request) => {
+        const response: unknown = await postConsoleCreateIssue(request);
+        if (typeof response === 'string') {
+          return { httpStatus: 200, body: { ok: true, issueUrl: response } };
+        }
+        return response as { httpStatus: number; body: unknown };
+      },
+      {
         pjcode,
         title,
         storyName: storyName ?? '',
         nameWithOwner,
+        actionId,
         agentOptionId: agentOptionId ?? null,
         body: body ?? null,
-      });
-    } catch (cause: unknown) {
+      },
+    );
+    if (outcome.kind === 'notCreated') {
       console.error(
         'createIssueWithAttachments: failed to create issue',
-        cause,
+        outcome.reason,
       );
-      throw new Error('Failed to create the task. Please try again.');
+      throw new Error(
+        `The task was not created. Retrying will not create a duplicate: ${outcome.reason}`,
+      );
+    }
+    if (outcome.kind === 'unconfirmed') {
+      console.error(
+        'createIssueWithAttachments: creation state was unconfirmed',
+        outcome.reason,
+      );
+      throw new Error(
+        `The creation state could not be confirmed. Retrying will not create a duplicate: ${outcome.reason}`,
+      );
+    }
+    issueUrl = outcome.issueUrl;
+    if (outcome.kind === 'createdWithIncompleteStep') {
+      console.error(
+        buildCreatedWithIncompleteStepMessage(
+          outcome.issueUrl,
+          outcome.failedStep,
+          outcome.reason,
+        ),
+      );
     }
     progress.issueUrl = issueUrl;
   }
@@ -1380,6 +1422,7 @@ export const ConsolePage = () => {
         title,
         storyName,
         nameWithOwner: defaultNameWithOwner,
+        actionId: generateActionId(),
       });
     },
     [pjcode, defaultNameWithOwner],
