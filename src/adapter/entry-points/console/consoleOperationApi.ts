@@ -717,29 +717,32 @@ export const handleReview = async (
         return issueUrlFailure;
       }
     }
-    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
+    // Item-linked writes run before the pull request close: a failure after the
+    // close would leave the pull request closed, and the retry's gate, which
+    // only sees open linked pull requests, would then reject the request.
+    const statusFailure = isNonEmptyString(issueUrl)
+      ? await updateStatusByName(
+          context.resolveIssueRepository(issueUrl),
+          project,
+          issueUrl,
+          projectItemId,
+          AWAITING_WORKSPACE_STATUS_NAME,
+          expectedStatusAtActionTime,
+        )
+      : null;
+    if (statusFailure?.kind === 'failed') {
+      return statusFailure.response;
+    }
     if (isNonEmptyString(body.commentBody)) {
       await context
         .resolveIssueRepository(prUrl)
         .createCommentByUrl(prUrl, body.commentBody);
     }
-    if (isNonEmptyString(issueUrl)) {
-      const statusFailure = await updateStatusByName(
-        context.resolveIssueRepository(issueUrl),
-        project,
-        issueUrl,
-        projectItemId,
-        AWAITING_WORKSPACE_STATUS_NAME,
-        expectedStatusAtActionTime,
-      );
-      if (statusFailure.kind === 'failed') {
-        return statusFailure.response;
-      }
-      if (statusFailure.kind === 'skipped') {
-        return skippedStatusWriteResponse();
-      }
-    }
+    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     recordDone(context, pjcode, projectItemId);
+    if (statusFailure?.kind === 'skipped') {
+      return skippedStatusWriteResponse();
+    }
     return ok();
   }
 
@@ -772,17 +775,7 @@ export const handleReview = async (
     if (issueUrlFailure !== null) {
       return issueUrlFailure;
     }
-    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
-    if (isNonEmptyString(body.commentBody)) {
-      await context
-        .resolveIssueRepository(prUrl)
-        .createCommentByUrl(prUrl, body.commentBody);
-    }
-    if (isNonEmptyString(body.issueCommentBody)) {
-      await context
-        .resolveIssueRepository(issueUrl)
-        .createCommentByUrl(issueUrl, body.issueCommentBody);
-    }
+    // Item-linked writes run before the pull request close; see the close path.
     const labelFailure = await addChoreLabel(
       context.resolveIssueRepository(issueUrl),
       issueUrl,
@@ -801,10 +794,21 @@ export const handleReview = async (
     if (failure.kind === 'failed') {
       return failure.response;
     }
+    if (isNonEmptyString(body.commentBody)) {
+      await context
+        .resolveIssueRepository(prUrl)
+        .createCommentByUrl(prUrl, body.commentBody);
+    }
+    if (isNonEmptyString(body.issueCommentBody)) {
+      await context
+        .resolveIssueRepository(issueUrl)
+        .createCommentByUrl(issueUrl, body.issueCommentBody);
+    }
+    await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
+    recordDone(context, pjcode, projectItemId);
     if (failure.kind === 'skipped') {
       return skippedStatusWriteResponse();
     }
-    recordDone(context, pjcode, projectItemId);
     return ok();
   }
 
