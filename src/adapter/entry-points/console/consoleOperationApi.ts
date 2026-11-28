@@ -1689,6 +1689,40 @@ export const handleAttachmentUpload = async (
   if (!isValidIssueOrPullRequestUrl(url)) {
     return badRequest('url must be a github issue or pull request url');
   }
+  const isLegacyRequest = !('files' in body);
+  if (isLegacyRequest) {
+    const fileName = body.fileName;
+    const contentBase64 = body.contentBase64;
+    if (!isNonEmptyString(fileName)) {
+      return badRequest('fileName is required');
+    }
+    if (!isNonEmptyString(contentBase64)) {
+      return badRequest('contentBase64 is required');
+    }
+    const pjcodeResult = resolveConfiguredPjcode(context, body);
+    if (typeof pjcodeResult !== 'string') {
+      return pjcodeResult;
+    }
+    if (context.issueAttachmentRepository === null) {
+      return badGateway('attachment upload is not configured');
+    }
+    const uploadResult = await context.issueAttachmentRepository.uploadAttachment({
+      issueOrPullRequestUrl: url,
+      fileName,
+      content: Buffer.from(contentBase64, 'base64'),
+    });
+    const firstResult = typeof uploadResult === 'string' ? null : uploadResult[0];
+    const markdown =
+      typeof uploadResult === 'string'
+        ? uploadResult
+        : firstResult?.status === 'uploaded'
+          ? firstResult.markdown
+          : '';
+    return {
+      statusCode: 200,
+      body: { ok: true, markdown },
+    };
+  }
   if (!Array.isArray(files) || files.length === 0) {
     return badRequest('files is required');
   }
