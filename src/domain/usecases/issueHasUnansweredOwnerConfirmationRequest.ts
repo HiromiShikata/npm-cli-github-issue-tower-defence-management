@@ -1,6 +1,10 @@
 import { Comment } from '../entities/Comment';
 import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { findLastAgentReport } from './findLastAgentReport';
+import {
+  isConsoleElapsedTimeCommentBody,
+  stripConsoleElapsedTimeLine,
+} from './consoleElapsedTimeComment';
 
 export const issueHasUnansweredOwnerConfirmationRequest = (
   comments: Comment[],
@@ -18,5 +22,14 @@ export const issueHasUnansweredOwnerConfirmationRequest = (
   if (!extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)) {
     return false;
   }
-  return comments[comments.length - 1] === lastAgentReport;
+  const lastNonElapsedComment = [...comments]
+    .reverse()
+    .find(
+      (comment) =>
+        !(
+          isConsoleElapsedTimeCommentBody(comment.content) &&
+          stripConsoleElapsedTimeLine(comment.content).trim() === ''
+        ),
+    );
+  return lastNonElapsedComment === lastAgentReport;
 };

@@ -19,11 +19,11 @@ import {
 } from '../lib/consoleApi';
 import { ResourceCache } from '../lib/resourceCache';
 import { colorFromEnum } from '../logic/colors';
-import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import {
   clearConsoleItemOpenTimesForTest,
   readConsoleItemOpenedAt,
 } from '../logic/consoleItemOpenTimes';
+import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import type {
   ConsoleChangedFile,
   ConsoleComment,

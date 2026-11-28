@@ -718,9 +718,10 @@ export const ConsoleItemDetailContainer = ({
     onSetDependedIssueUrl:
       pjcode != null
         ? async (dependedIssueUrl: string) => {
+            const timing = consoleItemActionTiming(item, '「Set Depended Issue」を押しました');
             if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
               const baseUrls = item.dependedIssueUrls;
-              await operations.replaceDependedIssueUrl(item, dependedIssueUrl);
+              await operations.replaceDependedIssueUrl(item, dependedIssueUrl, timing.openedToActionMs, timing.actionDescription);
               recordSavedDependedIssueUrls(baseUrls, dependedIssueUrl);
               return;
             }
@@ -748,14 +749,14 @@ export const ConsoleItemDetailContainer = ({
                     [
                       () =>
                         operations
-                          .replaceDependedIssueUrl(item, dependedIssueUrl)
+                          .replaceDependedIssueUrl(item, dependedIssueUrl, timing.openedToActionMs, timing.actionDescription)
                           .then(() =>
                             recordSavedDependedIssueUrls(
                               baseUrls,
                               dependedIssueUrl,
                             ),
                           ),
-                      () => operations.setStatus(item, option),
+                      () => operations.setStatus(item, option, undefined, timing.openedToActionMs, timing.actionDescription),
                     ],
                     sentStepCount,
                   );
@@ -1051,6 +1052,7 @@ export const ConsoleItemDetailContainer = ({
   );
 
   const commentAndClose = async (body: string): Promise<void> => {
+    const timing = consoleItemActionTiming(item, 'コメントを投稿して閉じました');
     if (pjcode == null) {
       await addComment(body);
       handlers.onClose('close');
@@ -1069,10 +1071,12 @@ export const ConsoleItemDetailContainer = ({
                 item,
                 body,
                 commentActionId,
+                timing.openedToActionMs,
+                timing.actionDescription,
               );
               setPostedComments((previous) => [...previous, comment]);
             },
-            () => operations.closeIssue(item, 'close', closeActionId),
+            () => operations.closeIssue(item, 'close', closeActionId, timing.openedToActionMs, timing.actionDescription),
           ],
           sentStepCount,
         ),
@@ -1097,6 +1101,7 @@ export const ConsoleItemDetailContainer = ({
   };
 
   const okAndClose = async (): Promise<void> => {
+    const timing = consoleItemActionTiming(item, '「OK & Close」を押しました');
     const commentActionId = generateCommentActionId();
     const closeActionId = generateCommentActionId();
     onQueueAction({
@@ -1110,9 +1115,11 @@ export const ConsoleItemDetailContainer = ({
                 item,
                 OK_AND_CLOSE_COMMENT_BODY,
                 commentActionId,
+                timing.openedToActionMs,
+                timing.actionDescription,
               );
             },
-            () => operations.closeIssue(item, 'close', closeActionId),
+            () => operations.closeIssue(item, 'close', closeActionId, timing.openedToActionMs, timing.actionDescription),
           ],
           sentStepCount,
         ),

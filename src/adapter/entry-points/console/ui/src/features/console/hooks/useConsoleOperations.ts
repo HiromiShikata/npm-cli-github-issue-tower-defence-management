@@ -180,6 +180,8 @@ export const reviewRequest = (
       ...(actionId === undefined ? {} : { actionId }),
       ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
       ...(actionDescription === undefined ? {} : { actionDescription }),
+      ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+      ...(actionDescription === undefined ? {} : { actionDescription }),
     };
   }
   if (action === 'request_changes') {
@@ -225,6 +227,8 @@ export const reviewRequest = (
     issueCommentBody: buildUnnecessaryIssueCommentBody(prUrl),
     expectedStatusName: item.status,
     ...(actionId === undefined ? {} : { actionId }),
+    ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+    ...(actionDescription === undefined ? {} : { actionDescription }),
   };
 };
 
@@ -852,7 +856,7 @@ export const useConsoleOperations = (
   );
 
   const setDependedIssueUrl = useCallback(
-    async (item: ConsoleListItem, dependedIssueUrl: string) => {
+    async (item: ConsoleListItem, dependedIssueUrl: string, openedToActionMs?: number, actionDescription?: string) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -860,13 +864,15 @@ export const useConsoleOperations = (
         pjcode,
         issueUrl: item.url,
         dependedIssueUrl,
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       });
     },
     [pjcode],
   );
 
   const replaceDependedIssueUrl = useCallback(
-    async (item: ConsoleListItem, dependedIssueUrl: string) => {
+    async (item: ConsoleListItem, dependedIssueUrl: string, openedToActionMs?: number, actionDescription?: string) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -876,6 +882,8 @@ export const useConsoleOperations = (
         dependedIssueUrl,
         projectItemId: item.projectItemId,
         replaceExisting: true,
+        ...(openedToActionMs === undefined ? {} : { openedToActionMs }),
+        ...(actionDescription === undefined ? {} : { actionDescription }),
       });
     },
     [pjcode],

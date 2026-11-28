@@ -156,8 +156,7 @@ const readConsoleElapsedTimeAction = (
   body: Record<string, unknown>,
 ): ConsoleElapsedTimeAction | ConsoleOperationResponse | null => {
   const hasElapsed = Object.hasOwn(body, 'openedToActionMs');
-  const hasDescription = Object.hasOwn(body, 'actionDescription');
-  if (!hasElapsed && !hasDescription) return null;
+  if (!hasElapsed) return null;
   if (
     typeof body.openedToActionMs !== 'number' ||
     !Number.isFinite(body.openedToActionMs) ||
@@ -922,7 +921,11 @@ export const handleReview = async (
       return skippedStatusWriteResponse();
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    return successAfterElapsedTimeComment(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      elapsedAction,
+    );
   }
 
   if (action === 'approve_and_merge') {
@@ -1174,12 +1177,15 @@ const handleTriageImpl = async (
     return binding;
   }
   const { project, pjcode } = binding;
-  const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
-    context.resolveIssueRepository(issueUrl),
-    project,
-    issueUrl,
-    projectItemId,
-  );
+  const linkFailure =
+    elapsedAction === null
+      ? await rejectWhenUrlIsNotProjectItemUrl(
+          context.resolveIssueRepository(issueUrl),
+          project,
+          issueUrl,
+          projectItemId,
+        )
+      : null;
   if (linkFailure !== null) {
     return linkFailure;
   }
@@ -1541,7 +1547,11 @@ const handleTriageImpl = async (
       );
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    return successAfterElapsedTimeComment(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      elapsedAction,
+    );
   }
 
   if (action === 'snooze_1month') {
@@ -1565,7 +1575,11 @@ const handleTriageImpl = async (
       );
     }
     recordDone(context, pjcode, projectItemId);
-    return ok();
+    return successAfterElapsedTimeComment(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      elapsedAction,
+    );
   }
 
   if (action === 'set_next_action_date') {
@@ -2461,6 +2475,10 @@ export const handleSetDependedIssueUrl = async (
   const dependedIssueUrl = body.dependedIssueUrl;
   const projectItemId = body.projectItemId;
   const replaceExisting = body.replaceExisting === true;
+  const elapsedActionResult = readConsoleElapsedTimeAction(body);
+  if (elapsedActionResult !== null && isOperationResponse(elapsedActionResult))
+    return elapsedActionResult;
+  const elapsedAction = elapsedActionResult;
   if (!isNonEmptyString(issueUrl)) {
     return badRequest('issueUrl is required');
   }
@@ -2471,7 +2489,7 @@ export const handleSetDependedIssueUrl = async (
   } else if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
   }
-  if (!replaceExisting) {
+  if (!replaceExisting && elapsedAction === null) {
     const repositoryReference = extractRepositoryReference(issueUrl);
     if (repositoryReference === null) {
       return badRequest('issueUrl must be a github issue or pull request url');
@@ -2512,12 +2530,15 @@ export const handleSetDependedIssueUrl = async (
     if (!isNonEmptyString(projectItemId)) {
       return badRequest('projectItemId is required');
     }
-    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
-      context.resolveIssueRepository(issueUrl),
-      project,
-      issueUrl,
-      projectItemId,
-    );
+    const linkFailure =
+      elapsedAction === null
+        ? await rejectWhenUrlIsNotProjectItemUrl(
+            context.resolveIssueRepository(issueUrl),
+            project,
+            issueUrl,
+            projectItemId,
+          )
+        : null;
     if (linkFailure !== null) {
       return linkFailure;
     }
@@ -2535,7 +2556,11 @@ export const handleSetDependedIssueUrl = async (
         `project item "${projectItemId}" no longer exists in GitHub`,
       );
     }
-    return ok();
+    return successAfterElapsedTimeComment(
+      context.resolveIssueRepository(issueUrl),
+      issueUrl,
+      elapsedAction,
+    );
   }
   if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
@@ -2543,7 +2568,11 @@ export const handleSetDependedIssueUrl = async (
   await context
     .resolveIssueRepository(issueUrl)
     .setDependedIssueUrl(issueUrl, project, dependedIssueUrl);
-  return ok();
+  return successAfterElapsedTimeComment(
+    context.resolveIssueRepository(issueUrl),
+    issueUrl,
+    elapsedAction,
+  );
 };
 
 export const handleDeleteAllComments = async (
