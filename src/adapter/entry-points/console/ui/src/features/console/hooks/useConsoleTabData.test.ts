@@ -1378,6 +1378,135 @@ describe('useConsoleTabData network retry', () => {
     );
   });
 
+  it('retries a network failure while the list is served from cache and keeps the cached list without an error', async () => {
+    const cachedPayload = makeTabPayload({
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      items: [{ number: 1, itemId: 'CACHED_ITEM', projectItemId: 'CACHED_ITEM' }],
+    });
+    const retryPayload = makeTabPayload({
+      generatedAt: '2026-01-02T00:00:00.000Z',
+      items: [{ number: 2, itemId: 'RETRIED_ITEM', projectItemId: 'RETRIED_ITEM' }],
+    });
+    installMockCaches({ json: jest.fn(async () => cachedPayload) });
+    let initialRequests = 0;
+    let periodicRefreshStarted = false;
+    let periodicFailures = 0;
+    const fetchMock = jest.fn(async () => {
+      if (initialRequests < CONSOLE_TABS.length) {
+        initialRequests += 1;
+        throw new TypeError('Failed to fetch');
+      }
+      if (periodicRefreshStarted) {
+        if (periodicFailures < CONSOLE_TABS.length) {
+          periodicFailures += 1;
+          throw new TypeError('Failed to fetch');
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => retryPayload,
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => cachedPayload,
+      };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result, unmount } = renderHook(() => useConsoleTabData('acme'));
+    await flushTabDataTimers(0);
+    expect(result.current.snapshots.prs?.items[0].itemId).toBe('CACHED_ITEM');
+    expect(result.current.error).toBeNull();
+
+    await flushTabDataTimers(1000);
+    await waitFor(() =>
+      expect(result.current.snapshots.prs?.items[0].itemId).toBe('CACHED_ITEM'),
+    );
+
+    periodicRefreshStarted = true;
+    await flushTabDataTimers(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+    expect(result.current.snapshots.prs?.items[0].itemId).toBe('CACHED_ITEM');
+    expect(result.current.error).toBeNull();
+    const callsBeforeRetry = fetchMock.mock.calls.length;
+
+    await flushTabDataTimers(1000);
+    const retryCallCount = fetchMock.mock.calls.length;
+    const retriedItemId = result.current.snapshots.prs?.items[0].itemId;
+    await act(async () => {
+      unmount();
+    });
+    expect(retryCallCount).toBe(callsBeforeRetry + CONSOLE_TABS.length);
+    expect(retriedItemId).toBe('RETRIED_ITEM');
+  });
+
+  it("keeps a tab's previously displayed snapshot and retries when only some tabs fail at the network level", async () => {
+    const oldPayload = makeTabPayload({
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      items: [{ number: 1, itemId: 'OLD_ITEM', projectItemId: 'OLD_ITEM' }],
+    });
+    const newPayload = makeTabPayload({
+      generatedAt: '2026-01-02T00:00:00.000Z',
+      items: [{ number: 2, itemId: 'NEW_ITEM', projectItemId: 'NEW_ITEM' }],
+    });
+    const failedTabRequests = new Map<string, number>();
+    let periodicRefreshStarted = false;
+    const fetchMock = jest.fn(async (url: string) => {
+      const requestCount = (failedTabRequests.get(url) ?? 0) + 1;
+      failedTabRequests.set(url, requestCount);
+      if (requestCount === 1) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => oldPayload,
+        };
+      }
+      if (!periodicRefreshStarted) {
+        throw new Error('unexpected request before periodic refresh');
+      }
+      if (url.includes('/prs/') && requestCount === 2) {
+        throw new TypeError('Failed to fetch');
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => newPayload,
+      };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result, unmount } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const failedTab = CONSOLE_TABS.find((tab) => tab.name === 'prs')!.name;
+    const oldSnapshots = result.current.snapshots;
+    periodicRefreshStarted = true;
+
+    await flushTabDataTimers(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+
+    expect(result.current.snapshots[failedTab]?.generatedAt).toBe(
+      oldSnapshots[failedTab]?.generatedAt,
+    );
+    expect(result.current.snapshots[failedTab]?.items).not.toEqual([]);
+    expect(result.current.snapshots[failedTab]).not.toBeNull();
+    for (const tab of CONSOLE_TABS.slice(1)) {
+      expect(result.current.snapshots[tab.name]?.generatedAt).toBe(
+        newPayload.generatedAt,
+      );
+    }
+    expect(result.current.error).toBeNull();
+    const callsBeforeRetry = fetchMock.mock.calls.length;
+
+    await flushTabDataTimers(1000);
+    const retryCallCount = fetchMock.mock.calls.length;
+    const retriedGeneratedAt = result.current.snapshots[failedTab]?.generatedAt;
+    await act(async () => {
+      unmount();
+    });
+    expect(retryCallCount).toBe(callsBeforeRetry + 1);
+    expect(retriedGeneratedAt).toBe(newPayload.generatedAt);
+  });
+
   it('does not retry HTTP errors and preserves the current error and empty data', async () => {
     const fetchMock = jest.fn(async () => ({
       ok: false,
