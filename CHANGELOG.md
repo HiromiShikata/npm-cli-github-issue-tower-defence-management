@@ -1,3 +1,10 @@
+## [2.219.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.2...v2.219.3) (2026-11-28)
+
+
+### Bug Fixes
+
+* **console:** keep list rows without an error during a failed refresh ([#3802](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3802)) ([9b91a80](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9b91a801e7c3212d44da9c3ede2397970c4b2872))
+
 ## [2.219.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.1...v2.219.2) (2026-11-28)
 
 
