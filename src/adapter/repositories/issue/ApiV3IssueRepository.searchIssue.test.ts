@@ -1,4 +1,6 @@
-const mockGet = jest.fn();
+type MockJsonResponse = ReturnType<typeof mockJsonResponse>;
+
+const mockGet = jest.fn<MockJsonResponse, [string, RequestInit | undefined]>();
 
 jest.mock('ky', () => ({
   default: {
@@ -45,7 +47,7 @@ describe('ApiV3IssueRepository.searchIssue', () => {
       assignee: 'some-user',
     });
 
-    const requestUrl = mockGet.mock.calls[0][0] as string;
+    const requestUrl = mockGet.mock.calls[0][0];
     const url = new URL(requestUrl);
     const q = url.searchParams.get('q');
     const titleQualifier = q?.match(/in:title '([^']+)'/)?.[1];

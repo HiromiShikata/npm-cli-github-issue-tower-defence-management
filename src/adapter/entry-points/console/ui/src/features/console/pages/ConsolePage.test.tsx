@@ -120,49 +120,73 @@ describe('ConsolePage story-list create recovery', () => {
     onRequest?: (url: string, body: Record<string, unknown>) => void,
   ): jest.Mock => {
     let createAttempts = 0;
-    const fetchMock = jest.fn(async (url: string, options?: { body?: string }) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
+    const fetchMock = jest.fn(
+      async (url: string, options?: { body?: string }) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...(tab === 'stories'
+                ? listPayload('stories')
+                : listPayload(tab)),
+              defaultNameWithOwner: 'o/r',
+            }),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          const body = JSON.parse(options?.body ?? '{}') as Record<
+            string,
+            unknown
+          >;
+          onRequest?.(url, body);
+          createAttempts += 1;
+          const responseBody = createResponse(createAttempts);
+          return {
+            ok: responseBody.ok === true,
+            status: responseBody.ok === true ? 200 : 500,
+            json: async () => responseBody,
+          };
+        }
+        if (url === '/api/upload') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              markdown: '![attachment.png](https://example.com/attachment.png)',
+            }),
+          };
+        }
+        if (url === '/api/comment') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              comment: {
+                id: 1,
+                author: 'bot',
+                body: 'attachment',
+                createdAt: '2026-06-19T00:00:00.000Z',
+              },
+            }),
+          };
+        }
         return {
           ok: true,
           status: 200,
-          json: async () => ({
-            ...(tab === 'stories' ? listPayload('stories') : listPayload(tab)),
-            defaultNameWithOwner: 'o/r',
-          }),
+          json: async () => ({ body: '# body' }),
         };
-      }
-      if (url === '/api/projects') {
-        return { ok: true, status: 200, json: async () => ({ pjcodes: ['acme'] }) };
-      }
-      if (url === '/api/createissue') {
-        const body = JSON.parse(options?.body ?? '{}') as Record<string, unknown>;
-        onRequest?.(url, body);
-        createAttempts += 1;
-        const responseBody = createResponse(createAttempts);
-        return {
-          ok: responseBody.ok === true,
-          status: responseBody.ok === true ? 200 : 500,
-          json: async () => responseBody,
-        };
-      }
-      if (url === '/api/upload') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ markdown: '![attachment.png](https://example.com/attachment.png)' }),
-        };
-      }
-      if (url === '/api/comment') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ comment: { id: 1, author: 'bot', body: 'attachment', createdAt: '2026-06-19T00:00:00.000Z' } }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
+      },
+    );
     global.fetch = fetchMock as unknown as typeof fetch;
     return fetchMock;
   };
@@ -175,24 +199,34 @@ describe('ConsolePage story-list create recovery', () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     const view = render(<ConsolePage />);
     await waitFor(() => {
-      expect(view.getByRole('button', { name: '+ Add task' })).toBeInTheDocument();
+      expect(
+        view.getByRole('button', { name: '+ Add task' }),
+      ).toBeInTheDocument();
     });
     fireEvent.click(view.getByRole('button', { name: '+ Add task' }));
     await waitFor(() => {
-      expect(view.getByRole('dialog', { name: 'Add task to TDPM Console port' })).toBeInTheDocument();
+      expect(
+        view.getByRole('dialog', { name: 'Add task to TDPM Console port' }),
+      ).toBeInTheDocument();
     });
     return view;
   };
 
-  const openHeaderCreateDialog = async (): Promise<ReturnType<typeof render>> => {
+  const openHeaderCreateDialog = async (): Promise<
+    ReturnType<typeof render>
+  > => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     const view = render(<ConsolePage />);
     await waitFor(() => {
-      expect(view.getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      expect(
+        view.getByRole('button', { name: 'Create new task' }),
+      ).toBeEnabled();
     });
     fireEvent.click(view.getByRole('button', { name: 'Create new task' }));
     await waitFor(() => {
-      expect(view.getByRole('dialog', { name: 'Create new task' })).toBeInTheDocument();
+      expect(
+        view.getByRole('dialog', { name: 'Create new task' }),
+      ).toBeInTheDocument();
     });
     return view;
   };
@@ -209,11 +243,17 @@ describe('ConsolePage story-list create recovery', () => {
         (attempt) =>
           attempt === 1
             ? { ok: false, issueCreated: false, error: 'temporary failure' }
-            : { ok: true, issueUrl: 'https://github.com/example/repo/issues/77' },
+            : {
+                ok: true,
+                issueUrl: 'https://github.com/example/repo/issues/77',
+              },
         (_url, body) => requestBodies.push(body),
       );
-      const { getByRole, getByPlaceholderText, queryByText } = await openStoryCreateDialog();
-      fireEvent.change(getByPlaceholderText('Issue title'), { target: { value: 'Story-list retry task' } });
+      const { getByRole, getByPlaceholderText, queryByText } =
+        await openStoryCreateDialog();
+      fireEvent.change(getByPlaceholderText('Issue title'), {
+        target: { value: 'Story-list retry task' },
+      });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       for (let i = 0; i < 8; i += 1) {
         await act(async () => {
@@ -225,7 +265,9 @@ describe('ConsolePage story-list create recovery', () => {
       expect(requestBodies).toHaveLength(2);
       expect(requestBodies[0].actionId).toEqual(expect.any(String));
       expect(requestBodies[1].actionId).toBe(requestBodies[0].actionId);
-      expect(queryByText('Failed to create the task. Please try again.')).toBeNull();
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
     } finally {
       jest.useRealTimers();
     }
@@ -241,8 +283,11 @@ describe('ConsolePage story-list create recovery', () => {
         failedStep: 'updateStory',
         error: 'story update failed',
       }));
-      const { getByRole, getByLabelText, queryByText } = await openHeaderCreateDialog();
-      fireEvent.change(getByLabelText('Title'), { target: { value: 'Incomplete story task' } });
+      const { getByRole, getByLabelText, queryByText } =
+        await openHeaderCreateDialog();
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Incomplete story task' },
+      });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       for (let i = 0; i < 10; i += 1) {
         await act(async () => {
@@ -251,9 +296,13 @@ describe('ConsolePage story-list create recovery', () => {
           for (let j = 0; j < 20; j += 1) await Promise.resolve();
         });
       }
-      expect(document.body.textContent).toContain('https://github.com/example/repo/issues/77');
+      expect(document.body.textContent).toContain(
+        'https://github.com/example/repo/issues/77',
+      );
       expect(document.body.textContent).toContain('updateStory');
-      expect(queryByText('Failed to create the task. Please try again.')).toBeNull();
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
     } finally {
       jest.useRealTimers();
     }
@@ -290,8 +339,8 @@ describe('ConsolePage story-list create recovery', () => {
 
       expect(requestBodies).toHaveLength(6);
       expect(
-        requestBodies.every((requestBody) =>
-          requestBody.actionId === requestBodies[0].actionId,
+        requestBodies.every(
+          (requestBody) => requestBody.actionId === requestBodies[0].actionId,
         ),
       ).toBe(true);
     } finally {
@@ -309,7 +358,9 @@ describe('ConsolePage story-list create recovery', () => {
       );
       const { getByRole, getByPlaceholderText } = await openStoryCreateDialog();
       const titleInput = getByPlaceholderText('Issue title');
-      fireEvent.change(titleInput, { target: { value: 'Original story-list task' } });
+      fireEvent.change(titleInput, {
+        target: { value: 'Original story-list task' },
+      });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       for (let i = 0; i < 8; i += 1) {
         await act(async () => {
@@ -318,7 +369,9 @@ describe('ConsolePage story-list create recovery', () => {
           for (let j = 0; j < 12; j += 1) await Promise.resolve();
         });
       }
-      fireEvent.change(titleInput, { target: { value: 'Changed story-list task' } });
+      fireEvent.change(titleInput, {
+        target: { value: 'Changed story-list task' },
+      });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       for (let i = 0; i < 8; i += 1) {
         await act(async () => {
@@ -345,14 +398,28 @@ describe('ConsolePage story-list create recovery', () => {
         failedStep: 'addIssueToProject',
         error: 'project add failed',
       }));
-      const { getByRole, getByLabelText, queryByText } = await openHeaderCreateDialog();
-      fireEvent.change(getByLabelText('Title'), { target: { value: 'Incomplete attachment task' } });
+      const { getByRole, getByLabelText, queryByText } =
+        await openHeaderCreateDialog();
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Incomplete attachment task' },
+      });
       const file = new File(['x'], 'attachment.png', { type: 'image/png' });
-      (file as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer = async () => new Uint8Array([120]).buffer;
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+      (
+        file as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+      ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+      const fileInput = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        configurable: true,
+      });
       await act(async () => fireEvent.change(fileInput));
-      await waitFor(() => expect(document.querySelector('.console-task-create-dialog-file-name')).toBeInTheDocument());
+      await waitFor(() =>
+        expect(
+          document.querySelector('.console-task-create-dialog-file-name'),
+        ).toBeInTheDocument(),
+      );
       fireEvent.click(getByRole('button', { name: 'Create' }));
       for (let i = 0; i < 10; i += 1) {
         await act(async () => {
@@ -361,13 +428,23 @@ describe('ConsolePage story-list create recovery', () => {
           for (let j = 0; j < 20; j += 1) await Promise.resolve();
         });
       }
-      const uploads = fetchMock.mock.calls.filter(([url]: [string]) => url === '/api/upload');
+      const uploads = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/upload',
+      );
       expect(uploads).toHaveLength(1);
-      expect(JSON.parse((uploads[0] as unknown as [string, RequestInit])[1].body as string)).toEqual(
-        expect.objectContaining({ url: 'https://github.com/example/repo/issues/77' }),
+      expect(
+        JSON.parse(
+          (uploads[0] as unknown as [string, RequestInit])[1].body as string,
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          url: 'https://github.com/example/repo/issues/77',
+        }),
       );
       expect(document.body.textContent).toContain('addIssueToProject');
-      expect(queryByText('Failed to create the task. Please try again.')).toBeNull();
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
     } finally {
       jest.useRealTimers();
     }

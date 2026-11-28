@@ -55,6 +55,17 @@ const hasErrorMessage = (body: unknown): body is { error: string } =>
   'error' in body &&
   typeof body.error === 'string';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const hasBooleanIssueCreated = (value: unknown): boolean =>
+  isRecord(value) && typeof value.issueCreated === 'boolean';
+
+const hasNonNullIssueCreated = (value: unknown): boolean =>
+  isRecord(value) &&
+  value.issueCreated !== null &&
+  value.issueCreated !== undefined;
+
 const storySetAtMsOf = (body: unknown): number | null => {
   if (
     typeof body !== 'object' ||
@@ -2761,12 +2772,15 @@ describe('consoleOperationApi', () => {
             (response) => {
               const chunks: Uint8Array[] = [];
               response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
-              response.on('end', () =>
+              response.on('end', () => {
+                const body: unknown = JSON.parse(
+                  Buffer.concat(chunks).toString('utf8'),
+                );
                 resolve({
                   statusCode: response.statusCode ?? 0,
-                  body: JSON.parse(Buffer.concat(chunks).toString('utf8')),
-                }),
-              );
+                  body,
+                });
+              });
               response.on('error', reject);
             },
           );
@@ -7109,8 +7123,14 @@ describe('consoleOperationApi', () => {
     });
     it('recovers a lost create response by searching for the requested issue and completes setup', async () => {
       const issueUrl = 'https://github.com/acme-labs/portal/issues/77';
-      const createdIssue: Issue = { ...mock<Issue>(), url: issueUrl, itemId: 'PVTI_recovered' };
-      issueRepository.createNewIssue.mockRejectedValue(new Error('response lost'));
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: issueUrl,
+        itemId: 'PVTI_recovered',
+      };
+      issueRepository.createNewIssue.mockRejectedValue(
+        new Error('response lost'),
+      );
       issueRepository.searchIssue.mockResolvedValue([
         { url: issueUrl, title: 'Recovered task', number: '77' },
       ]);
@@ -7129,7 +7149,10 @@ describe('consoleOperationApi', () => {
         },
       );
 
-      expect(response).toEqual({ statusCode: 200, body: { ok: true, issueUrl } });
+      expect(response).toEqual({
+        statusCode: 200,
+        body: { ok: true, issueUrl },
+      });
       expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
       expect(issueRepository.searchIssue).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -7150,7 +7173,9 @@ describe('consoleOperationApi', () => {
     });
 
     it('keeps the same action pending when create failed and the search found nothing', async () => {
-      issueRepository.createNewIssue.mockRejectedValue(new Error('create failed'));
+      issueRepository.createNewIssue.mockRejectedValue(
+        new Error('create failed'),
+      );
       issueRepository.searchIssue.mockResolvedValue([]);
       const operationContext = contextWithCreateIssueProjectRepository(() => ({
         getProject: jest.fn().mockResolvedValue(projectWithStory()),
@@ -7168,18 +7193,16 @@ describe('consoleOperationApi', () => {
       const second = await handleCreateIssue(operationContext, body);
 
       expect(first.statusCode).toBe(500);
-      expect(first.body).toEqual(
-        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
-      );
+      expect(hasBooleanIssueCreated(first.body)).toBe(false);
       expect(second.statusCode).toBe(500);
-      expect(second.body).toEqual(
-        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
-      );
+      expect(hasBooleanIssueCreated(second.body)).toBe(false);
       expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
     });
 
     it('reports an unknown creation state when both create and recovery search fail', async () => {
-      issueRepository.createNewIssue.mockRejectedValue(new Error('response lost'));
+      issueRepository.createNewIssue.mockRejectedValue(
+        new Error('response lost'),
+      );
       issueRepository.searchIssue.mockRejectedValue(new Error('search failed'));
 
       const response = await handleCreateIssue(
@@ -7196,15 +7219,19 @@ describe('consoleOperationApi', () => {
       );
 
       expect(response.statusCode).toBe(500);
-      expect(response.body).toEqual(
-        expect.not.objectContaining({ issueCreated: expect.anything() }),
-      );
+      expect(hasNonNullIssueCreated(response.body)).toBe(false);
     });
 
     it('resumes after the post-add read-back fails without creating a duplicate', async () => {
       const issueUrl = 'https://github.com/acme-labs/portal/issues/78';
-      const createdIssue: Issue = { ...mock<Issue>(), url: issueUrl, itemId: 'PVTI_readback' };
-      issueRepository.get.mockRejectedValueOnce(new Error('read-back failed')).mockResolvedValue(createdIssue);
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: issueUrl,
+        itemId: 'PVTI_readback',
+      };
+      issueRepository.get
+        .mockRejectedValueOnce(new Error('read-back failed'))
+        .mockResolvedValue(createdIssue);
       const operationContext = contextWithCreateIssueProjectRepository(() => ({
         getProject: jest.fn().mockResolvedValue(projectWithStory()),
         updateStoryList: jest.fn(),
@@ -7235,16 +7262,21 @@ describe('consoleOperationApi', () => {
 
     it('keeps the created issue recoverable when the action record directory is a regular file', async () => {
       const issueUrl = 'https://github.com/acme-labs/portal/issues/79';
-      const createdIssue: Issue = { ...mock<Issue>(), url: issueUrl, itemId: 'PVTI_file_store' };
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: issueUrl,
+        itemId: 'PVTI_file_store',
+      };
       const regularFile = path.join(baseDir, 'not-a-directory');
       fs.writeFileSync(regularFile, 'not a directory');
-      const operationContext = contextWithCreateIssueProjectRepository(
-        () => ({
-          getProject: jest.fn().mockResolvedValue(projectWithStory()),
-          updateStoryList: jest.fn(),
-        }),
-      );
-      const fileContext = { ...operationContext, consoleDataOutputDir: regularFile };
+      const operationContext = contextWithCreateIssueProjectRepository(() => ({
+        getProject: jest.fn().mockResolvedValue(projectWithStory()),
+        updateStoryList: jest.fn(),
+      }));
+      const fileContext = {
+        ...operationContext,
+        consoleDataOutputDir: regularFile,
+      };
       issueRepository.createNewIssue.mockResolvedValue(79);
       issueRepository.get.mockResolvedValue(createdIssue);
       const body = {
@@ -7259,9 +7291,7 @@ describe('consoleOperationApi', () => {
       const second = await handleCreateIssue(fileContext, body);
 
       expect(first.statusCode === 200 || first.statusCode === 500).toBe(true);
-      expect(first.body).toEqual(
-        expect.objectContaining({ issueUrl }),
-      );
+      expect(first.body).toEqual(expect.objectContaining({ issueUrl }));
       expect(second.body).toEqual(expect.objectContaining({ issueUrl }));
       expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
     });
@@ -12977,13 +13007,9 @@ describe('consoleOperationApi', () => {
       const second = await handleCreateIssue(createContext(), body);
 
       expect(first.statusCode).toBe(500);
-      expect(first.body).toEqual(
-        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
-      );
+      expect(hasBooleanIssueCreated(first.body)).toBe(false);
       expect(second.statusCode).toBe(500);
-      expect(second.body).toEqual(
-        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
-      );
+      expect(hasBooleanIssueCreated(second.body)).toBe(false);
       expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
     });
 
@@ -13008,9 +13034,7 @@ describe('consoleOperationApi', () => {
       const second = await handleCreateIssue(createContext(), body);
 
       expect(first.statusCode).toBe(500);
-      expect(first.body).toEqual(
-        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
-      );
+      expect(hasBooleanIssueCreated(first.body)).toBe(false);
       expect(second).toEqual({
         statusCode: 200,
         body: { ok: true, issueUrl },
