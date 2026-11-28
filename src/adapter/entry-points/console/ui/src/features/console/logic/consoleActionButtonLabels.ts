@@ -5,9 +5,7 @@ import type {
 } from './operations';
 
 export type ConsoleActionButtonLabel =
-  | ConsoleCloseAction
-  | ConsoleNextActionDateAction
-  | ConsoleReviewAction;
+  ConsoleCloseAction | ConsoleNextActionDateAction | ConsoleReviewAction;
 
 export const consoleActionButtonLabels: Record<
   ConsoleActionButtonLabel,

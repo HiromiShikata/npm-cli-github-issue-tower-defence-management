@@ -1633,17 +1633,38 @@ describe('ConsoleItemDetailContainer', () => {
   it('forwards elapsed timing to addComment when Comment & Close has no project code', async () => {
     const operations = buildOperations();
     const { container, getByText } = render(
-      <ConsoleItemDetailContainer tab="todo-by-human" item={issueItem} caches={buildCaches()}
-        operations={operations} statusOptions={consoleStatusOptionsFixture} storyOptions={[]}
-        agentOptions={[]} storyColors={consoleStoryColorsFixture} storyName="TDPM Console port"
-        overlayStatus={null} now={Date.parse('2026-06-19T12:00:00.000Z')} pjcode={null}
-        onQueueAction={jest.fn()} isAirplaneModeOn={false} onOfflineActionsCreate={jest.fn()} />,
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        pjcode={null}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
     );
-    fireEvent.change(container.querySelector('.console-composer-input') as HTMLTextAreaElement, { target: { value: 'closing comment' } });
+    fireEvent.change(
+      container.querySelector('.console-composer-input') as HTMLTextAreaElement,
+      { target: { value: 'closing comment' } },
+    );
     fireEvent.click(getByText('Comment & Close'));
-    await waitFor(() => expect(operations.addComment).toHaveBeenCalledWith(
-      issueItem, 'closing comment', expect.any(String), expect.any(Number), 'コメントを投稿して閉じました',
-    ));
+    await waitFor(() =>
+      expect(operations.addComment).toHaveBeenCalledWith(
+        issueItem,
+        'closing comment',
+        expect.any(String),
+        expect.any(Number),
+        'コメントを投稿して閉じました',
+      ),
+    );
   });
 
   it('clicking Comment & Close in the operations bar calls addComment then queues a close action', async () => {
@@ -4135,13 +4156,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         ],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [
-          issueItem,
-          'close',
-          expect.any(String),
-          undefined,
-          undefined,
-        ],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
     },
   );
@@ -4213,13 +4228,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         ],
       ]);
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [
-          issueItem,
-          'close',
-          expect.any(String),
-          undefined,
-          undefined,
-        ],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
     },
   );
@@ -4255,13 +4264,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
         ],
       ]);
       expect(closeIssueMock.mock.calls).toEqual([
-        [
-          issueItem,
-          'close',
-          expect.any(String),
-          undefined,
-          undefined,
-        ],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
       expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
         closeIssueMock.mock.invocationCallOrder[0],
@@ -4282,13 +4285,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
 
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [
-          issueItem,
-          'close',
-          expect.any(String),
-          undefined,
-          undefined,
-        ],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
     },
   );
@@ -4344,13 +4341,7 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
       );
       expect(operations.addComment).not.toHaveBeenCalled();
       expect((operations.closeIssue as jest.Mock).mock.calls).toEqual([
-        [
-          issueItem,
-          'close',
-          expect.any(String),
-          undefined,
-          undefined,
-        ],
+        [issueItem, 'close', expect.any(String), undefined, undefined],
       ]);
     },
   );
