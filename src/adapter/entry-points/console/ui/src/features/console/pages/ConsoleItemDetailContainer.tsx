@@ -429,7 +429,8 @@ export const ConsoleItemDetailContainer = ({
     ): Promise<ConsoleCommentSubmitResult> => {
       const actionId = generateCommentActionId();
       const timing =
-        timingOverride ?? consoleItemActionTiming(item, 'コメントを投稿しました');
+        timingOverride ??
+        consoleItemActionTiming(item, 'コメントを投稿しました');
       const commentHoldOffline = (
         projectCode: string,
       ): ConsoleCommentSubmitResult => {
@@ -530,10 +531,7 @@ export const ConsoleItemDetailContainer = ({
         nextActionDate === null
           ? `「${consoleActionButtonLabels[action]}」を押しました`
           : `「${consoleActionButtonLabels[action]}」を押しました（Next Action Date を ${nextActionDate} に設定）`;
-      const timing = consoleItemActionTiming(
-        item,
-        actionDescription,
-      );
+      const timing = consoleItemActionTiming(item, actionDescription);
       onQueueAction({
         kind: { type: 'next_action_date', action },
         item,

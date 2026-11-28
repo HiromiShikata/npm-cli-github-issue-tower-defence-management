@@ -844,7 +844,10 @@ export const handleReview = async (
     return successAfterElapsedTimeComment(
       context.resolveIssueRepository(prUrl),
       prUrl,
-      isNonEmptyString(body.commentBody) || isNonEmptyString(body.issueCommentBody) ? null : elapsedAction,
+      isNonEmptyString(body.commentBody) ||
+        isNonEmptyString(body.issueCommentBody)
+        ? null
+        : elapsedAction,
     );
   }
 
@@ -956,7 +959,11 @@ export const handleReview = async (
       async (): Promise<ConsoleOperationResponse> => {
         await issueRepository.createCommentByUrl(
           prUrl,
-          appendElapsedTimeIfRecordable(prUrl, AUTO_STATUS_CHECK_CONFLICT_MESSAGE, elapsedAction),
+          appendElapsedTimeIfRecordable(
+            prUrl,
+            AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+            elapsedAction,
+          ),
         );
         const conflictFailure = await updateStatusByName(
           issueRepository,
