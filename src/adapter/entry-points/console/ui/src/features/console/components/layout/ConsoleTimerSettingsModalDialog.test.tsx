@@ -1,5 +1,6 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import { DEFAULT_TIMER_MINUTES } from '../../logic/timerSettings';
+import type { ConsoleTimerHeaderView } from '../../logic/consoleTimerHeader';
 import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDialog';
 
 const baseProps = {
@@ -416,5 +417,52 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     const dialog = getByRole('dialog');
     const rightValue = parseFloat((dialog as HTMLElement).style.right);
     expect(rightValue).toBeLessThanOrEqual(maxAllowedRight);
+  });
+
+  it.each([
+    { tone: 'normal', timeText: '12:34', nextText: 'beta' },
+    { tone: 'warning', timeText: '00:59', nextText: 'gamma' },
+    { tone: 'danger', timeText: 'next submit', nextText: 'alpha' },
+    { tone: 'muted', timeText: '00:00', nextText: 'none' },
+  ] as ConsoleTimerHeaderView[])('renders a $tone timer header view', (view) => {
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        timerHeaderView={view}
+      />,
+    );
+    const button = getByRole('button', { name: 'Settings' });
+    expect(button).toHaveAttribute('data-tone', view.tone);
+    expect(button).toHaveTextContent(view.timeText);
+    expect(button).toHaveTextContent(view.nextText);
+  });
+
+  it('renders only the timer icon when the timer header view is null', () => {
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        timerHeaderView={null}
+      />,
+    );
+    expect(getByRole('button', { name: 'Settings' })).toHaveTextContent('⏱');
+    expect(getByRole('button', { name: 'Settings' }).textContent).toBe('⏱');
+  });
+
+  it('calls onOpen when the timer button with a view is clicked', () => {
+    const onOpen = jest.fn();
+    const view: ConsoleTimerHeaderView = {
+      tone: 'normal',
+      timeText: '04:59',
+      nextText: 'beta',
+    };
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        onOpen={onOpen}
+        timerHeaderView={view}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Settings' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });
