@@ -156,6 +156,154 @@ const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {
 
 describe('ConsoleItemDetailContainer', () => {
   it.each([
+    [
+      'Comment & Close',
+      (view: ReturnType<typeof render>) => {
+        fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+          target: { value: 'offline close note' },
+        });
+        fireEvent.click(view.getByText('Comment & Close'));
+      },
+      0,
+      2500,
+      2,
+    ],
+    [
+      'OK & Close',
+      (view: ReturnType<typeof render>) => {
+        fireEvent.click(view.getByText('OK & Close'));
+      },
+      0,
+      2500,
+      2,
+    ],
+  ] as const)(
+    'captures press-time timing only on the comment payload for %s',
+    (_name, press, openedAtMs, pressedAtMs, expectedPayloadCount) => {
+      const now = jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(openedAtMs)
+        .mockReturnValueOnce(pressedAtMs);
+      const onQueueAction = jest.fn();
+      const view = render(
+        <ConsoleItemDetailContainer
+          tab="todo-by-human"
+          item={issueItem}
+          caches={buildCaches()}
+          operations={buildOperations()}
+          pjcode="acme"
+          statusOptions={consoleStatusOptionsFixture}
+          storyOptions={[]}
+          agentOptions={[]}
+          storyColors={consoleStoryColorsFixture}
+          storyName="TDPM Console port"
+          overlayStatus={null}
+          now={Date.parse('2026-06-19T12:00:00.000Z')}
+          onQueueAction={onQueueAction}
+          isAirplaneModeOn={false}
+          onOfflineActionsCreate={jest.fn()}
+        />,
+      );
+      press(view);
+
+      const payloads = onQueueAction.mock.calls[0]?.[0].offline;
+      expect(payloads).toHaveLength(expectedPayloadCount);
+      expect(payloads?.[0]?.requestBody).toEqual(
+        expect.objectContaining({
+          openedToActionMs: pressedAtMs - openedAtMs,
+          actionDescription:
+            _name === 'OK & Close'
+              ? '「OK & Close」を押しました'
+              : 'コメントを投稿して閉じました',
+        }),
+      );
+      expect(payloads?.[1]?.requestBody).not.toEqual(
+        expect.objectContaining({
+          openedToActionMs: expect.anything(),
+          actionDescription: expect.anything(),
+        }),
+      );
+      now.mockRestore();
+    },
+  );
+
+  it('holds an offline comment with press-time timing and preserves it after the clock advances', async () => {
+    const now = jest
+      .spyOn(Date, 'now')
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(3501);
+    const onOfflineActionsCreate = jest.fn();
+    const view = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        pjcode="acme"
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn
+        onOfflineActionsCreate={onOfflineActionsCreate}
+      />,
+    );
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'held while offline' },
+    });
+    fireEvent.click(view.getByText('Comment'));
+    now.mockReturnValue(99_999);
+
+    await waitFor(() => expect(onOfflineActionsCreate).toHaveBeenCalled());
+    expect(
+      onOfflineActionsCreate.mock.calls[0][0].payloads[0].requestBody,
+    ).toEqual(
+      expect.objectContaining({
+        openedToActionMs: 2501,
+        actionDescription: 'コメントを投稿しました',
+      }),
+    );
+    now.mockRestore();
+  });
+
+  it('does not add timing keys when the item has no recorded open time', () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(5000);
+    const onQueueAction = jest.fn();
+    const view = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        pjcode="acme"
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+    clearConsoleItemOpenTimesForTest();
+    fireEvent.click(view.getByText('+1h'));
+    expect(onQueueAction.mock.calls[0]?.[0].offline[0].requestBody).not.toEqual(
+      expect.objectContaining({
+        openedToActionMs: expect.anything(),
+        actionDescription: expect.anything(),
+      }),
+    );
+    now.mockRestore();
+  });
+
+  it.each([
     ['+1h', '+1時間', 'Next Action Hour'],
     ['+3h', '+3時間', 'Next Action Hour'],
     ['+6h', '+6時間', 'Next Action Hour'],

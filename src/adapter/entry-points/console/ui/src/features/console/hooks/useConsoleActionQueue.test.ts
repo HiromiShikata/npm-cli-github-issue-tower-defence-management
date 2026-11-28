@@ -54,6 +54,15 @@ const commentOfflinePayload = {
   },
 };
 
+const timedOfflinePayload = {
+  ...offlinePayload,
+  requestBody: {
+    ...offlinePayload.requestBody,
+    openedToActionMs: 4_321,
+    actionDescription: '「Approve & Merge」を押しました',
+  },
+};
+
 const closeOfflinePayload = {
   ...heldItemFields,
   apiPath: '/api/triage',
@@ -307,6 +316,78 @@ describe('useConsoleActionQueue', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY)).toBe('[]');
+  });
+
+  it('persists and delivers offline elapsed timing without recalculating it', async () => {
+    const fetchMock = installOperationFetch();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: [timedOfflinePayload],
+    });
+
+    act(() => {
+      result.current.enqueue(action);
+    });
+    expect(readStoredOfflineQueue()[0]?.requestBody).toEqual(
+      timedOfflinePayload.requestBody,
+    );
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    const id = result.current.offlineActions[0]?.id as string;
+    await act(async () => {
+      await result.current.confirmOfflineAction(id);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/review',
+      expect.objectContaining({
+        body: JSON.stringify({
+          ...timedOfflinePayload.requestBody,
+        }),
+      }),
+    );
+  });
+
+  it('delivers a persisted legacy descriptor without adding timing keys', async () => {
+    const descriptor = {
+      ...offlinePayload,
+      id: 'legacy-timing-free-1',
+      message: 'Approved — PR #851',
+      color: 'green',
+      enqueuedAt: Date.now(),
+    };
+    localStorage.setItem(
+      OFFLINE_QUEUE_STORAGE_KEY,
+      JSON.stringify([descriptor]),
+    );
+    const fetchMock = installOperationFetch();
+    const { result } = renderHook(() => useConsoleActionQueue());
+
+    await act(async () => {
+      await result.current.confirmOfflineAction(descriptor.id);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/review',
+      expect.objectContaining({
+        body: JSON.stringify({
+          ...offlinePayload.requestBody,
+          actionId: descriptor.id,
+        }),
+      }),
+    );
+    expect(
+      JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string),
+    ).not.toHaveProperty('openedToActionMs');
+    expect(
+      JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string),
+    ).not.toHaveProperty('actionDescription');
   });
 
   it('keeps a legacy offline comment entry pending instead of replaying it on mount', async () => {

@@ -3,7 +3,55 @@ import {
   computeOpenedToActionMs,
   readConsoleItemOpenedAt,
   recordConsoleItemOpened,
+  type ConsoleActionTiming,
+  withConsoleActionTiming,
 } from './consoleItemOpenTimes';
+
+describe('withConsoleActionTiming', () => {
+  const cases: ReadonlyArray<
+    [
+      string,
+      ConsoleActionTiming,
+      { requestBody: Record<string, unknown>; extra: string },
+      { requestBody: Record<string, unknown>; extra: string },
+    ]
+  > = [
+    [
+      'includes elapsed timing',
+      { openedToActionMs: 1250, actionDescription: 'pressed approve' },
+      { requestBody: { action: 'approve', keep: true }, extra: 'value' },
+      {
+        requestBody: {
+          action: 'approve',
+          keep: true,
+          openedToActionMs: 1250,
+          actionDescription: 'pressed approve',
+        },
+        extra: 'value',
+      },
+    ],
+    [
+      'does not add undefined elapsed timing',
+      { actionDescription: 'pressed approve' },
+      { requestBody: { action: 'approve' }, extra: 'value' },
+      { requestBody: { action: 'approve' }, extra: 'value' },
+    ],
+  ];
+
+  test.each(cases)('%s', (_name, timing, payload, expected) => {
+    const original = structuredClone(payload);
+    const result = withConsoleActionTiming(payload, timing);
+
+    expect(result).toEqual(expected);
+    expect(payload).toEqual(original);
+    if (timing.openedToActionMs === undefined) {
+      expect(result).toBe(payload);
+    } else {
+      expect(result).not.toBe(payload);
+      expect(result.requestBody).not.toBe(payload.requestBody);
+    }
+  });
+});
 
 describe('computeOpenedToActionMs', () => {
   test.each([
