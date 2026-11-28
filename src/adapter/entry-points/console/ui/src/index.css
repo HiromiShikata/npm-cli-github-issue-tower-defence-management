@@ -285,25 +285,19 @@ body {
 }
 
 .console-timer-settings-button[data-tone] {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
   white-space: nowrap;
-  border-radius: 999px;
   color: #e6edf3;
 }
 
-.console-timer-settings-button[data-tone]::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 0;
-  right: 0;
+.console-timer-settings-button-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 10px;
   border: 1px solid #30363d;
   border-radius: 999px;
-  pointer-events: none;
 }
 
 .console-timer-settings-button[data-tone] .console-timer-settings-button-time {
@@ -331,7 +325,8 @@ body {
   color: #f85149;
 }
 
-.console-timer-settings-button[data-tone='danger']::before {
+.console-timer-settings-button[data-tone='danger']
+  .console-timer-settings-button-pill {
   border-color: #f85149;
 }
 

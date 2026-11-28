@@ -73,7 +73,7 @@ export const ConsoleTimerSettingsModalDialog = ({
         {timerHeaderView === null || timerHeaderView === undefined ? (
           '⏱'
         ) : (
-          <>
+          <span className="console-timer-settings-button-pill">
             <span>⏱</span>
             <span className="console-timer-settings-button-time">
               {timerHeaderView.timeText}
@@ -82,7 +82,7 @@ export const ConsoleTimerSettingsModalDialog = ({
             <span className="console-timer-settings-button-next">
               {timerHeaderView.nextText}
             </span>
-          </>
+          </span>
         )}
       </button>
       {isOpen &&

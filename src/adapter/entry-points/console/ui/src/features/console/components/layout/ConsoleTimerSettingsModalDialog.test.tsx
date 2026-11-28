@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { act, fireEvent, render } from '@testing-library/react';
 import type { ConsoleTimerHeaderView } from '../../logic/consoleTimerHeader';
 import { DEFAULT_TIMER_MINUTES } from '../../logic/timerSettings';
@@ -439,6 +441,113 @@ describe('ConsoleTimerSettingsModalDialog', () => {
       expect(button).toHaveTextContent(view.nextText);
     },
   );
+
+  describe('timer header styling in the real stylesheet', () => {
+    const INDEX_CSS_PATH = join(__dirname, '..', '..', '..', '..', 'index.css');
+    let styleElement: HTMLStyleElement;
+
+    beforeAll(() => {
+      const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+      const timerStart = css.indexOf('.console-timer-settings-button {');
+      const timerEnd = css.indexOf('.console-timer-settings-overlay {');
+      styleElement = document.createElement('style');
+      styleElement.textContent = css.slice(timerStart, timerEnd);
+      document.head.appendChild(styleElement);
+    });
+
+    afterAll(() => {
+      styleElement.remove();
+    });
+
+    it.each([
+      {
+        tone: 'normal',
+        timeText: '12:34',
+        nextText: 'beta',
+        buttonColor: 'rgb(230, 237, 243)',
+        pillBorderColor: 'rgb(48, 54, 61)',
+        nextColor: 'rgb(201, 209, 217)',
+        arrowColor: 'rgb(110, 118, 129)',
+      },
+      {
+        tone: 'warning',
+        timeText: '00:42',
+        nextText: 'beta',
+        buttonColor: 'rgb(210, 153, 34)',
+        pillBorderColor: 'rgb(48, 54, 61)',
+        nextColor: 'rgb(210, 153, 34)',
+        arrowColor: 'rgb(110, 118, 129)',
+      },
+      {
+        tone: 'danger',
+        timeText: 'next submit',
+        nextText: 'beta',
+        buttonColor: 'rgb(248, 81, 73)',
+        pillBorderColor: 'rgb(248, 81, 73)',
+        nextColor: 'rgb(248, 81, 73)',
+        arrowColor: 'rgb(248, 81, 73)',
+      },
+      {
+        tone: 'muted',
+        timeText: '12:34',
+        nextText: 'none',
+        buttonColor: 'rgb(139, 148, 158)',
+        pillBorderColor: 'rgb(48, 54, 61)',
+        nextColor: 'rgb(139, 148, 158)',
+        arrowColor: 'rgb(139, 148, 158)',
+      },
+    ])(
+      'draws the $tone header with the approved colors, bold time, and rounded outline',
+      ({
+        tone,
+        timeText,
+        nextText,
+        buttonColor,
+        pillBorderColor,
+        nextColor,
+        arrowColor,
+      }) => {
+        const { getByRole, container } = render(
+          <ConsoleTimerSettingsModalDialog
+            {...baseProps}
+            timerHeaderView={
+              { tone, timeText, nextText } as ConsoleTimerHeaderView
+            }
+          />,
+        );
+        const button = getByRole('button', { name: 'Settings' });
+        const pill = container.querySelector<HTMLElement>(
+          '.console-timer-settings-button-pill',
+        );
+        const time = container.querySelector<HTMLElement>(
+          '.console-timer-settings-button-time',
+        );
+        const arrow = container.querySelector<HTMLElement>(
+          '.console-timer-settings-button-arrow',
+        );
+        const next = container.querySelector<HTMLElement>(
+          '.console-timer-settings-button-next',
+        );
+        expect(pill).not.toBeNull();
+        expect(time).not.toBeNull();
+        expect(arrow).not.toBeNull();
+        expect(next).not.toBeNull();
+        expect(getComputedStyle(button).color).toBe(buttonColor);
+        expect(getComputedStyle(pill as HTMLElement).borderTopColor).toBe(
+          pillBorderColor,
+        );
+        expect(getComputedStyle(pill as HTMLElement).borderTopWidth).toBe(
+          '1px',
+        );
+        expect(getComputedStyle(pill as HTMLElement).borderRadius).toBe(
+          '999px',
+        );
+        expect(getComputedStyle(time as HTMLElement).fontWeight).toBe('700');
+        expect(getComputedStyle(next as HTMLElement).color).toBe(nextColor);
+        expect(getComputedStyle(arrow as HTMLElement).color).toBe(arrowColor);
+      },
+    );
+  });
 
   it('renders only the timer icon when the timer header view is null', () => {
     const { getByRole } = render(
