@@ -261,9 +261,10 @@ test('keeps text typed after returning to the task during an upload', async ({
     harness.releaseUploadAttachment();
 
     await expect(originalComposer).toHaveValue(
-      new RegExp(
-        `${escapeRegExp(NAVIGATION_MARKDOWN)}.*${escapeRegExp('typed while uploading')}`,
-      ),
+      new RegExp(escapeRegExp(NAVIGATION_MARKDOWN)),
+    );
+    await expect(originalComposer).toHaveValue(
+      new RegExp(escapeRegExp('typed while uploading')),
     );
     await expect(originalComposer).not.toHaveValue(
       new RegExp(escapeRegExp(`![uploading ${NAVIGATION_FILE_NAME}]()`)),

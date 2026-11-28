@@ -141,7 +141,7 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
     });
   });
 
-  it('writes a completed upload into the originating task draft after navigation', async () => {
+  it('does not write a completed upload through the composer after navigation', async () => {
     let resolveUpload!: (markdown: string) => void;
     const onDraftChange = jest.fn();
     const uploadFile = jest.fn(
@@ -175,13 +175,6 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
         onUploadFile={uploadFile}
       />,
     );
-    resolveUpload('![origin.png](https://github.com/user-attachments/origin)');
-
-    await waitFor(() => {
-      expect(onDraftChange).toHaveBeenCalledWith(
-        '\n\n\n![origin.png](https://github.com/user-attachments/origin)\n',
-      );
-    });
     rerender(
       <ConsoleCommentComposer
         key="task-a"
@@ -194,6 +187,13 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
         onUploadFile={uploadFile}
       />,
     );
+    const draftChangeCallsAfterReturning = onDraftChange.mock.calls.length;
+    resolveUpload('![origin.png](https://github.com/user-attachments/origin)');
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(onDraftChange).toHaveBeenCalledTimes(draftChangeCallsAfterReturning);
     expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
       '\n\n\n![origin.png](https://github.com/user-attachments/origin)\n',
     );
