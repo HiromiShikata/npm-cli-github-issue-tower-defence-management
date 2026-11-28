@@ -12702,4 +12702,135 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.updateStatus).toHaveBeenCalled();
     });
   });
+  describe('handleCreateIssue idempotent retry contract', () => {
+    const storyProject = (): Project => ({
+      ...project,
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'story-option',
+            name: 'Portal redesign',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const createContext = (): ConsoleOperationContext => ({
+      ...contextForProject(storyProject()),
+      resolveProjectRepository: () => ({
+        getProject: jest.fn().mockResolvedValue(storyProject()),
+        updateStoryList: jest.fn(),
+      }),
+    });
+
+    const body = {
+      pjcode: 'acme',
+      title: 'Retryable task',
+      storyName: 'Portal redesign',
+      nameWithOwner: 'acme-labs/portal',
+      actionId: 'action-123',
+    };
+
+    beforeEach(() => {
+      issueRepository.createNewIssue.mockResolvedValue(42);
+      issueRepository.get.mockResolvedValue({
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_created',
+      });
+      issueRepository.addIssueToProject.mockResolvedValue('');
+      issueRepository.updateStory.mockResolvedValue(undefined);
+    });
+
+    it('persists the issue URL before a failed post-creation step and resumes that step on retry', async () => {
+      issueRepository.addIssueToProject
+        .mockRejectedValueOnce(new Error('project unavailable'))
+        .mockResolvedValue('');
+
+      const first = await handleCreateIssue(createContext(), body);
+      const second = await handleCreateIssue(createContext(), body);
+
+      expect(first).toEqual({
+        statusCode: 500,
+        body: {
+          ok: false,
+          issueCreated: true,
+          issueUrl: 'https://github.com/acme-labs/portal/issues/42',
+          failedStep: 'addIssueToProject',
+          error: 'project unavailable',
+        },
+      });
+      expect(second).toEqual({
+        statusCode: 200,
+        body: {
+          ok: true,
+          issueUrl: 'https://github.com/acme-labs/portal/issues/42',
+        },
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(issueRepository.addIssueToProject).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns the completed result for a repeated action without rerunning creation or project setup', async () => {
+      const first = await handleCreateIssue(createContext(), body);
+      const second = await handleCreateIssue(createContext(), body);
+
+      expect(second).toEqual(first);
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(issueRepository.addIssueToProject).toHaveBeenCalledTimes(1);
+    });
+
+    it('serializes concurrent requests with the same actionId so creation runs once', async () => {
+      let releaseCreate!: () => void;
+      const createBarrier = new Promise<void>((resolve) => {
+        releaseCreate = resolve;
+      });
+      issueRepository.createNewIssue.mockImplementation(async () => {
+        await createBarrier;
+        return 42;
+      });
+
+      const firstPromise = handleCreateIssue(createContext(), body);
+      const secondPromise = handleCreateIssue(createContext(), body);
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await Promise.resolve();
+      }
+      releaseCreate();
+      const [first, second] = await Promise.all([firstPromise, secondPromise]);
+
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns an issue-not-created response when creation fails', async () => {
+      issueRepository.createNewIssue.mockRejectedValueOnce(
+        new Error('GitHub rejected create'),
+      );
+
+      await expect(handleCreateIssue(createContext(), body)).resolves.toEqual({
+        statusCode: 500,
+        body: {
+          ok: false,
+          issueCreated: false,
+          error: 'GitHub rejected create',
+        },
+      });
+    });
+
+    it('creates independently for requests without an actionId', async () => {
+      const { actionId: _actionId, ...bodyWithoutActionId } = body;
+
+      await handleCreateIssue(createContext(), bodyWithoutActionId);
+      await handleCreateIssue(createContext(), bodyWithoutActionId);
+
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(2);
+    });
+  });
 });

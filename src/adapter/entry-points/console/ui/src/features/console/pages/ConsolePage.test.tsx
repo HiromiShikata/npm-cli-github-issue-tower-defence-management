@@ -15487,3 +15487,107 @@ describe('ConsolePage hide triggered and hide empty switches', () => {
     expect(localStorage.getItem('console-story-hide-empty')).toBe('true');
   });
 });
+
+describe('ConsolePage create-task idempotent retry', () => {
+  it('retries a not-created response with the same actionId and reports no creation failure', async () => {
+    jest.useFakeTimers();
+    try {
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      let createAttempts = 0;
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...listPayload(listMatch[1]),
+              defaultNameWithOwner: 'o/r',
+            }),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          createAttempts += 1;
+          return createAttempts === 1
+            ? {
+                ok: false,
+                status: 500,
+                json: async () => ({
+                  ok: false,
+                  issueCreated: false,
+                  error: 'temporary create failure',
+                }),
+              }
+            : {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                  ok: true,
+                  issueUrl: 'https://github.com/o/r/issues/42',
+                }),
+              };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole, getByLabelText, queryByText } = render(
+        <ConsolePage />,
+      );
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Retryable task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const createIssueCalls = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/createissue',
+      );
+      expect(createIssueCalls).toHaveLength(2);
+      const requestBodies = (
+        createIssueCalls as unknown as Array<[string, RequestInit]>
+      ).map(
+        ([, options]: [string, RequestInit]) =>
+          JSON.parse(options.body as string) as { actionId?: string },
+      );
+      expect(requestBodies[0].actionId).toBeTruthy();
+      expect(requestBodies[1].actionId).toBe(requestBodies[0].actionId);
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
