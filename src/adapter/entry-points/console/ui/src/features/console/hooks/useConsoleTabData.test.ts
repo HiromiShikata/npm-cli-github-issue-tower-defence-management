@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
 import { CONSOLE_TABS } from '../logic/types';
 import {
@@ -1153,15 +1153,33 @@ const setTabDataVisibility = (state: DocumentVisibilityState): void => {
 };
 
 const originalFetch = global.fetch;
+const originalCachesDescriptor = Object.getOwnPropertyDescriptor(
+  global,
+  'caches',
+);
 
 describe('useConsoleTabData network retry', () => {
+  let fakeTimersEnabled = false;
+
   beforeEach(() => {
     jest.useFakeTimers();
+    fakeTimersEnabled = true;
   });
 
   afterEach(() => {
+    cleanup();
+    if (fakeTimersEnabled) {
+      jest.clearAllTimers();
+    }
     jest.useRealTimers();
+    fakeTimersEnabled = false;
     Reflect.deleteProperty(document, 'visibilityState');
+    global.fetch = originalFetch;
+    if (originalCachesDescriptor) {
+      Object.defineProperty(global, 'caches', originalCachesDescriptor);
+    } else {
+      removeMockCaches();
+    }
   });
 
   it('surfaces the initial network error and shows the list after an automatic retry', async () => {
@@ -1509,7 +1527,7 @@ describe('useConsoleTabData network retry', () => {
       await flushTabDataTimers(1000);
       const retryCallCount = fetchMock.mock.calls.length;
       const retriedGeneratedAt = result.current.snapshots[failedTab]?.generatedAt;
-      expect(retryCallCount).toBe(callsBeforeRetry + 1);
+      expect(retryCallCount).toBe(callsBeforeRetry + CONSOLE_TABS.length);
       expect(retriedGeneratedAt).toBe(newPayload.generatedAt);
     } finally {
       await act(async () => {
