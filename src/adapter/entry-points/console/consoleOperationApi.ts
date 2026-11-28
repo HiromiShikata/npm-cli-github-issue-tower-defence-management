@@ -40,6 +40,7 @@ import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueC
 import {
   type ConsoleActionRecord,
   ACTION_RESULT_LIMIT,
+  deleteConsoleActionRecord,
   readConsoleActionRecords,
   writeConsoleActionRecord,
 } from './consoleActionResultStore';
@@ -116,6 +117,12 @@ const pendingActionResults = new Map<
   string,
   Promise<{ statusCode: number; body: unknown }>
 >();
+
+const isHttpStatusError = (error: unknown): error is { status: number } =>
+  error !== null &&
+  typeof error === 'object' &&
+  'status' in error &&
+  typeof error.status === 'number';
 
 const badRequest = (message: string): ConsoleOperationResponse => ({
   statusCode: 400,
@@ -2160,9 +2167,18 @@ const handleCreateIssueImpl = async (
         createdFrom,
         assignee,
       });
-      const recovered = (matches ?? []).find(
-        (match) => match.title === searchTitle,
-      );
+      const recovered = (matches ?? []).find((match) => {
+        if (match.title !== searchTitle) return false;
+        try {
+          const parsedUrl = new URL(match.url);
+          return (
+            parsedUrl.hostname === 'github.com' &&
+            parsedUrl.pathname.split('/')[1] === org
+          );
+        } catch {
+          return false;
+        }
+      });
       if (recovered !== undefined) return recovered.url;
       return { error: errorMessage };
     } catch (searchError) {
@@ -2239,6 +2255,21 @@ const handleCreateIssueImpl = async (
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         console.error('[handleCreateIssue] issue creation failed:', error);
+        if (
+          isHttpStatusError(error) &&
+          error.status >= 400 &&
+          error.status < 500
+        ) {
+          inMemoryActionRecords.delete(actionId ?? '');
+          if (actionId !== null && context.consoleDataOutputDir !== null) {
+            deleteConsoleActionRecord(
+              context.consoleDataOutputDir,
+              actionId,
+              Date.now(),
+            );
+          }
+          return { error: errorMessage, issueCreated: false };
+        }
         return searchCreatedIssue(
           effectiveTitle,
           createdFrom,

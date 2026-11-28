@@ -25,6 +25,11 @@ const isConsoleActionRecord = (value: unknown): value is ConsoleActionRecord =>
   Number.isInteger(value.statusCode) &&
   isRecord(value.body);
 
+const isPendingIntent = (record: ConsoleActionRecord): boolean =>
+  !('issueUrl' in record.body) &&
+  (record.body.issueCreationPending === true ||
+    record.body.issueCreated === false);
+
 const readActionResultsFile = (consoleDataOutputDir: string): unknown => {
   try {
     const parsed: unknown = JSON.parse(
@@ -66,7 +71,10 @@ export const readConsoleActionRecords = (
       );
       continue;
     }
-    if (nowMs - value.recordedAtMs <= ACTION_RESULT_RETENTION_MS) {
+    if (
+      isPendingIntent(value) ||
+      nowMs - value.recordedAtMs <= ACTION_RESULT_RETENTION_MS
+    ) {
       records[actionId] = value;
     }
   }
@@ -83,9 +91,16 @@ export const writeConsoleActionRecord = (
   records[actionId] = record;
   const entries = Object.entries(records)
     .filter(
-      ([, value]) => nowMs - value.recordedAtMs <= ACTION_RESULT_RETENTION_MS,
+      ([, value]) =>
+        isPendingIntent(value) ||
+        nowMs - value.recordedAtMs <= ACTION_RESULT_RETENTION_MS,
     )
-    .sort(([, first], [, second]) => first.recordedAtMs - second.recordedAtMs)
+    .sort(([, first], [, second]) => {
+      const firstPending = isPendingIntent(first);
+      const secondPending = isPendingIntent(second);
+      if (firstPending !== secondPending) return firstPending ? 1 : -1;
+      return first.recordedAtMs - second.recordedAtMs;
+    })
     .slice(-ACTION_RESULT_LIMIT);
   const retained = Object.fromEntries(entries);
   const filePath = actionResultsFilePath(consoleDataOutputDir);
@@ -98,6 +113,29 @@ export const writeConsoleActionRecord = (
   } catch (error) {
     console.error(
       '[consoleActionResultStore] failed to write action results',
+      error,
+    );
+    return false;
+  }
+};
+
+export const deleteConsoleActionRecord = (
+  consoleDataOutputDir: string,
+  actionId: string,
+  nowMs: number,
+): boolean => {
+  const records = readConsoleActionRecords(consoleDataOutputDir, nowMs);
+  if (!(actionId in records)) return true;
+  delete records[actionId];
+  const filePath = actionResultsFilePath(consoleDataOutputDir);
+  try {
+    const temporaryFilePath = `${filePath}.tmp`;
+    fs.writeFileSync(temporaryFilePath, JSON.stringify(records));
+    fs.renameSync(temporaryFilePath, filePath);
+    return true;
+  } catch (error) {
+    console.error(
+      '[consoleActionResultStore] failed to delete action result',
       error,
     );
     return false;

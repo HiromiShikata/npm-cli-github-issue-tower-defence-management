@@ -38,7 +38,8 @@ const outcomeFromResponse = (
     return httpStatus >= 500
       ? {
           kind: 'unconfirmed',
-          reason: 'The creation state could not be confirmed.',
+          reason:
+            'The task creation could not be confirmed; it may already exist on the board.',
         }
       : null;
   }
@@ -114,6 +115,7 @@ export const createIssueWithRetry = async (
   return {
     kind: 'unconfirmed',
     reason:
-      latestTransportError ?? 'The creation state could not be confirmed.',
+      latestTransportError ??
+      'The task creation could not be confirmed; it may already exist on the board.',
   };
 };

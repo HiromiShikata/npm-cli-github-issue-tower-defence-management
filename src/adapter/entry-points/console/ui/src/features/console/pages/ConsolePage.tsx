@@ -187,6 +187,7 @@ const isDependedIssueSubmission = (input: ConsoleQueueActionInput): boolean =>
 export type AttachmentSubmissionProgress = {
   actionId?: string;
   issueUrl: string | null;
+  postCreationStepsIncomplete?: boolean;
   uploadedMarkdownByFileName: Map<string, string>;
   commentedFileNames: Set<string>;
 };
@@ -238,12 +239,11 @@ export const createIssueWithAttachments = async (
   { title, storyName, agentOptionId, body, files }: IssueCreateParams,
   progress: AttachmentSubmissionProgress,
   onIncompleteStep?: (message: string) => void,
-  retryWait?: (milliseconds: number) => Promise<void>,
 ): Promise<void> => {
   const actionId = progress.actionId ?? generateActionId();
   progress.actionId = actionId;
   let issueUrl = progress.issueUrl;
-  if (issueUrl === null) {
+  if (issueUrl === null || progress.postCreationStepsIncomplete === true) {
     const outcome = await createIssueWithRetry(
       async (request) => {
         const response: unknown = await postConsoleCreateIssue(request);
@@ -261,7 +261,6 @@ export const createIssueWithAttachments = async (
         agentOptionId: agentOptionId ?? null,
         body: body ?? null,
       },
-      retryWait === undefined ? {} : { wait: retryWait },
     );
     if (outcome.kind === 'notCreated') {
       console.error(
@@ -275,7 +274,9 @@ export const createIssueWithAttachments = async (
         'createIssueWithAttachments: creation state was unconfirmed',
         outcome.reason,
       );
-      throw new Error('Failed to create the task. Please try again.');
+      throw new Error(
+        'The task creation could not be confirmed; it may already exist on the board.',
+      );
     }
     issueUrl = outcome.issueUrl;
     if (outcome.kind === 'createdWithIncompleteStep') {
@@ -288,6 +289,9 @@ export const createIssueWithAttachments = async (
       onIncompleteStep?.(
         `${outcome.issueUrl} のタスクを作成しましたが、${outcome.failedStep} が完了しませんでした。`,
       );
+      progress.postCreationStepsIncomplete = true;
+    } else {
+      progress.postCreationStepsIncomplete = false;
     }
     progress.issueUrl = issueUrl;
   }
@@ -1447,7 +1451,6 @@ export const ConsolePage = () => {
           capturedParams,
           progress,
           setCreateIssueNotice,
-          async () => Promise.resolve(),
         );
         setStoryListSubmitFailure(null);
       } catch (cause: unknown) {

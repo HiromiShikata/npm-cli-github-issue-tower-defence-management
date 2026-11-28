@@ -32,6 +32,7 @@ export class ApiV3IssueRepository extends BaseGitHubRepository {
       url += `+created:>=${query.createdFrom}`;
     }
     if (query.assignee) {
+      url += `+assignee:${encodeURIComponent(query.assignee)}`;
       url += `&assignee=${encodeURIComponent(query.assignee)}`;
     }
 

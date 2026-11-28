@@ -1,6 +1,15 @@
 import path from 'node:path';
 import ky, { HTTPError, KyResponse } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
+
+export class RestIssueCreationError extends Error {
+  readonly status: number;
+
+  constructor(status: number, bodyText: string) {
+    super(`GitHub API error creating issue: ${status} ${bodyText}`);
+    this.status = status;
+  }
+}
 import { tdpmCacheDirectory } from '../localStorageCacheDirectory';
 import { Issue } from '../../../domain/entities/Issue';
 import { IssueSummary } from '../../../domain/entities/IssueSummary';
@@ -379,9 +388,7 @@ export class RestIssueRepository
     );
     if (!response.ok) {
       const bodyText = await response.text();
-      throw new Error(
-        `GitHub API error creating issue: ${response.status} ${bodyText}`,
-      );
+      throw new RestIssueCreationError(response.status, bodyText);
     }
     const data: unknown = await response.json();
     if (typeof data !== 'object' || data === null || !('number' in data)) {
