@@ -18,6 +18,12 @@ const record = (recordedAtMs: number): ConsoleActionRecord => ({
   body: { ok: true },
 });
 
+const completedRecord = (recordedAtMs: number): ConsoleActionRecord => ({
+  recordedAtMs,
+  statusCode: 200,
+  body: { ok: true, issueUrl: 'https://github.com/example/repo/issues/1' },
+});
+
 describe('console action result store', () => {
   let consoleDataOutputDir: string;
   let consoleErrorSpy: jest.SpyInstance;
@@ -70,11 +76,11 @@ describe('console action result store', () => {
       {
         name: 'expired entries and entries at the retention boundary',
         contents: JSON.stringify({
-          expired: record(nowMs - ACTION_RESULT_RETENTION_MS - 1),
-          boundary: record(nowMs - ACTION_RESULT_RETENTION_MS),
+          expired: completedRecord(nowMs - ACTION_RESULT_RETENTION_MS - 1),
+          boundary: completedRecord(nowMs - ACTION_RESULT_RETENTION_MS),
         }),
         expected: {
-          boundary: record(nowMs - ACTION_RESULT_RETENTION_MS),
+          boundary: completedRecord(nowMs - ACTION_RESULT_RETENTION_MS),
         },
         errorCount: 0,
       },
@@ -116,6 +122,22 @@ describe('console action result store', () => {
 
     expect(readConsoleActionRecords(consoleDataOutputDir, nowMs)).toEqual({
       'action-1': actionRecord,
+    });
+  });
+
+  it('retains a pending intent after the retention time has passed', () => {
+    const pendingRecord: ConsoleActionRecord = {
+      recordedAtMs: nowMs - ACTION_RESULT_RETENTION_MS - 1,
+      statusCode: 500,
+      body: { ok: false, issueCreated: false, error: 'create failed' },
+    };
+    fs.writeFileSync(
+      path.join(consoleDataOutputDir, ACTION_RESULTS_FILE_NAME),
+      JSON.stringify({ pending: pendingRecord }),
+    );
+
+    expect(readConsoleActionRecords(consoleDataOutputDir, nowMs)).toEqual({
+      pending: pendingRecord,
     });
   });
 

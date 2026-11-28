@@ -1527,7 +1527,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   );
 
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
-  const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+  const consoleDataOutputDir =
+    options.consoleDataOutputDir ?? config.consoleDataOutputDir ?? null;
   const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
   const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =

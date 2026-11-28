@@ -10,6 +10,7 @@ import { deliverPersistedConsoleAction } from '../hooks/consoleActionDelivery';
 import type { ConsoleOfflineQueuedAction } from '../hooks/useConsoleActionQueue';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
+import { CREATE_ISSUE_MAX_ATTEMPTS } from '../lib/createIssueWithRetry';
 import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
 import { colorFromEnum } from '../logic/colors';
 import { overlayStorageKey, writeOverlayEntry } from '../logic/overlay';
@@ -113,6 +114,344 @@ const listPayload = (tab: string) => ({
             },
           ]
         : [],
+});
+
+describe('ConsolePage story-list create recovery', () => {
+  const createStoryListFetch = (
+    createResponse: (attempt: number) => Record<string, unknown>,
+    onRequest?: (url: string, body: Record<string, unknown>) => void,
+  ): jest.Mock => {
+    let createAttempts = 0;
+    const fetchMock = jest.fn(
+      async (url: string, options?: { body?: string }) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...(tab === 'stories'
+                ? listPayload('stories')
+                : listPayload(tab)),
+              defaultNameWithOwner: 'o/r',
+            }),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          const body = JSON.parse(options?.body ?? '{}') as Record<
+            string,
+            unknown
+          >;
+          onRequest?.(url, body);
+          createAttempts += 1;
+          const responseBody = createResponse(createAttempts);
+          return {
+            ok: responseBody.ok === true,
+            status: responseBody.ok === true ? 200 : 500,
+            json: async () => responseBody,
+          };
+        }
+        if (url === '/api/upload') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              markdown: '![attachment.png](https://example.com/attachment.png)',
+            }),
+          };
+        }
+        if (url === '/api/comment') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              comment: {
+                id: 1,
+                author: 'bot',
+                body: 'attachment',
+                createdAt: '2026-06-19T00:00:00.000Z',
+              },
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  const openStoryCreateDialog = async (): Promise<{
+    getByRole: ReturnType<typeof render>['getByRole'];
+    getByPlaceholderText: ReturnType<typeof render>['getByPlaceholderText'];
+    queryByText: ReturnType<typeof render>['queryByText'];
+  }> => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const view = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        view.getByRole('button', { name: '+ Add task' }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(view.getByRole('button', { name: '+ Add task' }));
+    await waitFor(() => {
+      expect(
+        view.getByRole('dialog', { name: 'Add task to TDPM Console port' }),
+      ).toBeInTheDocument();
+    });
+    return view;
+  };
+
+  const openHeaderCreateDialog = async (): Promise<
+    ReturnType<typeof render>
+  > => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const view = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        view.getByRole('button', { name: 'Create new task' }),
+      ).toBeEnabled();
+    });
+    fireEvent.click(view.getByRole('button', { name: 'Create new task' }));
+    await waitFor(() => {
+      expect(
+        view.getByRole('dialog', { name: 'Create new task' }),
+      ).toBeInTheDocument();
+    });
+    return view;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('retries a story-list create with default backoff after two not-created responses', async () => {
+    jest.useFakeTimers();
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    try {
+      const requestBodies: Record<string, unknown>[] = [];
+      createStoryListFetch(
+        (attempt) =>
+          attempt <= 2
+            ? { ok: false, issueCreated: false, error: 'temporary failure' }
+            : {
+                ok: true,
+                issueUrl: 'https://github.com/example/repo/issues/77',
+              },
+        (_url, body) => requestBodies.push(body),
+      );
+      const { getByRole, getByPlaceholderText, queryByText } =
+        await openStoryCreateDialog();
+      fireEvent.change(getByPlaceholderText('Issue title'), {
+        target: { value: 'Story-list retry task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(2500);
+      });
+      expect(requestBodies).toHaveLength(3);
+      expect(setTimeoutSpy.mock.calls.map(([, delay]) => delay)).toEqual(
+        expect.arrayContaining([500, 1000]),
+      );
+      expect(requestBodies[0].actionId).toEqual(expect.any(String));
+      expect(requestBodies[1].actionId).toBe(requestBodies[0].actionId);
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
+    } finally {
+      setTimeoutSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the issue URL and incomplete step without reporting task creation failure', async () => {
+    jest.useFakeTimers();
+    try {
+      createStoryListFetch(() => ({
+        ok: false,
+        issueCreated: true,
+        issueUrl: 'https://github.com/example/repo/issues/77',
+        failedStep: 'updateStory',
+        error: 'story update failed',
+      }));
+      const { getByRole, getByLabelText, queryByText } =
+        await openHeaderCreateDialog();
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Incomplete story task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 10; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 20; j += 1) await Promise.resolve();
+        });
+      }
+      expect(document.body.textContent).toContain(
+        'https://github.com/example/repo/issues/77',
+      );
+      expect(document.body.textContent).toContain('updateStory');
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reuses the actionId when resubmitting the unchanged story-list dialog after an unknown failure', async () => {
+    jest.useFakeTimers();
+    try {
+      const requestBodies: Record<string, unknown>[] = [];
+      createStoryListFetch(
+        () => ({ ok: false, error: 'unknown creation state' }),
+        (_url, body) => requestBodies.push(body),
+      );
+      const { getByRole, getByPlaceholderText } = await openStoryCreateDialog();
+      fireEvent.change(getByPlaceholderText('Issue title'), {
+        target: { value: 'Unknown story-list task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+
+      expect(requestBodies).toHaveLength(6);
+      expect(
+        requestBodies.every(
+          (requestBody) => requestBody.actionId === requestBodies[0].actionId,
+        ),
+      ).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('starts a new actionId when the story-list title changes before resubmission', async () => {
+    jest.useFakeTimers();
+    try {
+      const requestBodies: Record<string, unknown>[] = [];
+      createStoryListFetch(
+        () => ({ ok: false, error: 'unknown creation state' }),
+        (_url, body) => requestBodies.push(body),
+      );
+      const { getByRole, getByPlaceholderText } = await openStoryCreateDialog();
+      const titleInput = getByPlaceholderText('Issue title');
+      fireEvent.change(titleInput, {
+        target: { value: 'Original story-list task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+      fireEvent.change(titleInput, {
+        target: { value: 'Changed story-list task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+
+      expect(requestBodies).toHaveLength(6);
+      expect(requestBodies[3].actionId).not.toBe(requestBodies[0].actionId);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('uploads attachments to an incompletely created issue and names the failed project step', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = createStoryListFetch(() => ({
+        ok: false,
+        issueCreated: true,
+        issueUrl: 'https://github.com/example/repo/issues/77',
+        failedStep: 'addIssueToProject',
+        error: 'project add failed',
+      }));
+      const { getByRole, getByLabelText, queryByText } =
+        await openHeaderCreateDialog();
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Incomplete attachment task' },
+      });
+      const file = new File(['x'], 'attachment.png', { type: 'image/png' });
+      (
+        file as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+      ).arrayBuffer = async () => new Uint8Array([120]).buffer;
+      const fileInput = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        configurable: true,
+      });
+      await act(async () => fireEvent.change(fileInput));
+      await waitFor(() =>
+        expect(
+          document.querySelector('.console-task-create-dialog-file-name'),
+        ).toBeInTheDocument(),
+      );
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 10; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 20; j += 1) await Promise.resolve();
+        });
+      }
+      const uploads = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/upload',
+      );
+      expect(uploads).toHaveLength(1);
+      expect(
+        JSON.parse(
+          (uploads[0] as unknown as [string, RequestInit])[1].body as string,
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          url: 'https://github.com/example/repo/issues/77',
+        }),
+      );
+      expect(document.body.textContent).toContain('addIssueToProject');
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 const actionableCountsWithBetaTodoByHumanItem = {
@@ -7687,7 +8026,11 @@ describe('ConsolePage task creation action queue', () => {
         return {
           ok: false,
           status: 500,
-          text: async () => 'Internal Server Error',
+          json: async () => ({
+            ok: false,
+            issueCreated: false,
+            error: 'Failed to create the task. Please try again.',
+          }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -8114,11 +8457,14 @@ describe('ConsolePage task creation action queue', () => {
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(
+            getByRole('dialog', { name: 'Create new task' }),
+          ).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
       const reopenedDialog = getByRole('dialog', { name: 'Create new task' });
       expect(within(reopenedDialog).getByLabelText('Title')).toHaveValue(
         'Failing project task',
@@ -8181,11 +8527,14 @@ describe('ConsolePage task creation action queue', () => {
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       const toastTitle = container.querySelector('.console-error-toast-title');
       const toastMessage = container.querySelector(
         '.console-error-toast-message',
@@ -8197,7 +8546,7 @@ describe('ConsolePage task creation action queue', () => {
     }
   });
 
-  it('does not create a duplicate GitHub issue when the dialog Create button is clicked again after a partial attachment upload failure', async () => {
+  it('reruns the incomplete create step with the same actionId before retrying a failed attachment upload', async () => {
     jest.useFakeTimers();
     try {
       let uploadAttemptCount = 0;
@@ -8221,10 +8570,14 @@ describe('ConsolePage task creation action queue', () => {
         }
         if (url === '/api/createissue') {
           return {
-            ok: true,
-            status: 200,
+            ok: false,
+            status: 500,
             json: async () => ({
-              issueUrl: 'https://github.com/o/r/issues/777',
+              ok: false,
+              issueCreated: true,
+              issueUrl: 'https://github.com/example/repo/issues/77',
+              failedStep: 'updateStory',
+              error: 'story update failed',
             }),
           };
         }
@@ -8322,10 +8675,7 @@ describe('ConsolePage task creation action queue', () => {
       );
 
       await act(async () => {
-        jest.advanceTimersByTime(5100);
-        for (let i = 0; i < 10; i++) {
-          await Promise.resolve();
-        }
+        await jest.advanceTimersByTimeAsync(10000);
       });
 
       await waitFor(() => {
@@ -8359,16 +8709,40 @@ describe('ConsolePage task creation action queue', () => {
       );
 
       await act(async () => {
-        jest.advanceTimersByTime(5100);
-        for (let i = 0; i < 10; i++) {
-          await Promise.resolve();
-        }
+        await jest.advanceTimersByTimeAsync(10000);
       });
 
       const createIssueCalls = fetchMock.mock.calls.filter(
         ([callUrl]: [string]) => callUrl === '/api/createissue',
+      ) as unknown as Array<[string, RequestInit]>;
+      expect(createIssueCalls.length).toBe(CREATE_ISSUE_MAX_ATTEMPTS * 2);
+      const createRequestBodies = createIssueCalls.map(
+        ([, options]: [string, RequestInit]) =>
+          JSON.parse(options.body as string) as { actionId?: string },
       );
-      expect(createIssueCalls.length).toBe(1);
+      expect(createRequestBodies[1].actionId).toBe(
+        createRequestBodies[0].actionId,
+      );
+      expect(
+        createRequestBodies.every(
+          (requestBody) =>
+            requestBody.actionId === createRequestBodies[0].actionId,
+        ),
+      ).toBe(true);
+      const uploadCalls = fetchMock.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/upload',
+      );
+      expect(uploadCalls).toHaveLength(2);
+      expect(
+        JSON.parse(
+          (uploadCalls[1] as unknown as [string, RequestInit])[1]
+            .body as string,
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          url: 'https://github.com/example/repo/issues/77',
+        }),
+      );
     } finally {
       jest.useRealTimers();
     }
@@ -8707,7 +9081,11 @@ describe('ConsolePage workflow issue creation', () => {
           return {
             ok: false,
             status: 500,
-            text: async () => 'Internal Server Error',
+            json: async () => ({
+              ok: false,
+              issueCreated: false,
+              error: 'Failed to create the task. Please try again.',
+            }),
           };
         }
         return {
@@ -8936,13 +9314,16 @@ describe('ConsolePage workflow issue creation', () => {
         await Promise.resolve();
         await Promise.resolve();
       });
-      await waitFor(() => {
-        expect(
-          getByText(
-            'Operation failed: Failed to create the task. Please try again.',
-          ),
-        ).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(
+            getByText(
+              'Operation failed: Failed to create the task. Please try again.',
+            ),
+          ).toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
       const reopenedDialog = getByRole('dialog');
       expect(reopenedDialog).toBeInTheDocument();
       expect(getByLabelText('Title')).toHaveValue('Failing task');
@@ -9103,6 +9484,13 @@ describe('ConsolePage workflow issue creation', () => {
         jest.advanceTimersByTime(5100);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
       const fleetDialogContainer = document.body.querySelector(
@@ -9671,7 +10059,11 @@ describe('ConsolePage task-creation failure toast after navigating away before t
           return {
             ok: false,
             status: 500,
-            text: async () => 'Internal Server Error',
+            json: async () => ({
+              ok: false,
+              issueCreated: false,
+              error: 'Failed to create the task. Please try again.',
+            }),
           };
         }
         return {
@@ -9739,11 +10131,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(
         container.querySelector('.console-error-toast-message')?.textContent,
       ).toBe('Operation failed: Failed to create the task. Please try again.');
@@ -9815,21 +10210,33 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      const retryButton = await waitFor(() => {
-        const button = container.querySelector('.console-error-toast-retry');
-        expect(button).not.toBeNull();
-        return button as HTMLElement;
-      });
-      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+      const retryButton = await waitFor(
+        () => {
+          const button = container.querySelector('.console-error-toast-retry');
+          expect(button).not.toBeNull();
+          return button as HTMLElement;
+        },
+        { timeout: 5000 },
+      );
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS,
+      );
 
       await act(async () => {
         fireEvent.click(retryButton);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
       const createIssueCalls = createIssueCallsFrom(fetchMock);
-      expect(createIssueCalls.length).toBe(2);
+      expect(createIssueCalls.length).toBe(CREATE_ISSUE_MAX_ATTEMPTS * 2);
       const retriedRequestBody = JSON.parse(
         createIssueCalls[1][1].body as string,
       ) as Record<string, unknown>;
@@ -9879,25 +10286,40 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      const retryButton = await waitFor(() => {
-        const button = container.querySelector('.console-error-toast-retry');
-        expect(button).not.toBeNull();
-        return button as HTMLElement;
-      });
+      const retryButton = await waitFor(
+        () => {
+          const button = container.querySelector('.console-error-toast-retry');
+          expect(button).not.toBeNull();
+          return button as HTMLElement;
+        },
+        { timeout: 5000 },
+      );
 
       await act(async () => {
         fireEvent.click(retryButton);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
-      expect(createIssueCallsFrom(fetchMock).length).toBe(2);
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS * 2,
+      );
       expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(container.querySelector('.console-error-toast-retry')).not.toBe(
         null,
       );
@@ -9944,11 +10366,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
 
       const dismissButton = container.querySelector(
@@ -9961,7 +10386,9 @@ describe('ConsolePage task-creation failure toast after navigating away before t
           container.querySelector('.console-error-toast-message'),
         ).toBeNull();
       });
-      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS,
+      );
     } finally {
       jest.useRealTimers();
     }
@@ -10005,11 +10432,14 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast-message'),
-        ).not.toBeNull();
-      });
+      await waitFor(
+        () => {
+          expect(
+            container.querySelector('.console-error-toast-message'),
+          ).not.toBeNull();
+        },
+        { timeout: 5000 },
+      );
       expect(
         container.querySelector('.console-error-toast-message')?.textContent,
       ).toBe('Operation failed: Failed to create the task. Please try again.');
@@ -10070,21 +10500,33 @@ describe('ConsolePage task-creation failure toast after navigating away before t
         await Promise.resolve();
       });
 
-      const retryButton = await waitFor(() => {
-        const button = container.querySelector('.console-error-toast-retry');
-        expect(button).not.toBeNull();
-        return button as HTMLElement;
-      });
-      expect(createIssueCallsFrom(fetchMock).length).toBe(1);
+      const retryButton = await waitFor(
+        () => {
+          const button = container.querySelector('.console-error-toast-retry');
+          expect(button).not.toBeNull();
+          return button as HTMLElement;
+        },
+        { timeout: 5000 },
+      );
+      expect(createIssueCallsFrom(fetchMock).length).toBe(
+        CREATE_ISSUE_MAX_ATTEMPTS,
+      );
 
       await act(async () => {
         fireEvent.click(retryButton);
         await Promise.resolve();
         await Promise.resolve();
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+        jest.advanceTimersByTime(1000);
+        await Promise.resolve();
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1500);
       });
 
       const createIssueCalls = createIssueCallsFrom(fetchMock);
-      expect(createIssueCalls.length).toBe(2);
+      expect(createIssueCalls.length).toBe(CREATE_ISSUE_MAX_ATTEMPTS * 2);
       const retriedRequestBody = JSON.parse(
         createIssueCalls[1][1].body as string,
       ) as Record<string, unknown>;
@@ -11738,7 +12180,7 @@ describe('createIssueWithAttachments attachment submission progress', () => {
       files: [{ name: 'A.png', outcome: 'success' }],
       createIssueBehavior: 'failure',
       commentBehavior: 'notCalled',
-      expectCreateIssueCalls: 1,
+      expectCreateIssueCalls: 3,
       expectAttachmentCalls: 0,
       expectCommentCalls: 0,
       expectOutcome: {
@@ -15590,5 +16032,109 @@ describe('ConsolePage hide triggered and hide empty switches', () => {
     const { findByRole } = render(<ConsolePage />);
     fireEvent.click(await findByRole('switch', { name: 'Hide empty' }));
     expect(localStorage.getItem('console-story-hide-empty')).toBe('true');
+  });
+});
+
+describe('ConsolePage create-task idempotent retry', () => {
+  it('retries a not-created response with the same actionId and reports no creation failure', async () => {
+    jest.useFakeTimers();
+    try {
+      localStorage.clear();
+      window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+      let createAttempts = 0;
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...listPayload(listMatch[1]),
+              defaultNameWithOwner: 'o/r',
+            }),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          createAttempts += 1;
+          return createAttempts === 1
+            ? {
+                ok: false,
+                status: 500,
+                json: async () => ({
+                  ok: false,
+                  issueCreated: false,
+                  error: 'temporary create failure',
+                }),
+              }
+            : {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                  ok: true,
+                  issueUrl: 'https://github.com/o/r/issues/42',
+                }),
+              };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole, getByLabelText, queryByText } = render(
+        <ConsolePage />,
+      );
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Retryable task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const createIssueCalls = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/createissue',
+      );
+      expect(createIssueCalls).toHaveLength(2);
+      const requestBodies = (
+        createIssueCalls as unknown as Array<[string, RequestInit]>
+      ).map(
+        ([, options]: [string, RequestInit]) =>
+          JSON.parse(options.body as string) as { actionId?: string },
+      );
+      expect(requestBodies[0].actionId).toBeTruthy();
+      expect(requestBodies[1].actionId).toBe(requestBodies[0].actionId);
+      expect(
+        queryByText('Failed to create the task. Please try again.'),
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

@@ -40,6 +40,7 @@ import { IssueCloseOutcomeConfirmUseCase } from '../../../domain/usecases/IssueC
 import {
   type ConsoleActionRecord,
   ACTION_RESULT_LIMIT,
+  deleteConsoleActionRecord,
   readConsoleActionRecords,
   writeConsoleActionRecord,
 } from './consoleActionResultStore';
@@ -116,6 +117,12 @@ const pendingActionResults = new Map<
   string,
   Promise<{ statusCode: number; body: unknown }>
 >();
+
+const isHttpStatusError = (error: unknown): error is { status: number } =>
+  error !== null &&
+  typeof error === 'object' &&
+  'status' in error &&
+  typeof error.status === 'number';
 
 const badRequest = (message: string): ConsoleOperationResponse => ({
   statusCode: 400,
@@ -1815,7 +1822,7 @@ export const runConsoleOperationOnce = async (
   const stored =
     context.consoleDataOutputDir === null
       ? (inMemoryActionRecords.get(actionId) ?? null)
-      : (records?.[actionId] ?? null);
+      : (records?.[actionId] ?? inMemoryActionRecords.get(actionId) ?? null);
   if (
     stored !== null &&
     stored.statusCode >= 200 &&
@@ -1860,13 +1867,15 @@ export const runConsoleOperationOnce = async (
       };
       if (context.consoleDataOutputDir === null) {
         inMemoryActionRecords.set(actionId, record);
-      } else {
-        writeConsoleActionRecord(
+      } else if (
+        !writeConsoleActionRecord(
           context.consoleDataOutputDir,
           actionId,
           record,
           Date.now(),
-        );
+        )
+      ) {
+        inMemoryActionRecords.set(actionId, record);
       }
     }
     return response;
@@ -2126,20 +2135,244 @@ const handleCreateIssueImpl = async (
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
-  const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
-  const issueNumber = await issueRepository.createNewIssue(
-    org,
-    repo,
-    effectiveTitle,
-    effectiveBody,
-    [authenticatedUser],
-    [],
-  );
-  const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+  const actionId = isNonEmptyString(body.actionId) ? body.actionId : null;
+  const priorBody = context.priorAttempt?.body;
+  const priorIssueUrl =
+    priorBody !== undefined && typeof priorBody.issueUrl === 'string'
+      ? priorBody.issueUrl
+      : null;
+  const pendingIntent =
+    priorBody?.issueCreationPending === true &&
+    typeof priorBody.effectiveTitle === 'string' &&
+    typeof priorBody.createdFrom === 'string' &&
+    typeof priorBody.assignee === 'string'
+      ? {
+          effectiveTitle: priorBody.effectiveTitle,
+          createdFrom: priorBody.createdFrom,
+          assignee: priorBody.assignee,
+        }
+      : null;
+  const searchCreatedIssue = async (
+    searchTitle: string,
+    createdFrom: string,
+    assignee: string,
+    errorMessage: string,
+  ): Promise<string | { error: string; issueCreated?: boolean }> => {
+    try {
+      const matches = await issueRepository.searchIssue({
+        owner: org,
+        repositoryName: repo,
+        type: 'issue',
+        title: searchTitle,
+        createdFrom,
+        assignee,
+      });
+      const recovered = (matches ?? []).find((match) => {
+        if (match.title !== searchTitle) return false;
+        try {
+          const parsedUrl = new URL(match.url);
+          return (
+            parsedUrl.hostname === 'github.com' &&
+            parsedUrl.pathname.split('/')[1] === org
+          );
+        } catch {
+          return false;
+        }
+      });
+      if (recovered !== undefined) return recovered.url;
+      return { error: errorMessage };
+    } catch (searchError) {
+      console.error(
+        '[handleCreateIssue] issue recovery search failed:',
+        searchError,
+      );
+      return { error: errorMessage };
+    }
+  };
+  const issueUrlResult =
+    priorIssueUrl ??
+    (await (async () => {
+      let authenticatedUser: string;
+      let createdFrom: string;
+      try {
+        authenticatedUser =
+          pendingIntent?.assignee ??
+          (await issueRepository.getAuthenticatedUserLogin());
+        createdFrom = pendingIntent?.createdFrom ?? new Date().toISOString();
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error(
+          '[handleCreateIssue] issue creation preparation failed:',
+          error,
+        );
+        return { error: errorMessage, issueCreated: false };
+      }
+      if (pendingIntent !== null) {
+        return searchCreatedIssue(
+          pendingIntent.effectiveTitle,
+          createdFrom,
+          authenticatedUser,
+          'The issue creation state could not be confirmed.',
+        );
+      }
+      if (actionId !== null) {
+        const intentRecord: ConsoleActionRecord = {
+          recordedAtMs: Date.now(),
+          statusCode: 500,
+          body: {
+            ok: false,
+            issueCreationPending: true,
+            effectiveTitle,
+            createdFrom,
+            assignee: authenticatedUser,
+          },
+        };
+        if (context.consoleDataOutputDir === null) {
+          inMemoryActionRecords.set(actionId, intentRecord);
+        } else if (
+          !writeConsoleActionRecord(
+            context.consoleDataOutputDir,
+            actionId,
+            intentRecord,
+            Date.now(),
+          )
+        ) {
+          inMemoryActionRecords.set(actionId, intentRecord);
+        }
+      }
+      try {
+        const issueNumber = await issueRepository.createNewIssue(
+          org,
+          repo,
+          effectiveTitle,
+          effectiveBody,
+          [authenticatedUser],
+          [],
+        );
+        return `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error('[handleCreateIssue] issue creation failed:', error);
+        if (
+          isHttpStatusError(error) &&
+          error.status >= 400 &&
+          error.status < 500
+        ) {
+          inMemoryActionRecords.delete(actionId ?? '');
+          if (actionId !== null && context.consoleDataOutputDir !== null) {
+            deleteConsoleActionRecord(
+              context.consoleDataOutputDir,
+              actionId,
+              Date.now(),
+            );
+          }
+          return { error: errorMessage, issueCreated: false };
+        }
+        return searchCreatedIssue(
+          effectiveTitle,
+          createdFrom,
+          authenticatedUser,
+          errorMessage,
+        );
+      }
+    })());
+  if (typeof issueUrlResult !== 'string') {
+    return {
+      statusCode: 500,
+      body: {
+        ok: false,
+        ...(issueUrlResult.issueCreated === false
+          ? { issueCreated: false }
+          : {}),
+        error: issueUrlResult.error,
+      },
+    };
+  }
+  let issueUrl = issueUrlResult;
 
-  await (async () => {
+  const completedSteps = new Set(
+    priorBody !== undefined && Array.isArray(priorBody.completedSteps)
+      ? priorBody.completedSteps.filter(
+          (step): step is string => typeof step === 'string',
+        )
+      : [],
+  );
+  const persistProgress = (): void => {
+    if (actionId === null) return;
+    const record: ConsoleActionRecord = {
+      recordedAtMs: Date.now(),
+      statusCode: 500,
+      body: {
+        ok: false,
+        issueCreated: true,
+        issueUrl,
+        completedSteps: [...completedSteps],
+      },
+    };
+    if (context.consoleDataOutputDir === null) {
+      inMemoryActionRecords.set(actionId, record);
+    } else {
+      if (
+        !writeConsoleActionRecord(
+          context.consoleDataOutputDir,
+          actionId,
+          record,
+          Date.now(),
+        )
+      ) {
+        inMemoryActionRecords.set(actionId, record);
+      }
+    }
+  };
+  persistProgress();
+
+  const runStep = async (
+    step: string,
+    operation: () => Promise<void>,
+  ): Promise<ConsoleOperationResponse | null> => {
+    if (completedSteps.has(step)) return null;
+    try {
+      await operation();
+      completedSteps.add(step);
+      persistProgress();
+      return null;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`[handleCreateIssue] ${step} failed:`, error);
+      if (actionId === null) throw error;
+      persistProgress();
+      return {
+        statusCode: 500,
+        body: {
+          ok: false,
+          issueCreated: true,
+          issueUrl,
+          failedStep: step,
+          error: errorMessage,
+        },
+      };
+    }
+  };
+
+  let addedIssue: Issue | null = null;
+  let effectiveProject = project;
+  let effectiveStory = cachedProjectStory;
+  const addProjectFailure = await runStep('addIssueToProject', async () => {
     await issueRepository.addIssueToProject(project, issueUrl);
-    const addedIssue = await issueRepository.get(issueUrl, project);
+    try {
+      addedIssue = await issueRepository.get(issueUrl, project);
+    } catch (error) {
+      try {
+        const recoveredIssue = await issueRepository.get(issueUrl, project);
+        if (recoveredIssue !== null) issueUrl = recoveredIssue.url;
+      } catch {
+        throw error;
+      }
+      throw error;
+    }
     if (addedIssue !== null) {
       const projectRepository =
         context.resolveProjectRepository !== null
@@ -2150,25 +2383,35 @@ const handleCreateIssueImpl = async (
         (projectRepository !== null
           ? await projectRepository.getProject(project.id)
           : null);
-      const effectiveProject = freshProject ?? project;
-      const effectiveStory = freshProject?.story ?? cachedProjectStory;
-      const storyOption =
-        effectiveStory.stories.find((s) => s.name === storyName) ??
-        resolvedStoryOption;
-      await issueRepository.updateStory(
+      effectiveProject = freshProject ?? project;
+      effectiveStory = freshProject?.story ?? cachedProjectStory;
+    }
+  });
+  if (addProjectFailure !== null) return addProjectFailure;
+  if (addedIssue !== null) {
+    const issue = addedIssue;
+    const storyOption =
+      effectiveStory.stories.find((s) => s.name === storyName) ??
+      resolvedStoryOption;
+    const storyFailure = await runStep('updateStory', () =>
+      issueRepository.updateStory(
         { ...effectiveProject, story: effectiveStory },
-        addedIssue,
+        issue,
         storyOption.id,
-      );
-      if (agentOptionId !== null && effectiveProject.agent !== null) {
+      ),
+    );
+    if (storyFailure !== null) return storyFailure;
+    if (agentOptionId !== null && effectiveProject.agent !== null) {
+      const agentFailure = await runStep('setIssueAgentField', async () => {
         await issueRepository.setIssueAgentField(
           issueUrl,
           effectiveProject,
           agentOptionId,
         );
-      }
+      });
+      if (agentFailure !== null) return agentFailure;
     }
-  })();
+  }
 
   return { statusCode: 200, body: { ok: true, issueUrl } };
 };

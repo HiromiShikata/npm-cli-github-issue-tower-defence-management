@@ -65,6 +65,7 @@ import {
   postConsoleUpdateStoryDescription,
   SET_DEPENDED_ISSUE_URL_OPERATION_PATH,
 } from '../lib/consoleApi';
+import { createIssueWithRetry } from '../lib/createIssueWithRetry';
 import { navigatePush, navigateReplaceState } from '../lib/navigation';
 import {
   actionAdvances,
@@ -184,13 +185,16 @@ const isDependedIssueSubmission = (input: ConsoleQueueActionInput): boolean =>
   input.offline?.[0]?.apiPath === SET_DEPENDED_ISSUE_URL_OPERATION_PATH;
 
 export type AttachmentSubmissionProgress = {
+  actionId?: string;
   issueUrl: string | null;
+  postCreationStepsIncomplete?: boolean;
   uploadedMarkdownByFileName: Map<string, string>;
   commentedFileNames: Set<string>;
 };
 
 export const createEmptyAttachmentSubmissionProgress =
   (): AttachmentSubmissionProgress => ({
+    actionId: generateActionId(),
     issueUrl: null,
     uploadedMarkdownByFileName: new Map(),
     commentedFileNames: new Set(),
@@ -213,6 +217,13 @@ export const buildAttachmentSubmissionFailureMessage = (
   return `Task ${issueUrl} was created, but ${parts.join('; and ')}.`;
 };
 
+export const buildCreatedWithIncompleteStepMessage = (
+  issueUrl: string,
+  failedStep: string,
+  reason: string,
+): string =>
+  `Task ${issueUrl} was created, but ${failedStep} did not complete: ${reason}`;
+
 export const attachmentSubmissionParamsChanged = (
   previous: IssueCreateParams,
   current: IssueCreateParams,
@@ -227,24 +238,60 @@ export const createIssueWithAttachments = async (
   nameWithOwner: string,
   { title, storyName, agentOptionId, body, files }: IssueCreateParams,
   progress: AttachmentSubmissionProgress,
+  onIncompleteStep?: (message: string) => void,
 ): Promise<void> => {
+  const actionId = progress.actionId ?? generateActionId();
+  progress.actionId = actionId;
   let issueUrl = progress.issueUrl;
-  if (issueUrl === null) {
-    try {
-      issueUrl = await postConsoleCreateIssue({
+  if (issueUrl === null || progress.postCreationStepsIncomplete === true) {
+    const outcome = await createIssueWithRetry(
+      async (request) => {
+        const response: unknown = await postConsoleCreateIssue(request);
+        if (typeof response === 'string') {
+          return { httpStatus: 200, body: { ok: true, issueUrl: response } };
+        }
+        return response as { httpStatus: number; body: unknown };
+      },
+      {
         pjcode,
         title,
         storyName: storyName ?? '',
         nameWithOwner,
+        actionId,
         agentOptionId: agentOptionId ?? null,
         body: body ?? null,
-      });
-    } catch (cause: unknown) {
+      },
+    );
+    if (outcome.kind === 'notCreated') {
       console.error(
         'createIssueWithAttachments: failed to create issue',
-        cause,
+        outcome.reason,
       );
       throw new Error('Failed to create the task. Please try again.');
+    }
+    if (outcome.kind === 'unconfirmed') {
+      console.error(
+        'createIssueWithAttachments: creation state was unconfirmed',
+        outcome.reason,
+      );
+      throw new Error(
+        'The task creation could not be confirmed; it may already exist on the board.',
+      );
+    }
+    issueUrl = outcome.issueUrl;
+    if (outcome.kind === 'createdWithIncompleteStep') {
+      const message = buildCreatedWithIncompleteStepMessage(
+        outcome.issueUrl,
+        outcome.failedStep,
+        outcome.reason,
+      );
+      console.error(message);
+      onIncompleteStep?.(
+        `${outcome.issueUrl} のタスクを作成しましたが、${outcome.failedStep} が完了しませんでした。`,
+      );
+      progress.postCreationStepsIncomplete = true;
+    } else {
+      progress.postCreationStepsIncomplete = false;
     }
     progress.issueUrl = issueUrl;
   }
@@ -615,6 +662,9 @@ export const ConsolePage = () => {
     },
     [actionQueue.showError, operations, persistCommentDrafts],
   );
+  const [createIssueNotice, setCreateIssueNotice] = useState<string | null>(
+    null,
+  );
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
@@ -660,6 +710,10 @@ export const ConsolePage = () => {
   const [fleetDialogSubmitFailure, setFleetDialogSubmitFailure] = useState<{
     params: IssueCreateParams;
     reason: string;
+    progress: AttachmentSubmissionProgress;
+  } | null>(null);
+  const [storyListSubmitFailure, setStoryListSubmitFailure] = useState<{
+    params: IssueCreateParams;
     progress: AttachmentSubmissionProgress;
   } | null>(null);
 
@@ -1375,14 +1429,36 @@ export const ConsolePage = () => {
       if (defaultNameWithOwner === null) {
         throw new Error('No repository configured for this project.');
       }
-      await postConsoleCreateIssue({
-        pjcode,
+      const capturedParams = {
         title,
         storyName,
-        nameWithOwner: defaultNameWithOwner,
-      });
+        agentOptionId: null,
+        body: null,
+        files: [],
+      };
+      const progress =
+        storyListSubmitFailure !== null &&
+        !attachmentSubmissionParamsChanged(
+          storyListSubmitFailure.params,
+          capturedParams,
+        )
+          ? storyListSubmitFailure.progress
+          : createEmptyAttachmentSubmissionProgress();
+      try {
+        await createIssueWithAttachments(
+          pjcode,
+          defaultNameWithOwner,
+          capturedParams,
+          progress,
+          setCreateIssueNotice,
+        );
+        setStoryListSubmitFailure(null);
+      } catch (cause: unknown) {
+        setStoryListSubmitFailure({ params: capturedParams, progress });
+        throw cause;
+      }
     },
-    [pjcode, defaultNameWithOwner],
+    [pjcode, defaultNameWithOwner, storyListSubmitFailure],
   );
 
   const handleCreateIssueFromDialog = useCallback(
@@ -1416,6 +1492,7 @@ export const ConsolePage = () => {
             capturedNameWithOwner,
             capturedParams,
             progress,
+            setCreateIssueNotice,
           ).catch((cause: unknown) => {
             if (pjcodeRef.current === capturedPjcode) {
               setDialogSubmitFailure({
@@ -1475,6 +1552,7 @@ export const ConsolePage = () => {
             nameWithOwner,
             capturedParams,
             progress,
+            setCreateIssueNotice,
           ).catch((cause: unknown) => {
             if (pjcodeRef.current === capturedPjcode) {
               setFleetDialogSubmitFailure({
@@ -1907,6 +1985,11 @@ export const ConsolePage = () => {
         onDismiss={actionQueue.dismiss}
         onDismissError={actionQueue.dismissError}
       />
+      {createIssueNotice !== null && (
+        <div className="console-create-issue-notice" role="status">
+          {createIssueNotice}
+        </div>
+      )}
       <ConsoleOfflinePendingActionsPanel
         actions={offlinePanelActions}
         isOnline={isOnline}
@@ -1999,6 +2082,7 @@ export const ConsolePage = () => {
                 </button>
                 {isDialogOpen && (
                   <IssueCreateModalDialog
+                    key={dialogSubmitFailure?.progress.actionId ?? 'new'}
                     storyEntries={storyEntries}
                     agentOptions={agentOptions}
                     workflowStoryEntries={workflowStoryEntries ?? undefined}

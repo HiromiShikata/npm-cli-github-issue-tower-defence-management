@@ -2063,6 +2063,11 @@ body {
   color: #f85149;
 }
 
+.console-create-issue-notice {
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
 .console-undo-toast,
 .console-error-toast {
   position: fixed;
