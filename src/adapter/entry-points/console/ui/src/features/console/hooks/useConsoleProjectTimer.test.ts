@@ -45,6 +45,39 @@ describe('useConsoleProjectTimer', () => {
     expect(result.current.isTimerExpired(-1)).toBe(false);
   });
 
+  it('returns the mount time as timerStartedAtMs', () => {
+    (Date.now as jest.Mock).mockReturnValue(1_000);
+    const { result } = renderHook(() => useConsoleProjectTimer('alpha'));
+
+    expect(result.current.timerStartedAtMs).toBe(1_000);
+  });
+
+  it('returns the new time as timerStartedAtMs after pjcode changes', () => {
+    (Date.now as jest.Mock).mockReturnValue(1_000);
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string | null }) => useConsoleProjectTimer(pjcode),
+      { initialProps: { pjcode: 'alpha' } },
+    );
+    (Date.now as jest.Mock).mockReturnValue(2_000);
+
+    rerender({ pjcode: 'beta' });
+
+    expect(result.current.timerStartedAtMs).toBe(2_000);
+  });
+
+  it('keeps timerStartedAtMs when pjcode stays the same', () => {
+    (Date.now as jest.Mock).mockReturnValue(1_000);
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string | null }) => useConsoleProjectTimer(pjcode),
+      { initialProps: { pjcode: 'alpha' } },
+    );
+    (Date.now as jest.Mock).mockReturnValue(2_000);
+
+    rerender({ pjcode: 'alpha' });
+
+    expect(result.current.timerStartedAtMs).toBe(1_000);
+  });
+
   it('resets the start time when pjcode changes', () => {
     (Date.now as jest.Mock).mockReturnValue(0);
     const { result, rerender } = renderHook(
