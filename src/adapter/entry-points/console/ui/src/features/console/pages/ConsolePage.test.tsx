@@ -8654,10 +8654,7 @@ describe('ConsolePage task creation action queue', () => {
       );
 
       await act(async () => {
-        jest.advanceTimersByTime(10000);
-        for (let i = 0; i < 10; i++) {
-          await Promise.resolve();
-        }
+        await jest.advanceTimersByTimeAsync(10000);
       });
 
       await waitFor(() => {
@@ -8691,10 +8688,7 @@ describe('ConsolePage task creation action queue', () => {
       );
 
       await act(async () => {
-        jest.advanceTimersByTime(10000);
-        for (let i = 0; i < 10; i++) {
-          await Promise.resolve();
-        }
+        await jest.advanceTimersByTimeAsync(10000);
       });
 
       const createIssueCalls = fetchMock.mock.calls.filter(

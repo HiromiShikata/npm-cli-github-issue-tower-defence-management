@@ -2082,6 +2082,7 @@ export const ConsolePage = () => {
                 </button>
                 {isDialogOpen && (
                   <IssueCreateModalDialog
+                    key={dialogSubmitFailure?.progress.actionId ?? 'new'}
                     storyEntries={storyEntries}
                     agentOptions={agentOptions}
                     workflowStoryEntries={workflowStoryEntries ?? undefined}
