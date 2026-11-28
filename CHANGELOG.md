@@ -1,3 +1,10 @@
+## [2.219.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.1...v2.219.2) (2026-11-28)
+
+
+### Bug Fixes
+
+* **console:** match timer header pill styling to approved design ([#3801](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3801)) ([2d7e573](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2d7e573a17291d9d3dcb4629078e2b5383605dde))
+
 ## [2.219.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.0...v2.219.1) (2026-11-28)
 
 
