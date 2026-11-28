@@ -718,10 +718,18 @@ export const ConsoleItemDetailContainer = ({
     onSetDependedIssueUrl:
       pjcode != null
         ? async (dependedIssueUrl: string) => {
-            const timing = consoleItemActionTiming(item, '「Set Depended Issue」を押しました');
+            const timing = consoleItemActionTiming(
+              item,
+              '「Set Depended Issue」を押しました',
+            );
             if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
               const baseUrls = item.dependedIssueUrls;
-              await operations.replaceDependedIssueUrl(item, dependedIssueUrl, timing.openedToActionMs, timing.actionDescription);
+              await operations.replaceDependedIssueUrl(
+                item,
+                dependedIssueUrl,
+                timing.openedToActionMs,
+                timing.actionDescription,
+              );
               recordSavedDependedIssueUrls(baseUrls, dependedIssueUrl);
               return;
             }
@@ -749,14 +757,26 @@ export const ConsoleItemDetailContainer = ({
                     [
                       () =>
                         operations
-                          .replaceDependedIssueUrl(item, dependedIssueUrl, timing.openedToActionMs, timing.actionDescription)
+                          .replaceDependedIssueUrl(
+                            item,
+                            dependedIssueUrl,
+                            timing.openedToActionMs,
+                            timing.actionDescription,
+                          )
                           .then(() =>
                             recordSavedDependedIssueUrls(
                               baseUrls,
                               dependedIssueUrl,
                             ),
                           ),
-                      () => operations.setStatus(item, option, undefined, timing.openedToActionMs, timing.actionDescription),
+                      () =>
+                        operations.setStatus(
+                          item,
+                          option,
+                          undefined,
+                          timing.openedToActionMs,
+                          timing.actionDescription,
+                        ),
                     ],
                     sentStepCount,
                   );
@@ -1052,7 +1072,10 @@ export const ConsoleItemDetailContainer = ({
   );
 
   const commentAndClose = async (body: string): Promise<void> => {
-    const timing = consoleItemActionTiming(item, 'コメントを投稿して閉じました');
+    const timing = consoleItemActionTiming(
+      item,
+      'コメントを投稿して閉じました',
+    );
     if (pjcode == null) {
       await addComment(body);
       handlers.onClose('close');
@@ -1076,7 +1099,14 @@ export const ConsoleItemDetailContainer = ({
               );
               setPostedComments((previous) => [...previous, comment]);
             },
-            () => operations.closeIssue(item, 'close', closeActionId, timing.openedToActionMs, timing.actionDescription),
+            () =>
+              operations.closeIssue(
+                item,
+                'close',
+                closeActionId,
+                timing.openedToActionMs,
+                timing.actionDescription,
+              ),
           ],
           sentStepCount,
         ),
@@ -1119,7 +1149,14 @@ export const ConsoleItemDetailContainer = ({
                 timing.actionDescription,
               );
             },
-            () => operations.closeIssue(item, 'close', closeActionId, timing.openedToActionMs, timing.actionDescription),
+            () =>
+              operations.closeIssue(
+                item,
+                'close',
+                closeActionId,
+                timing.openedToActionMs,
+                timing.actionDescription,
+              ),
           ],
           sentStepCount,
         ),

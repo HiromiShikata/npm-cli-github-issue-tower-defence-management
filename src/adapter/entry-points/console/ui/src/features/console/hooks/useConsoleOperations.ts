@@ -856,7 +856,12 @@ export const useConsoleOperations = (
   );
 
   const setDependedIssueUrl = useCallback(
-    async (item: ConsoleListItem, dependedIssueUrl: string, openedToActionMs?: number, actionDescription?: string) => {
+    async (
+      item: ConsoleListItem,
+      dependedIssueUrl: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -872,7 +877,12 @@ export const useConsoleOperations = (
   );
 
   const replaceDependedIssueUrl = useCallback(
-    async (item: ConsoleListItem, dependedIssueUrl: string, openedToActionMs?: number, actionDescription?: string) => {
+    async (
+      item: ConsoleListItem,
+      dependedIssueUrl: string,
+      openedToActionMs?: number,
+      actionDescription?: string,
+    ) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
