@@ -383,10 +383,10 @@ describe('useConsoleActionQueue', () => {
       }),
     );
     expect(
-      JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string),
+      JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string),
     ).not.toHaveProperty('openedToActionMs');
     expect(
-      JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string),
+      JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string),
     ).not.toHaveProperty('actionDescription');
   });
 

@@ -4958,6 +4958,11 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       actionDescription:
         '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/100 に設定）',
     });
+    expect(onQueueAction.mock.calls[1][0].offline[1].requestBody).toEqual(
+      buildTriageRequest('acme', issueItem, 'set_status', {
+        statusName: AWAITING_WORKSPACE_NAME,
+      }),
+    );
     now.mockRestore();
   });
 
@@ -5174,9 +5179,6 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
           ...buildTriageRequest('acme', issueItem, 'set_status', {
             statusName: AWAITING_WORKSPACE_NAME,
           }),
-          openedToActionMs: 2500,
-          actionDescription:
-            '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
         },
       },
     ]);
@@ -5287,6 +5289,11 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       actionDescription:
         '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2 に設定）',
     });
+    expect(input.offline[1].requestBody).toEqual(
+      buildTriageRequest('acme', issueItem, 'set_status', {
+        statusName: AWAITING_WORKSPACE_NAME,
+      }),
+    );
 
     await input.commit(0);
 

@@ -6,6 +6,8 @@ import {
   within,
 } from '@testing-library/react';
 import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
+import { deliverPersistedConsoleAction } from '../hooks/consoleActionDelivery';
+import type { ConsoleOfflineQueuedAction } from '../hooks/useConsoleActionQueue';
 import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import * as consoleApi from '../lib/consoleApi';
 import { ACTION_TOAST_DELAY_MS } from '../logic/actionToast';
@@ -10255,6 +10257,7 @@ describe('ConsolePage selected item story color threading', () => {
 
 describe('ConsolePage offline action queue', () => {
   const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
+  const DELIVERY_QUEUE_STORAGE_KEY = 'console-action-delivery-queue';
   const pullRequestUrl = 'https://github.com/o/r/pull/851';
   const issueUrl = 'https://github.com/o/r/issues/866';
 
@@ -10262,6 +10265,9 @@ describe('ConsolePage offline action queue', () => {
 
   const readStoredOfflineQueue = (): Record<string, unknown>[] =>
     JSON.parse(localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]');
+
+  const readStoredDeliveryQueue = (): Record<string, unknown>[] =>
+    JSON.parse(localStorage.getItem(DELIVERY_QUEUE_STORAGE_KEY) ?? '[]');
 
   const respondWithPostedComment: PostResponder = async (_url, init) => ({
     ok: true,
@@ -10582,6 +10588,55 @@ describe('ConsolePage offline action queue', () => {
       ]);
     });
     expect(postedRequestBodies(fetchMock, '/api/comment')).toHaveLength(1);
+  });
+
+  it('persists and replays the press-time timing for a composer comment whose online request fails because the network is unavailable', async () => {
+    pinConsoleActionTiming();
+    const fetchMock = installOfflineQueueFetch(respondWithNetworkFailure);
+    const view = render(<ConsolePage />);
+    await openPullRequestDetail(view);
+
+    fireEvent.change(view.getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Written in a tunnel.' },
+    });
+    fireEvent.click(view.getByText('Comment'));
+
+    let persistedActions: Record<string, unknown>[] = [];
+    await waitFor(() => {
+      persistedActions = readStoredDeliveryQueue().filter(
+        (entry) => entry.apiPath === '/api/comment',
+      );
+      expect(persistedActions.length).toBeGreaterThan(0);
+    });
+
+    const actionId = persistedActions[0].actionId;
+    const entriesForAction = persistedActions.filter(
+      (entry) => entry.actionId === actionId,
+    );
+    expect(entriesForAction.length).toBeGreaterThan(0);
+    for (const entry of entriesForAction) {
+      const requestBody = entry.requestBody as Record<string, unknown>;
+      expect(requestBody.openedToActionMs).toBe(2501);
+      expect(requestBody.actionDescription).toBe('コメントを投稿しました');
+    }
+
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? respondWithPostedComment(url, init)
+        : { ok: true, status: 200, json: async () => ({}) },
+    );
+    await act(async () => {
+      await deliverPersistedConsoleAction(
+        entriesForAction[0] as unknown as ConsoleOfflineQueuedAction,
+      );
+    });
+
+    expect(postedRequestBodies(fetchMock, '/api/comment')).toContainEqual(
+      expect.objectContaining({
+        openedToActionMs: 2501,
+        actionDescription: 'コメントを投稿しました',
+      }),
+    );
   });
 
   it('holds both the ok comment and the close of OK & Close in order when its request fails because the network is unavailable', async () => {

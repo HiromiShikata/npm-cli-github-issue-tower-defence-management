@@ -1,9 +1,9 @@
 import {
+  type ConsoleActionTiming,
   clearConsoleItemOpenTimesForTest,
   computeOpenedToActionMs,
   readConsoleItemOpenedAt,
   recordConsoleItemOpened,
-  type ConsoleActionTiming,
   withConsoleActionTiming,
 } from './consoleItemOpenTimes';
 
