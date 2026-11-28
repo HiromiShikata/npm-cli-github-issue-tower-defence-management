@@ -527,6 +527,138 @@ describe('ConsolePage', () => {
     );
   });
 
+  it('keeps a per-file error visible after persisting a partial page upload result', async () => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/upload') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            results: [
+              {
+                fileName: 'first.png',
+                status: 'uploaded',
+                markdown: '![first.png](https://example.test/first)',
+              },
+              {
+                fileName: 'second.png',
+                status: 'failed',
+                error: 'distinctive page partial upload failure',
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const {
+      getByText,
+      getByLabelText,
+      getByPlaceholderText,
+      findByText,
+    } =
+      render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => getByPlaceholderText('Leave a comment…'));
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: {
+        files: [
+          createUploadTestFile('first.png'),
+          createUploadTestFile('second.png'),
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('console-comment-drafts')).toContain(
+        '![first.png](https://example.test/first)',
+      );
+    });
+    expect(
+      await findByText('distinctive page partial upload failure'),
+    ).toBeVisible();
+  });
+
+  it('keeps a single-file upload error visible after persisting the result', async () => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/upload') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            results: [
+              {
+                fileName: 'only.png',
+                status: 'failed',
+                error: 'distinctive page single upload failure',
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const {
+      getByText,
+      getByLabelText,
+      getByPlaceholderText,
+      findByText,
+    } =
+      render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => getByPlaceholderText('Leave a comment…'));
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [createUploadTestFile('only.png')] },
+    });
+
+    await waitFor(() => {
+      expect(getByPlaceholderText('Leave a comment…')).not.toHaveValue(
+        expect.stringContaining('uploading'),
+      );
+    });
+    expect(
+      await findByText('distinctive page single upload failure'),
+    ).toBeVisible();
+  });
+
   it('treats a closed Stories payload item as Done for the Stories list', async () => {
     localStorage.setItem(
       overlayStorageKey('acme'),

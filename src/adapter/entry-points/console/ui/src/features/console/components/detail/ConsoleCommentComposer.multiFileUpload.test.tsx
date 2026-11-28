@@ -199,7 +199,7 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
     );
   });
 
-  it('aborts an upload after 300000 ms and clears placeholders with a retryable error', async () => {
+  it('keeps an upload pending at 300000 ms and times out at 360000 ms with a retryable error', async () => {
     jest.useFakeTimers();
     try {
       const uploadFile = jest.fn(() => new Promise<string>(() => {}));
@@ -219,6 +219,13 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
       );
       await act(async () => {
         await jest.advanceTimersByTimeAsync(300000);
+      });
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+        expect.stringContaining('uploading'),
+      );
+      expect(queryByText(/Upload failed/)).toBeNull();
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(60000);
       });
       expect(getByPlaceholderText('Leave a comment…')).not.toHaveValue(
         expect.stringContaining('uploading'),

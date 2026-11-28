@@ -154,7 +154,7 @@ describe('multi-file console attachment upload contract', () => {
     });
   });
 
-  it('returns a timeout failure for each file not reported before 300000 ms', async () => {
+  it('returns a timeout failure for each file not reported by the server backstop', async () => {
     const response = await handleAttachmentUpload(
       uploadContext(async (request) =>
         request.files.map((file) => ({
