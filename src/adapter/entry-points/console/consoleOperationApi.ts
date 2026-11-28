@@ -704,13 +704,24 @@ export const handleReview = async (
     if (linkFailure !== null) {
       return linkFailure;
     }
+    const issueUrl = body.issueUrl;
+    if (isNonEmptyString(issueUrl)) {
+      const issueUrlFailure = await rejectWhenUrlIsNotProjectItemUrl(
+        context.resolveIssueRepository(issueUrl),
+        binding.project,
+        issueUrl,
+        projectItemId,
+      );
+      if (issueUrlFailure !== null) {
+        return issueUrlFailure;
+      }
+    }
     await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (isNonEmptyString(body.commentBody)) {
       await context
         .resolveIssueRepository(prUrl)
         .createCommentByUrl(prUrl, body.commentBody);
     }
-    const issueUrl = body.issueUrl;
     if (isNonEmptyString(issueUrl)) {
       const statusFailure = await updateStatusByName(
         context.resolveIssueRepository(issueUrl),
@@ -750,6 +761,15 @@ export const handleReview = async (
     );
     if (linkFailure !== null) {
       return linkFailure;
+    }
+    const issueUrlFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
+    if (issueUrlFailure !== null) {
+      return issueUrlFailure;
     }
     await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
     if (isNonEmptyString(body.commentBody)) {
