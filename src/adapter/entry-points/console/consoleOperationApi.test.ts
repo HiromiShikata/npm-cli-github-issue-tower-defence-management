@@ -12979,6 +12979,99 @@ describe('consoleOperationApi', () => {
       });
     });
 
+    it('keeps an ambiguous failed creation pending until a later search finds the issue', async () => {
+      const issueUrl = 'https://github.com/acme-labs/portal/issues/81';
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: issueUrl,
+        itemId: 'PVTI_pending_recovery',
+      };
+      issueRepository.createNewIssue.mockRejectedValueOnce(
+        new Error('response lost'),
+      );
+      issueRepository.searchIssue
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { url: issueUrl, title: body.title, number: '81' },
+        ]);
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      const first = await handleCreateIssue(createContext(), body);
+      const second = await handleCreateIssue(createContext(), body);
+
+      expect(first.statusCode).toBe(500);
+      expect(first.body).toEqual(
+        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
+      );
+      expect(second).toEqual({
+        statusCode: 200,
+        body: { ok: true, issueUrl },
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry creation while an ambiguous action remains unconfirmed', async () => {
+      issueRepository.createNewIssue.mockRejectedValue(
+        new Error('response lost'),
+      );
+      issueRepository.searchIssue.mockResolvedValue([]);
+
+      await handleCreateIssue(createContext(), body);
+      await handleCreateIssue(createContext(), body);
+      await handleCreateIssue(createContext(), body);
+
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(issueRepository.searchIssue).toHaveBeenCalledTimes(3);
+    });
+
+    it('recovers an ambiguous action after recreating the server context', async () => {
+      const issueUrl = 'https://github.com/acme-labs/portal/issues/82';
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: issueUrl,
+        itemId: 'PVTI_restart_recovery',
+      };
+      issueRepository.createNewIssue.mockRejectedValueOnce(
+        new Error('response lost'),
+      );
+      issueRepository.searchIssue
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { url: issueUrl, title: body.title, number: '82' },
+        ]);
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      await handleCreateIssue(createContext(), body);
+      const restartedContext = {
+        ...createContext(),
+        consoleDataOutputDir: baseDir,
+      };
+      const response = await handleCreateIssue(restartedContext, body);
+
+      expect(response).toEqual({
+        statusCode: 200,
+        body: { ok: true, issueUrl },
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+    });
+
+    it('searches an ambiguous creation with the requested title and authenticated assignee', async () => {
+      issueRepository.createNewIssue.mockRejectedValueOnce(
+        new Error('response lost'),
+      );
+      issueRepository.searchIssue.mockResolvedValueOnce([]);
+
+      await handleCreateIssue(createContext(), body);
+
+      expect(issueRepository.searchIssue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: body.title,
+          assignee: 'authenticated-user',
+          type: 'issue',
+        }),
+      );
+    });
+
     it('creates independently for requests without an actionId', async () => {
       const bodyWithoutActionId = Object.fromEntries(
         Object.entries(body).filter(([key]) => key !== 'actionId'),

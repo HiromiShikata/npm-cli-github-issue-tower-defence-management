@@ -259,6 +259,82 @@ describe('ConsolePage story-list create recovery', () => {
     }
   });
 
+  it('reuses the actionId when resubmitting the unchanged story-list dialog after an unknown failure', async () => {
+    jest.useFakeTimers();
+    try {
+      const requestBodies: Record<string, unknown>[] = [];
+      createStoryListFetch(
+        () => ({ ok: false, error: 'unknown creation state' }),
+        (_url, body) => requestBodies.push(body),
+      );
+      const { getByRole, getByPlaceholderText } = await openStoryCreateDialog();
+      fireEvent.change(getByPlaceholderText('Issue title'), {
+        target: { value: 'Unknown story-list task' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+
+      expect(requestBodies).toHaveLength(6);
+      expect(
+        requestBodies.every((requestBody) =>
+          requestBody.actionId === requestBodies[0].actionId,
+        ),
+      ).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('starts a new actionId when the story-list title changes before resubmission', async () => {
+    jest.useFakeTimers();
+    try {
+      const requestBodies: Record<string, unknown>[] = [];
+      createStoryListFetch(
+        () => ({ ok: false, error: 'unknown creation state' }),
+        (_url, body) => requestBodies.push(body),
+      );
+      const { getByRole, getByPlaceholderText } = await openStoryCreateDialog();
+      const titleInput = getByPlaceholderText('Issue title');
+      fireEvent.change(titleInput, { target: { value: 'Original story-list task' } });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+      fireEvent.change(titleInput, { target: { value: 'Changed story-list task' } });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      for (let i = 0; i < 8; i += 1) {
+        await act(async () => {
+          await Promise.resolve();
+          jest.advanceTimersByTime(1000);
+          for (let j = 0; j < 12; j += 1) await Promise.resolve();
+        });
+      }
+
+      expect(requestBodies).toHaveLength(6);
+      expect(requestBodies[3].actionId).not.toBe(requestBodies[0].actionId);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('uploads attachments to an incompletely created issue and names the failed project step', async () => {
     jest.useFakeTimers();
     try {

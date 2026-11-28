@@ -170,6 +170,21 @@ describe('createIssueWithRetry', () => {
     ).toContain('not found');
   });
 
+  it('returns unconfirmed when a not-created response is followed by transport failures', async () => {
+    const send = jest
+      .fn()
+      .mockResolvedValueOnce(
+        response(500, { ok: false, issueCreated: false, error: 'e' }),
+      )
+      .mockRejectedValueOnce(new Error('lost response'))
+      .mockRejectedValueOnce(new Error('lost response again'));
+    const wait = jest.fn().mockResolvedValue(undefined);
+
+    await expect(
+      createIssueWithRetry(send, request, { wait }),
+    ).resolves.toEqual(expect.objectContaining({ kind: 'unconfirmed' }));
+  });
+
   it('does not retry a non-retryable client error and includes its error', async () => {
     const send = jest
       .fn()
