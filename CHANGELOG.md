@@ -1,3 +1,10 @@
+# [2.219.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.218.1...v2.219.0) (2026-11-28)
+
+
+### Features
+
+* **console:** show remaining time and next project in timer button ([#3800](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3800)) ([b91d30b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b91d30b8e0fb4e0a6ce744c450314170f0d1f06a))
+
 ## [2.218.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.218.0...v2.218.1) (2026-11-28)
 
 
