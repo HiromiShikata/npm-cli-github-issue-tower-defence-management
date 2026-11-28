@@ -1090,6 +1090,7 @@ export const startConsoleE2eHarness = async (options?: {
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
+    isRepositoryConfigured: () => true,
     uiDistDir,
     consoleDataOutputDir,
     issueAttachmentRepository: {

@@ -11623,4 +11623,53 @@ describe('consoleOperationApi', () => {
       },
     );
   });
+
+  describe('depended issue append repository gate ordering', () => {
+    const dependedIssueProject: Project = {
+      ...project,
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL',
+        fieldId: 'dependedField',
+      },
+    };
+    const dependedIssueBody = {
+      pjcode: 'acme',
+      issueUrl: 'https://github.com/o/r/issues/1',
+      dependedIssueUrl: 'https://github.com/o/r/issues/2',
+    };
+
+    it('rejects the depended issue append for an unconfigured repository before resolving the project', async () => {
+      const resolveProject = jest.fn(context.resolveProject);
+      issueRepository.setDependedIssueUrl.mockClear();
+
+      const response = await handleSetDependedIssueUrl(
+        {
+          ...contextForProject(dependedIssueProject),
+          isRepositoryConfigured: () => false,
+          resolveProject,
+        },
+        dependedIssueBody,
+      );
+
+      expect(response.statusCode).toBe(403);
+      expect(resolveProject).not.toHaveBeenCalled();
+      expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('accepts the depended issue append for a configured repository', async () => {
+      issueRepository.setDependedIssueUrl.mockClear();
+      issueRepository.setDependedIssueUrl.mockResolvedValue(undefined);
+
+      const response = await handleSetDependedIssueUrl(
+        {
+          ...contextForProject(dependedIssueProject),
+          isRepositoryConfigured: () => true,
+        },
+        dependedIssueBody,
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(1);
+    });
+  });
 });

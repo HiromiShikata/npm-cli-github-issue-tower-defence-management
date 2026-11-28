@@ -20213,6 +20213,49 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     );
     return created;
   };
+
+  it('getAllIssues refreshes the project item list when refresh is requested', async () => {
+    const {
+      repository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      projectRepository,
+      dateRepository,
+    } = createApiV3CheerioRestIssueRepository();
+    const project = buildTestProject('refresh-project');
+    const itemA = buildProjectItem('https://github.com/o/r/issues/1', 'List A');
+    const itemB = buildProjectItem('https://github.com/o/r/issues/2', 'List B');
+    dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+    localStorageCacheRepository.getSingle.mockResolvedValue(null);
+    localStorageCacheRepository.setSingle.mockResolvedValue();
+    projectRepository.getProject.mockResolvedValue(project);
+    graphqlProjectItemRepository.fetchProjectItems
+      .mockResolvedValueOnce({
+        issues: [itemA],
+        inconsistencyMessage: null,
+      })
+      .mockResolvedValueOnce({
+        issues: [itemB],
+        inconsistencyMessage: null,
+      });
+
+    const firstResult = await repository.getAllIssues('refresh-project');
+    const refreshedResult = await repository.getAllIssues('refresh-project', {
+      refresh: true,
+    });
+    const memoizedResult = await repository.getAllIssues('refresh-project');
+
+    expect(firstResult.issues.map((issue) => issue.url)).toEqual([itemA.url]);
+    expect(refreshedResult.issues.map((issue) => issue.url)).toEqual([
+      itemB.url,
+    ]);
+    expect(memoizedResult.issues.map((issue) => issue.url)).toEqual([
+      itemB.url,
+    ]);
+    expect(
+      graphqlProjectItemRepository.fetchProjectItems,
+    ).toHaveBeenCalledTimes(2);
+  });
 });
 
 describeWhenCredentials(
