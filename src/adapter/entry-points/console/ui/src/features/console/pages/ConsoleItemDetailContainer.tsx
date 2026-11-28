@@ -251,6 +251,7 @@ export type ConsoleItemDetailContainerProps = {
   now: number;
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
+  onUploadFile?: (files: File | File[]) => Promise<string>;
   onCommentDraftRestored?: (projectItemId: string) => void;
   commentDraftRevision?: number;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
@@ -303,6 +304,7 @@ export const ConsoleItemDetailContainer = ({
   now,
   initialCommentDraft,
   onCommentDraftChange,
+  onUploadFile,
   onCommentDraftRestored,
   commentDraftRevision,
   onQueueAction,
@@ -1076,7 +1078,9 @@ export const ConsoleItemDetailContainer = ({
           onSubmitAndMoveToAwaitingWorkspace={
             addCommentAndMoveToAwaitingWorkspace
           }
-          onUploadFile={(file) => operations.uploadAttachment(item, file)}
+          onUploadFile={
+            onUploadFile ?? ((file) => operations.uploadAttachment(item, file))
+          }
           onOpenChange={setIsCommentComposerOpen}
         />
       }

@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  insertUploadPlaceholder,
+  removePlaceholder,
+  replacePlaceholderWithMarkdown,
+} from '../components/detail/ConsoleCommentComposer';
 import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
@@ -47,6 +52,7 @@ import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler'
 import { useConsoleTimerFirstItemAutoOpen } from '../hooks/useConsoleTimerFirstItemAutoOpen';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
+  attachmentMarkdownFromResult,
   encodeAttachmentContent,
   postConsoleAddStory,
   postConsoleAttachment,
@@ -250,12 +256,14 @@ export const createIssueWithAttachments = async (
     filesStillPending.map(async (file) => {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const contentBase64 = encodeAttachmentContent(bytes);
-      const markdown = await postConsoleAttachment({
-        pjcode,
-        url: issueUrl as string,
-        fileName: file.name,
-        contentBase64,
-      });
+      const markdown = attachmentMarkdownFromResult(
+        await postConsoleAttachment({
+          pjcode,
+          url: issueUrl as string,
+          fileName: file.name,
+          contentBase64,
+        }),
+      );
       return { fileName: file.name, markdown };
     }),
   );
@@ -458,7 +466,39 @@ export const ConsolePage = () => {
     timerMode && airplaneSnapshot === null,
   );
 
-  const commentDrafts = useRef(loadCommentDrafts());
+  const caches = useConsoleCaches(airplaneSnapshot);
+  const refreshQueuedTab = useCallback(
+    () => refreshSingleTab('queued'),
+    [refreshSingleTab],
+  );
+  const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
+  const [initialCommentDrafts] = useState(() => {
+    const drafts = loadCommentDrafts({ discardInterruptedUploads: true });
+    saveCommentDrafts(drafts);
+    return drafts;
+  });
+  const commentDrafts = useRef(initialCommentDrafts);
+  const [commentDraftRevision, setCommentDraftRevision] = useState(0);
+  const persistCommentDrafts = useCallback(() => {
+    saveCommentDrafts(commentDrafts.current);
+    window.dispatchEvent(new Event('console-comment-drafts-updated'));
+  }, []);
+  useEffect(() => {
+    const handleCommentDraftsUpdated = (): void => {
+      commentDrafts.current = loadCommentDrafts();
+      setCommentDraftRevision((previous) => previous + 1);
+    };
+    window.addEventListener(
+      'console-comment-drafts-updated',
+      handleCommentDraftsUpdated,
+    );
+    return () => {
+      window.removeEventListener(
+        'console-comment-drafts-updated',
+        handleCommentDraftsUpdated,
+      );
+    };
+  }, []);
   const handleCommentDraftChange = useCallback(
     (draft: string) => {
       if (selectedItemKey === null) return;
@@ -471,8 +511,6 @@ export const ConsolePage = () => {
     },
     [selectedItemKey],
   );
-
-  const [commentDraftRevision, setCommentDraftRevision] = useState(0);
   const selectedItemKeyRef = useRef<string | null>(selectedItemKey);
   selectedItemKeyRef.current = selectedItemKey;
   const commentDraftRestored = useCallback((itemKey: string) => {
@@ -488,17 +526,95 @@ export const ConsolePage = () => {
     [commentDraftRestored],
   );
 
-  const caches = useConsoleCaches(airplaneSnapshot);
-  const refreshQueuedTab = useCallback(
-    () => refreshSingleTab('queued'),
-    [refreshSingleTab],
-  );
-  const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const actionQueue = useConsoleActionQueue({
     isAirplaneModeOn: airplaneMode.status === 'on',
     projectCode: pjcode,
     restoreCommentDraft,
   });
+  const handleUploadFile = useCallback(
+    async (item: ConsoleListItem, files: File | File[]): Promise<string> => {
+      const selectedFiles = Array.isArray(files) ? files : [files];
+      let draftWithPlaceholders =
+        commentDrafts.current.get(item.projectItemId) ?? '';
+      for (const file of selectedFiles) {
+        const hadDraft = draftWithPlaceholders.length > 0;
+        const hadTrailingNewline = draftWithPlaceholders.endsWith('\n');
+        draftWithPlaceholders = insertUploadPlaceholder(
+          draftWithPlaceholders,
+          file.name,
+        );
+        if (hadDraft && !hadTrailingNewline) {
+          draftWithPlaceholders = draftWithPlaceholders.replace(
+            `\n\n\n\n![uploading ${file.name}]()`,
+            `\n\n\n![uploading ${file.name}]()`,
+          );
+        }
+      }
+      commentDrafts.current.set(item.projectItemId, draftWithPlaceholders);
+      saveCommentDrafts(commentDrafts.current);
+      let rawResult: string;
+      try {
+        rawResult = await operations.uploadAttachment(item, files);
+      } catch (error) {
+        let draft = commentDrafts.current.get(item.projectItemId) ?? '';
+        for (const file of selectedFiles) {
+          draft = removePlaceholder(draft, file.name);
+        }
+        if (draft) commentDrafts.current.set(item.projectItemId, draft);
+        else commentDrafts.current.delete(item.projectItemId);
+        saveCommentDrafts(commentDrafts.current);
+        const message =
+          error instanceof Error ? error.message : 'failed to upload file';
+        actionQueue.showError(
+          `Upload failed: ${selectedFiles.map((file) => file.name).join(', ')}`,
+          message,
+        );
+        throw error;
+      }
+      try {
+        const results: unknown = JSON.parse(rawResult);
+        if (Array.isArray(results)) {
+          let draft = commentDrafts.current.get(item.projectItemId) ?? '';
+          selectedFiles.forEach((file, index) => {
+            const result = results[index] as
+              | { status?: string; markdown?: string; error?: string }
+              | undefined;
+            if (result?.status !== 'uploaded') {
+              actionQueue.showError(
+                `Upload failed: ${file.name}`,
+                result?.error ?? 'failed to upload file',
+              );
+            }
+            draft =
+              result?.status === 'uploaded' &&
+              typeof result.markdown === 'string'
+                ? replacePlaceholderWithMarkdown(
+                    draft,
+                    file.name,
+                    result.markdown,
+                  )
+                : removePlaceholder(draft, file.name);
+          });
+          if (draft) commentDrafts.current.set(item.projectItemId, draft);
+          else commentDrafts.current.delete(item.projectItemId);
+          persistCommentDrafts();
+        }
+      } catch {
+        if (selectedFiles.length === 1) {
+          const draft = replacePlaceholderWithMarkdown(
+            commentDrafts.current.get(item.projectItemId) ?? '',
+            selectedFiles[0].name,
+            rawResult,
+          );
+          commentDrafts.current.set(item.projectItemId, draft);
+          persistCommentDrafts();
+        }
+        return rawResult;
+      }
+      return rawResult;
+    },
+    [actionQueue.showError, operations, persistCommentDrafts],
+  );
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {
@@ -2100,6 +2216,7 @@ export const ConsolePage = () => {
             commentDraftRevision={commentDraftRevision}
             onCommentDraftRestored={commentDraftRestored}
             onCommentDraftChange={handleCommentDraftChange}
+            onUploadFile={(files) => handleUploadFile(selectedItem, files)}
             onQueueAction={handleQueueAction}
             onCommentError={(message, reason) =>
               actionQueue.showError(message, reason)

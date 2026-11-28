@@ -36,6 +36,55 @@ describe('ConsoleCommentComposer', () => {
     );
   });
 
+  it.each([
+    ['literal backslash-n', 'draft\\\\ntext'],
+    ['literal backslash-n in a link label', '[draft\\\\ntext](url)'],
+  ])('%s remains unchanged when restored', (_caseName, initialDraft) => {
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        initialDraft={initialDraft}
+        onSubmit={stubSubmit}
+      />,
+    );
+
+    expect(getByPlaceholderText('Leave a comment…')).toHaveValue(initialDraft);
+  });
+
+  it('resynchronizes the mounted textarea with a changed persisted draft before the next keystroke', () => {
+    const { getByPlaceholderText, rerender } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        initialDraft="draft before upload"
+        onSubmit={stubSubmit}
+      />,
+    );
+
+    rerender(
+      <ConsoleCommentComposer
+        initiallyOpen
+        initialDraft={
+          'draft before upload\n![image.png](https://example.test/image)'
+        }
+        onSubmit={stubSubmit}
+      />,
+    );
+    const textarea = getByPlaceholderText('Leave a comment…');
+    expect(textarea).toHaveValue(
+      'draft before upload\n![image.png](https://example.test/image)',
+    );
+
+    fireEvent.change(textarea, {
+      target: {
+        value:
+          'draft before upload\n![image.png](https://example.test/image) more',
+      },
+    });
+    expect(textarea).toHaveValue(
+      'draft before upload\n![image.png](https://example.test/image) more',
+    );
+  });
+
   it('calls onDraftChange with every keystroke', () => {
     const onDraftChange = jest.fn();
     const { getByPlaceholderText } = render(

@@ -3,6 +3,10 @@ const mockSpawnSync = jest.fn();
 
 jest.mock('child_process', () => ({
   execFile: jest.fn(),
+  spawn: (...args: Parameters<typeof import('child_process').spawn>) =>
+    jest
+      .requireActual<typeof import('child_process')>('child_process')
+      .spawn(...args),
   spawnSync: jest.fn((...args: unknown[]) => {
     mockSpawnSync(...args);
   }),
@@ -23,6 +27,26 @@ describe('NodeLocalCommandRunner', () => {
   });
 
   describe('runCommand', () => {
+    it('returns at the backstop timeout when a detached child holds stdout open', async () => {
+      const resultPromise = runner.runCommand(
+        'sh',
+        ['-c', 'setsid sleep 20 & sleep 20'],
+        { killProcessGroup: true, timeout: 300 },
+      );
+      const result = await Promise.race([
+        resultPromise,
+        new Promise<never>((_, reject) =>
+          globalThis.setTimeout(
+            () => reject(new Error('command runner did not return')),
+            5000,
+          ),
+        ),
+      ]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toBe('upload timed out');
+    }, 15000);
+
     it('should execute command successfully', async () => {
       mockExecFileAsync.mockResolvedValue({
         stdout: 'command output',
@@ -40,6 +64,38 @@ describe('NodeLocalCommandRunner', () => {
         encoding: 'utf8',
         maxBuffer: 1024 * 1024 * 256,
       });
+    });
+
+    it('kills a long-running command after five minutes and reports a timeout', async () => {
+      const timeoutError = Object.assign(new Error('Command timed out'), {
+        code: 1,
+        killed: true,
+        signal: 'SIGTERM',
+        stdout: '',
+        stderr: '',
+      });
+      mockExecFileAsync.mockRejectedValue(timeoutError);
+
+      const result = await runner.runCommand('upload-file-to-gh-issue', [
+        '--output-format=jsonl',
+        '/tmp/attachment.png',
+        'https://github.com/o/r/issues/1',
+      ]);
+
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        'upload-file-to-gh-issue',
+        [
+          '--output-format=jsonl',
+          '/tmp/attachment.png',
+          'https://github.com/o/r/issues/1',
+        ],
+        expect.objectContaining({
+          timeout: 300000,
+          killSignal: 'SIGTERM',
+        }),
+      );
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toMatch(/timed out/i);
     });
 
     it('should handle command errors with exit code', async () => {

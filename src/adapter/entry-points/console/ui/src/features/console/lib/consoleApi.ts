@@ -465,8 +465,15 @@ export const postConsoleComment = async (
 };
 
 export const ATTACHMENT_UPLOAD_OPERATION_PATH = '/api/upload';
+export const ATTACHMENT_UPLOAD_BROWSER_ABORT_MS = 360000;
 
-export type ConsoleAttachmentUploadRequest = {
+export type ConsoleAttachmentUploadBatchRequest = {
+  pjcode: string;
+  url: string;
+  files: { fileName: string; contentBase64: string }[];
+};
+
+export type ConsoleAttachmentUploadSingleRequest = {
   pjcode: string;
   url: string;
   fileName: string;
@@ -481,23 +488,85 @@ export const encodeAttachmentContent = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
-export const postConsoleAttachment = async (
-  request: ConsoleAttachmentUploadRequest,
-): Promise<string> => {
-  const response = await fetch(ATTACHMENT_UPLOAD_OPERATION_PATH, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  if (!response.ok) {
-    throw new Error(await readOperationErrorReason(response));
+export const attachmentMarkdownFromResult = (raw: string): string => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return raw;
   }
-  const payload: unknown = await response.json();
-  if (!isRecord(payload) || typeof payload.markdown !== 'string') {
-    throw new Error('markdown was not returned');
+  if (!Array.isArray(parsed)) {
+    return raw;
   }
-  return payload.markdown;
+  const element: unknown = parsed[0];
+  if (
+    isRecord(element) &&
+    element.status === 'uploaded' &&
+    typeof element.markdown === 'string'
+  ) {
+    return element.markdown;
+  }
+  throw new Error(
+    isRecord(element) && typeof element.error === 'string'
+      ? element.error
+      : 'failed to upload file',
+  );
 };
+
+export function postConsoleAttachment(
+  request: ConsoleAttachmentUploadBatchRequest,
+): Promise<string>;
+export function postConsoleAttachment(
+  request: ConsoleAttachmentUploadSingleRequest,
+): Promise<string>;
+export async function postConsoleAttachment(
+  request:
+    ConsoleAttachmentUploadBatchRequest | ConsoleAttachmentUploadSingleRequest,
+): Promise<string> {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(
+    () => controller.abort(),
+    ATTACHMENT_UPLOAD_BROWSER_ABORT_MS,
+  );
+  const normalizedRequest =
+    'files' in request
+      ? request
+      : {
+          ...request,
+          files: [
+            {
+              fileName: request.fileName,
+              contentBase64: request.contentBase64,
+            },
+          ],
+        };
+  try {
+    const response = await fetch(ATTACHMENT_UPLOAD_OPERATION_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(normalizedRequest),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(await readOperationErrorReason(response));
+    }
+    const payload: unknown = await response.json();
+    if (isRecord(payload) && typeof payload.markdown === 'string') {
+      return payload.markdown;
+    }
+    if (!isRecord(payload) || !Array.isArray(payload.results)) {
+      throw new Error('attachment results were not returned');
+    }
+    return JSON.stringify(payload.results);
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error('upload timed out');
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
 
 export const ADD_STORY_OPERATION_PATH = '/api/addstory';
 

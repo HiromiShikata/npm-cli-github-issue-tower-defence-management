@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ATTACHMENT_UPLOAD_BROWSER_ABORT_MS } from '../../lib/consoleApi';
 import { resolveListContinuationOnKeyDown } from '../../lib/listContinuation';
 import type { ConsoleComment } from '../../logic/types';
 
@@ -13,7 +14,7 @@ export type ConsoleCommentComposerProps = {
     body: string,
   ) => Promise<ConsoleCommentSubmitResult>;
   onOkAndAwaitingWorkspace?: () => void;
-  onUploadFile?: (file: File) => Promise<string>;
+  onUploadFile?: (files: File | File[]) => Promise<string>;
   onOpenChange?: (open: boolean) => void;
 };
 
@@ -44,7 +45,7 @@ export const insertUploadPlaceholder = (
 ): string => {
   const placeholder = `![uploading ${fileName}]()`;
   const prefix = draft.length === 0 ? '' : draft.replace(/\n*$/, '\n');
-  return `${prefix}\n\n\n${placeholder}\n`;
+  return `${prefix}${draft.includes(placeholder) ? '' : '\n\n\n'}${placeholder}\n`;
 };
 
 export const replacePlaceholderWithMarkdown = (
@@ -90,7 +91,25 @@ export const ConsoleCommentComposer = ({
   onOpenChange,
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
-  const [draft, setDraft] = useState<string>(initialDraft ?? '');
+  const initialDraftValue = initialDraft ?? '';
+  const initialDisplayDraft = initialDraftValue;
+  const [draft, setDraft] = useState<string>(initialDisplayDraft);
+  const draftRef = useRef<string>(initialDisplayDraft);
+  const isMountedRef = useRef(true);
+  draftRef.current = draft;
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (initialDraftValue !== draftRef.current) {
+      const nextDraft = initialDraftValue;
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
+    }
+  }, [initialDraftValue]);
   useEffect(() => {
     onDraftChange?.(draft);
   }, [draft, onDraftChange]);
@@ -98,6 +117,7 @@ export const ConsoleCommentComposer = ({
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
     kind: 'idle',
   });
+  const hasUploadPlaceholder = draft.includes('![uploading ');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const cursorToRestoreRef = useRef<{ start: number; end: number } | null>(
@@ -124,6 +144,9 @@ export const ConsoleCommentComposer = ({
   };
 
   const submit = async (action: 'comment' | 'move'): Promise<void> => {
+    if (hasUploadPlaceholder) {
+      return;
+    }
     const body = draft.trim();
     if (
       body.length === 0 ||
@@ -156,27 +179,90 @@ export const ConsoleCommentComposer = ({
     if (onUploadFile === undefined || files.length === 0) {
       return;
     }
+    let draftWithPlaceholders = draftRef.current;
     for (const file of files) {
       saveCursorPosition();
-      setDraft((previous) => insertUploadPlaceholder(previous, file.name));
-      setUploadStatus({ kind: 'uploading', fileName: file.name });
+      draftWithPlaceholders = insertUploadPlaceholder(
+        draftWithPlaceholders,
+        file.name,
+      );
+    }
+    draftRef.current = draftWithPlaceholders;
+    setDraft(draftWithPlaceholders);
+    setUploadStatus({
+      kind: 'uploading',
+      fileName: files.map((file) => file.name).join(', '),
+    });
+    try {
+      const rawResult = await Promise.race([
+        onUploadFile(files.length === 1 ? files[0] : files),
+        new Promise<string>((_, reject) =>
+          globalThis.setTimeout(
+            () => reject(new Error('upload timed out')),
+            ATTACHMENT_UPLOAD_BROWSER_ABORT_MS,
+          ),
+        ),
+      ]);
+      let results: {
+        fileName: string;
+        status: 'uploaded' | 'failed';
+        markdown?: string;
+        error?: string;
+      }[];
       try {
-        const markdown = await onUploadFile(file);
-        saveCursorPosition();
-        setDraft((previous) =>
-          replacePlaceholderWithMarkdown(previous, file.name, markdown),
-        );
-        setUploadStatus({ kind: 'idle' });
-      } catch (error) {
-        saveCursorPosition();
-        setDraft((previous) => removePlaceholder(previous, file.name));
-        setUploadStatus({
-          kind: 'error',
-          message:
-            error instanceof Error ? error.message : 'failed to upload file',
-        });
-        return;
+        const parsed: unknown = JSON.parse(rawResult);
+        results = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        results = files.map((file) => ({
+          fileName: file.name,
+          status: 'uploaded',
+          markdown: rawResult,
+        }));
       }
+      let firstError: string | null = null;
+      files.forEach((file, index) => {
+        const result = results[index];
+        saveCursorPosition();
+        if (
+          result?.status === 'uploaded' &&
+          typeof result.markdown === 'string'
+        ) {
+          const nextDraft = replacePlaceholderWithMarkdown(
+            draftRef.current,
+            file.name,
+            result.markdown as string,
+          );
+          draftRef.current = nextDraft;
+          setDraft(nextDraft);
+          if (isMountedRef.current) {
+            onDraftChange?.(nextDraft);
+          }
+        } else {
+          const error = result?.error ?? 'failed to upload file';
+          firstError ??= error;
+          const nextDraft = removePlaceholder(draftRef.current, file.name);
+          draftRef.current = nextDraft;
+          setDraft(nextDraft);
+          if (isMountedRef.current) {
+            onDraftChange?.(nextDraft);
+          }
+        }
+      });
+      setUploadStatus(
+        firstError === null
+          ? { kind: 'idle' }
+          : { kind: 'error', message: firstError },
+      );
+    } catch (error) {
+      saveCursorPosition();
+      for (const file of files) {
+        setDraft((previous) => removePlaceholder(previous, file.name));
+      }
+      setUploadStatus({
+        kind: 'error',
+        message:
+          error instanceof Error ? error.message : 'failed to upload file',
+      });
     }
   };
 
@@ -310,7 +396,8 @@ export const ConsoleCommentComposer = ({
               disabled={
                 status.kind === 'posting' ||
                 isDraftEmpty ||
-                uploadStatus.kind === 'uploading'
+                uploadStatus.kind === 'uploading' ||
+                hasUploadPlaceholder
               }
               onClick={() => {
                 void submit('comment');
@@ -335,7 +422,8 @@ export const ConsoleCommentComposer = ({
                 disabled={
                   status.kind === 'posting' ||
                   isDraftEmpty ||
-                  uploadStatus.kind === 'uploading'
+                  uploadStatus.kind === 'uploading' ||
+                  hasUploadPlaceholder
                 }
                 onClick={() => {
                   void submit('move');

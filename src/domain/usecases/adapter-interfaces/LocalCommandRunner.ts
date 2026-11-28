@@ -1,5 +1,8 @@
 export interface LocalCommandRunnerOptions {
   env?: Record<string, string>;
+  timeout?: number;
+  killSignal?: NodeJS.Signals;
+  killProcessGroup?: boolean;
 }
 
 export interface LocalCommandRunner {

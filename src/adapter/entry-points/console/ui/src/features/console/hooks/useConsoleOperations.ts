@@ -106,7 +106,10 @@ export type ConsoleOperationsApi = {
     option: ConsoleFieldOption,
     actionId?: string,
   ) => Promise<ConsoleComment>;
-  uploadAttachment: (item: ConsoleListItem, file: File) => Promise<string>;
+  uploadAttachment: (
+    item: ConsoleListItem,
+    files: File | File[],
+  ) => Promise<string>;
   addInlineReviewComment: (
     prUrl: string,
     path: string,
@@ -671,18 +674,31 @@ export const useConsoleOperations = (
   );
 
   const uploadAttachment = useCallback(
-    async (item: ConsoleListItem, file: File) => {
+    async (item: ConsoleListItem, files: File | File[]) => {
       if (pjcode === null) {
         throw new Error('no project in the URL path');
       }
-      const contentBase64 = encodeAttachmentContent(
-        new Uint8Array(await file.arrayBuffer()),
+      const selectedFiles = Array.isArray(files) ? files : [files];
+      const encodedFiles = await Promise.all(
+        selectedFiles.map(async (file) => ({
+          fileName: file.name,
+          contentBase64: encodeAttachmentContent(
+            new Uint8Array(await file.arrayBuffer()),
+          ),
+        })),
       );
+      if (encodedFiles.length === 1) {
+        return postConsoleAttachment({
+          pjcode,
+          url: item.url,
+          fileName: encodedFiles[0].fileName,
+          contentBase64: encodedFiles[0].contentBase64,
+        });
+      }
       return postConsoleAttachment({
         pjcode,
         url: item.url,
-        fileName: file.name,
-        contentBase64,
+        files: encodedFiles,
       });
     },
     [pjcode],

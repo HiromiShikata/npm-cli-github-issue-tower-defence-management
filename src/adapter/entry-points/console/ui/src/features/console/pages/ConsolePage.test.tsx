@@ -20,6 +20,15 @@ import {
   createIssueWithAttachments,
 } from './ConsolePage';
 
+const createUploadTestFile = (name: string): File => {
+  const file = new File(['content'], name, { type: 'image/png' });
+  Object.defineProperty(file, 'arrayBuffer', {
+    configurable: true,
+    value: async (): Promise<ArrayBuffer> => new ArrayBuffer(0),
+  });
+  return file;
+};
+
 const tabBar = (): HTMLElement => {
   const nav = document.querySelector('nav.console-tabbar');
   if (nav === null) {
@@ -383,6 +392,265 @@ describe('ConsolePage', () => {
     localStorage.clear();
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     installFetch();
+  });
+
+  it('keeps typed text and the upload link in the originating task draft after navigation', async () => {
+    let resolveUpload!: (response: unknown) => void;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/upload') {
+        return new Promise((resolve) => {
+          resolveUpload = resolve;
+        });
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { getByText, getByLabelText, getByPlaceholderText, unmount } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    const textarea = await waitFor(() =>
+      getByPlaceholderText('Leave a comment…'),
+    );
+    fireEvent.change(textarea, { target: { value: 'more' } });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: {
+        files: [createUploadTestFile('first.png')],
+      },
+    });
+    await waitFor(() => {
+      expect(resolveUpload).toBeDefined();
+    });
+    unmount();
+    resolveUpload({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        results: [
+          {
+            fileName: 'first.png',
+            status: 'uploaded',
+            markdown: '![first.png](https://example.test/first)',
+          },
+        ],
+      }),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const reloaded = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        reloaded.getByText('Add serveConsole subcommand'),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(reloaded.getByText('Add serveConsole subcommand'));
+    const restoredTextarea = await waitFor(() =>
+      reloaded.getByPlaceholderText('Leave a comment…'),
+    );
+    await waitFor(() => {
+      expect(restoredTextarea).toHaveValue(
+        'more\n\n\n\n![first.png](https://example.test/first)\n',
+      );
+    });
+  });
+
+  it('removes a failed page upload placeholder from the originating persisted draft and shows the error', async () => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/upload') {
+        throw new Error('upload request rejected');
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { getByText, getByLabelText, getByPlaceholderText, getAllByRole } =
+      render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    const textarea = await waitFor(() =>
+      getByPlaceholderText('Leave a comment…'),
+    );
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: {
+        files: [createUploadTestFile('first.png')],
+      },
+    });
+    await waitFor(() => {
+      expect(
+        getAllByRole('alert').some((alert) =>
+          alert.textContent?.includes('upload request rejected'),
+        ),
+      ).toBe(true);
+    });
+    expect(textarea).not.toHaveValue(expect.stringContaining('uploading'));
+    const persistedDrafts = JSON.parse(
+      localStorage.getItem('console-comment-drafts') ?? '[]',
+    ) as [string, string][];
+    expect(persistedDrafts).not.toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          'https://github.com/o/r/pull/851',
+          expect.stringContaining('uploading'),
+        ]),
+      ]),
+    );
+  });
+
+  it('keeps a per-file error visible after persisting a partial page upload result', async () => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/upload') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            results: [
+              {
+                fileName: 'first.png',
+                status: 'uploaded',
+                markdown: '![first.png](https://example.test/first)',
+              },
+              {
+                fileName: 'second.png',
+                status: 'failed',
+                error: 'distinctive page partial upload failure',
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { getByText, getByLabelText, getByPlaceholderText, findByText } =
+      render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => getByPlaceholderText('Leave a comment…'));
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: {
+        files: [
+          createUploadTestFile('first.png'),
+          createUploadTestFile('second.png'),
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('console-comment-drafts')).toContain(
+        '![first.png](https://example.test/first)',
+      );
+    });
+    expect(
+      await findByText(/distinctive page partial upload failure/),
+    ).toBeVisible();
+  });
+
+  it('keeps a single-file upload error visible after persisting the result', async () => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/upload') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            results: [
+              {
+                fileName: 'only.png',
+                status: 'failed',
+                error: 'distinctive page single upload failure',
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { getByText, getByLabelText, getByPlaceholderText, findByText } =
+      render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => getByPlaceholderText('Leave a comment…'));
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [createUploadTestFile('only.png')] },
+    });
+
+    await waitFor(() => {
+      expect(getByPlaceholderText('Leave a comment…')).not.toHaveValue(
+        expect.stringContaining('uploading'),
+      );
+    });
+    expect(
+      await findByText(/distinctive page single upload failure/),
+    ).toBeVisible();
   });
 
   it('treats a closed Stories payload item as Done for the Stories list', async () => {
@@ -3122,6 +3390,155 @@ describe('ConsolePage draft preservation', () => {
         'work in progress',
       );
     });
+  });
+
+  it('shows a thrown upload error after the user has navigated to another task', async () => {
+    let rejectUpload!: (reason: unknown) => void;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (url === '/api/upload') {
+        return new Promise((_, reject) => {
+          rejectUpload = reject;
+        });
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const {
+      container,
+      getByText,
+      getByLabelText,
+      getByPlaceholderText,
+      findByText,
+    } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    const textarea = await waitFor(() =>
+      getByPlaceholderText('Leave a comment…'),
+    );
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [createUploadTestFile('first.png')] },
+    });
+    await waitFor(() => {
+      expect(rejectUpload).toBeDefined();
+      expect(textarea).toHaveValue('\n\n\n![uploading first.png]()\n');
+    });
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+
+    rejectUpload(new Error('page thrown upload failure'));
+    expect(await findByText(/page thrown upload failure/)).toBeVisible();
+    const persistedDrafts = JSON.parse(
+      localStorage.getItem('console-comment-drafts') ?? '[]',
+    ) as [string, string][];
+    expect(persistedDrafts).not.toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          'https://github.com/o/r/pull/851',
+          expect.stringContaining('uploading'),
+        ]),
+      ]),
+    );
+  });
+
+  it('shows a thrown upload error after the user has returned to the same task', async () => {
+    let rejectUpload!: (reason: unknown) => void;
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      if (url === '/api/upload') {
+        return new Promise((_, reject) => {
+          rejectUpload = reject;
+        });
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const {
+      container,
+      getByText,
+      getByLabelText,
+      getByPlaceholderText,
+      findByText,
+    } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    const textarea = await waitFor(() =>
+      getByPlaceholderText('Leave a comment…'),
+    );
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [createUploadTestFile('first.png')] },
+    });
+    await waitFor(() => {
+      expect(rejectUpload).toBeDefined();
+      expect(textarea).toHaveValue('\n\n\n![uploading first.png]()\n');
+    });
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 40, clientY: 100 },
+      { clientX: 240, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_1');
+    });
+
+    rejectUpload(new Error('page return thrown upload failure'));
+    expect(await findByText(/page return thrown upload failure/)).toBeVisible();
+    const persistedDrafts = JSON.parse(
+      localStorage.getItem('console-comment-drafts') ?? '[]',
+    ) as [string, string][];
+    expect(persistedDrafts).not.toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          'https://github.com/o/r/pull/851',
+          expect.stringContaining('uploading'),
+        ]),
+      ]),
+    );
   });
 
   it('restores the draft present at click time when Undo is clicked after Comment & Awaiting Workspace, once the task is reopened', async () => {

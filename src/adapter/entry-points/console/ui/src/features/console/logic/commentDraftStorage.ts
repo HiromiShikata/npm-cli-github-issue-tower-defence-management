@@ -1,20 +1,34 @@
 const STORAGE_KEY = 'console-comment-drafts';
 
-export const loadCommentDrafts = (): Map<string, string> => {
+const removeUploadPlaceholders = (draft: string): string =>
+  draft.replace(/\n{0,3}!\[uploading .*?\]\(\)\n?/g, '');
+
+export const loadCommentDrafts = (options?: {
+  discardInterruptedUploads?: boolean;
+}): Map<string, string> => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === null) return new Map();
     const parsed: unknown = JSON.parse(stored);
     if (!Array.isArray(parsed)) return new Map();
-    return new Map(
-      parsed.filter(
-        (entry): entry is [string, string] =>
-          Array.isArray(entry) &&
-          entry.length === 2 &&
-          typeof entry[0] === 'string' &&
-          typeof entry[1] === 'string',
-      ),
+    const drafts = new Map(
+      parsed
+        .filter(
+          (entry): entry is [string, string] =>
+            Array.isArray(entry) &&
+            entry.length === 2 &&
+            typeof entry[0] === 'string' &&
+            typeof entry[1] === 'string',
+        )
+        .map(([itemKey, draft]) => [
+          itemKey,
+          options?.discardInterruptedUploads
+            ? removeUploadPlaceholders(draft)
+            : draft,
+        ]),
     );
+    if (options?.discardInterruptedUploads) saveCommentDrafts(drafts);
+    return drafts;
   } catch (e) {
     console.error('Failed to load comment drafts from storage:', e);
     return new Map();
