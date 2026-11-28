@@ -1,5 +1,27 @@
 const consoleItemOpenedAtMs = new Map<string, number>();
 
+export type ConsoleActionTiming = {
+  openedToActionMs?: number;
+  actionDescription: string;
+};
+
+export const withConsoleActionTiming = <
+  T extends { requestBody: Record<string, unknown> },
+>(
+  payload: T,
+  timing: ConsoleActionTiming,
+): T => {
+  if (timing.openedToActionMs === undefined) return payload;
+  return {
+    ...payload,
+    requestBody: {
+      ...payload.requestBody,
+      openedToActionMs: timing.openedToActionMs,
+      actionDescription: timing.actionDescription,
+    },
+  };
+};
+
 export const recordConsoleItemOpened = (
   itemUrl: string,
   openedAtMs: number,
