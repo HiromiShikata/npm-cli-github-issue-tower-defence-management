@@ -299,12 +299,15 @@ body {
   color: #6e7681;
 }
 
-.console-timer-settings-button[data-tone='warning'] .console-timer-settings-button-time {
+.console-timer-settings-button[data-tone='warning']
+  .console-timer-settings-button-time {
   color: #d29922;
 }
 
-.console-timer-settings-button[data-tone='danger'] .console-timer-settings-button-time,
-.console-timer-settings-button[data-tone='danger'] .console-timer-settings-button-next {
+.console-timer-settings-button[data-tone='danger']
+  .console-timer-settings-button-time,
+.console-timer-settings-button[data-tone='danger']
+  .console-timer-settings-button-next {
   color: #f85149;
 }
 
@@ -312,9 +315,12 @@ body {
   color: #6e7681;
 }
 
-.console-timer-settings-button[data-tone='muted'] .console-timer-settings-button-time,
-.console-timer-settings-button[data-tone='muted'] .console-timer-settings-button-arrow,
-.console-timer-settings-button[data-tone='muted'] .console-timer-settings-button-next {
+.console-timer-settings-button[data-tone='muted']
+  .console-timer-settings-button-time,
+.console-timer-settings-button[data-tone='muted']
+  .console-timer-settings-button-arrow,
+.console-timer-settings-button[data-tone='muted']
+  .console-timer-settings-button-next {
   color: #6e7681;
 }
 

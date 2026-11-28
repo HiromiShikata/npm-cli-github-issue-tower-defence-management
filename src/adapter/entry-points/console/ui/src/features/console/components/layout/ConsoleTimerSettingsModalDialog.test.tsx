@@ -424,25 +424,25 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     { tone: 'warning', timeText: '00:59', nextText: 'gamma' },
     { tone: 'danger', timeText: 'next submit', nextText: 'alpha' },
     { tone: 'muted', timeText: '00:00', nextText: 'none' },
-  ] as ConsoleTimerHeaderView[])('renders a $tone timer header view', (view) => {
-    const { getByRole } = render(
-      <ConsoleTimerSettingsModalDialog
-        {...baseProps}
-        timerHeaderView={view}
-      />,
-    );
-    const button = getByRole('button', { name: 'Settings' });
-    expect(button).toHaveAttribute('data-tone', view.tone);
-    expect(button).toHaveTextContent(view.timeText);
-    expect(button).toHaveTextContent(view.nextText);
-  });
+  ] as ConsoleTimerHeaderView[])(
+    'renders a $tone timer header view',
+    (view) => {
+      const { getByRole } = render(
+        <ConsoleTimerSettingsModalDialog
+          {...baseProps}
+          timerHeaderView={view}
+        />,
+      );
+      const button = getByRole('button', { name: 'Settings' });
+      expect(button).toHaveAttribute('data-tone', view.tone);
+      expect(button).toHaveTextContent(view.timeText);
+      expect(button).toHaveTextContent(view.nextText);
+    },
+  );
 
   it('renders only the timer icon when the timer header view is null', () => {
     const { getByRole } = render(
-      <ConsoleTimerSettingsModalDialog
-        {...baseProps}
-        timerHeaderView={null}
-      />,
+      <ConsoleTimerSettingsModalDialog {...baseProps} timerHeaderView={null} />,
     );
     expect(getByRole('button', { name: 'Settings' })).toHaveTextContent('⏱');
     expect(getByRole('button', { name: 'Settings' }).textContent).toBe('⏱');

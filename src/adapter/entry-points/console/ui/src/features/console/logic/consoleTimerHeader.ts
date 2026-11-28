@@ -25,9 +25,7 @@ export type ConsoleTimerHeaderViewInput = {
 
 type ConsoleTimerHeaderViewBuildInput = Omit<
   ConsoleTimerHeaderViewInput,
-  | 'projectMinutes'
-  | 'projectTodoByHumanCounts'
-  | 'projectAwaitingOwnerCounts'
+  'projectMinutes' | 'projectTodoByHumanCounts' | 'projectAwaitingOwnerCounts'
 > & {
   projectMinutes: Record<string, number | undefined>;
   projectTodoByHumanCounts: Record<string, number | undefined>;
@@ -60,15 +58,13 @@ export const buildConsoleTimerHeaderView = (
   if (input.pjcode === null) {
     return null;
   }
-  const minutes =
-    input.projectMinutes[input.pjcode] ?? DEFAULT_TIMER_MINUTES;
+  const minutes = input.projectMinutes[input.pjcode] ?? DEFAULT_TIMER_MINUTES;
   if (minutes <= 0) {
     return null;
   }
 
   const remainingMilliseconds =
-    minutes * MILLISECONDS_PER_MINUTE -
-    (input.nowMs - input.timerStartedAtMs);
+    minutes * MILLISECONDS_PER_MINUTE - (input.nowMs - input.timerStartedAtMs);
   const nextPjcode = findNextPjcodeWithMinutes(
     input.pjcodes,
     input.pjcode,
@@ -76,10 +72,7 @@ export const buildConsoleTimerHeaderView = (
     numberRecordWithoutUndefined(input.projectTodoByHumanCounts),
     numberRecordWithoutUndefined(input.projectAwaitingOwnerCounts),
   );
-  const remainingSeconds = Math.max(
-    0,
-    Math.ceil(remainingMilliseconds / 1000),
-  );
+  const remainingSeconds = Math.max(0, Math.ceil(remainingMilliseconds / 1000));
 
   if (nextPjcode === null) {
     return {
@@ -92,7 +85,8 @@ export const buildConsoleTimerHeaderView = (
     return { tone: 'danger', timeText: 'next submit', nextText: nextPjcode };
   }
   return {
-    tone: remainingMilliseconds < MILLISECONDS_PER_MINUTE ? 'warning' : 'normal',
+    tone:
+      remainingMilliseconds < MILLISECONDS_PER_MINUTE ? 'warning' : 'normal',
     timeText: formatConsoleTimerRemaining(remainingSeconds),
     nextText: nextPjcode,
   };

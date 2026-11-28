@@ -86,7 +86,12 @@ export const Off: Story = {
 };
 
 export const Counting: Story = {
-  args: { isOpen: false, timerMode: true, isTimerActive: true, timerHeaderView: normalView },
+  args: {
+    isOpen: false,
+    timerMode: true,
+    isTimerActive: true,
+    timerHeaderView: normalView,
+  },
 };
 
 export const LastMinute: Story = {
@@ -103,7 +108,11 @@ export const Expired: Story = {
     isOpen: false,
     timerMode: true,
     isTimerActive: true,
-    timerHeaderView: { tone: 'danger', timeText: 'next submit', nextText: 'xcare' },
+    timerHeaderView: {
+      tone: 'danger',
+      timeText: 'next submit',
+      nextText: 'xcare',
+    },
   },
 };
 
