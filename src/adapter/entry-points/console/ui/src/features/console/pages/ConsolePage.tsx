@@ -265,18 +265,14 @@ export const createIssueWithAttachments = async (
         'createIssueWithAttachments: failed to create issue',
         outcome.reason,
       );
-      throw new Error(
-        `The task was not created. Retrying will not create a duplicate: ${outcome.reason}`,
-      );
+      throw new Error('Failed to create the task. Please try again.');
     }
     if (outcome.kind === 'unconfirmed') {
       console.error(
         'createIssueWithAttachments: creation state was unconfirmed',
         outcome.reason,
       );
-      throw new Error(
-        `The creation state could not be confirmed. Retrying will not create a duplicate: ${outcome.reason}`,
-      );
+      throw new Error('Failed to create the task. Please try again.');
     }
     issueUrl = outcome.issueUrl;
     if (outcome.kind === 'createdWithIncompleteStep') {
@@ -1417,13 +1413,25 @@ export const ConsolePage = () => {
       if (defaultNameWithOwner === null) {
         throw new Error('No repository configured for this project.');
       }
-      await postConsoleCreateIssue({
+      const response = await postConsoleCreateIssue({
         pjcode,
         title,
         storyName,
         nameWithOwner: defaultNameWithOwner,
         actionId: generateActionId(),
       });
+      if (
+        typeof response === 'string' ||
+        (response.httpStatus >= 200 &&
+          response.httpStatus < 300 &&
+          typeof response.body === 'object' &&
+          response.body !== null &&
+          !Array.isArray(response.body) &&
+          typeof (response.body as { issueUrl?: unknown }).issueUrl === 'string')
+      ) {
+        return;
+      }
+      throw new Error('Failed to create the task. Please try again.');
     },
     [pjcode, defaultNameWithOwner],
   );

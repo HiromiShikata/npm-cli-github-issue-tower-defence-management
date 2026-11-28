@@ -37,10 +37,13 @@ const outcomeFromResponse = (
       : null;
   }
   const issueUrl = bodyString(body, 'issueUrl');
-  if (httpStatus >= 200 && httpStatus < 300 && body.ok === true && issueUrl) {
+  if (httpStatus >= 200 && httpStatus < 300 && issueUrl) {
     return { kind: 'created', issueUrl };
   }
   if (httpStatus >= 400 && httpStatus < 500) {
+    return { kind: 'notCreated', reason: reasonFromBody(body) };
+  }
+  if (httpStatus >= 500 && typeof body.issueCreated !== 'boolean') {
     return { kind: 'notCreated', reason: reasonFromBody(body) };
   }
   if (httpStatus === 500 && body.issueCreated === true && issueUrl) {
@@ -54,7 +57,7 @@ const outcomeFromResponse = (
       };
     }
   }
-  if (httpStatus === 500 && body.issueCreated === false) {
+  if (httpStatus >= 500 && body.issueCreated !== true) {
     return { kind: 'notCreated', reason: reasonFromBody(body) };
   }
   return null;
@@ -76,6 +79,14 @@ export const createIssueWithRetry = async (
         latestOutcome = outcome;
         if (response.httpStatus >= 200 && response.httpStatus < 300) return outcome;
         if (response.httpStatus >= 400 && response.httpStatus < 500) return outcome;
+        if (
+          outcome.kind === 'notCreated' &&
+          response.httpStatus >= 500 &&
+          isRecord(response.body) &&
+          typeof response.body.issueCreated !== 'boolean'
+        ) {
+          return outcome;
+        }
       }
     } catch (error) {
       latestTransportError = error instanceof Error ? error.message : String(error);

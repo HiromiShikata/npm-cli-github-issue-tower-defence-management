@@ -663,10 +663,21 @@ export const postConsoleCreateIssue = async (
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
-  return {
-    httpStatus: response.status || (response.ok ? 200 : 500),
-    body: await response.json(),
-  };
+  const httpStatus = response.status || (response.ok ? 200 : 500);
+  try {
+    return {
+      httpStatus,
+      body: await response.json(),
+    };
+  } catch {
+    return {
+      httpStatus,
+      body: {
+        ok: false,
+        error: await readOperationErrorReason(response),
+      },
+    };
+  }
 };
 
 export const REORDER_STORY_OPERATION_PATH = '/api/reorderstory';
