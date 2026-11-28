@@ -1,6 +1,6 @@
 import { act, fireEvent, render } from '@testing-library/react';
-import { DEFAULT_TIMER_MINUTES } from '../../logic/timerSettings';
 import type { ConsoleTimerHeaderView } from '../../logic/consoleTimerHeader';
+import { DEFAULT_TIMER_MINUTES } from '../../logic/timerSettings';
 import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDialog';
 
 const baseProps = {
