@@ -1238,6 +1238,39 @@ describe('useConsoleTabData network retry', () => {
     expect([61_000 - 31_000, 91_000 - 61_000]).toEqual([30_000, 30_000]);
   });
 
+  it('restarts the 1-second retry delay after the list recovers from a network failure', async () => {
+    const requestTimes: number[] = [];
+    const startTime = Date.now();
+    let requestCount = 0;
+    const fetchMock = jest.fn(async (url: string) => {
+      if (url.includes('/prs/')) {
+        requestTimes.push(Date.now() - startTime);
+      }
+      const requestRound = Math.floor(requestCount / CONSOLE_TABS.length);
+      requestCount += 1;
+      if (requestRound === 1 || requestRound === 2 || requestRound === 4) {
+        throw new TypeError('Failed to fetch');
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => makeTabPayload(),
+      };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    renderHook(() => useConsoleTabData('acme'));
+    await flushTabDataTimers(0);
+    await flushTabDataTimers(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+    await flushTabDataTimers(1000);
+    await flushTabDataTimers(2000);
+    await flushTabDataTimers(CONSOLE_TAB_REFRESH_INTERVAL_MS - 3000);
+
+    expect(requestTimes).toContain(120_000);
+    await flushTabDataTimers(1000);
+    expect(requestTimes).toContain(121_000);
+  });
+
   it.each([
     {
       eventName: 'online',
