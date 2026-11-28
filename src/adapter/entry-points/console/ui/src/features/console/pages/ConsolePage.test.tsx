@@ -594,7 +594,7 @@ describe('ConsolePage', () => {
       );
     });
     expect(
-      await findByText('distinctive page partial upload failure'),
+      await findByText(/distinctive page partial upload failure/),
     ).toBeVisible();
   });
 
@@ -655,7 +655,7 @@ describe('ConsolePage', () => {
       );
     });
     expect(
-      await findByText('distinctive page single upload failure'),
+      await findByText(/distinctive page single upload failure/),
     ).toBeVisible();
   });
 
