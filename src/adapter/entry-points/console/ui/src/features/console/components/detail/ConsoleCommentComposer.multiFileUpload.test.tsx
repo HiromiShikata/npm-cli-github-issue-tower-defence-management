@@ -103,6 +103,44 @@ describe('ConsoleCommentComposer multi-file attachment acceptance', () => {
     expect(textarea).not.toHaveValue(expect.stringContaining('uploading'));
   });
 
+  it('matches same-name upload results to placeholders by request index', async () => {
+    const firstFile = new File(['first'], 'image.png', { type: 'image/png' });
+    const secondFile = new File(['second'], 'image.png', {
+      type: 'image/png',
+    });
+    const uploadFiles = jest.fn(async (): Promise<string> =>
+      JSON.stringify([
+        {
+          fileName: firstFile.name,
+          status: 'uploaded',
+          markdown: '![first](https://example.test/first)',
+        },
+        {
+          fileName: secondFile.name,
+          status: 'uploaded',
+          markdown: '![second](https://example.test/second)',
+        },
+      ]),
+    );
+    const { getByLabelText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={submitComment}
+        onUploadFile={uploadFiles}
+      />,
+    );
+
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [firstFile, secondFile] },
+    });
+
+    await waitFor(() => {
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+        '\n\n\n![first](https://example.test/first)\n![second](https://example.test/second)\n',
+      );
+    });
+  });
+
   it('writes a completed upload into the originating task draft after navigation', async () => {
     let resolveUpload!: (markdown: string) => void;
     const onDraftChange = jest.fn();
