@@ -10834,10 +10834,14 @@ describe('consoleOperationApi', () => {
     });
 
     it('creates an issue in the specified repository and returns its URL', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: 'Fix the workflow pipeline',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(200);
       expect(response.body).toMatchObject({
         ok: true,
@@ -10854,10 +10858,14 @@ describe('consoleOperationApi', () => {
     });
 
     it('trims the title before creating the issue', async () => {
-      await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: '  Trimmed title  ',
-      });
+      await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: '  Trimmed title  ',
+        },
+        () => true,
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'HiromiShikata',
         'secretary',
@@ -10869,32 +10877,48 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when nameWithOwner is missing', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        title: 'Some title',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          title: 'Some title',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 400 when title is missing', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 400 when nameWithOwner has no slash', async () => {
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'invalid',
-        title: 'Some title',
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'invalid',
+          title: 'Some title',
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('uses empty body when body field is absent', async () => {
-      await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-      });
+      await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: 'Fix the workflow pipeline',
+        },
+        () => true,
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'HiromiShikata',
         'secretary',
@@ -10908,11 +10932,15 @@ describe('consoleOperationApi', () => {
     it('creates issue with the body field directly when body is provided, without double-quoting', async () => {
       const preFormattedBody =
         'https://github.com/owner/repo/issues/1\n\nSource issue title\n\n\n\n\n\n> Line one of the comment.\n> Line two of the comment.';
-      const response = await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-        body: preFormattedBody,
-      });
+      const response = await handleCreateWorkflowIssue(
+        issueRepository,
+        {
+          nameWithOwner: 'HiromiShikata/secretary',
+          title: 'Fix the workflow pipeline',
+          body: preFormattedBody,
+        },
+        () => true,
+      );
       expect(response.statusCode).toBe(200);
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'HiromiShikata',
