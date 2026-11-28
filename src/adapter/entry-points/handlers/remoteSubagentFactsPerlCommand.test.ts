@@ -127,8 +127,10 @@ const runCommand = (
   shell: string,
   command: string,
   procDirectory: string,
+  cwd?: string,
 ): string =>
   execFileSync(shell, ['-c', command], {
+    cwd,
     env: {
       PATH: process.env.PATH ?? '',
       LC_ALL: 'C',
@@ -463,6 +465,35 @@ describe('REMOTE_SUBAGENT_FACTS_COMMAND perl output', () => {
         );
         expect(actual).toBe(expected);
         expect(actual).not.toBe('');
+      } finally {
+        fs.rmSync(layout.root, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(['sh', 'bash'])(
+    'reads a TDPM_PROC_DIR of 0 as a relative directory name under %s, as the shell does',
+    (shell) => {
+      const layout = makeLayout();
+      try {
+        writeWorker(layout, '10', '1', ISSUE_URL, [
+          `CLAUDE_CONFIG_DIR=${layout.config}`,
+        ]);
+        fs.renameSync(layout.proc, path.join(layout.root, '0'));
+        const expected = runCommand(
+          shell,
+          LEGACY_REMOTE_SUBAGENT_FACTS_COMMAND,
+          '0',
+          layout.root,
+        );
+        const actual = runCommand(
+          shell,
+          REMOTE_SUBAGENT_FACTS_COMMAND,
+          '0',
+          layout.root,
+        );
+        expect(actual).toBe(expected);
+        expect(actual).toContain('10\t1\tclaude-worker');
       } finally {
         fs.rmSync(layout.root, { recursive: true, force: true });
       }

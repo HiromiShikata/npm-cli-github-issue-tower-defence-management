@@ -128,7 +128,7 @@ sub base64 {
   $encoded .= q{=} x ((4 - length($encoded) % 4) % 4);
   return $encoded;
 }
-my $proc = $ENV{TDPM_PROC_DIR} || q{/proc};
+my $proc = defined $ENV{TDPM_PROC_DIR} && $ENV{TDPM_PROC_DIR} ne q{} ? $ENV{TDPM_PROC_DIR} : q{/proc};
 for my $name (grep { /\A[0-9]/ } visible_names($proc)) {
   my $dir = "$proc/$name";
   next unless -d $dir;

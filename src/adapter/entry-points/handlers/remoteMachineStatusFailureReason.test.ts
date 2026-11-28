@@ -185,4 +185,87 @@ describe('writeRemoteMachineStatus subagent count failure logging', () => {
       ],
     });
   });
+  it.each([
+    {
+      name: 'the timeout',
+      factsRunner: (): Promise<string> =>
+        defaultRemoteCommandRunner(
+          { file: '/bin/sh', args: ['-c', 'exec sleep 5'] },
+          100,
+        ),
+      expected: 'exceeded the 0.1 s timeout',
+    },
+    {
+      name: 'a non-zero exit code with stderr noise',
+      factsRunner: (timeoutMs: number): Promise<string> =>
+        defaultRemoteCommandRunner(
+          {
+            file: '/bin/sh',
+            args: ['-c', "printf 'ignored null byte in input\\n' >&2; exit 3"],
+          },
+          timeoutMs,
+        ),
+      expected: 'non-zero exit code 3; stderr: ignored null byte in input',
+    },
+    {
+      name: 'output over 1 MB',
+      factsRunner: (timeoutMs: number): Promise<string> =>
+        defaultRemoteCommandRunner(
+          { file: '/bin/sh', args: ['-c', 'head -c 1100000 /dev/zero'] },
+          timeoutMs,
+        ),
+      expected: 'output over 1 MB',
+    },
+    {
+      name: 'perl not found',
+      factsRunner: (): Promise<string> =>
+        Promise.resolve(`${REMOTE_SUBAGENT_FACTS_PERL_MISSING_MARKER}\n`),
+      expected: 'perl not found on the worker',
+    },
+  ])(
+    'logs the reason first for $name and keeps the host metrics',
+    async ({ factsRunner, expected }) => {
+      const dashboardDataDir = makeTempDirectory();
+      const workerHostsPath = path.join(
+        makeTempDirectory(),
+        'worker-hosts.yml',
+      );
+      fs.writeFileSync(
+        workerHostsPath,
+        'hosts:\n  - name: worker-a\n    address: 192.0.2.10\n    port: 2222\n    user: worker-user\n',
+      );
+      const reportError = jest.fn<void, [string]>();
+      await writeRemoteMachineStatus({
+        dashboardDataDir,
+        workerHostsPath,
+        reportError,
+        now: new Date('2026-11-28T00:00:00.000Z'),
+        runRemoteCommand: (invocation, timeoutMs) =>
+          invocation.args[invocation.args.length - 1] ===
+          REMOTE_SUBAGENT_FACTS_COMMAND
+            ? factsRunner(timeoutMs)
+            : Promise.resolve(metricsOutput),
+      });
+      expect(reportError).toHaveBeenCalledTimes(1);
+      expect(reportError).toHaveBeenCalledWith(
+        `remote machine worker-a subagent counts could not be measured: ${expected}`,
+      );
+      const written: unknown = JSON.parse(
+        fs.readFileSync(
+          path.join(dashboardDataDir, 'remote-machine-status.json'),
+          'utf8',
+        ),
+      );
+      expect(written).toMatchObject({
+        machines: [
+          {
+            name: 'worker-a',
+            reachable: true,
+            memPct: 25,
+            subagentCounts: null,
+          },
+        ],
+      });
+    },
+  );
 });
