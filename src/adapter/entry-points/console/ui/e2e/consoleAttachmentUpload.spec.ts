@@ -138,9 +138,7 @@ test('shows the error for a single file that fails to upload', async ({
     ).toEqual([SINGLE_FAILED_FILE_NAME]);
     expect(harness.uploadAttachmentCalls).toHaveLength(1);
     await expect(composer).not.toHaveValue(
-      new RegExp(
-        escapeRegExp(`![uploading ${SINGLE_FAILED_FILE_NAME}]()`),
-      ),
+      new RegExp(escapeRegExp(`![uploading ${SINGLE_FAILED_FILE_NAME}]()`)),
     );
 
     const screenshotDirectory = process.env.CONSOLE_E2E_SCREENSHOT_DIR;
