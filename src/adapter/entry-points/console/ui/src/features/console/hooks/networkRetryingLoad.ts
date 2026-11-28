@@ -11,7 +11,7 @@ export type NetworkRetryingLoadOptions<T> = {
 
 export const startLoadWithNetworkRetry = <T>(
   options: NetworkRetryingLoadOptions<T>,
-): (() => void) => {
+): { stop: () => void; reload: () => void } => {
   let cancelled = false;
   let latestAttempt = 0;
   let networkFailed = false;
@@ -34,8 +34,10 @@ export const startLoadWithNetworkRetry = <T>(
     retryDelayMs = Math.min(retryDelayMs * 2, NETWORK_RETRY_MAX_DELAY_MS);
   };
 
-  const load = (): void => {
-    clearRetryTimer();
+  const load = (clearScheduledRetry = true): void => {
+    if (clearScheduledRetry) {
+      clearRetryTimer();
+    }
     latestAttempt += 1;
     const attempt = latestAttempt;
     options.load().then(
@@ -43,6 +45,7 @@ export const startLoadWithNetworkRetry = <T>(
         if (cancelled || attempt !== latestAttempt) {
           return;
         }
+        clearRetryTimer();
         networkFailed = false;
         options.onSuccess(value);
       },
@@ -52,7 +55,7 @@ export const startLoadWithNetworkRetry = <T>(
         }
         networkFailed = cause instanceof ConsoleNetworkError;
         options.onFailure(cause);
-        if (networkFailed) {
+        if (networkFailed && retryTimer === undefined) {
           scheduleRetry();
         }
       },
@@ -74,10 +77,11 @@ export const startLoadWithNetworkRetry = <T>(
   load();
   window.addEventListener('online', reloadWhileNetworkFailed);
   document.addEventListener('visibilitychange', handleVisibilityChange);
-  return () => {
+  const stop = (): void => {
     cancelled = true;
     clearRetryTimer();
     window.removeEventListener('online', reloadWhileNetworkFailed);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
   };
+  return { stop, reload: () => load(false) };
 };

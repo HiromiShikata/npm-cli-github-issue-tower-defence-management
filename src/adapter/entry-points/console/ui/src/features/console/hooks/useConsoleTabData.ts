@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
+import {
+  ConsoleNetworkError,
+  fetchResponseOrNetworkError,
+} from '../lib/consoleApi';
 import type {
   ConsoleFieldOption,
   ConsoleListItem,
@@ -8,6 +12,7 @@ import type {
   ConsoleTabName,
 } from '../logic/types';
 import { CONSOLE_TABS } from '../logic/types';
+import { startLoadWithNetworkRetry } from './networkRetryingLoad';
 
 export type ConsoleTabSnapshot = {
   items: ConsoleListItem[];
@@ -211,7 +216,7 @@ const fetchSingleSnapshot = async (
 ): Promise<{ snapshot: ConsoleTabSnapshot | null; error: Error | null }> => {
   const url = buildListUrl(pjcode, tabName);
   try {
-    const response = await fetch(url);
+    const response = await fetchResponseOrNetworkError(url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -275,6 +280,12 @@ const fetchSnapshots = async (
   }
 
   const allNull = Object.values(snapshots).every((s) => s === null);
+  const allNetworkErrors = results.every(
+    ({ error }) => error instanceof ConsoleNetworkError,
+  );
+  if (allNull && allNetworkErrors) {
+    throw firstError;
+  }
   return {
     snapshots,
     firstError: allNull ? firstError : null,
@@ -353,34 +364,41 @@ export const useConsoleTabData = (
       }
     });
 
-    const load = (): void => {
-      fetchSnapshots(pjcode)
-        .then(({ snapshots: next, firstError }) => {
-          if (cancelled) {
-            return;
-          }
-          freshDataReceived = true;
-          snapshotRegistry.current.set(pjcode, next);
-          setVisible({ pjcode, snapshots: next });
-          setError(firstError !== null ? firstError.message : null);
-          setIsLoading(false);
-        })
-        .catch((cause: unknown) => {
-          if (cancelled) {
-            return;
-          }
-          freshDataReceived = true;
-          setError(cause instanceof Error ? cause.message : String(cause));
-          setIsLoading(false);
-        });
-    };
+    const load = (): Promise<{
+      snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
+      firstError: Error | null;
+    }> => fetchSnapshots(pjcode);
 
-    load();
-    const timer = setInterval(load, CONSOLE_TAB_REFRESH_INTERVAL_MS);
+    const retrying = startLoadWithNetworkRetry({
+      load,
+      onSuccess: ({ snapshots: next, firstError }) => {
+        if (cancelled) {
+          return;
+        }
+        freshDataReceived = true;
+        snapshotRegistry.current.set(pjcode, next);
+        setVisible({ pjcode, snapshots: next });
+        setError(firstError !== null ? firstError.message : null);
+        setIsLoading(false);
+      },
+      onFailure: (cause: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        freshDataReceived = true;
+        setError(cause instanceof Error ? cause.message : String(cause));
+        setIsLoading(false);
+      },
+    });
+    const timer = setInterval(
+      () => retrying.reload(),
+      CONSOLE_TAB_REFRESH_INTERVAL_MS,
+    );
 
     return () => {
       cancelled = true;
       clearInterval(timer);
+      retrying.stop();
     };
   }, [pjcode, airplaneSnapshot]);
 
