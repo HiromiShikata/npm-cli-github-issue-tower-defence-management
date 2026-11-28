@@ -507,8 +507,7 @@ export const ConsolePage = () => {
     async (item: ConsoleListItem, files: File | File[]): Promise<string> => {
       const selectedFiles = Array.isArray(files) ? files : [files];
       let draftWithPlaceholders =
-        commentDrafts.current.get(item.projectItemId) ??
-        '';
+        commentDrafts.current.get(item.projectItemId) ?? '';
       for (const file of selectedFiles) {
         const hadDraft = draftWithPlaceholders.length > 0;
         const hadTrailingNewline = draftWithPlaceholders.endsWith('\n');
@@ -541,9 +540,7 @@ export const ConsolePage = () => {
       try {
         const results: unknown = JSON.parse(rawResult);
         if (Array.isArray(results)) {
-          let draft =
-            commentDrafts.current.get(item.projectItemId) ??
-            '';
+          let draft = commentDrafts.current.get(item.projectItemId) ?? '';
           selectedFiles.forEach((file, index) => {
             const result = results[index] as
               | { status?: string; markdown?: string; error?: string }
@@ -2196,8 +2193,7 @@ export const ConsolePage = () => {
             overlayStatus={overlayStatusForSelected}
             now={now}
             initialCommentDraft={
-              commentDrafts.current.get(selectedItem.projectItemId) ??
-              ''
+              commentDrafts.current.get(selectedItem.projectItemId) ?? ''
             }
             commentDraftRevision={commentDraftRevision}
             onCommentDraftRestored={commentDraftRestored}
