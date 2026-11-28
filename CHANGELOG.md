@@ -1,3 +1,10 @@
+## [2.220.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.220.0...v2.220.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **console:** record elapsed time for offline queued actions ([#3808](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3808)) ([8b56bac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8b56bac7e79267d42496141cda253d483a3d45e6))
+
 # [2.220.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.5...v2.220.0) (2026-11-28)
 
 
