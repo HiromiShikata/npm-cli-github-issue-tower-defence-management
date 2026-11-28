@@ -7199,6 +7199,94 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
     });
 
+    it('releases a definitively rejected create so the same action can retry', async () => {
+      const rejectedCreateError = Object.assign(
+        new Error('validation failed'),
+        { status: 422 },
+      );
+      issueRepository.createNewIssue
+        .mockRejectedValueOnce(rejectedCreateError)
+        .mockResolvedValueOnce(42);
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_definitive_rejection',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+      const operationContext = contextWithCreateIssueProjectRepository(() => ({
+        getProject: jest.fn().mockResolvedValue(projectWithStory()),
+        updateStoryList: jest.fn(),
+      }));
+
+      const first = await handleCreateIssue(operationContext, {
+        pjcode: 'acme',
+        title: 'Definitively rejected task',
+        storyName: 'Portal redesign',
+        nameWithOwner: 'acme-labs/portal',
+        actionId: 'definitive-rejection-retry',
+      });
+      const second = await handleCreateIssue(operationContext, {
+        pjcode: 'acme',
+        title: 'Definitively rejected task',
+        storyName: 'Portal redesign',
+        nameWithOwner: 'acme-labs/portal',
+        actionId: 'definitive-rejection-retry',
+      });
+
+      expect(first).toEqual({
+        statusCode: 500,
+        body: {
+          ok: false,
+          issueCreated: false,
+          error: 'validation failed',
+        },
+      });
+      expect(second).toEqual({
+        statusCode: 200,
+        body: { ok: true, issueUrl: createdIssue.url },
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not recover a same-title issue owned by another login', async () => {
+      const retryBody = {
+        pjcode: 'acme',
+        title: 'Same title, different owner',
+        storyName: 'Portal redesign',
+        nameWithOwner: 'acme-labs/portal',
+        actionId: 'different-owner-recovery',
+      };
+      issueRepository.createNewIssue.mockRejectedValue(
+        new Error('response lost'),
+      );
+      issueRepository.searchIssue.mockResolvedValue([
+        {
+          url: 'https://github.com/other-login/portal/issues/83',
+          title: retryBody.title,
+          number: '83',
+        },
+      ]);
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        retryBody,
+      );
+
+      expect(response.statusCode).toBe(500);
+      expect(hasBooleanIssueCreated(response.body)).toBe(false);
+      expect(issueRepository.searchIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ assignee: 'authenticated-user' }),
+      );
+      expect(issueRepository.get).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/other-login/portal/issues/83',
+        }),
+      );
+    });
+
     it('reports an unknown creation state when both create and recovery search fail', async () => {
       issueRepository.createNewIssue.mockRejectedValue(
         new Error('response lost'),

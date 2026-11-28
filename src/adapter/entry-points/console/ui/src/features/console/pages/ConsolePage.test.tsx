@@ -235,13 +235,14 @@ describe('ConsolePage story-list create recovery', () => {
     localStorage.clear();
   });
 
-  it('retries a story-list create with one actionId after a not-created response', async () => {
+  it('retries a story-list create with default backoff after two not-created responses', async () => {
     jest.useFakeTimers();
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
     try {
       const requestBodies: Record<string, unknown>[] = [];
       createStoryListFetch(
         (attempt) =>
-          attempt === 1
+          attempt <= 2
             ? { ok: false, issueCreated: false, error: 'temporary failure' }
             : {
                 ok: true,
@@ -255,20 +256,20 @@ describe('ConsolePage story-list create recovery', () => {
         target: { value: 'Story-list retry task' },
       });
       fireEvent.click(getByRole('button', { name: 'Create' }));
-      for (let i = 0; i < 8; i += 1) {
-        await act(async () => {
-          await Promise.resolve();
-          jest.advanceTimersByTime(1000);
-          for (let j = 0; j < 12; j += 1) await Promise.resolve();
-        });
-      }
-      expect(requestBodies).toHaveLength(2);
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(2500);
+      });
+      expect(requestBodies).toHaveLength(3);
+      expect(setTimeoutSpy.mock.calls.map(([, delay]) => delay)).toEqual(
+        expect.arrayContaining([500, 1000]),
+      );
       expect(requestBodies[0].actionId).toEqual(expect.any(String));
       expect(requestBodies[1].actionId).toBe(requestBodies[0].actionId);
       expect(
         queryByText('Failed to create the task. Please try again.'),
       ).toBeNull();
     } finally {
+      setTimeoutSpy.mockRestore();
       jest.useRealTimers();
     }
   });
@@ -8524,7 +8525,7 @@ describe('ConsolePage task creation action queue', () => {
     }
   });
 
-  it('does not create a duplicate GitHub issue when the dialog Create button is clicked again after a partial attachment upload failure', async () => {
+  it('reruns the incomplete create step with the same actionId before retrying a failed attachment upload', async () => {
     jest.useFakeTimers();
     try {
       let uploadAttemptCount = 0;
@@ -8548,10 +8549,14 @@ describe('ConsolePage task creation action queue', () => {
         }
         if (url === '/api/createissue') {
           return {
-            ok: true,
-            status: 200,
+            ok: false,
+            status: 500,
             json: async () => ({
-              issueUrl: 'https://github.com/o/r/issues/777',
+              ok: false,
+              issueCreated: true,
+              issueUrl: 'https://github.com/example/repo/issues/77',
+              failedStep: 'updateStory',
+              error: 'story update failed',
             }),
           };
         }
@@ -8649,7 +8654,7 @@ describe('ConsolePage task creation action queue', () => {
       );
 
       await act(async () => {
-        jest.advanceTimersByTime(5100);
+        jest.advanceTimersByTime(10000);
         for (let i = 0; i < 10; i++) {
           await Promise.resolve();
         }
@@ -8686,7 +8691,7 @@ describe('ConsolePage task creation action queue', () => {
       );
 
       await act(async () => {
-        jest.advanceTimersByTime(5100);
+        jest.advanceTimersByTime(10000);
         for (let i = 0; i < 10; i++) {
           await Promise.resolve();
         }
@@ -8694,8 +8699,35 @@ describe('ConsolePage task creation action queue', () => {
 
       const createIssueCalls = fetchMock.mock.calls.filter(
         ([callUrl]: [string]) => callUrl === '/api/createissue',
+      ) as unknown as Array<[string, RequestInit]>;
+      expect(createIssueCalls.length).toBe(CREATE_ISSUE_MAX_ATTEMPTS * 2);
+      const createRequestBodies = createIssueCalls.map(
+        ([, options]: [string, RequestInit]) =>
+          JSON.parse(options.body as string) as { actionId?: string },
       );
-      expect(createIssueCalls.length).toBe(1);
+      expect(createRequestBodies[1].actionId).toBe(
+        createRequestBodies[0].actionId,
+      );
+      expect(
+        createRequestBodies.every(
+          (requestBody) =>
+            requestBody.actionId === createRequestBodies[0].actionId,
+        ),
+      ).toBe(true);
+      const uploadCalls = fetchMock.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/upload',
+      );
+      expect(uploadCalls).toHaveLength(2);
+      expect(
+        JSON.parse(
+          (uploadCalls[1] as unknown as [string, RequestInit])[1]
+            .body as string,
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          url: 'https://github.com/example/repo/issues/77',
+        }),
+      );
     } finally {
       jest.useRealTimers();
     }

@@ -185,6 +185,21 @@ describe('createIssueWithRetry', () => {
     ).resolves.toEqual(expect.objectContaining({ kind: 'unconfirmed' }));
   });
 
+  it('explains that an unconfirmed issue may already exist without asking to retry', async () => {
+    const send = jest.fn().mockResolvedValue(response(500, null));
+    const wait = jest.fn().mockResolvedValue(undefined);
+
+    const outcome = await createIssueWithRetry(send, request, { wait });
+
+    expect(outcome).toEqual({
+      kind: 'unconfirmed',
+      reason: expect.stringContaining('may already exist on the board'),
+    });
+    expect((outcome as { reason: string }).reason).not.toContain(
+      'Please try again',
+    );
+  });
+
   it('does not retry a non-retryable client error and includes its error', async () => {
     const send = jest
       .fn()
