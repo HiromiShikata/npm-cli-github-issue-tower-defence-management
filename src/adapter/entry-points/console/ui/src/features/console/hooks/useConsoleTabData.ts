@@ -320,14 +320,17 @@ const fetchSnapshots = async (
       }
     }
   }
-  const httpErrorOccurred = results.some(
-    (result) => result.error !== null && !result.networkFailed,
-  );
-  const surfaceError =
-    allNullBeforeRestore && (!restoredFromPrevious || httpErrorOccurred);
+  const firstHttpError =
+    results.find((result) => result.error !== null && !result.networkFailed)
+      ?.error ?? null;
+  const errorToSurface = !allNullBeforeRestore
+    ? null
+    : !restoredFromPrevious
+      ? firstError
+      : firstHttpError;
   return {
     snapshots,
-    firstError: surfaceError ? firstError : null,
+    firstError: errorToSurface,
     networkFailed,
   };
 };
