@@ -74,7 +74,7 @@ export const ConsoleTimerSettingsModalDialog = ({
           '⏱'
         ) : (
           <>
-            <span className="console-timer-settings-button-icon">⏱</span>
+            <span>⏱</span>
             <span className="console-timer-settings-button-time">
               {timerHeaderView.timeText}
             </span>
