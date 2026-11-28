@@ -555,6 +555,14 @@ export const ConsolePage = () => {
         if (draft) commentDrafts.current.set(item.projectItemId, draft);
         else commentDrafts.current.delete(item.projectItemId);
         saveCommentDrafts(commentDrafts.current);
+        if (selectedItemKeyRef.current !== item.projectItemId) {
+          const message =
+            error instanceof Error ? error.message : 'failed to upload file';
+          actionQueue.showError(
+            `Upload failed: ${selectedFiles.map((file) => file.name).join(', ')}`,
+            message,
+          );
+        }
         throw error;
       }
       try {

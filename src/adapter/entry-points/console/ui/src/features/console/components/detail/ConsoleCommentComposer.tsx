@@ -117,6 +117,7 @@ export const ConsoleCommentComposer = ({
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
     kind: 'idle',
   });
+  const hasUploadPlaceholder = draft.includes('![uploading ');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const cursorToRestoreRef = useRef<{ start: number; end: number } | null>(
@@ -143,6 +144,9 @@ export const ConsoleCommentComposer = ({
   };
 
   const submit = async (action: 'comment' | 'move'): Promise<void> => {
+    if (hasUploadPlaceholder) {
+      return;
+    }
     const body = draft.trim();
     if (
       body.length === 0 ||
@@ -392,7 +396,8 @@ export const ConsoleCommentComposer = ({
               disabled={
                 status.kind === 'posting' ||
                 isDraftEmpty ||
-                uploadStatus.kind === 'uploading'
+                uploadStatus.kind === 'uploading' ||
+                hasUploadPlaceholder
               }
               onClick={() => {
                 void submit('comment');
@@ -417,7 +422,8 @@ export const ConsoleCommentComposer = ({
                 disabled={
                   status.kind === 'posting' ||
                   isDraftEmpty ||
-                  uploadStatus.kind === 'uploading'
+                  uploadStatus.kind === 'uploading' ||
+                  hasUploadPlaceholder
                 }
                 onClick={() => {
                   void submit('move');
