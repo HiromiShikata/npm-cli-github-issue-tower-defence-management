@@ -1072,6 +1072,7 @@ export type ConsoleE2eHarness = {
   setProjectTimer: (durationSeconds: number) => void;
   expireProjectTimer: () => void;
   clearProjectTimer: () => void;
+  releaseUploadAttachment: () => void;
   stop: () => Promise<void>;
 };
 
@@ -1081,6 +1082,7 @@ export const startConsoleE2eHarness = async (options?: {
   getIssueOrPullRequestComments?: () => Promise<IssueComment[]>;
   createNewIssueError?: Error;
   uploadAttachmentFailure?: { fileName: string; error: string };
+  holdUploadAttachment?: boolean;
 }): Promise<ConsoleE2eHarness> => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'console-e2e-'));
   const consoleDataOutputDir = path.join(tmpRoot, 'data');
@@ -1117,6 +1119,12 @@ export const startConsoleE2eHarness = async (options?: {
   const setAgentCalls: ConsoleE2eSetAgentCall[] = [];
   const uploadAttachmentCalls: ConsoleE2eUploadAttachmentCall[] = [];
   const uploadAttachmentRequestCalls: ConsoleE2eUploadAttachmentRequest[] = [];
+  let releaseUploadAttachment: () => void = () => undefined;
+  const uploadAttachmentRelease = options?.holdUploadAttachment
+    ? new Promise<void>((resolve) => {
+        releaseUploadAttachment = resolve;
+      })
+    : null;
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -1142,6 +1150,7 @@ export const startConsoleE2eHarness = async (options?: {
             content: Buffer.from(file.content),
           });
         }
+        await uploadAttachmentRelease;
         const uploaded = files.map((file) =>
           options?.uploadAttachmentFailure?.fileName === file.fileName
             ? {
@@ -1300,6 +1309,7 @@ export const startConsoleE2eHarness = async (options?: {
     clearProjectTimer: (): void => {
       deleteProjectTimer(consoleDataOutputDir, CONSOLE_E2E_PJCODE);
     },
+    releaseUploadAttachment,
     stop: async (): Promise<void> => {
       await stopWebServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });
