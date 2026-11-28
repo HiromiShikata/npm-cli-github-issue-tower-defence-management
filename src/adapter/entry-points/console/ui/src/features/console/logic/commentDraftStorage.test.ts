@@ -65,12 +65,27 @@ describe('loadCommentDrafts', () => {
         ]),
       );
 
-      const loaded = loadCommentDrafts();
+      const loaded = loadCommentDrafts({ discardInterruptedUploads: true });
 
       expect(loaded.get('PVTI_1')).toBe(expectedDraft);
       expect(loaded.get('PVTI_2')).toBe('no placeholder here');
     },
   );
+
+  it('keeps an upload placeholder that is still in flight when the drafts are reloaded', () => {
+    const storedDraft =
+      'Investigating the failing deploy.\n\n\n![uploading shot.png]()\n';
+    saveCommentDrafts(
+      new Map([
+        ['PVTI_1', storedDraft],
+        ['PVTI_2', 'no placeholder here'],
+      ]),
+    );
+
+    const loaded = loadCommentDrafts();
+
+    expect(loaded.get('PVTI_1')).toBe(storedDraft);
+  });
 
   it('returns an empty map when nothing was ever saved', () => {
     const loaded = loadCommentDrafts();
