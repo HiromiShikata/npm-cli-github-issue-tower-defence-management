@@ -558,6 +558,26 @@ describe('useConsoleOperations', () => {
     });
   });
 
+  it('carries opened timing and resulting hour text for a row next-action-hour change', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+    await act(async () => {
+      await result.current.operations.setNextActionHourValue(
+        issueItem,
+        9,
+        'action-opened',
+        192_000,
+        '「Next Action Hour を 9時 に設定」',
+      );
+    });
+    expect(lastBody(fetchMock)).toEqual(expect.objectContaining({
+      action: 'set_next_action_hour',
+      nextActionHour: 9,
+      openedToActionMs: 192_000,
+      actionDescription: expect.stringContaining('Next Action Hour'),
+    }));
+  });
+
   it('posts set_next_action_hour with null so the server clears the hour', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();

@@ -2190,6 +2190,44 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['snooze_1hour', { nextActionHour: 9 }],
+      ['snooze_3hours', { nextActionHour: 9 }],
+      ['snooze_6hours', { nextActionHour: 9 }],
+      ['snooze_1day', {}],
+      ['snooze_2days', {}],
+      ['snooze_3days', {}],
+      ['snooze_5days', {}],
+      ['snooze_1week', {}],
+      ['snooze_1month', {}],
+    ] as const)('rejects %s ownership mismatch with and without elapsed timing', async (action, body) => {
+      for (const timing of [false, true]) {
+        jest.clearAllMocks();
+        const projectItemId = `PVTI_${action}_${timing ? 'timed' : 'plain'}`;
+        issueRepository.getAllIssues.mockResolvedValueOnce({
+          issues: [{ ...issue, itemId: projectItemId, url: linkedIssueUrl, isPr: false }],
+          project: action.startsWith('snooze_') && 'nextActionHour' in body
+            ? nextActionHourProject
+            : project,
+          cacheUsed: false,
+        });
+        const response = await handleTriage(contextForProject(
+          action.startsWith('snooze_') && 'nextActionHour' in body
+            ? nextActionHourProject
+            : project,
+        ), {
+          pjcode: 'acme', action, issueUrl: unlinkedIssueUrl, projectItemId,
+          ...body,
+          ...(timing ? { openedToActionMs: 192_000, actionDescription: '「snooze」を押しました' } : {}),
+        });
+        expect(response.statusCode).toBe(403);
+        expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+        expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+        expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      }
+    });
+
     it.each(bindingFailureCases)(
       'RED $name before any triage write',
       async ({ action, issueUrl, projectItemId, expectedStatusCode, body }) => {
@@ -4404,6 +4442,30 @@ describe('consoleOperationApi', () => {
       });
       expect(call[2]).toBe(7);
       expectRecordedAcrossTabs('PVTI_nah');
+    });
+
+    it('records exactly one elapsed comment when set_next_action_hour is timed for HiromiShikata', async () => {
+      const projectWithHour: Project = {
+        ...project,
+        nextActionHour: { name: 'Next Action Hour', fieldId: 'nahField', options: [] },
+      };
+      const actionDescription = '「Next Action Hour を 9時 に設定」を押しました';
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [{ ...issue, itemId: 'PVTI_nah_elapsed', url: 'https://github.com/HiromiShikata/r/issues/1', isPr: false }],
+        project: projectWithHour,
+        cacheUsed: false,
+      });
+      const response = await handleTriage(contextForProject(projectWithHour), {
+        pjcode: 'acme', action: 'set_next_action_hour',
+        issueUrl: 'https://github.com/HiromiShikata/r/issues/1', projectItemId: 'PVTI_nah_elapsed',
+        nextActionHour: 9, openedToActionMs: 192_000, actionDescription,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/r/issues/1',
+        formatConsoleElapsedTimeLine(192_000, actionDescription),
+      );
     });
 
     it.each([
@@ -8683,6 +8745,27 @@ describe('consoleOperationApi', () => {
       expect(response.body).toEqual({
         error: 'repository "o/r" is not configured for a console project',
       });
+      expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+      expect(issueRepository.replaceDependedIssueUrlField).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { name: 'set', replaceExisting: false },
+      { name: 'replace', replaceExisting: true },
+    ])('rejects a mismatched project item for $name with elapsed timing', async ({ replaceExisting }) => {
+      const boundProject = projectWithDependedField();
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [{ ...issue, itemId: 'PVTI_other', url: 'https://github.com/o/r/issues/1', isPr: false }],
+        project: boundProject,
+        cacheUsed: false,
+      });
+      const response = await handleSetDependedIssueUrl(contextForProject(boundProject), {
+        pjcode: 'acme', issueUrl: 'https://github.com/o/r/issues/99', projectItemId: 'PVTI_mismatch',
+        dependedIssueUrl: 'https://github.com/o/r/issues/2', replaceExisting,
+        openedToActionMs: 192_000, actionDescription: '依存関係を設定しました',
+      });
+      expect(response.statusCode).toBe(403);
       expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
       expect(issueRepository.replaceDependedIssueUrlField).not.toHaveBeenCalled();
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
