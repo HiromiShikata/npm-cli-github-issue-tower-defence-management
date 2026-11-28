@@ -1689,6 +1689,18 @@ export const handleAttachmentUpload = async (
   if (!isValidIssueOrPullRequestUrl(url)) {
     return badRequest('url must be a github issue or pull request url');
   }
+  const repositoryReference = extractRepositoryReference(url);
+  if (repositoryReference === null) {
+    return badRequest('url must be a github issue or pull request url');
+  }
+  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+    context,
+    repositoryReference.owner,
+    repositoryReference.repo,
+  );
+  if (repositoryFailure !== null) {
+    return repositoryFailure;
+  }
   const isLegacyRequest = !('files' in body);
   if (isLegacyRequest) {
     const fileName = body.fileName;
@@ -1743,18 +1755,6 @@ export const handleAttachmentUpload = async (
   const pjcodeResult = resolveConfiguredPjcode(context, body);
   if (typeof pjcodeResult !== 'string') {
     return pjcodeResult;
-  }
-  const repositoryReference = extractRepositoryReference(url);
-  if (repositoryReference === null) {
-    return badRequest('url must be a github issue or pull request url');
-  }
-  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
-    context,
-    repositoryReference.owner,
-    repositoryReference.repo,
-  );
-  if (repositoryFailure !== null) {
-    return repositoryFailure;
   }
   if (context.issueAttachmentRepository === null) {
     return badGateway('attachment upload is not configured');

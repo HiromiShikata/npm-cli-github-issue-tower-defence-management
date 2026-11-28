@@ -20,6 +20,7 @@ const uploadContext = (
   },
   resolveProject: async () => null,
   isPjcodeConfigured: () => true,
+  isRepositoryConfigured: () => true,
   consoleDataOutputDir: null,
   issueAttachmentRepository: {
     uploadAttachment,
