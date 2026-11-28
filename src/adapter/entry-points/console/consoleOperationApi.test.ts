@@ -2182,6 +2182,101 @@ describe('consoleOperationApi', () => {
     });
   });
 
+  describe('review close retry after a failed status write', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+    const prUrl = 'https://github.com/o/r/pull/1';
+    const itemId = 'PVTI_review_close_retry';
+    const request = {
+      pjcode: 'acme',
+      action: 'close',
+      prUrl,
+      projectItemId: itemId,
+      issueUrl,
+    };
+
+    beforeEach(() => {
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [{ ...issue, itemId, url: issueUrl, isPr: false }],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: prUrl,
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+    });
+
+    it('keeps the pull request open when the status write fails, so the retry still finds it linked and closes it', async () => {
+      issueRepository.updateStatus.mockRejectedValueOnce(
+        new Error('transient status write failure'),
+      );
+
+      await expect(
+        handleReview(contextForProject(project), request),
+      ).rejects.toThrow('transient status write failure');
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+
+      const retry = await handleReview(contextForProject(project), request);
+
+      expect(retry.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(prUrl);
+    });
+  });
+
+  describe('triage close resolves its project before any write', () => {
+    const issueUrl = 'https://github.com/o/r/issues/1';
+
+    it.each(['close', 'close_not_planned'])(
+      '%s rejects an unconfigured pjcode before any write',
+      async (action) => {
+        const response = await handleTriage(contextForProject(project), {
+          pjcode: 'unconfigured',
+          action,
+          issueUrl,
+          projectItemId: 'PVTI_triage_close_unconfigured',
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['close', 'close_not_planned'])(
+      '%s rejects a configured pjcode whose project resolves to null before any write',
+      async (action) => {
+        const context: ConsoleOperationContext = {
+          ...contextForProject(project),
+          resolveProject: async () => null,
+        };
+
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action,
+          issueUrl,
+          projectItemId: 'PVTI_triage_close_null_project',
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+        expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   describe('workflow-repository request binds intmux writes to the workflow-owning project', () => {
     const workflowRepositoryNameWithOwner = 'fleet-org/fleet-repo';
     const workflowIssueUrl =
