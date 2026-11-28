@@ -1398,6 +1398,59 @@ describe('useConsoleTabData network retry', () => {
     );
   });
 
+  it('keeps the displayed list with no error during a failed refresh when no Cache API is available', async () => {
+    removeMockCaches();
+    expect('caches' in globalThis).toBe(false);
+    let refreshStarted = false;
+    let retrySucceeded = false;
+    const oldItem = {
+      number: 1,
+      itemId: 'OLD_ITEM',
+      projectItemId: 'OLD_ITEM',
+    };
+    const newItem = {
+      number: 2,
+      itemId: 'NEW_ITEM',
+      projectItemId: 'NEW_ITEM',
+    };
+    const fetchMock = jest.fn(async (url: string) => {
+      if (refreshStarted && !retrySucceeded) {
+        throw new TypeError('Failed to fetch');
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () =>
+          makeTabPayload({
+            items: url.includes('/prs/')
+              ? retrySucceeded
+                ? [newItem]
+                : [oldItem]
+              : [],
+          }),
+      };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() =>
+      expect(result.current.snapshots.prs?.items).toHaveLength(1),
+    );
+    expect(result.current.error).toBeNull();
+
+    refreshStarted = true;
+    await flushTabDataTimers(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+    expect(result.current.snapshots.prs?.items[0].itemId).toBe('OLD_ITEM');
+    expect(result.current.error).toBeNull();
+
+    retrySucceeded = true;
+    await flushTabDataTimers(1000);
+    await waitFor(() =>
+      expect(result.current.snapshots.prs?.items[0].itemId).toBe('NEW_ITEM'),
+    );
+    expect(result.current.error).toBeNull();
+  });
+
   it('retries a network failure while the list is served from cache and keeps the cached list without an error', async () => {
     const cachedPayload = makeTabPayload({
       generatedAt: '2026-01-01T00:00:00.000Z',
