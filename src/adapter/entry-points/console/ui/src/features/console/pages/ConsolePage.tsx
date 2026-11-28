@@ -469,7 +469,9 @@ export const ConsolePage = () => {
     [refreshSingleTab],
   );
   const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
-  const commentDrafts = useRef(loadCommentDrafts());
+  const commentDrafts = useRef(
+    loadCommentDrafts({ discardInterruptedUploads: true }),
+  );
   const [commentDraftRevision, setCommentDraftRevision] = useState(0);
   const persistCommentDrafts = useCallback(() => {
     saveCommentDrafts(commentDrafts.current);
