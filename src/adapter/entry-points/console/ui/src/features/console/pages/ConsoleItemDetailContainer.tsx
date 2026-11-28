@@ -52,10 +52,10 @@ import {
 } from '../logic/commentDraftStorage';
 import { consoleActionButtonLabels } from '../logic/consoleActionButtonLabels';
 import {
+  type ConsoleActionTiming,
   computeOpenedToActionMs,
   readConsoleItemOpenedAt,
   recordConsoleItemOpened,
-  type ConsoleActionTiming,
   withConsoleActionTiming,
 } from '../logic/consoleItemOpenTimes';
 import { parseDependedIssueUrlsInput } from '../logic/consoleStoryTaskPatch';
@@ -497,7 +497,10 @@ export const ConsoleItemDetailContainer = ({
           message: commentHeldOfflineToastMessage(item),
           color: COMMENT_HELD_OFFLINE_TOAST_COLOR,
           enqueuedAt: Date.now(),
-          ...commentOfflinePayloadBuild(pjcode, item, body, actionId),
+          ...withConsoleActionTiming(
+            commentOfflinePayloadBuild(pjcode, item, body, actionId),
+            timing,
+          ),
           composerDraftBody: body,
         };
         persistConsoleAction(descriptor);
@@ -846,12 +849,9 @@ export const ConsoleItemDetailContainer = ({
                 ),
                 timing,
               ),
-              withConsoleActionTiming(
-                buildTriageOfflinePayload(pjcode, item, 'set_status', {
-                  statusName: option.name,
-                }),
-                timing,
-              ),
+              buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                statusName: option.name,
+              }),
             ];
             await new Promise<void>((resolve, reject) => {
               onQueueAction({
