@@ -191,7 +191,7 @@ describe('ConsoleItemDetailContainer', () => {
       fireEvent.click(view.getByRole('button', { name: buttonText }));
       await onQueueAction.mock.calls[0][0].commit();
       const description = (operations.setNextActionDate as jest.Mock).mock
-        .calls[0][5] as string;
+        .calls[0][4] as string;
       expect(description).toContain(`「${label}」`);
       expect(description).toContain(fieldName);
     },
@@ -4908,7 +4908,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       issueItem,
       dependedIssueUrlToSubmit,
       expect.any(Number),
-      '「Set Depended Issue」を押しました',
+      '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
     );
   });
 
@@ -5046,7 +5046,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
         issueItem,
         dependedIssueUrlToSubmit,
         expect.any(Number),
-        '「Set Depended Issue」を押しました',
+        '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/99 に設定）',
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();
@@ -5105,14 +5105,14 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
       issueItem,
       'https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2',
       expect.any(Number),
-      '「Set Depended Issue」を押しました',
+      '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2 に設定）',
     );
     expect(operations.setStatus).toHaveBeenCalledWith(
       issueItem,
       awaitingWorkspaceOption,
       undefined,
       expect.any(Number),
-      '「Set Depended Issue」を押しました',
+      '「Set Depended Issue」を押しました（Depended Issue URL を https://github.com/owner/repo/issues/1,https://github.com/owner/repo/pull/2 に設定）',
     );
   });
 
@@ -5174,7 +5174,7 @@ describe('ConsoleItemDetailContainer onSetDependedIssueUrl bundling with Awaitin
         itemWithDependedIssueUrl,
         '',
         expect.any(Number),
-        '「Set Depended Issue」を押しました',
+        '「Set Depended Issue」を押しました（Depended Issue URL を解除）',
       );
     });
     expect(onQueueAction).not.toHaveBeenCalled();

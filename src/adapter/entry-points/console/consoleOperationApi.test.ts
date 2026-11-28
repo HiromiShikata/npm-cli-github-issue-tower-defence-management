@@ -196,6 +196,12 @@ describe('consoleOperationApi', () => {
     'PVTI_1mo_end',
     'PVTI_1mo_dec',
     'PVTI_elapsed_description_only',
+    'PVTI_elapsed_1day',
+    'PVTI_elapsed_2days',
+    'PVTI_elapsed_3days',
+    'PVTI_elapsed_5days',
+    'PVTI_elapsed_1week',
+    'PVTI_elapsed_1month',
     'PVTI_nah',
     'PVTI_nah3',
     'PVTI_nah6',
@@ -333,7 +339,16 @@ describe('consoleOperationApi', () => {
                 'PVTI_close_pull_request_close_not_planned',
               ].includes(itemId),
           )
-          .map((itemId) => projectItemFor(itemId, issue.url)),
+          .map((itemId) =>
+            projectItemFor(
+              itemId,
+              /^PVTI_elapsed_(1day|2days|3days|5days|1week|1month)$/.test(
+                itemId,
+              )
+                ? 'https://github.com/HiromiShikata/r/issues/1'
+                : issue.url,
+            ),
+          ),
         projectItemFor('PVTI_np', 'https://github.com/o/r/issues/2'),
         projectItemFor('PVTI_prclose', 'https://github.com/o/r/pull/7'),
         projectItemFor('PVTI_prnp', 'https://github.com/o/r/pull/8'),
@@ -8876,6 +8891,12 @@ describe('consoleOperationApi', () => {
               url: 'https://github.com/o/r/issues/1',
               isPr: false,
             },
+            {
+              ...issue,
+              itemId: 'PVTI_mismatch',
+              url: 'https://github.com/o/r/issues/1',
+              isPr: false,
+            },
           ],
           project: boundProject,
           cacheUsed: false,
@@ -9005,6 +9026,18 @@ describe('consoleOperationApi', () => {
 
     it('overwrites an existing depended issue URL in replace mode', async () => {
       issueRepository.replaceDependedIssueUrlField.mockResolvedValue(undefined);
+      issueRepository.getAllIssues.mockResolvedValue({
+        issues: [
+          {
+            ...issue,
+            itemId: 'PVTI_dep',
+            url: 'https://github.com/HiromiShikata/r/issues/1',
+            isPr: false,
+          },
+        ],
+        project: projectWithDependedField(),
+        cacheUsed: false,
+      });
       const response = await handleSetDependedIssueUrl(
         contextForProject(projectWithDependedField()),
         {

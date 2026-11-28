@@ -705,10 +705,7 @@ test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaitin
     .poll(
       () =>
         harness.commentCalls.some(
-          (c) =>
-            c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL &&
-            c.body.startsWith('ok\n\n') &&
-            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
+          (c) => c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL && c.body === 'ok',
         ),
       { timeout: 10000 },
     )
@@ -754,7 +751,9 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
     .poll(
       () =>
         harness.commentCalls.some(
-          (c) => c.body === 'handing off to awaiting workspace',
+          (c) =>
+            c.body.startsWith('handing off to awaiting workspace\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
         ),
       { timeout: 10000 },
     )
@@ -784,7 +783,12 @@ test('posts a comment and closes the item when the Comment & Close button is use
 
   await expect
     .poll(
-      () => harness.commentCalls.some((c) => c.body === 'closing with comment'),
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.body.startsWith('closing with comment\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
+        ),
       { timeout: 10000 },
     )
     .toBe(true);

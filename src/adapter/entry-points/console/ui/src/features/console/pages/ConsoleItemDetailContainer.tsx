@@ -767,7 +767,9 @@ export const ConsoleItemDetailContainer = ({
         ? async (dependedIssueUrl: string) => {
             const timing = consoleItemActionTiming(
               item,
-              `「Set Depended Issue」を押しました（Depended Issue URL を ${dependedIssueUrl} に設定）`,
+              dependedIssueUrl === ''
+                ? '「Set Depended Issue」を押しました（Depended Issue URL を解除）'
+                : `「Set Depended Issue」を押しました（Depended Issue URL を ${dependedIssueUrl} に設定）`,
             );
             if (dependedIssueUrl === '' || awaitingWorkspaceOption === null) {
               const baseUrls = item.dependedIssueUrls;
