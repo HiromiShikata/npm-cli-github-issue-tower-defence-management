@@ -705,7 +705,10 @@ test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaitin
     .poll(
       () =>
         harness.commentCalls.some(
-          (c) => c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL && c.body === 'ok',
+          (c) =>
+            c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL &&
+            c.body.startsWith('ok\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
         ),
       { timeout: 10000 },
     )
@@ -819,7 +822,8 @@ test('posts an ok comment and closes the item when the OK & Close button is used
           (c) =>
             c.url ===
               'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
-            c.body === 'ok',
+            c.body.startsWith('ok\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
         ),
       { timeout: 10000 },
     )
@@ -862,7 +866,8 @@ test('posts an ok comment and moves the item to Awaiting Workspace when the ok &
           (c) =>
             c.url ===
               'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
-            c.body === 'ok',
+            c.body.startsWith('ok\n\n') &&
+            c.body.includes('<!-- tdpm-console-elapsed-time -->'),
         ),
       { timeout: 10000 },
     )

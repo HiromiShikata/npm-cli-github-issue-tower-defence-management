@@ -20,6 +20,10 @@ import {
 import { ResourceCache } from '../lib/resourceCache';
 import { colorFromEnum } from '../logic/colors';
 import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
+import {
+  clearConsoleItemOpenTimesForTest,
+  readConsoleItemOpenedAt,
+} from '../logic/consoleItemOpenTimes';
 import type {
   ConsoleChangedFile,
   ConsoleComment,
@@ -151,6 +155,33 @@ const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {
 };
 
 describe('ConsoleItemDetailContainer', () => {
+  it('records the item URL open time when the item detail opens', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(123_456);
+    clearConsoleItemOpenTimesForTest();
+
+    render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        isAirplaneModeOn={false}
+        onOfflineActionsCreate={jest.fn()}
+      />,
+    );
+
+    expect(readConsoleItemOpenedAt(prItem.url)).toBe(123_456);
+    jest.restoreAllMocks();
+  });
+
   it('queues the review action and commits it through the operations api for a PR item', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();

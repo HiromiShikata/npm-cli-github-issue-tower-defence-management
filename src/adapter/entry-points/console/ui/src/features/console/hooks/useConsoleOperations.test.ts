@@ -78,6 +78,74 @@ const setup = () => {
 };
 
 describe('useConsoleOperations', () => {
+  it('sends opened-to-action timing and Japanese action description at press time', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.setNextActionDate(
+        issueItem,
+        'snooze_1day',
+        'action-opened',
+        192_000,
+        '「+1日」を押しました（Next Action Date を 2026-11-29 に設定）',
+      );
+    });
+
+    expect(lastBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        openedToActionMs: 192_000,
+        actionDescription:
+          '「+1日」を押しました（Next Action Date を 2026-11-29 に設定）',
+      }),
+    );
+  });
+
+  it('does not add timing fields when the item was not opened', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.setNextActionDate(
+        issueItem,
+        'snooze_1day',
+        'action-not-opened',
+      );
+    });
+
+    expect(lastBody(fetchMock)).not.toEqual(
+      expect.objectContaining({
+        openedToActionMs: expect.anything(),
+        actionDescription: expect.anything(),
+      }),
+    );
+  });
+
+  it('keeps the OK comment body unmodified in the UI request', async () => {
+    const fetchMock = captureFetch();
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.operations.okAndMoveToAwaitingWorkspace(
+        issueItem,
+        consoleStatusOptionsFixture[0],
+        0,
+        'action-ok',
+        192_000,
+        '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
+      );
+    });
+
+    expect(lastBody(fetchMock)).toEqual(
+      expect.objectContaining({
+        commentBody: 'ok',
+        openedToActionMs: 192_000,
+        actionDescription:
+          '「OK & Awaiting Workspace」を押しました（Status を Awaiting Workspace に変更）',
+      }),
+    );
+  });
+
   it('sends Comment & Awaiting Workspace as one atomic triage request', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();
