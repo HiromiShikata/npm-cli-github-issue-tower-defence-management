@@ -1,3 +1,10 @@
+## [2.219.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.4...v2.219.5) (2026-11-28)
+
+
+### Bug Fixes
+
+* **console:** upload multiple attachments in one request and keep results per task ([#3798](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3798)) ([6944bbc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6944bbcac6feba885540846750acfcbb05b14c2c))
+
 ## [2.219.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.219.3...v2.219.4) (2026-11-28)
 
 
