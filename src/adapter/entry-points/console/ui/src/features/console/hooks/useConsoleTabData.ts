@@ -304,7 +304,11 @@ const fetchSnapshots = async (
 
   const allNull = Object.values(snapshots).every((s) => s === null);
   const networkFailed = results.some((result) => result.networkFailed);
-  for (const { tabName, snapshot, networkFailed: tabNetworkFailed } of results) {
+  for (const {
+    tabName,
+    snapshot,
+    networkFailed: tabNetworkFailed,
+  } of results) {
     if (snapshot === null && tabNetworkFailed) {
       snapshots[tabName] = previous?.[tabName] ?? null;
     }

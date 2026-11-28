@@ -1401,11 +1401,15 @@ describe('useConsoleTabData network retry', () => {
   it('retries a network failure while the list is served from cache and keeps the cached list without an error', async () => {
     const cachedPayload = makeTabPayload({
       generatedAt: '2026-01-01T00:00:00.000Z',
-      items: [{ number: 1, itemId: 'CACHED_ITEM', projectItemId: 'CACHED_ITEM' }],
+      items: [
+        { number: 1, itemId: 'CACHED_ITEM', projectItemId: 'CACHED_ITEM' },
+      ],
     });
     const retryPayload = makeTabPayload({
       generatedAt: '2026-01-02T00:00:00.000Z',
-      items: [{ number: 2, itemId: 'RETRIED_ITEM', projectItemId: 'RETRIED_ITEM' }],
+      items: [
+        { number: 2, itemId: 'RETRIED_ITEM', projectItemId: 'RETRIED_ITEM' },
+      ],
     });
     installMockCaches({ json: jest.fn(async () => cachedPayload) });
     let initialRequests = 0;
@@ -1444,7 +1448,9 @@ describe('useConsoleTabData network retry', () => {
 
       await flushTabDataTimers(1000);
       await waitFor(() =>
-        expect(result.current.snapshots.prs?.items[0].itemId).toBe('CACHED_ITEM'),
+        expect(result.current.snapshots.prs?.items[0].itemId).toBe(
+          'CACHED_ITEM',
+        ),
       );
 
       periodicRefreshStarted = true;
@@ -1526,7 +1532,8 @@ describe('useConsoleTabData network retry', () => {
 
       await flushTabDataTimers(1000);
       const retryCallCount = fetchMock.mock.calls.length;
-      const retriedGeneratedAt = result.current.snapshots[failedTab]?.generatedAt;
+      const retriedGeneratedAt =
+        result.current.snapshots[failedTab]?.generatedAt;
       expect(retryCallCount).toBe(callsBeforeRetry + CONSOLE_TABS.length);
       expect(retriedGeneratedAt).toBe(newPayload.generatedAt);
     } finally {
