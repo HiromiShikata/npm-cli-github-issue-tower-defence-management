@@ -164,10 +164,10 @@ describe('createIssueWithRetry', () => {
 
     const outcome = await createIssueWithRetry(send, request, { wait });
 
-    expect(outcome.kind).toBe('notCreated');
+    expect(outcome.kind).toBe('unconfirmed');
     expect(
-      (outcome as Extract<CreateIssueOutcome, { kind: 'notCreated' }>).reason,
-    ).toContain('not found');
+      (outcome as Extract<CreateIssueOutcome, { kind: 'unconfirmed' }>).reason,
+    ).toContain('lost response again');
   });
 
   it('returns unconfirmed when a not-created response is followed by transport failures', async () => {

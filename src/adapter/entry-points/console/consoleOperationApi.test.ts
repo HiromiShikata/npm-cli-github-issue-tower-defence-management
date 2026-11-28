@@ -7149,7 +7149,7 @@ describe('consoleOperationApi', () => {
       );
     });
 
-    it('allows the same action to retry when create failed and the search found nothing', async () => {
+    it('keeps the same action pending when create failed and the search found nothing', async () => {
       issueRepository.createNewIssue.mockRejectedValue(new Error('create failed'));
       issueRepository.searchIssue.mockResolvedValue([]);
       const operationContext = contextWithCreateIssueProjectRepository(() => ({
@@ -7167,12 +7167,15 @@ describe('consoleOperationApi', () => {
       const first = await handleCreateIssue(operationContext, body);
       const second = await handleCreateIssue(operationContext, body);
 
-      expect(first).toEqual({
-        statusCode: 500,
-        body: { ok: false, issueCreated: false, error: 'create failed' },
-      });
+      expect(first.statusCode).toBe(500);
+      expect(first.body).toEqual(
+        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
+      );
       expect(second.statusCode).toBe(500);
-      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(2);
+      expect(second.body).toEqual(
+        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
+      );
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
     });
 
     it('reports an unknown creation state when both create and recovery search fail', async () => {
@@ -12964,19 +12967,24 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
     });
 
-    it('returns an issue-not-created response when creation fails', async () => {
-      issueRepository.createNewIssue.mockRejectedValueOnce(
+    it('keeps a failed creation unknown and pending across retries', async () => {
+      issueRepository.createNewIssue.mockRejectedValue(
         new Error('GitHub rejected create'),
       );
+      issueRepository.searchIssue.mockResolvedValue([]);
 
-      await expect(handleCreateIssue(createContext(), body)).resolves.toEqual({
-        statusCode: 500,
-        body: {
-          ok: false,
-          issueCreated: false,
-          error: 'GitHub rejected create',
-        },
-      });
+      const first = await handleCreateIssue(createContext(), body);
+      const second = await handleCreateIssue(createContext(), body);
+
+      expect(first.statusCode).toBe(500);
+      expect(first.body).toEqual(
+        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
+      );
+      expect(second.statusCode).toBe(500);
+      expect(second.body).toEqual(
+        expect.not.objectContaining({ issueCreated: expect.any(Boolean) }),
+      );
+      expect(issueRepository.createNewIssue).toHaveBeenCalledTimes(1);
     });
 
     it('keeps an ambiguous failed creation pending until a later search finds the issue', async () => {
