@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ATTACHMENT_UPLOAD_BROWSER_ABORT_MS } from '../../lib/consoleApi';
 import { resolveListContinuationOnKeyDown } from '../../lib/listContinuation';
 import type { ConsoleComment } from '../../logic/types';
 
@@ -187,7 +188,7 @@ export const ConsoleCommentComposer = ({
         new Promise<string>((_, reject) =>
           globalThis.setTimeout(
             () => reject(new Error('upload timed out')),
-            300000,
+            ATTACHMENT_UPLOAD_BROWSER_ABORT_MS,
           ),
         ),
       ]);

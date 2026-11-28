@@ -33,7 +33,9 @@ export const ALLOWED_ATTACHMENT_EXTENSIONS = [
 ] as const;
 
 export const UPLOAD_FILE_BASE_NAME = 'attachment';
-export const ATTACHMENT_UPLOAD_TIMEOUT_MS = 300000;
+export const UPLOAD_COMMAND_DEADLINE_MS = 300000;
+export const ATTACHMENT_UPLOAD_BACKSTOP_TIMEOUT_MS =
+  UPLOAD_COMMAND_DEADLINE_MS + 30000;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object';
@@ -132,7 +134,7 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
           env: {
             GH_TOKEN: this.resolveGithubToken(request.issueOrPullRequestUrl),
           },
-          timeout: ATTACHMENT_UPLOAD_TIMEOUT_MS,
+          timeout: ATTACHMENT_UPLOAD_BACKSTOP_TIMEOUT_MS,
           killSignal: 'SIGTERM',
           killProcessGroup: true,
         },

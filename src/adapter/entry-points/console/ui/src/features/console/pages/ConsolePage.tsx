@@ -503,6 +503,26 @@ export const ConsolePage = () => {
     },
     [selectedItemKey],
   );
+  const selectedItemKeyRef = useRef<string | null>(selectedItemKey);
+  selectedItemKeyRef.current = selectedItemKey;
+  const commentDraftRestored = useCallback((itemKey: string) => {
+    if (itemKey === selectedItemKeyRef.current) {
+      setCommentDraftRevision((previous) => previous + 1);
+    }
+  }, []);
+  const restoreCommentDraft = useCallback(
+    (itemKey: string, body: string) => {
+      commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
+      commentDraftRestored(itemKey);
+    },
+    [commentDraftRestored],
+  );
+
+  const actionQueue = useConsoleActionQueue({
+    isAirplaneModeOn: airplaneMode.status === 'on',
+    projectCode: pjcode,
+    restoreCommentDraft,
+  });
   const handleUploadFile = useCallback(
     async (item: ConsoleListItem, files: File | File[]): Promise<string> => {
       const selectedFiles = Array.isArray(files) ? files : [files];
@@ -545,6 +565,10 @@ export const ConsolePage = () => {
             const result = results[index] as
               | { status?: string; markdown?: string; error?: string }
               | undefined;
+            if (result?.status !== 'uploaded') {
+              const error = result?.error ?? 'failed to upload file';
+              actionQueue.showError(error, error);
+            }
             draft =
               result?.status === 'uploaded' &&
               typeof result.markdown === 'string'
@@ -573,29 +597,8 @@ export const ConsolePage = () => {
       }
       return rawResult;
     },
-    [operations, persistCommentDrafts],
+    [actionQueue.showError, operations, persistCommentDrafts],
   );
-
-  const selectedItemKeyRef = useRef<string | null>(selectedItemKey);
-  selectedItemKeyRef.current = selectedItemKey;
-  const commentDraftRestored = useCallback((itemKey: string) => {
-    if (itemKey === selectedItemKeyRef.current) {
-      setCommentDraftRevision((previous) => previous + 1);
-    }
-  }, []);
-  const restoreCommentDraft = useCallback(
-    (itemKey: string, body: string) => {
-      commentDrafts.current = restoreCommentDraftInStorage(itemKey, body);
-      commentDraftRestored(itemKey);
-    },
-    [commentDraftRestored],
-  );
-
-  const actionQueue = useConsoleActionQueue({
-    isAirplaneModeOn: airplaneMode.status === 'on',
-    projectCode: pjcode,
-    restoreCommentDraft,
-  });
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => {

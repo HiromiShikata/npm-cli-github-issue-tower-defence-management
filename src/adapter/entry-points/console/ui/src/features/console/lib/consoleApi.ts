@@ -465,6 +465,7 @@ export const postConsoleComment = async (
 };
 
 export const ATTACHMENT_UPLOAD_OPERATION_PATH = '/api/upload';
+export const ATTACHMENT_UPLOAD_BROWSER_ABORT_MS = 360000;
 
 export type ConsoleAttachmentUploadBatchRequest = {
   pjcode: string;
@@ -498,7 +499,10 @@ export async function postConsoleAttachment(
     ConsoleAttachmentUploadBatchRequest | ConsoleAttachmentUploadSingleRequest,
 ): Promise<string> {
   const controller = new AbortController();
-  const timeout = globalThis.setTimeout(() => controller.abort(), 300000);
+  const timeout = globalThis.setTimeout(
+    () => controller.abort(),
+    ATTACHMENT_UPLOAD_BROWSER_ABORT_MS,
+  );
   const normalizedRequest =
     'files' in request
       ? request
