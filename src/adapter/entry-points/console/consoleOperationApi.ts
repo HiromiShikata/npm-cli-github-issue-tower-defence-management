@@ -290,9 +290,11 @@ const rejectWhenPullRequestIsNotLinkedToProjectItem = async (
   }
   const associatedPullRequestUrls = item.isPr
     ? [item.url]
-    : (await issueRepository.findRelatedOpenPRs(item.url)).map(
-        (pullRequest) => pullRequest.url,
-      );
+    : (
+        await issueRepository.findRelatedOpenPRs(item.url, {
+          includeCiStatusUnavailable: true,
+        })
+      ).map((pullRequest) => pullRequest.url);
   if (!associatedPullRequestUrls.includes(prUrl)) {
     return forbidden(
       `pull request "${prUrl}" is not linked to project item "${projectItemId}"`,
@@ -2161,6 +2163,15 @@ export const handleSetDependedIssueUrl = async (
     }
     if (!isNonEmptyString(projectItemId)) {
       return badRequest('projectItemId is required');
+    }
+    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
     }
     try {
       await context
