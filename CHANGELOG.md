@@ -1,3 +1,10 @@
+# [2.218.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.4...v2.218.0) (2026-11-28)
+
+
+### Features
+
+* **select-resumable-session:** select no session when the newest transcript is over 60 minutes old ([#3797](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3797)) ([c1b24f2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c1b24f2e512138c187e2ed0d8a6b263f85762e72))
+
 ## [2.217.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.217.3...v2.217.4) (2026-11-27)
 
 
