@@ -183,4 +183,49 @@ describe('createIssueWithRetry', () => {
     });
     expect(send).toHaveBeenCalledTimes(1);
   });
+
+  it.each([500, 502])(
+    'retries an unknown server error until the issue state is unconfirmed (%s)',
+    async (httpStatus) => {
+      const send = jest.fn().mockResolvedValue(
+        response(httpStatus, {
+          ok: false,
+          error: 'upstream unavailable',
+        }),
+      );
+      const wait = jest.fn().mockResolvedValue(undefined);
+
+      const outcome = await createIssueWithRetry(send, request, { wait });
+
+      expect(outcome).toEqual({
+        kind: 'unconfirmed',
+        reason: expect.stringContaining('upstream unavailable'),
+      });
+      expect(send).toHaveBeenCalledTimes(CREATE_ISSUE_MAX_ATTEMPTS);
+      expect(send.mock.calls.map(([sentRequest]) => sentRequest)).toEqual(
+        Array(CREATE_ISSUE_MAX_ATTEMPTS).fill(request),
+      );
+    },
+  );
+
+  it('returns the created issue after an unknown server error is followed by success', async () => {
+    const issueUrl = 'https://github.com/acme-labs/portal/issues/42';
+    const send = jest
+      .fn()
+      .mockResolvedValueOnce(
+        response(502, {
+          ok: false,
+          error: 'upstream unavailable',
+        }),
+      )
+      .mockResolvedValueOnce(response(201, { ok: true, issueUrl }));
+    const wait = jest.fn().mockResolvedValue(undefined);
+
+    await expect(
+      createIssueWithRetry(send, request, { wait }),
+    ).resolves.toEqual({ kind: 'created', issueUrl });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[0][0]).toEqual(request);
+    expect(send.mock.calls[1][0]).toEqual(request);
+  });
 });
