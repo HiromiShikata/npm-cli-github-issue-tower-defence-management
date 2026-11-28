@@ -844,7 +844,7 @@ export const handleReview = async (
     return successAfterElapsedTimeComment(
       context.resolveIssueRepository(prUrl),
       prUrl,
-      isNonEmptyString(body.commentBody) ? null : elapsedAction,
+      isNonEmptyString(body.commentBody) || isNonEmptyString(body.issueCommentBody) ? null : elapsedAction,
     );
   }
 
@@ -901,7 +901,13 @@ export const handleReview = async (
         .resolveIssueRepository(prUrl)
         .createCommentByUrl(
           prUrl,
-          appendElapsedTimeIfRecordable(prUrl, body.commentBody, elapsedAction),
+          isNonEmptyString(body.issueCommentBody)
+            ? body.commentBody
+            : appendElapsedTimeIfRecordable(
+                prUrl,
+                body.commentBody,
+                elapsedAction,
+              ),
         );
     }
     if (isNonEmptyString(body.issueCommentBody)) {
@@ -924,7 +930,7 @@ export const handleReview = async (
     return successAfterElapsedTimeComment(
       context.resolveIssueRepository(issueUrl),
       issueUrl,
-      elapsedAction,
+      null,
     );
   }
 
@@ -950,7 +956,7 @@ export const handleReview = async (
       async (): Promise<ConsoleOperationResponse> => {
         await issueRepository.createCommentByUrl(
           prUrl,
-          AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+          appendElapsedTimeIfRecordable(prUrl, AUTO_STATUS_CHECK_CONFLICT_MESSAGE, elapsedAction),
         );
         const conflictFailure = await updateStatusByName(
           issueRepository,
@@ -967,7 +973,7 @@ export const handleReview = async (
           return skippedStatusWriteResponse();
         }
         recordDoneForStatusChange(context, pjcode, projectItemId);
-        return ok();
+        return successAfterElapsedTimeComment(issueRepository, prUrl, null);
       };
     if (prStatus.isConflicted) {
       return routeConflictToAwaitingWorkspace();
@@ -1177,19 +1183,27 @@ const handleTriageImpl = async (
     return binding;
   }
   const { project, pjcode } = binding;
-  const linkFailure =
-    elapsedAction === null
-      ? await rejectWhenUrlIsNotProjectItemUrl(
-          context.resolveIssueRepository(issueUrl),
-          project,
-          issueUrl,
-          projectItemId,
-        )
-      : null;
-  if (linkFailure !== null) {
-    return linkFailure;
+  const isSnoozeAction =
+    action === 'snooze_1hour' ||
+    action === 'snooze_3hours' ||
+    action === 'snooze_6hours' ||
+    action === 'snooze_1day' ||
+    action === 'snooze_2days' ||
+    action === 'snooze_3days' ||
+    action === 'snooze_5days' ||
+    action === 'snooze_1week' ||
+    action === 'snooze_1month';
+  if (!isSnoozeAction) {
+    const linkFailure = await rejectWhenUrlIsNotProjectItemUrl(
+      context.resolveIssueRepository(issueUrl),
+      project,
+      issueUrl,
+      projectItemId,
+    );
+    if (linkFailure !== null) {
+      return linkFailure;
+    }
   }
-
   if (action === 'set_status') {
     const previousResult = context.priorAttempt?.body;
     const statusName = body.statusName;
@@ -2489,7 +2503,7 @@ export const handleSetDependedIssueUrl = async (
   } else if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
   }
-  if (!replaceExisting && elapsedAction === null) {
+  {
     const repositoryReference = extractRepositoryReference(issueUrl);
     if (repositoryReference === null) {
       return badRequest('issueUrl must be a github issue or pull request url');

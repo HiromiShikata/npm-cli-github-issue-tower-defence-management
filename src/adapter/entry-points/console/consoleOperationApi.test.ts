@@ -1367,6 +1367,22 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_unnecessary');
     });
 
+    it('keeps the unnecessary action ownership guard active when elapsed timing is present', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [{ ...issue, itemId: 'PVTI_unnecessary', url: 'https://github.com/o/r/issues/1', isPr: false }],
+        project,
+        cacheUsed: false,
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme', action: 'unnecessary', prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/99', projectItemId: 'PVTI_unnecessary',
+        commentBody: 'unnecessary', openedToActionMs: 192_000, actionDescription: '「Unnecessary」を押しました',
+      });
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
     it('appends elapsed time to the unnecessary review comment', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,
@@ -1393,6 +1409,9 @@ describe('consoleOperationApi', () => {
         'https://github.com/HiromiShikata/r/pull/1',
         `This pull request is unnecessary.\n\n${formatConsoleElapsedTimeLine(192_000, actionDescription)}`,
       );
+      const elapsedMarker = formatConsoleElapsedTimeLine(192_000, actionDescription);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(issueRepository.createCommentByUrl.mock.calls.filter(([, body]) => body.includes(elapsedMarker))).toHaveLength(1);
     });
 
     it('tells the linked issue that the unnecessary pull request must not be created again', async () => {
@@ -1673,6 +1692,36 @@ describe('consoleOperationApi', () => {
       ).rejects.toThrow('HTTP 500');
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('adds exactly one elapsed comment on the HiromiShikata conflict route', async () => {
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/HiromiShikata/r/pull/1', branchName: null, createdAt: new Date(0),
+        isDraft: false, isConflicted: true, mergeable: 'CONFLICTING', isPassedAllCiJob: true,
+        isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false,
+        missingRequiredCheckNames: [], reviewDecision: null, ciStatusAvailability: 'AVAILABLE',
+      });
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [{ ...issue, itemId: 'PVTI_conflict', url: 'https://github.com/HiromiShikata/r/issues/1', isPr: false }],
+        project, cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([{
+        url: 'https://github.com/HiromiShikata/r/pull/1', branchName: null, createdAt: new Date(0),
+        isDraft: false, isConflicted: true, mergeable: 'CONFLICTING', isPassedAllCiJob: true,
+        isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false,
+        missingRequiredCheckNames: [], reviewDecision: null, ciStatusAvailability: 'AVAILABLE',
+      }]);
+      const description = '「Approve & Merge」を押しました';
+      const response = await handleReview(context, {
+        pjcode: 'acme', action: 'approve_and_merge', prUrl: 'https://github.com/HiromiShikata/r/pull/1',
+        projectItemId: 'PVTI_conflict', openedToActionMs: 192_000, actionDescription: description,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledTimes(1);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/r/pull/1',
+        `${AUTO_STATUS_CHECK_CONFLICT_MESSAGE}\n\n${formatConsoleElapsedTimeLine(192_000, description)}`,
+      );
     });
 
     it('posts a conflict comment, moves to Awaiting workspace, and returns 200 when the pull request has a merge conflict', async () => {
@@ -2124,6 +2173,22 @@ describe('consoleOperationApi', () => {
         body: { nextActionHour: 9 },
       },
     ];
+
+    it('keeps the triage ownership guard active when elapsed timing is present', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [{ ...issue, itemId: 'PVTI_triage_close_unlinked', url: linkedIssueUrl, isPr: false }],
+        project, cacheUsed: false,
+      });
+      const response = await handleTriage(context, {
+        pjcode: 'acme', action: 'close', issueUrl: unlinkedIssueUrl,
+        projectItemId: 'PVTI_triage_close_unlinked', openedToActionMs: 192_000,
+        actionDescription: '「Close」を押しました',
+      });
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
 
     it.each(bindingFailureCases)(
       'RED $name before any triage write',
@@ -8602,6 +8667,25 @@ describe('consoleOperationApi', () => {
         name: 'Depended Issue URL',
         fieldId: 'dependedField',
       },
+    });
+
+    it.each([
+      { name: 'set', replaceExisting: false },
+      { name: 'replace', replaceExisting: true },
+    ])('keeps the repository configuration guard active for $name with elapsed timing', async ({ replaceExisting }) => {
+      const guardedContext = { ...contextForProject(projectWithDependedField()), isRepositoryConfigured: () => false };
+      const response = await handleSetDependedIssueUrl(guardedContext, {
+        pjcode: 'acme', issueUrl: 'https://github.com/o/r/issues/1',
+        dependedIssueUrl: 'https://github.com/o/r/issues/2', replaceExisting,
+        openedToActionMs: 192_000, actionDescription: '依存関係を設定しました',
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.body).toEqual({
+        error: 'repository "o/r" is not configured for a console project',
+      });
+      expect(issueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+      expect(issueRepository.replaceDependedIssueUrlField).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     });
 
     it('sets the depended issue URL and returns 200', async () => {

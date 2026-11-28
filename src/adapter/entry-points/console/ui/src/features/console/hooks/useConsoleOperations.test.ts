@@ -147,11 +147,13 @@ describe('useConsoleOperations', () => {
   });
 
   it.each([
-    ['totally_wrong', 'totally wrong'],
-    ['unnecessary', 'This pull request is unnecessary.'],
+    ['approve_and_merge', 'Approve & Merge', ''],
+    ['request_changes', 'Request Changes', 'please fix'],
+    ['totally_wrong', 'Totally Wrong', 'totally wrong'],
+    ['unnecessary', 'Unnecessary', 'This pull request is unnecessary.'],
   ] as const)(
-    'forwards elapsed timing for the %s review comment',
-    (action, commentBody) => {
+    'forwards Japanese button text without the raw identifier for %s',
+    (...[action, label]) => {
       expect(
         reviewRequest(
           'acme',
@@ -161,15 +163,15 @@ describe('useConsoleOperations', () => {
           [],
           undefined,
           192_000,
-          `「${action}」を押しました`,
+          `「${label}」を押しました`,
         ),
       ).toEqual(
         expect.objectContaining({
-          commentBody,
           openedToActionMs: 192_000,
-          actionDescription: `「${action}」を押しました`,
+          actionDescription: `「${label}」を押しました`,
         }),
       );
+      expect(`「${label}」を押しました`).not.toMatch(/[a-z]+_[a-z]+/);
     },
   );
 

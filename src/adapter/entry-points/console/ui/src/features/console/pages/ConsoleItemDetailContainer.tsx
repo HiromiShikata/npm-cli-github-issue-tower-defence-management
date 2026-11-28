@@ -50,6 +50,7 @@ import {
   loadCommentDrafts,
   mergeRestoredCommentDraft,
 } from '../logic/commentDraftStorage';
+import { consoleActionButtonLabels } from '../logic/consoleActionButtonLabels';
 import {
   computeOpenedToActionMs,
   readConsoleItemOpenedAt,
@@ -240,6 +241,21 @@ const consoleItemActionTiming = (
   };
 };
 
+const nextActionDateAfter = (
+  nextActionDate: string | null,
+  action: ConsoleNextActionDateAction,
+): string | null => {
+  if (action !== 'snooze_1day' || nextActionDate === null) {
+    return nextActionDate;
+  }
+  const date = new Date(`${nextActionDate}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+};
+
 const notifyCommentError = (
   onCommentError: ConsoleCommentErrorHandler | undefined,
   message: string,
@@ -407,9 +423,13 @@ export const ConsoleItemDetailContainer = ({
   const bodyCheckboxConfirmedRef = useRef<Record<number, boolean>>({});
   const commentCheckboxConfirmedRef = useRef<Record<string, boolean>>({});
   const addComment = useCallback(
-    async (body: string): Promise<ConsoleCommentSubmitResult> => {
+    async (
+      body: string,
+      timingOverride?: { openedToActionMs?: number; actionDescription: string },
+    ): Promise<ConsoleCommentSubmitResult> => {
       const actionId = generateCommentActionId();
-      const timing = consoleItemActionTiming(item, 'コメントを投稿しました');
+      const timing =
+        timingOverride ?? consoleItemActionTiming(item, 'コメントを投稿しました');
       const commentHoldOffline = (
         projectCode: string,
       ): ConsoleCommentSubmitResult => {
@@ -470,7 +490,10 @@ export const ConsoleItemDetailContainer = ({
           item.url);
       const reviewComments =
         action === 'request_changes' ? pendingReviewComments : [];
-      const timing = consoleItemActionTiming(item, `「${action}」を押しました`);
+      const timing = consoleItemActionTiming(
+        item,
+        `「${consoleActionButtonLabels[action]}」を押しました`,
+      );
       onQueueAction({
         kind: { type: 'review', action },
         item,
@@ -502,7 +525,15 @@ export const ConsoleItemDetailContainer = ({
     },
     onSetNextActionDate: (action) => {
       const actionId = generateCommentActionId();
-      const timing = consoleItemActionTiming(item, `「${action}」を押しました`);
+      const nextActionDate = nextActionDateAfter(item.nextActionDate, action);
+      const actionDescription =
+        nextActionDate === null
+          ? `「${consoleActionButtonLabels[action]}」を押しました`
+          : `「${consoleActionButtonLabels[action]}」を押しました（Next Action Date を ${nextActionDate} に設定）`;
+      const timing = consoleItemActionTiming(
+        item,
+        actionDescription,
+      );
       onQueueAction({
         kind: { type: 'next_action_date', action },
         item,
@@ -650,7 +681,10 @@ export const ConsoleItemDetailContainer = ({
     },
     onClose: (action) => {
       const actionId = generateCommentActionId();
-      const timing = consoleItemActionTiming(item, `「${action}」を押しました`);
+      const timing = consoleItemActionTiming(
+        item,
+        `「${consoleActionButtonLabels[action]}」を押しました`,
+      );
       onQueueAction({
         kind: { type: 'close', action },
         item,
@@ -1077,8 +1111,8 @@ export const ConsoleItemDetailContainer = ({
       'コメントを投稿して閉じました',
     );
     if (pjcode == null) {
-      await addComment(body);
-      handlers.onClose('close');
+      await addComment(body, timing);
+      await operations.closeIssue(item, 'close', generateCommentActionId());
       return;
     }
     const commentActionId = generateCommentActionId();
@@ -1104,8 +1138,8 @@ export const ConsoleItemDetailContainer = ({
                 item,
                 'close',
                 closeActionId,
-                timing.openedToActionMs,
-                timing.actionDescription,
+                undefined,
+                undefined,
               ),
           ],
           sentStepCount,
@@ -1154,8 +1188,8 @@ export const ConsoleItemDetailContainer = ({
                 item,
                 'close',
                 closeActionId,
-                timing.openedToActionMs,
-                timing.actionDescription,
+                undefined,
+                undefined,
               ),
           ],
           sentStepCount,

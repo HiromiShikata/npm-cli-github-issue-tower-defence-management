@@ -10232,14 +10232,10 @@ describe('ConsolePage offline action queue', () => {
 
   const closeRequestBodyForPullRequest = {
     ...closeRequestBodyBaseForPullRequest,
-    openedToActionMs: expect.any(Number),
-    actionDescription: '「OK & Close」を押しました',
   };
 
   const commentAndCloseRequestBodyForPullRequest = {
     ...closeRequestBodyBaseForPullRequest,
-    openedToActionMs: expect.any(Number),
-    actionDescription: 'コメントを投稿して閉じました',
   };
 
   const closeOfflineRequestBodyForPullRequest = {

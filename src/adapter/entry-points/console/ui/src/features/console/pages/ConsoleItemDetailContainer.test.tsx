@@ -220,7 +220,7 @@ describe('ConsoleItemDetailContainer', () => {
       [],
       expect.any(String),
       expect.any(Number),
-      '「approve_and_merge」を押しました',
+      '「Approve & Merge」を押しました',
     );
   });
 
@@ -437,7 +437,7 @@ describe('ConsoleItemDetailContainer', () => {
       [],
       expect.any(String),
       expect.any(Number),
-      '「approve_and_merge」を押しました',
+      '「Approve & Merge」を押しました',
     );
   });
 
@@ -1592,6 +1592,22 @@ describe('ConsoleItemDetailContainer', () => {
     });
   });
 
+  it('forwards elapsed timing to addComment when Comment & Close has no project code', async () => {
+    const operations = buildOperations();
+    const { container, getByText } = render(
+      <ConsoleItemDetailContainer tab="todo-by-human" item={issueItem} caches={buildCaches()}
+        operations={operations} statusOptions={consoleStatusOptionsFixture} storyOptions={[]}
+        agentOptions={[]} storyColors={consoleStoryColorsFixture} storyName="TDPM Console port"
+        overlayStatus={null} now={Date.parse('2026-06-19T12:00:00.000Z')} pjcode={null}
+        onQueueAction={jest.fn()} isAirplaneModeOn={false} onOfflineActionsCreate={jest.fn()} />,
+    );
+    fireEvent.change(container.querySelector('.console-composer-input') as HTMLTextAreaElement, { target: { value: 'closing comment' } });
+    fireEvent.click(getByText('Comment & Close'));
+    await waitFor(() => expect(operations.addComment).toHaveBeenCalledWith(
+      issueItem, 'closing comment', expect.any(String), expect.any(Number), 'コメントを投稿して閉じました',
+    ));
+  });
+
   it('clicking Comment & Close in the operations bar calls addComment then queues a close action', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
@@ -1611,6 +1627,7 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
         isAirplaneModeOn={false}
         onOfflineActionsCreate={jest.fn()}
+        pjcode="acme"
       />,
     );
     const textarea = container.querySelector(
@@ -1619,12 +1636,16 @@ describe('ConsoleItemDetailContainer', () => {
     fireEvent.change(textarea, { target: { value: 'closing comment' } });
     fireEvent.click(getByText('Comment & Close'));
     await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledTimes(1);
+    });
+    await onQueueAction.mock.calls[0][0].commit();
+    await waitFor(() => {
       expect(operations.addComment).toHaveBeenCalledWith(
         issueItem,
         'closing comment',
         expect.any(String),
         expect.any(Number),
-        'コメントを投稿しました',
+        'コメントを投稿して閉じました',
       );
     });
     expect(onQueueAction).toHaveBeenCalledWith(
@@ -1734,8 +1755,8 @@ describe('ConsoleItemDetailContainer', () => {
       issueItem,
       'close',
       expect.any(String),
-      expect.any(Number),
-      expect.any(String),
+      undefined,
+      undefined,
     );
   });
 
@@ -4080,8 +4101,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
           issueItem,
           'close',
           expect.any(String),
-          expect.any(Number),
-          expect.any(String),
+          undefined,
+          undefined,
         ],
       ]);
     },
@@ -4158,10 +4179,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
           issueItem,
           'close',
           expect.any(String),
-          expect.any(Number),
-          buttonLabel === 'OK & Close'
-            ? '「OK & Close」を押しました'
-            : 'コメントを投稿して閉じました',
+          undefined,
+          undefined,
         ],
       ]);
     },
@@ -4202,10 +4221,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
           issueItem,
           'close',
           expect.any(String),
-          expect.any(Number),
-          buttonLabel === 'OK & Close'
-            ? '「OK & Close」を押しました'
-            : 'コメントを投稿して閉じました',
+          undefined,
+          undefined,
         ],
       ]);
       expect(addCommentMock.mock.invocationCallOrder[0]).toBeLessThan(
@@ -4231,10 +4248,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
           issueItem,
           'close',
           expect.any(String),
-          expect.any(Number),
-          buttonLabel === 'OK & Close'
-            ? '「OK & Close」を押しました'
-            : 'コメントを投稿して閉じました',
+          undefined,
+          undefined,
         ],
       ]);
     },
@@ -4276,10 +4291,8 @@ describe('ConsoleItemDetailContainer composer comment delivery', () => {
           issueItem,
           'close',
           expect.any(String),
-          expect.any(Number),
-          buttonLabel === 'OK & Close'
-            ? '「OK & Close」を押しました'
-            : 'コメントを投稿して閉じました',
+          undefined,
+          undefined,
         ],
       ]);
     },
