@@ -32,8 +32,11 @@ const outcomeFromResponse = (
   body: unknown,
 ): CreateIssueOutcome | null => {
   if (!isRecord(body)) {
-    return httpStatus >= 400 && httpStatus < 500
-      ? { kind: 'notCreated', reason: `HTTP ${httpStatus}` }
+    if (httpStatus >= 400 && httpStatus < 500) {
+      return { kind: 'notCreated', reason: `HTTP ${httpStatus}` };
+    }
+    return httpStatus >= 500
+      ? { kind: 'unconfirmed', reason: 'The creation state could not be confirmed.' }
       : null;
   }
   const issueUrl = bodyString(body, 'issueUrl');
@@ -44,7 +47,7 @@ const outcomeFromResponse = (
     return { kind: 'notCreated', reason: reasonFromBody(body) };
   }
   if (httpStatus >= 500 && typeof body.issueCreated !== 'boolean') {
-    return { kind: 'notCreated', reason: reasonFromBody(body) };
+    return { kind: 'unconfirmed', reason: reasonFromBody(body) };
   }
   if (httpStatus === 500 && body.issueCreated === true && issueUrl) {
     const failedStep = bodyString(body, 'failedStep');
@@ -79,14 +82,6 @@ export const createIssueWithRetry = async (
         latestOutcome = outcome;
         if (response.httpStatus >= 200 && response.httpStatus < 300) return outcome;
         if (response.httpStatus >= 400 && response.httpStatus < 500) return outcome;
-        if (
-          outcome.kind === 'notCreated' &&
-          response.httpStatus >= 500 &&
-          isRecord(response.body) &&
-          typeof response.body.issueCreated !== 'boolean'
-        ) {
-          return outcome;
-        }
       }
     } catch (error) {
       latestTransportError = error instanceof Error ? error.message : String(error);
