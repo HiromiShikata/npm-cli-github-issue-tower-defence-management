@@ -47,6 +47,7 @@ export const startLoadWithNetworkRetry = <T>(
         }
         clearRetryTimer();
         networkFailed = false;
+        retryDelayMs = NETWORK_RETRY_INITIAL_DELAY_MS;
         options.onSuccess(value);
       },
       (cause: unknown) => {
