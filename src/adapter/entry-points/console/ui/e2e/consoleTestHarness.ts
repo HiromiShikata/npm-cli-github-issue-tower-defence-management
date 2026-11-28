@@ -16,6 +16,7 @@ import type {
   PullRequestFile,
   RelatedPullRequest,
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
+import type { IssueAttachmentUploadResult } from '../../../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
 import {
   deleteProjectTimer,
@@ -1041,6 +1042,10 @@ export type ConsoleE2eUploadAttachmentCall = {
   content: Buffer;
 };
 
+export type ConsoleE2eUploadAttachmentRequest = {
+  files: ConsoleE2eUploadAttachmentCall[];
+};
+
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
@@ -1057,6 +1062,7 @@ export type ConsoleE2eHarness = {
   setStoryCalls: ConsoleE2eSetStoryCall[];
   setAgentCalls: ConsoleE2eSetAgentCall[];
   uploadAttachmentCalls: ConsoleE2eUploadAttachmentCall[];
+  uploadAttachmentRequestCalls: ConsoleE2eUploadAttachmentRequest[];
   closeIssueCalls: string[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
@@ -1074,6 +1080,7 @@ export const startConsoleE2eHarness = async (options?: {
   mergePullRequest?: () => Promise<void>;
   getIssueOrPullRequestComments?: () => Promise<IssueComment[]>;
   createNewIssueError?: Error;
+  uploadAttachmentFailure?: { fileName: string; error: string };
 }): Promise<ConsoleE2eHarness> => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'console-e2e-'));
   const consoleDataOutputDir = path.join(tmpRoot, 'data');
@@ -1109,6 +1116,7 @@ export const startConsoleE2eHarness = async (options?: {
   const setStoryCalls: ConsoleE2eSetStoryCall[] = [];
   const setAgentCalls: ConsoleE2eSetAgentCall[] = [];
   const uploadAttachmentCalls: ConsoleE2eUploadAttachmentCall[] = [];
+  const uploadAttachmentRequestCalls: ConsoleE2eUploadAttachmentRequest[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -1118,25 +1126,40 @@ export const startConsoleE2eHarness = async (options?: {
     issueAttachmentRepository: {
       uploadAttachment: async (
         request,
-      ): Promise<
-        string | { fileName: string; status: 'uploaded'; markdown: string }[]
-      > => {
+      ): Promise<string | IssueAttachmentUploadResult[]> => {
         const files =
           'files' in request
             ? request.files
             : [{ fileName: request.fileName, content: request.content }];
+        const recordedFiles = files.map((file) => ({
+          fileName: file.fileName,
+          content: Buffer.from(file.content),
+        }));
+        uploadAttachmentRequestCalls.push({ files: recordedFiles });
         for (const file of files) {
           uploadAttachmentCalls.push({
             fileName: file.fileName,
             content: Buffer.from(file.content),
           });
         }
-        const uploaded = files.map((file) => ({
-          fileName: file.fileName,
-          status: 'uploaded' as const,
-          markdown: `![${file.fileName}](https://example.com/${file.fileName})`,
-        }));
-        return 'files' in request ? uploaded : uploaded[0].markdown;
+        const uploaded = files.map((file) =>
+          options?.uploadAttachmentFailure?.fileName === file.fileName
+            ? {
+                fileName: file.fileName,
+                status: 'failed' as const,
+                error: options.uploadAttachmentFailure.error,
+              }
+            : {
+                fileName: file.fileName,
+                status: 'uploaded' as const,
+                markdown: `![${file.fileName}](https://example.com/${file.fileName})`,
+              },
+        );
+        return 'files' in request
+          ? uploaded
+          : uploaded[0].status === 'uploaded'
+            ? uploaded[0].markdown
+            : '';
       },
     },
     issueRepository: {
@@ -1255,6 +1278,7 @@ export const startConsoleE2eHarness = async (options?: {
     setStoryCalls,
     setAgentCalls,
     uploadAttachmentCalls,
+    uploadAttachmentRequestCalls,
     closeIssueCalls,
     storyColorCalls,
     deleteAllCommentsCalls,
