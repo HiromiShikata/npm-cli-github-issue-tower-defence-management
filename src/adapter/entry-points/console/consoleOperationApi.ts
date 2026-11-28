@@ -155,7 +155,7 @@ type ConsoleElapsedTimeAction = {
 const readConsoleElapsedTimeAction = (
   body: Record<string, unknown>,
 ): ConsoleElapsedTimeAction | ConsoleOperationResponse | null => {
-  const hasElapsed = Object.hasOwn(body, 'openedToActionMs');
+  const hasElapsed = body.openedToActionMs !== undefined;
   if (!hasElapsed) return null;
   if (
     typeof body.openedToActionMs !== 'number' ||
