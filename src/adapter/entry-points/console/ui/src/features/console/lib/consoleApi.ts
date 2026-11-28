@@ -488,6 +488,31 @@ export const encodeAttachmentContent = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
+export const attachmentMarkdownFromResult = (raw: string): string => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+  if (!Array.isArray(parsed)) {
+    return raw;
+  }
+  const element: unknown = parsed[0];
+  if (
+    isRecord(element) &&
+    element.status === 'uploaded' &&
+    typeof element.markdown === 'string'
+  ) {
+    return element.markdown;
+  }
+  throw new Error(
+    isRecord(element) && typeof element.error === 'string'
+      ? element.error
+      : 'failed to upload file',
+  );
+};
+
 export function postConsoleAttachment(
   request: ConsoleAttachmentUploadBatchRequest,
 ): Promise<string>;

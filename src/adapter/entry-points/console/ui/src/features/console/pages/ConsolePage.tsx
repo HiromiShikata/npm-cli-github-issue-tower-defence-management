@@ -52,6 +52,7 @@ import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler'
 import { useConsoleTimerFirstItemAutoOpen } from '../hooks/useConsoleTimerFirstItemAutoOpen';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
+  attachmentMarkdownFromResult,
   encodeAttachmentContent,
   postConsoleAddStory,
   postConsoleAttachment,
@@ -255,12 +256,14 @@ export const createIssueWithAttachments = async (
     filesStillPending.map(async (file) => {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const contentBase64 = encodeAttachmentContent(bytes);
-      const markdown = await postConsoleAttachment({
-        pjcode,
-        url: issueUrl as string,
-        fileName: file.name,
-        contentBase64,
-      });
+      const markdown = attachmentMarkdownFromResult(
+        await postConsoleAttachment({
+          pjcode,
+          url: issueUrl as string,
+          fileName: file.name,
+          contentBase64,
+        }),
+      );
       return { fileName: file.name, markdown };
     }),
   );
