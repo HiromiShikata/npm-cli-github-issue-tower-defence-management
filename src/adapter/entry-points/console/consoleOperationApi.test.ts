@@ -11700,4 +11700,267 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('review issue URL binding', () => {
+    it('PIN closes a pull request for review when issueUrl is the project item url', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          projectItemFor(
+            'PVTI_review_close_issue_url',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_review_close_issue_url',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+    });
+
+    it('RED rejects a review close whose issueUrl is not the project item url before closing', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          projectItemFor(
+            'PVTI_review_close_issue_url_mismatch',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/99',
+        projectItemId: 'PVTI_review_close_issue_url_mismatch',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('RED rejects a review unnecessary whose issueUrl is not the project item url before closing', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          projectItemFor(
+            'PVTI_review_unnecessary_issue_url_mismatch',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/99',
+        projectItemId: 'PVTI_review_unnecessary_issue_url_mismatch',
+        commentBody: 'unnecessary',
+        issueCommentBody: 'do not recreate',
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.updateLabels).not.toHaveBeenCalled();
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('PIN marks a pull request unnecessary when issueUrl is the project item url', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          projectItemFor(
+            'PVTI_review_unnecessary_issue_url',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+      issueRepository.findRelatedOpenPRs.mockResolvedValueOnce([
+        {
+          url: 'https://github.com/o/r/pull/1',
+          branchName: null,
+          createdAt: new Date(0),
+          isDraft: false,
+          isConflicted: false,
+          mergeable: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+          reviewDecision: null,
+          ciStatusAvailability: 'AVAILABLE',
+        },
+      ]);
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/1',
+        labels: [],
+      });
+
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'unnecessary',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_review_unnecessary_issue_url',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+    });
+  });
+
+  describe('triage gate and lookup errors', () => {
+    it('RED rejects a triage set_status whose project item is absent after refresh before any write', async () => {
+      issueRepository.getAllIssues
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: true })
+        .mockResolvedValueOnce({ issues: [], project, cacheUsed: false });
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_triage_set_status_absent',
+        statusName: 'Todo',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('RED rethrows a getAllIssues failure from the triage close binding before writing', async () => {
+      issueRepository.getAllIssues.mockRejectedValueOnce(
+        new Error('github unavailable'),
+      );
+
+      await expect(
+        handleTriage(context, {
+          pjcode: 'acme',
+          action: 'close',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_triage_close_lookup_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('RED rethrows a getAllIssues failure from the review close binding before writing', async () => {
+      issueRepository.getAllIssues.mockRejectedValueOnce(
+        new Error('github unavailable'),
+      );
+
+      await expect(
+        handleReview(context, {
+          pjcode: 'acme',
+          action: 'close',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_review_close_lookup_error',
+        }),
+      ).rejects.toThrow('github unavailable');
+      expect(issueRepository.closePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('PIN accepts a triage set_status when issueUrl is the project item url', async () => {
+      issueRepository.getAllIssues.mockResolvedValueOnce({
+        issues: [
+          projectItemFor(
+            'PVTI_triage_set_status_matching',
+            'https://github.com/o/r/issues/1',
+            false,
+          ),
+        ],
+        project,
+        cacheUsed: false,
+      });
+
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_triage_set_status_matching',
+        statusName: 'Todo',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStatus).toHaveBeenCalled();
+    });
+  });
 });
