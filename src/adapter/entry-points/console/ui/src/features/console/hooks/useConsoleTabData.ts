@@ -302,20 +302,35 @@ const fetchSnapshots = async (
     }
   }
 
-  const allNull = Object.values(snapshots).every((s) => s === null);
   const networkFailed = results.some((result) => result.networkFailed);
+  const allNullBeforeRestore = Object.values(snapshots).every(
+    (s) => s === null,
+  );
+  let restoredFromPrevious = false;
   for (const {
     tabName,
     snapshot,
     networkFailed: tabNetworkFailed,
   } of results) {
     if (snapshot === null && tabNetworkFailed) {
-      snapshots[tabName] = previous?.[tabName] ?? null;
+      const restored = previous?.[tabName] ?? null;
+      snapshots[tabName] = restored;
+      if (restored !== null) {
+        restoredFromPrevious = true;
+      }
     }
   }
+  const firstHttpError =
+    results.find((result) => result.error !== null && !result.networkFailed)
+      ?.error ?? null;
+  const errorToSurface = !allNullBeforeRestore
+    ? null
+    : !restoredFromPrevious
+      ? firstError
+      : firstHttpError;
   return {
     snapshots,
-    firstError: allNull ? firstError : null,
+    firstError: errorToSurface,
     networkFailed,
   };
 };
