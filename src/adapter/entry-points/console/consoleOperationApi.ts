@@ -1861,7 +1861,7 @@ export const handleCreateWorkflowIssue = async (
   issueRepository: IssueRepository,
   body: Record<string, unknown>,
   isRepositoryConfigured:
-    ((owner: string, repository: string) => boolean) | null = () => true,
+    ((owner: string, repository: string) => boolean) | null,
 ): Promise<ConsoleOperationResponse> => {
   const nameWithOwner = body.nameWithOwner;
   const title = body.title;
@@ -2227,6 +2227,20 @@ export const handleSetDependedIssueUrl = async (
   } else if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
   }
+  if (!replaceExisting) {
+    const repositoryReference = extractRepositoryReference(issueUrl);
+    if (repositoryReference === null) {
+      return badRequest('issueUrl must be a github issue or pull request url');
+    }
+    const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
+      context,
+      repositoryReference.owner,
+      repositoryReference.repo,
+    );
+    if (repositoryFailure !== null) {
+      return repositoryFailure;
+    }
+  }
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {
     return binding;
@@ -2281,18 +2295,6 @@ export const handleSetDependedIssueUrl = async (
   }
   if (!isNonEmptyString(dependedIssueUrl)) {
     return badRequest('dependedIssueUrl is required');
-  }
-  const repositoryReference = extractRepositoryReference(issueUrl);
-  if (repositoryReference === null) {
-    return badRequest('issueUrl must be a github issue or pull request url');
-  }
-  const repositoryFailure = rejectWhenRepositoryIsNotConfigured(
-    context,
-    repositoryReference.owner,
-    repositoryReference.repo,
-  );
-  if (repositoryFailure !== null) {
-    return repositoryFailure;
   }
   await context
     .resolveIssueRepository(issueUrl)
